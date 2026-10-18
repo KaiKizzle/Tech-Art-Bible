@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dot and Cross Product · Tech Art Atlas</title>
+<meta name="description" content="Two ways to combine vectors. The dot product measures how much two directions agree; the cross product builds a direction perpendicular to two others. Lighting, facing tests, reflections and normals all come from them.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="dot-cross">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Dot and Cross Product</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Dot and Cross Product</h1>
+  <p class="lede">Two ways to combine vectors. The dot product measures how much two directions agree; the cross product builds a direction perpendicular to two others. Lighting, facing tests, reflections and normals all come from them.</p>
+  <p class="meta">Drag the arrows in each drawing; the formula above it updates with the numbers you set.</p>
+</header>
+<figure class="keyart"><canvas data-render="dot-cross" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the sphere is banded by N · L; green is the normal, orange the direction to the light.</figcaption></figure>
+<div class="needs" data-needs="vectors"></div>
+
+<section class="chapter" id="dot" data-title="The dot product: multiply and add" data-builds="vectors#what" data-summary="a·b = aₓbₓ + a_yb_y + a_zb_z: multiply matching components and add.">
+  <div class="head"><div class="num"></div><h2>The dot product: multiply and add</h2></div>
+
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="dot">dot product</button> takes two vectors and returns one number. The recipe is short: multiply the matching components, then add the results.</p>
+  </div>
+  <div class="fx" data-fx="dot"></div>
+  <div class="prose">
+    <p>Drag the two arrows and watch the sign: positive while they point roughly the same way, zero when they are at a right angle, negative when they point apart. The next chapter explains why. In HLSL it is <code>dot(a, b)</code>, in Shader Graph the <em>Dot Product</em> node.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["dot((1, 2), (3, 4)) = ?", ["10", "11", "(3, 8)", "5"], 1, "1 × 3 + 2 × 4 = 11."], ["Two vectors are at a right angle. What is their dot product?", ["1", "0", "−1", "Their lengths multiplied"], 1, "cos 90° = 0."]]</script></details>
+
+</section>
+<section class="chapter" id="angle" data-title="What the number means: the angle" data-builds="dot-cross#dot vectors#normalize" data-summary="a·b = |a||b| cos θ. For unit vectors the dot product is the cosine of the angle.">
+  <div class="head"><div class="num"></div><h2>What the number means: the angle</h2></div>
+
+  <div class="prose">
+    <p>The same number can be computed a second way, from the two lengths and the angle θ between the arrows:</p>
+  </div>
+  <div class="fx" data-fx="angle"></div>
+  <div class="prose">
+    <p>If both vectors are <a class="x" href="../vectors/index.html#normalize">normalized</a> (length 1), the lengths drop out and the dot product <em>is</em> the cosine of the angle: 1 when they point the same way, 0 at 90°, −1 when opposite. That one fact is behind most of the checks shaders make:</p>
+    <ul>
+      <li>Is a surface facing the light? <code>dot(N, L) &gt; 0</code>.</li>
+      <li>Is a point in front of the camera? <code>dot(toPoint, cameraForward) &gt; 0</code>.</li>
+      <li>How much does a surface face the viewer (rim light, Fresnel)? <code>1 − dot(N, V)</code>.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Two unit vectors have a dot product of 0.5. What is the angle between them?", ["30°", "45°", "60°", "90°"], 2, "cos 60° = 0.5."], ["dot(N, V) is close to 0 at a pixel. Where on the object is that pixel?", ["Facing the camera directly", "At the silhouette, seen edge-on", "Behind the camera", "In shadow"], 1, "The normal is perpendicular to the view direction at the outline."]]</script></details>
+
+</section>
+<section class="chapter" id="projection" data-title="Projection: how far along a direction" data-builds="dot-cross#angle" data-summary="dot(a, b̂) is the length of a&#x27;s shadow on the line of b.">
+  <div class="head"><div class="num"></div><h2>Projection: how far along a direction</h2></div>
+
+  <div class="prose">
+    <p>When only <i>b</i> is normalized, <code>dot(a, b̂)</code> answers a different question: how far does <i>a</i> reach along the direction of <i>b</i>? Picture a light shining straight down onto b's line; the shadow of <i>a</i> has exactly this length.</p>
+  </div>
+  <div class="fx" data-fx="project"></div>
+  <div class="prose"><p>This "how far along" reading is how a ray finds the point closest to a sphere's centre in <a class="x" href="../rays-math/index.html#sphere">Rays and Solving for t</a>, and how height above a plane is measured: <code>dot(p − pointOnPlane, planeNormal)</code>.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["a = (3, 4), b̂ = (1, 0). How far does a reach along b̂?", ["3", "4", "5", "0"], 0, "dot = 3 × 1 + 4 × 0 = 3: the x component."]]</script></details>
+
+</section>
+<section class="chapter" id="lambert" data-title="Lighting with one dot product" data-builds="dot-cross#angle" data-summary="Diffuse light = saturate(N · L) × light colour × albedo.">
+  <div class="head"><div class="num"></div><h2>Lighting with one dot product</h2></div>
+
+  <div class="prose">
+    <p>A surface receives the most light when it faces the light head-on, and less as it turns away, because the same beam spreads over a larger area. The amount is exactly the cosine of the angle between the surface <button type="button" class="term" data-term="normal">normal</button> N and the direction to the light L. With both normalized, that cosine is <code>dot(N, L)</code>. Negative values mean the light is behind the surface, so they are cut to 0:</p>
+  </div>
+  <div class="fx" data-fx="lambert"></div>
+  <div class="prose">
+    <p>This is <button type="button" class="term" data-term="lambert">Lambert's cosine law</button>, the diffuse part of every lighting model in Unity and Unreal. The full equation multiplies it with the light's colour and intensity and the surface's albedo, part by part (<a class="x" href="../shader-anatomy/index.html#types">colour times colour</a>). Real-world light units are in <a class="x" href="../exposure/index.html#units">Sun to Screen</a>.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["The light hits a surface at 60° from its normal. What fraction of the head-on brightness does it get?", ["0.87", "0.5", "0.6", "0.25"], 1, "cos 60° = 0.5."], ["Why is dot(N, L) wrapped in saturate?", ["To make it faster", "Negative values mean the light is behind the surface and must not subtract light", "To normalize it", "To convert to sRGB"], 1, "A light behind a surface contributes nothing, not negative light."]]</script></details>
+
+</section>
+<section class="chapter" id="reflect" data-title="Reflections" data-builds="dot-cross#projection" data-summary="r = d − 2(d·n)n flips the part of d that goes into the surface.">
+  <div class="head"><div class="num"></div><h2>Reflections</h2></div>
+
+  <div class="prose">
+    <p>A mirror flips the part of a direction that goes into the surface and keeps the part that runs along it. The part going into the surface is the projection of the direction onto the normal, <code>dot(d, n)·n</code> (previous chapters). Subtract it twice and you have the reflection:</p>
+  </div>
+  <div class="fx" data-fx="reflect"></div>
+  <div class="prose"><p>HLSL has it built in as <code>reflect(d, n)</code>; <i>n</i> must be normalized and <i>d</i> points <em>towards</em> the surface. Reflection probes, screen-space reflections and specular highlights all start from this vector.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["d = (1, −1) hits a floor with n = (0, 1). What is the reflection?", ["(1, 1)", "(−1, −1)", "(−1, 1)", "(0, 1)"], 0, "d·n = −1, r = (1, −1) − 2·(−1)·(0, 1) = (1, 1)."]]</script></details>
+
+</section>
+<section class="chapter" id="cross" data-title="The cross product: a perpendicular vector" data-builds="dot-cross#dot vectors#axes" data-summary="a × b is perpendicular to a and b, with length equal to their parallelogram&#x27;s area.">
+  <div class="head"><div class="num"></div><h2>The cross product: a perpendicular vector</h2></div>
+
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="cross">cross product</button> of two 3D vectors returns a third vector that is perpendicular to both. Its length equals the area of the parallelogram the two span, and its direction follows the <a class="x" href="../vectors/index.html#axes">handedness rule</a> of the coordinate system.</p>
+    <p>The formula looks dense, but each part follows the same pattern. Set both z sliders to 0: the vectors then lie flat in the xy plane, only the z part of the result is non-zero, and that part, a<sub>x</sub>b<sub>y</sub> − a<sub>y</sub>b<sub>x</sub>, is the <a class="x" href="../gpu-basics/index.html#pipeline">edge function</a> the rasterizer uses. Its sign says whether b is turned left or right from a.</p>
+  </div>
+  <div class="fx" data-fx="cross"></div>
+  <div class="prose">
+    <p>The most common use: the normal of a triangle with corners a, b, c is <code>normalize(cross(b − a, c − a))</code>. Swap the order of the corners and the normal flips, which is why winding order decides which side of a triangle is the front. Tangent space builds its third axis the same way (<a class="x" href="../spaces/index.html#tangent">tangent space</a>).</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["What is the angle between a × b and a?", ["0°", "45°", "90°", "It depends"], 2, "The cross product is perpendicular to both inputs."], ["a and b point the same way. What is a × b?", ["A unit vector", "The zero vector", "a + b", "Twice a"], 1, "The parallelogram has no area, so the result has length 0."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Video course</span><a href="https://www.3blue1brown.com/topics/linear-algebra" rel="noopener">Essence of linear algebra</a></span><span class="by">3Blue1Brown</span><span class="why">The dot and cross product chapters show the geometry behind the formulas.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Lighting/Basic-Lighting" rel="noopener">Basic Lighting</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">N · L diffuse lighting and reflect() for specular highlights, in code.</span></li><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-intrinsic-functions" rel="noopener">HLSL intrinsic functions</a></span><span class="by">Microsoft</span><span class="why">dot, cross, reflect and normalize as the GPU defines them.</span></li></ul>
+</section>
+
+<div class="next" data-next="spaces rays-math pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"dot": [
+"Dot product",
+"a·b = aₓbₓ + a_yb_y + a_zb_z = |a||b| cos θ. One number that measures how much two vectors point the same way."
+],
+"normal": [
+"Normal",
+"A unit vector perpendicular to a surface, pointing out of it.",
+"../spaces/index.html#tangent"
+],
+"lambert": [
+"Lambert's cosine law",
+"Light received by a surface is proportional to the cosine of the angle between its normal and the light: saturate(N·L)."
+],
+"cross": [
+"Cross product",
+"a × b: a vector perpendicular to a and b whose length is the area of the parallelogram they span."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="dot-cross.js"></script>
+</body>
+</html>

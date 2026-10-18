@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Light Types and Falloff · Tech Art Atlas</title>
+<meta name="description" content="Point, spot, sun and area lights each follow a few lines of maths: how light fades with distance, fills a cone, softens shadows and adds up across a scene.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="light-types">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Light Types and Falloff</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <h1>Light Types and Falloff</h1>
+  <p class="lede">Point, spot, sun and area lights each follow a few lines of maths: how light fades with distance, fills a cone, softens shadows and adds up across a scene.</p>
+  <p class="meta">Builds on Sun to Screen. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="light-types" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a spot light cone and a warm point light on a studio floor.</figcaption></figure>
+<div class="needs" data-needs="exposure#units dot-cross#lambert dot-cross#angle"></div>
+
+<section class="chapter" id="point" data-title="Point lights and a finite range" data-builds="exposure#units" data-summary="falloff = saturate(1 − (d/r)⁴)² / (d² + 1): physical up close, exactly zero at the range.">
+  <div class="head"><div class="num"></div><h2>Point lights and a finite range</h2></div>
+
+  <div class="prose">
+    <p>A point light obeys the <a class="x" href="../exposure/index.html#units">inverse-square law</a>: at twice the distance, a quarter of the light. Physically that never reaches zero, so every light would touch every pixel of the scene. Engines give each light a <em>range</em> and fade it to exactly zero at that range, while keeping the physical curve close to the light. The common window from Unreal (also used by Frostbite and HDRP):</p>
+  </div>
+  <div class="fx" data-fx="window"></div>
+  <div class="prose"><p>The +1 (in metres²) avoids dividing by zero when a surface touches the light. Choose the range so the window bites only where the light is already dim; a range that is too short makes lights end in a visible ring.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A light's range is 10 m. At 9.9 m, the windowed falloff compared with the physical 1/d² is…", ["the same", "almost zero", "twice as bright", "negative"], 1, "The window forces the value to zero at the range."]]</script></details>
+
+</section>
+<section class="chapter" id="spot" data-title="Spot lights" data-builds="dot-cross#angle light-types#point" data-summary="cone = saturate((cos θ − cos outer) / (cos inner − cos outer))².">
+  <div class="head"><div class="num"></div><h2>Spot lights</h2></div>
+
+  <div class="prose">
+    <p>A spot light is a point light with a cone. Its brightness depends on the angle between the light's axis and the direction to the surface, compared through the <a class="x" href="../dot-cross/index.html#angle">dot product</a> (a cosine). Inside the inner angle it is at full strength, outside the outer angle it is off, and in between it fades smoothly:</p>
+  </div>
+  <div class="fx" data-fx="spot"></div>
+  <div class="prose"><p>Computing with cosines instead of angles saves an <code>acos</code> per pixel: the shader compares dot(L, axis) directly with cos(outer) and cos(inner), both precomputed on the CPU.</p></div>
+
+</section>
+<section class="chapter" id="spot-units" data-title="How bright is a spot in lumens?" data-builds="exposure#units light-types#spot" data-summary="I = Φ / (2π · (1 − cos(θ/2))) for a spot with a reflector.">
+  <div class="head"><div class="num"></div><h2>How bright is a spot in lumens?</h2></div>
+
+  <div class="prose">
+    <p>A bulb's lumens spread over a whole sphere (<a class="x" href="../exposure/index.html#units">I = Φ / 4π</a>). Put a reflector behind it and the same lumens go into the cone only, so the light in each direction rises as the cone narrows. A cone of full angle θ covers a solid angle of 2π(1 − cos(θ/2)):</p>
+  </div>
+  <div class="fx" data-fx="spotlm"></div>
+  <div class="prose"><p>Engines differ on whether narrowing a spot keeps the lumens (and gets brighter) or keeps the candela (and gets the same brightness in a smaller area). Know which one your engine uses before you light with real values.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Spot lights in <em>Lumen</em> units concentrate the light into the cone only when <em>Reflector</em> is enabled; without it they behave like a point light masked by the cone.</p></div><div class="eng" data-engine="urp"><p>URP intensity is unitless: narrowing the cone does not change the brightness on the lit area.</p></div><div class="eng" data-engine="unreal"><p>In <em>Lumens</em> mode the total stays constant, so a narrower cone is brighter. In <em>Candelas</em> mode the brightness per direction stays constant.</p></div></div>
+
+</section>
+<section class="chapter" id="directional" data-title="The sun" data-builds="dot-cross#lambert shadow-maps#pcf" data-summary="E = E_sun · cos θ; penumbra width ≈ distance × tan(0.53°).">
+  <div class="head"><div class="num"></div><h2>The sun</h2></div>
+
+  <div class="prose">
+    <p>The sun is so far away that its rays arrive parallel and there is no falloff: a directional light has a direction and an illuminance in lux, about 100 000 lx at noon. The light on a surface is just E · cos θ (<a class="x" href="../dot-cross/index.html#lambert">Lambert</a>). But the sun is not a point: its disc covers about 0.53° of the sky. That is why shadows are sharp at the foot of a pole and blurry at its top:</p>
+  </div>
+  <div class="fx" data-fx="penumbra"></div>
+  <div class="prose"><p>Shadow filters that widen with this distance (PCSS, contact-hardening shadows, ray-traced shadows with a sun angle) reproduce it; a fixed <a class="x" href="../shadow-maps/index.html#pcf">PCF</a> width cannot.</p></div>
+
+</section>
+<section class="chapter" id="area" data-title="Area lights" data-builds="light-types#point" data-summary="Facing the light, a sphere equals a point light; tilted surfaces still see part of a large sphere above their horizon.">
+  <div class="head"><div class="num"></div><h2>Area lights</h2></div>
+
+  <div class="prose">
+    <p>Real lamps have a size: a window, a softbox, a neon tube. Surprisingly, for a surface that faces a glowing sphere, the exact light it receives equals the point-light formula. The difference appears when the surface tilts away: part of a large sphere stays above the surface's horizon after its centre has sunk below it, so the surface keeps receiving light where a point light would leave it black:</p>
+  </div>
+  <div class="fx" data-fx="sphere"></div>
+  <div class="prose"><p>Area lights also change specular highlights: a rectangular light gives a rectangular highlight. Engines evaluate rectangle and disc lights with an analytic method based on linearly transformed cosines (LTC), which costs more than a point light but far less than sampling the area.</p></div>
+
+</section>
+<section class="chapter" id="ies" data-title="IES profiles" data-builds="light-types#spot" data-summary="I(θ) from a measured table; here I₀ · (cos θ)ⁿ + spill.">
+  <div class="head"><div class="num"></div><h2>IES profiles</h2></div>
+
+  <div class="prose">
+    <p>A real fixture does not shine equally in all directions: a downlight sends most light straight down with a soft edge, a wall washer throws it sideways. Manufacturers publish this as an <button type="button" class="term" data-term="ies">IES profile</button>, a table of candela by angle. The engine looks it up per pixel with the angle to the light, like a 1D (or 2D) texture. Here a profile is modelled by a simple formula, a beam plus some spill:</p>
+  </div>
+  <div class="fx" data-fx="ies"></div>
+  <div class="prose"><p>IES profiles store the shape and often the absolute intensity. Lights with a profile look markedly more real in architecture and interiors, at the cost of one extra texture fetch.</p></div>
+
+</section>
+<section class="chapter" id="many" data-title="Many lights: what they cost" data-builds="spaces#perspective shadow-maps#cost" data-summary="lights per pixel ≈ N · π · (r / (d · tan(fov/2)))² / (4 · aspect).">
+  <div class="head"><div class="num"></div><h2>Many lights: what they cost</h2></div>
+
+  <div class="prose">
+    <p>Every light whose range touches a pixel adds one lighting calculation to that pixel. Modern renderers split the screen (and the depth range) into tiles or clusters and keep a list of the lights that touch each one, so a pixel only loops over its own list. The average list length depends on how much of the screen each light's sphere covers, which falls with the square of its distance (<a class="x" href="../spaces/index.html#perspective">perspective</a>):</p>
+  </div>
+  <div class="fx" data-fx="lightcost"></div>
+  <div class="prose"><p>Small ranges are the cheapest optimisation: halve every light's range and each covers a quarter of the screen. Shadowed lights cost far more again (<a class="x" href="../shadow-maps/index.html#cost">shadow passes</a>).</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP uses tiled and clustered light lists for all lights; the <em>Light Loop</em> debug views show how many lights touch each tile. Max lights per screen are set in the HDRP asset.</p></div><div class="eng" data-engine="urp"><p>URP <em>Forward+</em> removes the per-object light limit by using clustered lists; the older <em>Forward</em> path allows a few additional lights per object. <em>Deferred</em> renders each light's volume.</p></div><div class="eng" data-engine="unreal"><p>Deferred shading with tiled culling by default. The <em>Light Complexity</em> view mode shows how many lights affect each pixel; <em>Attenuation Radius</em> is the range.</p></div></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Notes</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf" rel="noopener">Real Shading in Unreal Engine 4</a></span><span class="by">Brian Karis · SIGGRAPH 2013</span><span class="why">The windowed inverse-square falloff and sphere and tube light approximations.</span></li><li><span><span class="kind">Talk</span><a href="https://blog.selfshadow.com/publications/s2014-shading-course/" rel="noopener">Moving Frostbite to Physically Based Rendering</a></span><span class="by">Lagarde, de Rousiers · SIGGRAPH 2014</span><span class="why">Photometric units for punctual and area lights, spot attenuation, sun angular size.</span></li><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: Lighting</a></span><span class="by">Google</span><span class="why">Point, spot, directional and photometric lights in a real-time renderer (section 5.2).</span></li><li><span><span class="kind">Paper</span><a href="http://www.cse.chalmers.se/~uffe/clustered_shading_preprint.pdf" rel="noopener">Clustered Deferred and Forward Shading</a></span><span class="by">Ola Olsson, Markus Billeter, Ulf Assarsson · HPG 2012</span><span class="why">The clustered light lists used by modern engines.</span></li></ul>
+</section>
+
+<div class="next" data-next="pbr-brdf shadow-maps baked-gi"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"ies": [
+"IES profile",
+"A measured table of a light fixture's intensity by direction (IESNA LM-63 format).",
+"#ies"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="light-types.js"></script>
+</body>
+</html>

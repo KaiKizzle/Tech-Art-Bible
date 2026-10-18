@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How a GPU Draws a Frame · Tech Art Atlas</title>
+<meta name="description" content="Every technique on this site is a small change to one process: a GPU colouring every pixel of the screen, many times per second. This unit explains that process from zero.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="gpu-basics">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">How a GPU Draws a Frame</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · start here · 5 chapters</div>
+  <h1>How a GPU Draws a Frame</h1>
+  <p class="lede">Every technique on this site is a small change to one process: a GPU colouring every pixel of the screen, many times per second. This unit explains that process from zero.</p>
+  <p class="meta">No maths or programming knowledge is needed. Coloured symbols in formulas are sliders you can move; dotted words open a definition; links with an arrow lead to the lesson that explains that idea.</p>
+</header>
+<figure class="keyart"><canvas data-render="gpu-basics" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the right half is the same image at a coarse pixel size, with the pixel grid drawn.</figcaption></figure>
+
+
+<section class="chapter" id="screen" data-title="The screen is a grid of pixels" data-summary="A frame is a grid of pixels, each holding a colour. Pixel count N = W × H.">
+  <div class="head"><div class="num"></div><h2>The screen is a grid of pixels</h2></div>
+
+  <div class="prose">
+    <p>Everything a game shows is a picture made of small squares called <button type="button" class="term" data-term="pixel">pixels</button>. They are arranged in rows and columns, like squared paper. A 1920 × 1080 screen has 1920 pixels in each row and 1080 rows.</p>
+    <p>Each pixel holds one colour, stored as three numbers: how much red, green and blue light it emits. How those numbers work is its own lesson, <a class="x" href="../color-values/index.html#rgb">colour as numbers</a>. For now it is enough that a pixel is three numbers.</p>
+    <p>The number of pixels is the first number to know about any frame, because almost all the work a GPU does is done once per pixel. You get it by multiplying the two sides:</p>
+  </div>
+  <div class="fx" data-fx="pixels"></div>
+  <div class="prose">
+    <p>Try the common sizes. Going from 1080p to 4K does not double the pixels, it multiplies them by four, because both the width and the height double. That is why games that run well at 1080p often struggle at 4K.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A 2560 × 1440 screen has how many pixels?", ["About 1.4 million", "About 3.7 million", "About 4 thousand", "About 8.3 million"], 1, "2560 × 1440 = 3 686 400, about 3.7 million."], ["The width and the height of the image both double. How many times more pixels are there?", ["2 times", "3 times", "4 times", "8 times"], 2, "N = W × H, so 2W × 2H = 4 × W × H."]]</script></details>
+
+</section>
+<section class="chapter" id="per-pixel" data-title="One small program per pixel" data-summary="A pixel shader is a program written for one pixel and run for every pixel, each with its own inputs.">
+  <div class="head"><div class="num"></div><h2>One small program per pixel</h2></div>
+
+  <div class="prose">
+    <p>The GPU's job is to find a colour for every pixel, every frame. It does that by running a small program once for each pixel. That program is called a <button type="button" class="term" data-term="pixelshader">pixel shader</button> (OpenGL and Vulkan call it a fragment shader).</p>
+    <p>You write the program for <strong>one</strong> pixel. The GPU then runs that same program for all of them. What makes the pixels different is the input: each run gets its own position on the screen. The lab below runs one tiny shader on a 24 × 14 grid. Every square runs exactly the code on the right, with its own <code>uv</code>.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>The same code, a different input per pixel<span class="lab-hint">Pick a shader, then hover a square to see its input and output.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="pp-grid" class="fig" width="560" height="330" aria-label="Grid of pixels each coloured by the same shader"></canvas></div>
+      <div class="side">
+        <div class="seg" id="pp-pick" role="group" aria-label="Shader"><button type="button" data-v="grad" aria-pressed="true">Gradient</button><button type="button" data-v="circle">Circle</button><button type="button" data-v="check">Checker</button></div>
+        <pre class="hlsl" id="pp-code"></pre>
+        <table class="ro" id="pp-ro"></table>
+      </div>
+    </div>
+  </div>
+  <div class="prose">
+    <p><code>uv</code> is the pixel's position scaled to the range 0 to 1, so the same code works at any resolution: 0 is the left (or bottom) edge, 1 the right (or top) edge. How a pixel number turns into <code>uv</code> is shown step by step in <a class="x" href="../ray-sphere/index.html#pixel-uv">From pixel to UV</a>. The types in the code (<code>float2</code>, <code>float4</code>) are explained in <a class="x" href="../shader-anatomy/index.html#types">Reading a shader: types</a>.</p>
+    <p>Because the program runs for every pixel, every frame, its cost multiplies quickly:</p>
+  </div>
+  <div class="fx" data-fx="invocations"></div>
+  <div class="prose"><p>At 4K and 60 frames per second the pixel shader runs about half a billion times per second. Every instruction you add to it is paid that many times, which is why shader cost matters so much (see <a class="x" href="../reading-a-frame/index.html#shader-cost">What a shader costs</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["What is different between two runs of the same pixel shader in one frame?", ["The code", "The input, such as the pixel position", "The GPU", "Nothing, they are identical"], 1, "The code is the same for every pixel; each run receives its own inputs."], ["Why do shaders use uv from 0 to 1 instead of pixel numbers?", ["It is faster", "The same code then works at any resolution", "Pixel numbers are not available", "GPUs cannot count"], 1, "Pixel numbers depend on the resolution; a 0–1 range does not."]]</script></details>
+
+</section>
+<section class="chapter" id="parallel" data-title="Thousands of pixels at the same time" data-summary="GPUs run pixels in waves of 32 or 64, in no fixed order, so pixels cannot see each other.">
+  <div class="head"><div class="num"></div><h2>Thousands of pixels at the same time</h2></div>
+
+  <div class="prose">
+    <p>A CPU core runs one thing after another, very fast. A GPU instead has thousands of small cores and runs many pixels at once. It groups pixels into <button type="button" class="term" data-term="wave">waves</button> of 32 or 64 that execute the same instruction together, and it runs many waves side by side.</p>
+    <p>The order in which pixels are processed is not defined. Watch the lab: each run fills the screen in a different order.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Waves fill the screen<span class="lab-hint">Each colour is one wave of 32 pixels. Press Run several times.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="par-grid" class="fig" width="560" height="300" aria-label="Pixel grid filled wave by wave in random order"></canvas></div>
+      <div class="side">
+        <div class="row"><button type="button" class="btn primary" id="par-run">Run</button><div class="seg" id="par-lanes" role="group" aria-label="Wave size"><button type="button" data-v="32" aria-pressed="true">32 lanes</button><button type="button" data-v="64">64 lanes</button></div></div>
+        <div class="ctl"><label for="par-cores">Waves at once</label><input type="range" id="par-cores" min="1" max="16" step="1" value="6"><output id="par-cores-o"></output></div>
+        <p class="cap" id="par-cap"></p>
+      </div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Three rules follow from this, and almost every shader technique is shaped by them:</p>
+    <ol>
+      <li><strong>A pixel cannot ask its neighbour for its result.</strong> The neighbour may not have run yet. If you need information from other pixels, an earlier pass has to write it into memory first, usually a texture (<a class="x" href="../textures-sampling/index.html#texture">what a texture is</a>) or a buffer (<a class="x" href="../buffers/index.html#memory">what a buffer is</a>).</li>
+      <li><strong>Nothing is remembered between frames</strong> unless you store it in such memory yourself.</li>
+      <li><strong>All lanes of a wave run the same instruction.</strong> If they take different branches of an <code>if</code>, the wave runs both (<a class="x" href="../reading-a-frame/index.html#shader-cost">divergence</a>).</li>
+    </ol>
+    <p>How many waves a frame needs is a simple division, rounded up because a half-full wave still occupies a whole one:</p>
+  </div>
+  <div class="fx" data-fx="waves"></div>
+  <details class="check"><summary></summary><script type="application/json">[["A pixel shader wants the colour its left neighbour computed in the same pass. What happens?", ["It reads it directly", "It cannot: the neighbour may not have run yet", "The GPU waits for the neighbour", "It reads last frame's value automatically"], 1, "There is no defined order. Data from other pixels must come from memory written by an earlier pass."], ["How many 64-lane waves does a 100-pixel draw need?", ["1", "2", "100", "64"], 1, "⌈100 / 64⌉ = 2. The second wave is only partly full but still runs."]]</script></details>
+
+</section>
+<section class="chapter" id="pipeline" data-title="From triangles to pixels" data-summary="Vertex shader, rasterizer, pixel shader, output. A pixel is inside a triangle when all three edge functions agree.">
+  <div class="head"><div class="num"></div><h2>From triangles to pixels</h2></div>
+
+  <div class="prose">
+    <p>Pixels are the end of the pipeline. The start is geometry. Every 3D model is made of triangles, and every triangle of three corner points called <button type="button" class="term" data-term="vertex">vertices</button>. Drawing one model goes through four stages:</p>
+    <ol class="steps-list">
+      <li><div><strong>Vertex shader.</strong> A small program runs once per vertex and works out where that corner lands on the screen. The maths behind this is <a class="x" href="../spaces/index.html#chain">moving between coordinate spaces</a>.</div></li>
+      <li><div><strong>Rasterization.</strong> Fixed hardware finds every pixel whose centre lies inside each triangle.</div></li>
+      <li><div><strong>Pixel shader.</strong> Runs once for every covered pixel and returns its colour.</div></li>
+      <li><div><strong>Output.</strong> The colour is written into an image in memory, the <a class="x" href="../buffers/index.html#render-targets">render target</a>, after a depth test decides whether something nearer is already there.</div></li>
+    </ol>
+    <p>The rasterizer's test is a small formula you can try yourself. For an edge from corner <i>a</i> to corner <i>b</i>, the <button type="button" class="term" data-term="edgefunction">edge function</button> says on which side of the edge a point <i>p</i> lies: positive on one side, negative on the other, zero on the line. A pixel is inside the triangle when all three edges give the same sign.</p>
+  </div>
+  <div class="fx" data-fx="edge"></div>
+  <div class="prose">
+    <p>This formula is a 2D <a class="x" href="../dot-cross/index.html#cross">cross product</a>. You do not need to write it yourself, the hardware does it, but knowing it explains two things you will meet later: why pixels exactly on a shared edge are handled by a tie-break rule so they are never drawn twice, and why tiny triangles waste work (<a class="x" href="../reading-a-frame/index.html#quads">quads and tiny triangles</a>).</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Which stage decides which pixels a triangle covers?", ["Vertex shader", "Rasterizer", "Pixel shader", "Render target"], 1, "Rasterization is fixed hardware that tests pixel centres against each triangle."], ["For a point exactly on an edge, the edge function is…", ["Positive", "Negative", "Zero", "Undefined"], 2, "Zero means the point lies on the line through a and b."], ["How many times does the vertex shader run for a single triangle that is not shared with others?", ["Once", "Three times", "Once per covered pixel", "Never"], 1, "Once per vertex: three corners."]]</script></details>
+
+</section>
+<section class="chapter" id="frame" data-title="A frame and its time budget" data-summary="Frame budget in milliseconds = 1000 / fps. Budgets add up in milliseconds, not in fps.">
+  <div class="head"><div class="num"></div><h2>A frame and its time budget</h2></div>
+
+  <div class="prose">
+    <p>All of the above happens for every object, and the finished picture is shown. Then the game moves everything a little and does it all again. One finished picture is a <button type="button" class="term" data-term="frame">frame</button>; how many frames appear per second is the frame rate.</p>
+    <p>Performance is easier to reason about in the time one frame may take, the frame budget, than in frames per second:</p>
+  </div>
+  <div class="fx" data-fx="budget"></div>
+  <div class="prose">
+    <p>The curve is steep on the left and flat on the right. Going from 30 to 60 fps halves the budget from 33.3 ms to 16.7 ms; going from 120 to 144 fps only removes 1.4 ms. Budgets, measurements and how to find what is slow are the subject of <a class="x" href="../reading-a-frame/index.html#budget">Reading a Frame</a>.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A game targets 60 fps. How long may one frame take?", ["60 ms", "16.7 ms", "6 ms", "1.6 ms"], 1, "1000 ms / 60 ≈ 16.7 ms."], ["A feature costs 2 ms. Where does it hurt the frame rate more?", ["At 30 fps", "At 60 fps", "Equally at both", "Neither"], 1, "2 ms is 12% of a 16.7 ms frame but only 6% of a 33.3 ms frame."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Series</span><a href="https://fgiesen.wordpress.com/2011/07/09/a-trip-through-the-graphics-pipeline-2011-index/" rel="noopener">A trip through the Graphics Pipeline 2011</a></span><span class="by">Fabian Giesen</span><span class="why">What the hardware does between a draw call and a pixel, in depth.</span></li><li><span><span class="kind">Article</span><a href="https://developer.nvidia.com/content/life-triangle-nvidias-logical-pipeline" rel="noopener">Life of a triangle: NVIDIA's logical pipeline</a></span><span class="by">NVIDIA</span><span class="why">How a GPU splits work into warps, rasterizes triangles and shades pixels.</span></li><li><span><span class="kind">Tutorial</span><a href="https://thebookofshaders.com/" rel="noopener">The Book of Shaders</a></span><span class="by">Patricio Gonzalez Vivo, Jen Lowe</span><span class="why">A gentle, interactive start to pixel shaders.</span></li></ul>
+</section>
+
+<div class="next" data-next="shader-anatomy vectors buffers"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"pixel": [
+"Pixel",
+"One square of the screen image. Holds one colour as three numbers (red, green, blue).",
+"../color-values/index.html#rgb"
+],
+"pixelshader": [
+"Pixel shader",
+"A program written for one pixel and run by the GPU for every pixel a triangle covers. Also called fragment shader.",
+"../shader-anatomy/index.html#stages"
+],
+"wave": [
+"Wave",
+"A group of 32 or 64 pixels (or vertices, or threads) that a GPU runs together, executing the same instruction. NVIDIA calls it a warp.",
+"../reading-a-frame/index.html#shader-cost"
+],
+"vertex": [
+"Vertex",
+"A corner point of a triangle. Stores a position and usually more data such as a normal and UVs.",
+"../buffers/index.html#vertex-index"
+],
+"edgefunction": [
+"Edge function",
+"E(p) = (b−a)×(p−a). Its sign tells on which side of the edge a→b a point lies. Used by the rasterizer.",
+"../dot-cross/index.html#cross"
+],
+"frame": [
+"Frame",
+"One finished picture. The frame rate is how many are shown per second.",
+"../reading-a-frame/index.html#budget"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="gpu-basics.js"></script>
+</body>
+</html>

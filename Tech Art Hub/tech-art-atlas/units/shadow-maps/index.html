@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Shadow Maps · Tech Art Atlas</title>
+<meta name="description" content="Real-time shadows are a second camera at the light and one depth comparison per pixel. This unit builds that comparison, then fixes everything that goes wrong with it: acne, blocky edges, wasted resolution and cost.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="shadow-maps">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Shadow Maps</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <h1>Shadow Maps</h1>
+  <p class="lede">Real-time shadows are a second camera at the light and one depth comparison per pixel. This unit builds that comparison, then fixes everything that goes wrong with it: acne, blocky edges, wasted resolution and cost.</p>
+  <p class="meta">Builds on the depth buffer and coordinate spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="shadow-maps" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: pillars casting long shadows, with the light's depth view on the right.</figcaption></figure>
+<div class="needs" data-needs="depth-effects#what-depth spaces#chain texture-memory#density"></div>
+
+<section class="chapter" id="idea" data-title="Seeing the scene from the light" data-builds="depth-effects#what-depth" data-summary="Render depth from the light; a point is shadowed if it is farther from the light than the stored depth.">
+  <div class="head"><div class="num"></div><h2>Seeing the scene from the light</h2></div>
+
+  <div class="prose">
+    <p>A point is in shadow if something sits between it and the light. A shadow map answers that with the tool from <a class="x" href="../depth-effects/index.html#what-depth">the depth buffer</a>: first render the scene <em>from the light's point of view</em>, keeping only depth. That image stores, for every direction the light shines in, the distance to the first surface it hits. Then, while shading the camera's view, ask for each pixel: is this point farther from the light than what the light saw first?</p>
+  </div>
+  <div class="fx" data-fx="shadowtest"></div>
+  <div class="prose"><p>Two passes, one comparison per pixel. Everything else in this unit is about the ways that comparison goes wrong, and the tricks that fix them.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["The shadow map stores 12 m at a point's position; the point is 15 m from the light. Lit or shadowed?", ["Lit", "Shadowed", "Depends on the camera", "Half lit"], 1, "Something 12 m from the light is in front of it."]]</script></details>
+
+</section>
+<section class="chapter" id="light-space" data-title="Into light space" data-builds="spaces#chain spaces#transform" data-summary="p_light = lightMatrix · p_world; uv = p_light.xy / extent · 0.5 + 0.5, depth = p_light.z.">
+  <div class="head"><div class="num"></div><h2>Into light space</h2></div>
+
+  <div class="prose">
+    <p>To compare, the shaded point must be expressed in the light's own coordinates, exactly like a vertex goes from world to view to clip space for the camera (<a class="x" href="../spaces/index.html#chain">the chain of spaces</a>). For the sun the projection is <em>orthographic</em>: its rays are parallel, so there is no perspective divide. Light-space x and y become the shadow map UV, light-space z the depth to compare. In the side view, light space is the world rotated by the sun's angle:</p>
+  </div>
+  <div class="fx" data-fx="lightuv"></div>
+
+</section>
+<section class="chapter" id="acne" data-title="Shadow acne and bias" data-builds="shadow-maps#light-space" data-summary="bias = constant + slope · tan θ · texel; too little: acne, too much: floating shadows.">
+  <div class="head"><div class="num"></div><h2>Shadow acne and bias</h2></div>
+
+  <div class="prose">
+    <p>The shadow map has a finite resolution: each texel stores one depth for a whole patch of surface. A surface that is tilted relative to the light is lower than the stored value in half of every texel, so it shadows itself in stripes: <button type="button" class="term" data-term="acne">shadow acne</button>. The fix is a <button type="button" class="term" data-term="bias">bias</button>: compare against the stored depth plus a small margin, larger for surfaces at a steep angle to the light:</p>
+  </div>
+  <div class="fx" data-fx="acne"></div>
+  <div class="prose">
+    <p>Too much bias has the opposite problem: the shadow starts a little away from the object that casts it, so objects seem to float (<em>peter-panning</em>). An alternative that needs less depth bias is <em>normal offset</em>: move the lookup position along the surface normal by about one texel before projecting it into the shadow map.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Stripes of shadow appear across a sunlit floor. What is the first thing to raise?", ["Shadow resolution only", "Depth or slope bias", "Light intensity", "Ambient occlusion"], 1, "Acne is self-shadowing from depth quantisation; bias fixes it, resolution only shrinks the stripes."]]</script></details>
+
+</section>
+<section class="chapter" id="resolution" data-title="How big is a shadow texel?" data-builds="texture-memory#density" data-summary="texel = 2 · extent / resolution; blocky when one texel covers several screen pixels.">
+  <div class="head"><div class="num"></div><h2>How big is a shadow texel?</h2></div>
+
+  <div class="prose">
+    <p>A directional shadow map covers a square of the world with a fixed number of texels. Divide the size by the resolution and you get the size of one shadow texel on the ground. Compare it with how many screen pixels a metre covers at that distance (<a class="x" href="../texture-memory/index.html#density">texel density</a>) and you know whether the shadow's edge looks crisp or blocky:</p>
+  </div>
+  <div class="fx" data-fx="stexel"></div>
+
+</section>
+<section class="chapter" id="pcf" data-title="Soft edges: PCF" data-builds="shadow-maps#resolution" data-summary="lit = average of k × k depth comparisons; edge width ≈ k · texel size.">
+  <div class="head"><div class="num"></div><h2>Soft edges: PCF</h2></div>
+
+  <div class="prose">
+    <p>A single comparison gives a hard, pixelated edge. <button type="button" class="term" data-term="pcf">Percentage-closer filtering</button> compares the point against several neighbouring texels and averages the results (yes/no, not the depths!). The edge becomes a gradient as wide as the filter:</p>
+  </div>
+  <div class="fx" data-fx="pcf"></div>
+  <div class="prose"><p>GPUs do a 2 × 2 PCF in hardware with a comparison sampler (<code>SampleCmpLevelZero</code>), which is why even "hard" shadows look slightly smooth. Real penumbrae get wider the farther the receiver is from the caster; techniques like PCSS estimate that distance first and scale the filter accordingly (<a class="x" href="../light-types/index.html#directional">the sun's penumbra</a>).</p></div>
+
+</section>
+<section class="chapter" id="cascades" data-title="Cascades" data-builds="shadow-maps#resolution" data-summary="split_i = λ · n · (f/n)^(i/N) + (1 − λ) · (n + (f − n) · i/N).">
+  <div class="head"><div class="num"></div><h2>Cascades</h2></div>
+
+  <div class="prose">
+    <p>One shadow map for the whole view wastes resolution: near the camera you need fine texels, far away coarse ones are enough. <button type="button" class="term" data-term="csm">Cascaded shadow maps</button> split the view distance into ranges and give each its own map of the same resolution. Where to split is a blend between even splits and logarithmic ones, with λ choosing the mix:</p>
+  </div>
+  <div class="fx" data-fx="cascades"></div>
+  <div class="prose"><p>Every cascade covers a wider area with the same texel count, so its texels are larger. A visible seam where one cascade hands over to the next is normal; engines blend across a small band to hide it.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Four cascades, the first reaching 8 m, the last 400 m, all 2048². Which cascade has the smallest texels?", ["The last", "The first", "All equal", "The second"], 1, "The first covers the smallest area with the same number of texels."]]</script></details>
+
+</section>
+<section class="chapter" id="cost" data-title="What shadows cost" data-builds="reading-a-frame#drawcalls" data-summary="draws ≈ casters × (cascades + spot lights + 6 · point lights).">
+  <div class="head"><div class="num"></div><h2>What shadows cost</h2></div>
+
+  <div class="prose">
+    <p>Each shadow map is a full render pass of every object that casts shadows into it. A directional light renders once per cascade, a spot light once, a point light six times, one per cube face. That multiplies <a class="x" href="../reading-a-frame/index.html#drawcalls">draw calls</a> quickly:</p>
+  </div>
+  <div class="fx" data-fx="shadowcost"></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Per light: <em>Shadows → Resolution</em>, <em>Update Mode</em> (Every Frame, On Enable, On Demand) to cache shadows of static lights, and slope/normal bias. Cascades are set in the <em>Shadows</em> Volume override (count, splits, border blend). Shadow maps of all lights share one atlas whose size is set in the HDRP asset.</p></div><div class="eng" data-engine="urp"><p>The URP asset sets the main light shadow resolution, the cascade count (1 to 4) and split distances, and the depth and normal bias. Additional lights share one atlas. <em>Soft Shadows</em> toggles PCF filtering.</p></div><div class="eng" data-engine="unreal"><p>With <em>Virtual Shadow Maps</em> (UE5 default) the sun gets very large, paged shadow maps cached between frames; only pages that change are re-rendered. Without them, the directional light uses cascades (<em>Dynamic Shadow Distance</em>, <em>Num Dynamic Shadow Cascades</em>, <em>Cascade Distribution Exponent</em>).</p></div></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping" rel="noopener">Shadow Mapping</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">The two passes, acne, bias, peter-panning and PCF with code.</span></li><li><span><span class="kind">Article</span><a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps" rel="noopener">Common Techniques to Improve Shadow Depth Maps</a></span><span class="by">Microsoft</span><span class="why">Slope-scaled bias, fitting the light frustum and PCF in depth.</span></li><li><span><span class="kind">Article</span><a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps" rel="noopener">Cascaded Shadow Maps</a></span><span class="by">Microsoft</span><span class="why">Cascade selection, splits and blending.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus" rel="noopener">GPU Gems 3, chapter 10: Parallel-Split Shadow Maps on Programmable GPUs</a></span><span class="by">Fan Zhang, Hanqiu Sun, Oskari Nyman</span><span class="why">The practical split scheme used in the cascades chapter.</span></li></ul>
+</section>
+
+<div class="next" data-next="light-types baked-gi pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"acne": [
+"Shadow acne",
+"Stripes of false self-shadowing caused by the limited depth precision and resolution of a shadow map.",
+"#acne"
+],
+"bias": [
+"Shadow bias",
+"A margin added to the depth comparison to prevent acne.",
+"#acne"
+],
+"pcf": [
+"PCF",
+"Percentage-closer filtering: averaging several shadow comparisons for soft edges.",
+"#pcf"
+],
+"csm": [
+"Cascaded shadow maps",
+"Several shadow maps covering increasing distance ranges from the camera.",
+"#cascades"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="shadow-maps.js"></script>
+</body>
+</html>

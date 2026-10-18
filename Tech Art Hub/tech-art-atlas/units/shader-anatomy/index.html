@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reading a Shader · Tech Art Atlas</title>
+<meta name="description" content="Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="shader-anatomy">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Reading a Shader</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Reading a Shader</h1>
+  <p class="lede">Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.</p>
+  <p class="meta">Builds on How a GPU Draws a Frame. Every function is shown as a live graph.</p>
+</header>
+<figure class="keyart"><canvas data-render="shader-anatomy" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: lerp from blue to orange, as five spheres, over a smoothstep ramp.</figcaption></figure>
+<div class="needs" data-needs="gpu-basics"></div>
+
+<section class="chapter" id="types" data-title="Numbers and groups of numbers" data-builds="gpu-basics#per-pixel" data-summary="float, float2, float3, float4 and half; swizzles like c.bgr; maths works part by part.">
+  <div class="head"><div class="num"></div><h2>Numbers and groups of numbers</h2></div>
+
+  <div class="prose">
+    <p>A shader works almost only with numbers. The basic type is <code>float</code>, a number with a decimal point such as 0.5 or 1200.0. Because positions, directions and colours each need several numbers, shader languages also have small groups of floats built in:</p>
+  </div>
+  <div class="tablewrap" style="margin-top:14px"><table class="vals">
+    <thead><tr><th>Type</th><th>Holds</th><th>Typical use</th><th>Shader Graph port</th></tr></thead>
+    <tbody>
+      <tr><td class="k">float</td><td>1 number</td><td>a brightness, a time, a distance</td><td>Float (Vector 1)</td></tr>
+      <tr><td class="k">float2</td><td>2 numbers</td><td>a texture coordinate (u, v)</td><td>Vector 2</td></tr>
+      <tr><td class="k">float3</td><td>3 numbers</td><td>a position or direction (x, y, z), a colour (r, g, b)</td><td>Vector 3</td></tr>
+      <tr><td class="k">float4</td><td>4 numbers</td><td>a colour with alpha (r, g, b, a)</td><td>Vector 4</td></tr>
+      <tr><td class="k">half, half3…</td><td>the same with less precision</td><td>colours and normals on mobile, where it is faster</td><td>set by the graph's precision</td></tr>
+      <tr><td class="k">float4x4</td><td>a 4 × 4 grid of numbers</td><td>a transform <a class="x" href="../spaces/index.html#transform">matrix</a></td><td>Matrix 4x4</td></tr>
+    </tbody></table></div>
+  <div class="prose" style="margin-top:14px">
+    <p>A float3 is a <a class="x" href="../vectors/index.html#what">vector</a>. Its parts are called <code>x y z</code>, and for colours you may also write <code>r g b</code>; they mean the same slots. You can pick, reorder and repeat parts by writing their letters after a dot. This is called a <button type="button" class="term" data-term="swizzle">swizzle</button>:</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Swizzles<span class="lab-hint">Set the four numbers, then pick a swizzle.</span></div>
+    <div class="lab-body even">
+      <div class="side">
+        <div class="ctl"><label for="sw-x">c.x (r)</label><input type="range" id="sw-x" min="0" max="1" step="0.01" value="0.9"><output id="sw-x-o"></output></div>
+        <div class="ctl"><label for="sw-y">c.y (g)</label><input type="range" id="sw-y" min="0" max="1" step="0.01" value="0.45"><output id="sw-y-o"></output></div>
+        <div class="ctl"><label for="sw-z">c.z (b)</label><input type="range" id="sw-z" min="0" max="1" step="0.01" value="0.1"><output id="sw-z-o"></output></div>
+        <div class="ctl"><label for="sw-w">c.w (a)</label><input type="range" id="sw-w" min="0" max="1" step="0.01" value="1"><output id="sw-w-o"></output></div>
+        <div class="seg" id="sw-pick" role="group" aria-label="Swizzle"><button type="button" data-v="rgb" aria-pressed="true">c.rgb</button><button type="button" data-v="bgr">c.bgr</button><button type="button" data-v="rrr">c.rrr</button><button type="button" data-v="gbr">c.gbr</button><button type="button" data-v="xy">c.xy</button></div>
+      </div>
+      <div class="stage"><canvas id="sw-cv" class="fig" width="460" height="220" aria-label="Original and swizzled colour"></canvas><p class="cap" id="sw-cap"></p></div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Maths on these types works <strong>part by part</strong>. Multiplying two colours multiplies red with red, green with green and blue with blue. That is exactly how a surface colour filters the light that hits it:</p>
+  </div>
+  <div class="fx" data-fx="mulrgb"></div>
+  <details class="check"><summary></summary><script type="application/json">[["c = float4(0.2, 0.4, 0.6, 1.0). What is c.zyx?", ["(0.2, 0.4, 0.6)", "(0.6, 0.4, 0.2)", "(0.6, 0.6, 0.6)", "(1.0, 0.6, 0.4)"], 1, "z = 0.6, y = 0.4, x = 0.2, in that order."], ["A white light (1, 1, 1) hits a red surface (0.8, 0.1, 0.1). What colour is reflected?", ["White", "(0.8, 0.1, 0.1)", "(1.8, 1.1, 1.1)", "Black"], 1, "Part by part: 1 × 0.8, 1 × 0.1, 1 × 0.1."]]</script></details>
+
+</section>
+<section class="chapter" id="stages" data-title="Two programs: vertex and pixel" data-builds="gpu-basics#pipeline" data-summary="The vertex shader runs per corner and outputs a screen position; the pixel shader runs per pixel and outputs a colour.">
+  <div class="head"><div class="num"></div><h2>Two programs: vertex and pixel</h2></div>
+
+  <div class="prose">
+    <p>A shader file usually holds two programs that run one after the other, as described in <a class="x" href="../gpu-basics/index.html#pipeline">From triangles to pixels</a>:</p>
+    <ul>
+      <li>The <strong>vertex shader</strong> runs once per corner of the mesh. Its input is the data stored per vertex in the mesh's <a class="x" href="../buffers/index.html#vertex-index">vertex buffer</a>: position, normal, UV, maybe a colour. Its one required output is where that corner lands on screen (the <a class="x" href="../spaces/index.html#chain">clip-space position</a>). It may also pass on any other values.</li>
+      <li>The <strong>pixel shader</strong> runs once per covered pixel. Its input is whatever the vertex shader passed on, blended between the three corners (next chapter). Its output is the pixel's colour.</li>
+    </ul>
+    <p>Here is a complete minimal shader in HLSL, the language Unity and Unreal use. Read the comments from top to bottom; every line maps to one of the steps above.</p>
+  </div>
+  <pre class="hlsl"><span class="k">struct</span> <span class="t">Attributes</span>            <span class="c">// what each vertex brings from the mesh</span>
+{
+    <span class="t">float3</span> positionOS : POSITION;   <span class="c">// position in object space</span>
+    <span class="t">float2</span> uv         : TEXCOORD0;  <span class="c">// texture coordinate</span>
+};
+
+<span class="k">struct</span> <span class="t">Varyings</span>              <span class="c">// what the vertex shader hands to the pixel shader</span>
+{
+    <span class="t">float4</span> positionCS : SV_POSITION; <span class="c">// required: where the corner lands on screen</span>
+    <span class="t">float2</span> uv         : TEXCOORD0;   <span class="c">// passed through, will be interpolated</span>
+};
+
+<span class="t">Varyings</span> Vert(<span class="t">Attributes</span> IN)     <span class="c">// runs once per vertex</span>
+{
+    <span class="t">Varyings</span> OUT;
+    OUT.positionCS = TransformObjectToHClip(IN.positionOS);  <span class="c">// object → clip space</span>
+    OUT.uv = IN.uv;
+    <span class="k">return</span> OUT;
+}
+
+<span class="t">float4</span> Frag(<span class="t">Varyings</span> IN) : SV_Target   <span class="c">// runs once per pixel</span>
+{
+    <span class="k">return</span> <span class="t">float4</span>(IN.uv, <span class="n">0</span>, <span class="n">1</span>);       <span class="c">// colour = the interpolated uv</span>
+}</pre>
+  <div class="prose" style="margin-top:14px">
+    <p>The words after the colons (<code>POSITION</code>, <code>SV_POSITION</code>, <code>SV_Target</code>) are <button type="button" class="term" data-term="semantic">semantics</button>: labels that tell the GPU what a value means. <code>SV_Target</code> means "this is the colour to write into the render target".</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>In Shader Graph the two programs are the <em>Vertex</em> and <em>Fragment</em> blocks of the Master Stack. Most graphs only use Fragment. HDRP hand-written shaders are long because they include lighting; start from a Shader Graph or an <em>Unlit</em> example rather than from scratch.</p></div><div class="eng" data-engine="urp"><p>URP's <em>Unlit</em> shader template (<em>Create → Shader → Unlit Shader</em>, then convert to the URP includes) is close to the code above: <code>TransformObjectToHClip</code> comes from <code>Core.hlsl</code>. Shader Graph shows <em>Vertex</em> and <em>Fragment</em> blocks.</p></div><div class="eng" data-engine="unreal"><p>Unreal materials hide the two programs. Pins like <em>World Position Offset</em> run per vertex; <em>Base Color</em>, <em>Roughness</em> and the others run per pixel. <em>Customized UVs</em> lets you compute a value per vertex and have it interpolated, which is the same idea as the <code>Varyings</code> struct.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which output must every vertex shader produce?", ["A colour", "The clip-space position", "A UV", "A normal"], 1, "The rasterizer needs to know where the corner is on screen."], ["What does SV_Target on the pixel shader mean?", ["The texture to read", "The output colour goes into the render target", "The camera target", "A debug flag"], 1, "It labels the return value as the colour written to the current render target."]]</script></details>
+
+</section>
+<section class="chapter" id="interpolation" data-title="How values travel from corners to pixels" data-builds="gpu-basics#pipeline" data-summary="Pixels receive a weighted blend of the three corner values; the barycentric weights add up to 1.">
+  <div class="head"><div class="num"></div><h2>How values travel from corners to pixels</h2></div>
+
+  <div class="prose">
+    <p>The vertex shader only runs at the three corners, yet the pixel shader receives a value for every pixel in between. The GPU blends the three corner values for each pixel, giving more weight to the corners that are closer. The weights are called <button type="button" class="term" data-term="barycentric">barycentric coordinates</button>: three numbers that are each between 0 and 1 and always add up to 1.</p>
+    <p>Each weight is the area of the small triangle opposite its corner, divided by the whole triangle's area. Those areas come from the same <a class="x" href="../gpu-basics/index.html#pipeline">edge function</a> the rasterizer already computes. Drag the point and watch the weights and the blended colour:</p>
+  </div>
+  <div class="fx" data-fx="bary"></div>
+  <div class="prose">
+    <p>This is why a vertex colour, a UV or a normal varies smoothly across a triangle: every pixel gets its own blend. It is also why a value that changes fast within one triangle, like a sharp highlight, looks wrong when it is computed per vertex: the pixel shader only sees a smooth blend of three samples.</p>
+    <p class="side-note"><b>In 3D</b> the GPU corrects the weights for perspective, so a texture on a floor does not bend. The idea stays the same: a weighted average of three corner values.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A pixel sits exactly on corner b. What are its weights (w<sub>a</sub>, w<sub>b</sub>, w<sub>c</sub>)?", ["(1, 0, 0)", "(0, 1, 0)", "(⅓, ⅓, ⅓)", "(0, 0, 1)"], 1, "All weight goes to the corner it sits on."], ["Which statement is always true for barycentric weights inside a triangle?", ["They add up to 1", "They are equal", "They add up to 3", "One of them is 0"], 0, "They are fractions of the whole triangle's area, so they sum to 1."]]</script></details>
+
+</section>
+<section class="chapter" id="properties" data-title="Values the same for every pixel: properties" data-builds="buffers#constant" data-summary="Properties (uniforms) are the same for every pixel of a draw and live in a constant buffer.">
+  <div class="head"><div class="num"></div><h2>Values the same for every pixel: properties</h2></div>
+
+  <div class="prose">
+    <p>Some inputs differ per vertex or per pixel. Others are the same for the whole draw: a tint colour, a roughness value, a texture, the time. These are <button type="button" class="term" data-term="property">material properties</button> (graphics programmers say uniforms). You set them in the material inspector or from a script, and every pixel of that draw reads the same value.</p>
+    <p>On the GPU they live in a small block of memory called a <a class="x" href="../buffers/index.html#constant">constant buffer</a>. In HLSL it looks like this:</p>
+  </div>
+  <pre class="hlsl"><span class="k">CBUFFER_START</span>(UnityPerMaterial)   <span class="c">// one block of values per material</span>
+    <span class="t">float4</span> _BaseColor;
+    <span class="t">float</span>  _Smoothness;
+<span class="k">CBUFFER_END</span>
+
+<span class="t">float4</span> Frag(<span class="t">Varyings</span> IN) : SV_Target
+{
+    <span class="k">return</span> _BaseColor;              <span class="c">// the same value for every pixel of this draw</span>
+}</pre>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Declare properties in the shader's <code>Properties</code> block (or on the Shader Graph <em>Blackboard</em>) and put them in <code>CBUFFER_START(UnityPerMaterial)</code> so the SRP Batcher can keep them on the GPU. From C#: <code>material.SetFloat("_Smoothness", 0.5f)</code>, or a <code>MaterialPropertyBlock</code> to vary them per renderer without new materials.</p></div><div class="eng" data-engine="urp"><p>Same as HDRP. Properties outside <code>UnityPerMaterial</code> still work but make the shader incompatible with the SRP Batcher, which costs CPU time per draw (<a class="x" href="../reading-a-frame/index.html#drawcalls">draw calls and state</a>).</p></div><div class="eng" data-engine="unreal"><p>Turn a constant into a <em>Parameter</em> (right-click → Convert to Parameter). Material Instances then override its value without recompiling. At runtime: a Dynamic Material Instance and <code>SetScalarParameterValue</code> / <code>SetVectorParameterValue</code>, or Material Parameter Collections for values many materials share, such as wind.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which of these is typically a material property rather than a per-vertex value?", ["The vertex position", "The UV of a corner", "A tint colour chosen in the inspector", "The interpolated normal"], 2, "A tint is the same for all pixels of the draw."]]</script></details>
+
+</section>
+<section class="chapter" id="functions" data-title="The built-in functions, as graphs" data-builds="shader-anatomy#interpolation" data-summary="saturate, lerp, inverse lerp, step, smoothstep, frac and pow, each with its graph.">
+  <div class="head"><div class="num"></div><h2>The built-in functions, as graphs</h2></div>
+
+  <div class="prose">
+    <p>Shaders are built from a small set of functions that shape numbers. Each one below is shown as a graph: the horizontal axis is the input, the vertical axis the output, and the strip under the graph shows what the function does to a gradient across a surface. Learn these by moving the sliders; they appear in nearly every shader you will read.</p>
+  </div>
+  <h3>saturate: keep a value between 0 and 1</h3>
+  <div class="fx" data-fx="saturate"></div>
+  <h3>lerp: blend between two values</h3>
+  <div class="prose"><p><code>lerp</code> (linear interpolation) returns <i>a</i> when <i>t</i> is 0, <i>b</i> when <i>t</i> is 1, and the straight line between. It is the same weighted average as the interpolation chapter, with two inputs instead of three.</p></div>
+  <div class="fx" data-fx="lerp"></div>
+  <h3>inverse lerp: where is x between a and b?</h3>
+  <div class="prose"><p>The opposite question: given a value <i>x</i>, how far along from <i>a</i> to <i>b</i> is it? This turns any range into 0–1, for example a height in metres into a blend mask.</p></div>
+  <div class="fx" data-fx="invlerp"></div>
+  <h3>step and smoothstep: hard and soft thresholds</h3>
+  <div class="fx" data-fx="step"></div>
+  <div class="fx" data-fx="smoothstep"></div>
+  <h3>frac: repeat</h3>
+  <div class="prose"><p><code>frac</code> keeps only the part after the decimal point, so it counts 0 to 1 again and again. Multiply the input first to get more repeats. Tiling textures and stripes come from this.</p></div>
+  <div class="fx" data-fx="frac"></div>
+  <h3>pow: bend a gradient</h3>
+  <div class="fx" data-fx="pow"></div>
+  <details class="check"><summary></summary><script type="application/json">[["What does lerp(10, 20, 0.25) return?", ["12.5", "15", "2.5", "17.5"], 0, "10 + (20 − 10) × 0.25 = 12.5."], ["smoothstep(0.2, 0.4, x) for x = 0.3?", ["0", "0.3", "0.5", "1"], 2, "t = (0.3 − 0.2) / 0.2 = 0.5, and 0.5² × (3 − 2 × 0.5) = 0.5."], ["Which function turns 3.75 into 0.75?", ["saturate", "frac", "step", "pow"], 1, "frac keeps the fractional part."], ["You want a mask that is 0 below a height of 100 m and 1 above 150 m, smoothly. Which combination?", ["frac(height)", "smoothstep(100, 150, height)", "step(100, height) × 150", "lerp(100, 150, height)"], 1, "smoothstep(e0, e1, x) is exactly a soft 0-to-1 between two edges."]]</script></details>
+
+</section>
+<section class="chapter" id="nodes" data-title="The same functions as nodes" data-summary="HLSL functions mapped to Shader Graph and Unreal material nodes.">
+  <div class="head"><div class="num"></div><h2>The same functions as nodes</h2></div>
+
+  <div class="prose">
+    <p>Node editors use the same functions under similar names, so everything above applies directly to graphs. A node is one function call; a wire is a variable.</p>
+  </div>
+  <div class="tablewrap" style="margin-top:14px"><table class="vals">
+    <thead><tr><th>HLSL</th><th>Unity Shader Graph</th><th>Unreal material editor</th></tr></thead>
+    <tbody>
+      <tr><td class="k">saturate(x)</td><td>Saturate</td><td>Saturate</td></tr>
+      <tr><td class="k">clamp(x, a, b)</td><td>Clamp</td><td>Clamp</td></tr>
+      <tr><td class="k">lerp(a, b, t)</td><td>Lerp</td><td>LinearInterpolate (Lerp)</td></tr>
+      <tr><td class="k">(x − a) / (b − a)</td><td>Inverse Lerp</td><td>InverseLinearInterpolate (UE 5)</td></tr>
+      <tr><td class="k">step(e, x)</td><td>Step</td><td>If, or a Custom node</td></tr>
+      <tr><td class="k">smoothstep(a, b, x)</td><td>Smoothstep</td><td>SmoothStep</td></tr>
+      <tr><td class="k">frac(x)</td><td>Fraction</td><td>Frac</td></tr>
+      <tr><td class="k">pow(x, p)</td><td>Power</td><td>Power</td></tr>
+      <tr><td class="k">dot(a, b)</td><td>Dot Product</td><td>DotProduct</td></tr>
+      <tr><td class="k">normalize(v)</td><td>Normalize</td><td>Normalize</td></tr>
+    </tbody></table></div>
+  <div class="prose" style="margin-top:14px">
+    <p>Note the argument order of <code>step</code>: in HLSL the edge comes first, <code>step(edge, x)</code>, which returns 1 when x is at least edge. Shader Graph's Step node follows HLSL. The vector functions at the bottom of the table are explained in <a class="x" href="../vectors/index.html#normalize">Vectors</a> and <a class="x" href="../dot-cross/index.html#dot">Dot and Cross Product</a>.</p>
+  </div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-intrinsic-functions" rel="noopener">HLSL intrinsic functions</a></span><span class="by">Microsoft</span><span class="why">The reference for lerp, saturate, smoothstep, frac and every other built-in function.</span></li><li><span><span class="kind">Tutorial</span><a href="https://thebookofshaders.com/05/" rel="noopener">The Book of Shaders: Shaping functions</a></span><span class="by">Patricio Gonzalez Vivo, Jen Lowe</span><span class="why">step, smoothstep, pow and friends drawn as graphs.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.shadergraph@17.0/manual/index.html" rel="noopener">Shader Graph manual</a></span><span class="by">Unity</span><span class="why">The node equivalents of the functions in this unit.</span></li></ul>
+</section>
+
+<div class="next" data-next="vectors dot-cross buffers"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"swizzle": [
+"Swizzle",
+"Picking, reordering or repeating the parts of a vector by writing their letters, for example c.bgr or p.xz."
+],
+"semantic": [
+"Semantic",
+"A label after a colon in HLSL, such as POSITION or SV_Target, that tells the GPU what a value means."
+],
+"barycentric": [
+"Barycentric coordinates",
+"Three weights, each 0–1 and summing to 1, that describe where a point lies inside a triangle. Used to blend vertex values."
+],
+"property": [
+"Material property",
+"A value that is the same for every pixel of a draw, such as a tint or a texture. Also called a uniform. Stored in a constant buffer.",
+"../buffers/index.html#constant"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="shader-anatomy.js"></script>
+</body>
+</html>

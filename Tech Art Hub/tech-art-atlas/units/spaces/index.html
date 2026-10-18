@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Coordinate Spaces · Tech Art Atlas</title>
+<meta name="description" content="Every position in a shader is measured from somewhere. This unit follows one vertex from its mesh file to a pixel on screen, and shows the maths at each step.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="spaces">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Coordinate Spaces</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Coordinate Spaces</h1>
+  <p class="lede">Every position in a shader is measured from somewhere. This unit follows one vertex from its mesh file to a pixel on screen, and shows the maths at each step.</p>
+  <p class="meta">Builds on Vectors. Drag the sliders; the matrix values update live.</p>
+</header>
+<figure class="keyart"><canvas data-render="spaces" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: an object with its own axes, inside the world's axes.</figcaption></figure>
+<div class="needs" data-needs="vectors dot-cross#dot"></div>
+
+<section class="chapter" id="why" data-title="One point, many coordinates" data-builds="vectors#what" data-summary="The same point has different coordinates in object, world, view, clip and screen space.">
+  <div class="head"><div class="num"></div><h2>One point, many coordinates</h2></div>
+
+  <div class="prose">
+    <p>A <a class="x" href="../vectors/index.html#what">position vector</a> only means something relative to an origin and a set of axes. The same lamp bulb can be (0, 1.2) "relative to the lamp's own pivot", (6.5, 3.2) "relative to the centre of the level" and (1.4, 4.0) "relative to the camera". Each choice of origin and axes is a <button type="button" class="term" data-term="space">coordinate space</button>, and shaders constantly convert between them.</p>
+    <p>Move and turn the lamp. Its bulb never moves relative to the lamp, but its world and camera coordinates change:</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>The same point in three spaces<span class="lab-hint">Top-down view. Each space has its own axes.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="sp-cv" class="fig" width="560" height="360" aria-label="Top-down scene with object, world and camera axes"></canvas></div>
+      <div class="side">
+        <div class="ctl"><label for="sp-x">Lamp x</label><input type="range" id="sp-x" min="-4" max="6" step="0.1" value="3"><output id="sp-x-o"></output></div>
+        <div class="ctl"><label for="sp-z">Lamp z</label><input type="range" id="sp-z" min="-1" max="5" step="0.1" value="2"><output id="sp-z-o"></output></div>
+        <div class="ctl"><label for="sp-r">Lamp turn</label><input type="range" id="sp-r" min="-180" max="180" step="1" value="30"><output id="sp-r-o"></output></div>
+        <table class="ro" id="sp-ro"></table>
+      </div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>The spaces you will meet, in the order a vertex passes through them:</p>
+    <ul>
+      <li><strong>Object space</strong> (also local or model space): relative to the mesh's own pivot. This is what the mesh file stores.</li>
+      <li><strong>World space</strong>: relative to the scene's origin. Lights and other objects live here.</li>
+      <li><strong>View space</strong> (camera or eye space): relative to the camera, with one axis pointing where it looks.</li>
+      <li><strong>Clip space</strong> and <strong>NDC</strong>: after the camera's projection, where the screen edges sit at −1 and +1.</li>
+      <li><strong>Screen space</strong>: pixels.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A mesh file stores its vertex positions in which space?", ["World space", "Object space", "View space", "Screen space"], 1, "Meshes are authored around their own pivot; the renderer moves them into the world."]]</script></details>
+
+</section>
+<section class="chapter" id="transform" data-title="Moving, turning and scaling with a matrix" data-builds="vectors#add-sub vectors#scale" data-summary="A matrix scales, rotates and translates; w = 1 for points, w = 0 for directions.">
+  <div class="head"><div class="num"></div><h2>Moving, turning and scaling with a matrix</h2></div>
+
+  <div class="prose">
+    <p>Going from object space to world space means three things: scale the object, rotate it, then move (translate) it to its place. For a 2D point (x, y) that is:</p>
+  </div>
+  <div class="fx" data-fx="xform"></div>
+  <div class="prose">
+    <p>Written as a grid of numbers, the same recipe is a <button type="button" class="term" data-term="matrix">matrix</button>. Each row says how to build one output component from the inputs; the numbers under the formula show the current matrix. A 3D transform is the same with one more row and column, a 4 × 4 <code>float4x4</code>.</p>
+    <p>The extra column holds the translation. To make it apply to points but not to directions, a fourth component <i>w</i> is added: 1 for positions, 0 for directions. A direction such as a normal should turn with the object, but moving the object must not change it:</p>
+  </div>
+  <div class="fx" data-fx="pointdir"></div>
+  <details class="check"><summary></summary><script type="application/json">[["A matrix scales by 2, rotates by 90° and translates by (5, 0). Where does the local point (1, 0) land?", ["(7, 0)", "(5, 2)", "(2, 5)", "(6, 1)"], 1, "Scale: (2, 0). Rotate 90°: (0, 2). Translate: (5, 2)."], ["Why is a normal transformed with w = 0?", ["To normalize it", "So the translation part of the matrix does not move it", "Because normals are 2D", "To flip it"], 1, "Directions have no position; only rotation and scale should affect them."]]</script></details>
+
+</section>
+<section class="chapter" id="chain" data-title="Object to world to view to clip" data-builds="spaces#transform" data-summary="Model, view and projection matrices take a vertex from object space through world and view to clip space.">
+  <div class="head"><div class="num"></div><h2>Object to world to view to clip</h2></div>
+
+  <div class="prose">
+    <p>A vertex shader moves each vertex through the whole chain with three matrices, multiplied one after another:</p>
+    <ol class="steps-list">
+      <li><div><strong>Model matrix</strong> M: object space → world space. Built from the object's position, rotation and scale.</div></li>
+      <li><div><strong>View matrix</strong> V: world space → view space. The inverse of the camera's own transform: it moves the world so the camera sits at the origin looking down one axis.</div></li>
+      <li><div><strong>Projection matrix</strong> P: view space → clip space. Encodes the field of view and the near and far planes; the next chapter shows what it does.</div></li>
+    </ol>
+    <p>Step through the spaces in the lab. It is always the same scene; only the origin and axes you measure from change.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Step through the chain<span class="lab-hint">The cross marks the origin of the space you are viewing; the orange dot is the camera.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="ch-cv" class="fig" width="560" height="360" aria-label="Scene drawn in the selected space"></canvas></div>
+      <div class="side">
+        <div class="seg" id="ch-pick" role="group" aria-label="Space"><button type="button" data-v="obj" aria-pressed="true">Object</button><button type="button" data-v="world">World</button><button type="button" data-v="view">View</button><button type="button" data-v="clip">Clip / NDC</button></div>
+        <table class="ro" id="ch-ro"></table>
+        <p class="cap" id="ch-cap"></p>
+      </div>
+    </div>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Helpers in the SRP Core library do each step: <code>TransformObjectToWorld</code>, <code>TransformWorldToView</code>, <code>TransformWorldToHClip</code>, or all at once <code>TransformObjectToHClip</code>. HDRP renders camera-relative: its "world" positions are relative to the camera, which keeps them precise far from the origin (<a class="x" href="../ray-sphere/index.html#world-ray">used in Rays, Spheres and Shaders</a>).</p></div><div class="eng" data-engine="urp"><p>The same <code>Transform…</code> helpers from <code>Core.hlsl</code>. In Shader Graph the <em>Transform</em> node converts between Object, World, View, Tangent and Absolute World.</p></div><div class="eng" data-engine="unreal"><p>The <em>Transform</em> and <em>TransformPosition</em> material nodes convert between Local, World, View, Camera and Tangent space. Unreal's <em>Absolute World Position</em> and <em>Camera Relative World Position</em> mirror the precision issue HDRP solves with camera-relative rendering.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which matrix depends on the camera's field of view?", ["Model", "View", "Projection", "None"], 2, "The projection matrix encodes the field of view and the near and far planes."], ["In view space, where is the camera?", ["At the world origin", "At the origin of view space, by definition", "At the far plane", "Wherever the object is"], 1, "The view matrix moves everything so the camera sits at (0, 0, 0)."]]</script></details>
+
+</section>
+<section class="chapter" id="perspective" data-title="Perspective: dividing by distance" data-builds="spaces#chain" data-summary="y_ndc = y / (z · tan(fov/2)). The GPU divides clip-space x, y, z by w.">
+  <div class="head"><div class="num"></div><h2>Perspective: dividing by distance</h2></div>
+
+  <div class="prose">
+    <p>Things look smaller the further away they are, in proportion to the distance: twice as far, half as tall. A camera turns a height <i>y</i> at distance <i>z</i> into a position on screen by dividing by <i>z</i>, then scaling so the edge of the field of view lands at 1:</p>
+  </div>
+  <div class="fx" data-fx="persp"></div>
+  <div class="prose">
+    <p>The GPU splits this in two. The projection matrix produces <em>clip space</em>, where the fourth component <i>w</i> holds the distance <i>z</i>. After the vertex shader, the hardware divides x, y and z by w. That is the <button type="button" class="term" data-term="divide">perspective divide</button>, and its result is <button type="button" class="term" data-term="ndc">normalized device coordinates</button> (NDC): −1 at the left and bottom edges, +1 at the right and top.</p>
+    <p>Run it backwards and you get a ray: for a point on screen, the direction into the scene. That is how a full-screen effect finds a ray per pixel in <a class="x" href="../ray-sphere/index.html#view-ray">From NDC to a view ray</a>.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["An object moves from 10 m to 20 m away. Its height on screen…", ["stays the same", "halves", "quarters", "doubles"], 1, "Screen height is proportional to 1 / z."], ["A wider field of view makes tan(fov/2)…", ["smaller, objects bigger", "larger, objects smaller on screen", "zero", "negative"], 1, "The same object fills a smaller part of a wider view."]]</script></details>
+
+</section>
+<section class="chapter" id="ndc-screen" data-title="From NDC to pixels and back" data-builds="spaces#perspective" data-summary="uv = ndc · 0.5 + 0.5; pixel = uv · size. Watch the y flip.">
+  <div class="head"><div class="num"></div><h2>From NDC to pixels and back</h2></div>
+
+  <div class="prose">
+    <p>NDC runs from −1 to +1; pixels run from 0 to the width. Halve, shift by a half, and multiply by the size:</p>
+  </div>
+  <div class="fx" data-fx="ndc"></div>
+  <div class="prose">
+    <p>The middle step, <code>ndc · 0.5 + 0.5</code>, is the screen <a class="x" href="../textures-sampling/index.html#uv">UV</a>, 0 to 1. Full-screen effects often go the other way: from the pixel to UV to NDC to a ray. One trap: in pixel coordinates and in Direct3D textures, y grows downwards, while NDC y grows upwards, so one of the steps flips y. Engines provide helpers that handle the flip for the platform; use them instead of writing it by hand.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["ndc.x = 0 on a 1920 px wide screen is which pixel column?", ["0", "960", "1920", "−960"], 1, "(0 · 0.5 + 0.5) · 1920 = 960, the middle."]]</script></details>
+
+</section>
+<section class="chapter" id="tangent" data-title="Tangent space: a frame on every surface" data-builds="dot-cross#cross spaces#transform" data-summary="T, B and N form a frame on the surface; world = x·T + y·B + z·N.">
+  <div class="head"><div class="num"></div><h2>Tangent space: a frame on every surface</h2></div>
+
+  <div class="prose">
+    <p>Some data is easier to describe relative to the surface itself. A <a class="x" href="../texture-memory/index.html#normals">normal map</a> says "tilt the normal a little towards +u" without knowing how the surface is oriented in the world. That needs a small set of axes at every point of the surface:</p>
+    <ul>
+      <li><strong>N</strong>, the normal, out of the surface;</li>
+      <li><strong>T</strong>, the tangent, along the texture's u direction;</li>
+      <li><strong>B</strong>, the bitangent, along v, usually built as <a class="x" href="../dot-cross/index.html#cross">cross(N, T)</a>.</li>
+    </ul>
+    <p>A tangent-space vector (x, y, z) becomes a world vector by walking x along T, y along B and z along N. The cross-section below shows T and N on a tilted surface; the normal map tilts the normal by the angle β:</p>
+  </div>
+  <div class="fx" data-fx="tbn"></div>
+  <div class="prose"><p>Written as a matrix, T, B and N are its three columns: the <button type="button" class="term" data-term="tbn">TBN matrix</button>. Mesh importers compute T per vertex from the UVs, which is why normal maps break when UVs are mirrored or tangents are missing.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A normal map texel decodes to (0, 0, 1). What does it do to the surface normal?", ["Tilts it towards u", "Nothing: it equals N", "Flips it", "Makes it zero"], 1, "z along N only, so the world normal is the surface normal itself."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Getting-started/Coordinate-Systems" rel="noopener">Coordinate Systems</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">Model, view and projection matrices with code, in OpenGL conventions.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-Lighting/Normal-Mapping" rel="noopener">Normal Mapping</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">Tangent space and the TBN matrix, built step by step.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Camera-Relative-Rendering.html" rel="noopener">Camera-relative rendering</a></span><span class="by">Unity · HDRP 17</span><span class="why">Why HDRP measures world positions from the camera.</span></li></ul>
+</section>
+
+<div class="next" data-next="rays-math ray-sphere textures-sampling"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"space": [
+"Coordinate space",
+"An origin plus a set of axes that positions and directions are measured against."
+],
+"matrix": [
+"Matrix",
+"A grid of numbers that transforms vectors: each row builds one output component from the input components. 4 × 4 in 3D."
+],
+"divide": [
+"Perspective divide",
+"Dividing clip-space x, y, z by w (the distance) after the vertex shader. Makes far things smaller."
+],
+"ndc": [
+"NDC",
+"Normalized device coordinates: −1 to +1 across the screen after the perspective divide."
+],
+"tbn": [
+"TBN matrix",
+"The tangent, bitangent and normal as the columns of a 3 × 3 matrix. Converts tangent-space vectors to world space."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="spaces.js"></script>
+</body>
+</html>

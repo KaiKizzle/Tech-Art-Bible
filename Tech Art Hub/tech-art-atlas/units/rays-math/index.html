@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rays and Solving for t · Tech Art Atlas</title>
+<meta name="description" content="Sky shaders, interior mapping, volumetric clouds and ray tracers all ask one question: where does this ray hit that shape? This unit answers it for planes, spheres and boxes, one step at a time.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="rays-math">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Rays and Solving for t</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Rays and Solving for t</h1>
+  <p class="lede">Sky shaders, interior mapping, volumetric clouds and ray tracers all ask one question: where does this ray hit that shape? This unit answers it for planes, spheres and boxes, one step at a time.</p>
+  <p class="meta">Builds on Vectors and the dot product. Every formula is shown with the ray and the shape it describes.</p>
+</header>
+<figure class="keyart"><canvas data-render="rays-math" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one ray through a box and a sphere, its entry and exit points lit.</figcaption></figure>
+<div class="needs" data-needs="vectors dot-cross#dot"></div>
+
+<section class="chapter" id="ray" data-title="A ray is a formula" data-builds="vectors#add-sub vectors#scale" data-summary="P(t) = O + t·D: start at O, walk t along D.">
+  <div class="head"><div class="num"></div><h2>A ray is a formula</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="ray">ray</button> is a half-line: a start point and a direction. Shaders describe it with one small formula. Start at the origin O, walk a distance <i>t</i> along the direction D, and you are at the point P(t):</p>
+  </div>
+  <div class="fx" data-fx="ray"></div>
+  <div class="prose">
+    <p>O and D are <a class="x" href="../vectors/index.html#what">vectors</a>; <i>t</i> is a single number. If D is <a class="x" href="../vectors/index.html#normalize">normalized</a>, <i>t</i> is exactly the distance travelled in world units, which is why ray code normalizes its directions. Negative <i>t</i> gives points behind the start.</p>
+    <p>Every "does this ray hit that shape" question becomes: <strong>for which t is P(t) on the shape?</strong> The rest of this unit answers it for a plane, a sphere and a box.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["O = (0, 2), D = (1, 0). Where is P(3)?", ["(3, 2)", "(3, 0)", "(0, 5)", "(1, 2)"], 0, "(0, 2) + 3 × (1, 0) = (3, 2)."]]</script></details>
+
+</section>
+<section class="chapter" id="plane" data-title="Hitting a flat floor" data-builds="rays-math#ray" data-summary="Floor at height h: t = (h − Oᵧ) / Dᵧ. Negative or infinite t means no hit.">
+  <div class="head"><div class="num"></div><h2>Hitting a flat floor</h2></div>
+
+  <div class="prose">
+    <p>Start with the easiest shape: a horizontal floor at height <i>h</i>. A point is on the floor when its y equals <i>h</i>. The y part of P(t) is O<sub>y</sub> + t·D<sub>y</sub>, so set it equal to <i>h</i> and solve for t:</p>
+  </div>
+  <div class="fx" data-fx="plane"></div>
+  <div class="prose">
+    <p>Three cases fall out of the formula. D<sub>y</sub> = 0: the ray runs parallel to the floor and never hits it (division by zero). t &lt; 0: the floor is behind the start, also no hit. t &gt; 0: a hit at distance t. For a plane in any orientation the same steps give <code>t = (d − dot(O, n)) / dot(D, n)</code>, with n the plane's normal and d its distance from the origin (<a class="x" href="../dot-cross/index.html#projection">dot product as projection</a>).</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A camera at height 2 looks down with D = (0.8, −0.6). How far until it hits the floor at height 0?", ["2", "3.33", "1.2", "0.6"], 1, "t = (0 − 2) / −0.6 = 3.33."], ["D<sub>y</sub> is positive and the floor is below the camera. What does the formula give?", ["A positive t", "A negative t: the floor is behind", "Zero", "Infinity"], 1, "Looking up, the floor below can only be reached by walking backwards."]]</script></details>
+
+</section>
+<section class="chapter" id="sphere" data-title="Hitting a sphere: setting up the equation" data-builds="rays-math#ray vectors#length dot-cross#projection" data-summary="Substituting the ray into |P − C|² = r² gives t² + 2bt + c = 0 with b = L·D, c = L·L − r².">
+  <div class="head"><div class="num"></div><h2>Hitting a sphere: setting up the equation</h2></div>
+
+  <div class="prose">
+    <p>A point is on a sphere with centre C and radius r when its distance to C equals r. Squaring both sides avoids the root (<a class="x" href="../vectors/index.html#length">the trick from Vectors: Length</a>): <code>dot(P − C, P − C) = r²</code>.</p>
+    <p>Put the ray into it. Write L = O − C, the start relative to the centre, so P(t) − C = L + t·D. Expanding the dot product of that with itself, and using dot(D, D) = 1 for a normalized D, gives a <button type="button" class="term" data-term="quadratic">quadratic equation</button> in t:</p>
+  </div>
+  <ol class="steps-list">
+    <li><div>dot(L + tD, L + tD) = r²</div></li>
+    <li><div>dot(L, L) + 2t·dot(L, D) + t²·dot(D, D) = r²</div></li>
+    <li><div>t² + 2·b·t + c = 0, with <b>b = dot(L, D)</b> and <b>c = dot(L, L) − r²</b></div></li>
+  </ol>
+  <div class="prose" style="margin-top:12px">
+    <p>The left side is a parabola in t. The ray hits the sphere exactly where the parabola crosses zero. Move the ray and watch the parabola move with it:</p>
+  </div>
+  <div class="fx" data-fx="quadsetup"></div>
+  <details class="check"><summary></summary><script type="application/json">[["What does c = dot(L, L) − r² < 0 tell you?", ["The ray misses", "The ray starts inside the sphere", "The sphere is behind", "The ray is parallel"], 1, "dot(L, L) is the squared distance from the centre; below r² means inside."], ["What does b = dot(L, D) measure?", ["The radius", "How far along the ray the centre lies, with the sign flipped", "The sphere's area", "The discriminant"], 1, "dot(L, D) with L = O − C is minus the distance along D to the point closest to the centre."]]</script></details>
+
+</section>
+<section class="chapter" id="quadratic" data-title="Solving it: two hits, one or none" data-builds="rays-math#sphere" data-summary="t = −b ± √(b² − c). The discriminant decides miss, graze or two hits.">
+  <div class="head"><div class="num"></div><h2>Solving it: two hits, one or none</h2></div>
+
+  <div class="prose">
+    <p>The quadratic t² + 2bt + c = 0 has the solutions <code>t = −b ± √(b² − c)</code>. The part under the root, the <button type="button" class="term" data-term="discriminant">discriminant</button> h = b² − c, decides everything: negative means no real solution, the ray misses; zero means it just grazes; positive gives two hits, where the ray enters (t<sub>0</sub>, with minus) and leaves (t<sub>1</sub>, with plus).</p>
+  </div>
+  <div class="fx" data-fx="quad"></div>
+  <pre class="hlsl"><span class="c">// returns (t0, t1), or (-1, -1) for a miss. rd must be normalized.</span>
+<span class="t">float2</span> RaySphere(<span class="t">float3</span> ro, <span class="t">float3</span> rd, <span class="t">float3</span> center, <span class="t">float</span> radius)
+{
+    <span class="t">float3</span> L = ro - center;
+    <span class="t">float</span>  b = dot(L, rd);
+    <span class="t">float</span>  c = dot(L, L) - radius * radius;
+    <span class="t">float</span>  h = b * b - c;                 <span class="c">// discriminant</span>
+    <span class="k">if</span> (h &lt; <span class="n">0</span>) <span class="k">return</span> <span class="t">float2</span>(<span class="n">-1</span>, <span class="n">-1</span>);
+    h = sqrt(h);
+    <span class="k">return</span> <span class="t">float2</span>(-b - h, -b + h);          <span class="c">// entry, exit</span>
+}</pre>
+  <details class="check"><summary></summary><script type="application/json">[["b = −5, c = 9. Where does the ray hit?", ["t = 1 and 9", "t = 2 and 8", "It misses", "t = 5"], 0, "h = 25 − 9 = 16, √h = 4, t = 5 ∓ 4."], ["The discriminant is −3. What happens?", ["Two hits", "One grazing hit", "No hit", "A hit behind the ray"], 2, "No real square root: no intersection."]]</script></details>
+
+</section>
+<section class="chapter" id="which-t" data-title="Which t do you want?" data-builds="rays-math#quadratic" data-summary="Both t positive: outside. t₀ &lt; 0 &lt; t₁: inside, use t₁. Both negative: behind.">
+  <div class="head"><div class="num"></div><h2>Which t do you want?</h2></div>
+
+  <div class="prose">
+    <p>The formula always returns two values, even when one or both are behind the start. Which one to use depends on where the ray starts:</p>
+    <ul>
+      <li><strong>Outside, in front</strong>: both positive. t<sub>0</sub> is the entry, t<sub>1</sub> the exit.</li>
+      <li><strong>Inside</strong> (c &lt; 0): t<sub>0</sub> is negative, behind you. The only real hit ahead is t<sub>1</sub>, the exit.</li>
+      <li><strong>Behind you</strong>: both negative. No hit ahead.</li>
+    </ul>
+    <p>Slide the start point along the ray through the sphere and watch the signs flip:</p>
+  </div>
+  <div class="fx" data-fx="whicht"></div>
+  <div class="prose"><p>A camera standing on a planet is inside the atmosphere sphere, so a sky shader always needs this case analysis. It is chapter 7 of <a class="x" href="../ray-sphere/index.html#cases">Rays, Spheres and Shaders</a>.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["t₀ = −4, t₁ = 6. Where is the start point?", ["Outside, in front", "Inside the sphere", "Behind the sphere", "On the surface"], 1, "One hit behind, one ahead: the start is inside."]]</script></details>
+
+</section>
+<section class="chapter" id="box" data-title="Hitting a box: the slab test" data-builds="rays-math#plane" data-summary="Per axis, compute entry and exit t; the box is hit if max(entries) &lt; min(exits).">
+  <div class="head"><div class="num"></div><h2>Hitting a box: the slab test</h2></div>
+
+  <div class="prose">
+    <p>An axis-aligned box is the region between two planes on each axis, a "slab" per axis. On each axis, the <a href="#plane">plane formula</a> gives when the ray enters and leaves that slab. The ray is inside the box only while it is inside all slabs at once, so:</p>
+    <ul>
+      <li>it enters the box at the <strong>latest</strong> of the slab entries;</li>
+      <li>it leaves at the <strong>earliest</strong> of the slab exits;</li>
+      <li>it hits only if that entry comes before that exit.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="slab"></div>
+  <div class="prose"><p>The slab test is the heart of <a class="x" href="../interior-mapping/index.html#wall">interior mapping</a>, of bounding-volume tests in ray tracers, and of ray-marched volumes that first clip the ray to their bounding box.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Slab x gives [1, 5], slab y gives [3, 8]. Does the ray hit, and where does it enter?", ["No", "Yes, enters at t = 1", "Yes, enters at t = 3", "Yes, enters at t = 5"], 2, "Entry = max(1, 3) = 3, exit = min(5, 8) = 5; 3 < 5, so it hits."], ["Slab x gives [1, 2], slab y gives [3, 8]. Hit?", ["Yes", "No: it leaves the x slab before entering the y slab", "Only at t = 2", "Only at t = 3"], 1, "max of entries = 3 is after min of exits = 2."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://iquilezles.org/articles/intersectors" rel="noopener">Intersectors</a></span><span class="by">Inigo Quilez</span><span class="why">Compact ray–sphere, ray–box and many other intersection functions.</span></li><li><span><span class="kind">Book</span><a href="https://raytracing.github.io/books/RayTracingInOneWeekend.html" rel="noopener">Ray Tracing in One Weekend</a></span><span class="by">Peter Shirley et al.</span><span class="why">The quadratic for spheres, derived and used in a full ray tracer.</span></li><li><span><span class="kind">Article</span><a href="https://tavianator.com/2011/ray_box.html" rel="noopener">Fast, branchless ray/bounding box intersections</a></span><span class="by">Tavian Barnes</span><span class="why">The slab test and its edge cases.</span></li></ul>
+</section>
+
+<div class="next" data-next="ray-sphere interior-mapping"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"ray": [
+"Ray",
+"A start point and a direction: P(t) = O + t·D."
+],
+"quadratic": [
+"Quadratic equation",
+"An equation of the form at² + bt + c = 0. Its graph is a parabola; its solutions are where it crosses zero."
+],
+"discriminant": [
+"Discriminant",
+"The part under the square root, b² − c in the half-b form. Negative: no solution; zero: one; positive: two."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="rays-math.js"></script>
+</body>
+</html>

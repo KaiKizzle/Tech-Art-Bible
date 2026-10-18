@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Unit Title · Tech Art Atlas</title>
+<meta name="description" content="The one-paragraph promise: what the reader will understand by the end.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="_template">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Unit Title</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Category · N chapters</div>
+  <h1>Unit Title</h1>
+  <p class="lede">The one-paragraph promise: what the reader will understand by the end.</p>
+  <p class="meta">Engine notes, prerequisites, anything the reader should know before starting.</p>
+</header>
+<figure class="keyart"><canvas data-render="my-unit-slug" aria-label="Rendered key art"></canvas><figcaption>What the render shows. Add a scene with this name to assets/renders.js.</figcaption></figure>
+<div class="needs" data-needs="gpu-basics#per-pixel vectors"></div>
+
+<!-- HOW TO USE THIS TEMPLATE
+  1. Copy units/_template to units/<your-slug>/ and rename template.js to <your-slug>.js.
+  2. In this file: set the <title>, description, body data-unit, the rail brand, header and keyart name.
+  3. One <section class="chapter"> per chapter. Give it a short, meaningful id (people link to it),
+     data-title (shown in the rail) and data-summary (shown in link previews). data-builds lists the
+     chapters this one relies on, as "unit#chapter" separated by spaces.
+  4. Formulas: put <div class="fx" data-fx="name"></div> where it belongs and define it in your .js with Atlas.fx('name', {...}).
+  5. Cross-links: <a class="x" href="../<unit>/index.html#<chapter>">text</a> shows a preview on hover and
+     counts as "Used in" on the target chapter after you run tools/build.py.
+  6. Optional checks: <details class="check"> with a JSON list of [question, [options], right index, explanation].
+  7. Add the unit to assets/catalog.js, then run: python tools/build.py
+-->
+<section class="chapter" id="first" data-title="A first chapter" data-builds="vectors#length" data-summary="One sentence that summarises this chapter for link previews.">
+  <div class="head"><div class="num"></div><h2>A first chapter</h2></div>
+
+  <div class="prose">
+    <p>Body text in small steps. Wrap a glossary word like this: <button type="button" class="term" data-term="example">example term</button>. Link an idea explained elsewhere like this: <a class="x" href="../vectors/index.html#length">the length of a vector</a>.</p>
+  </div>
+  <div class="fx" data-fx="example"></div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>A drawing you can drag<span class="lab-hint">One line on what to try.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="demo-cv" class="fig" width="560" height="300" aria-label="Describe the drawing"></canvas></div>
+      <div class="side">
+        <div class="ctl"><label for="demo-k">Parameter</label><input type="range" id="demo-k" min="0" max="1" step="0.01" value="0.5"><output id="demo-k-o"></output></div>
+        <p class="cap">Explain what the reader sees.</p>
+      </div>
+    </div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["An example question?", ["Wrong", "Right", "Also wrong"], 1, "Why the right answer is right."]]</script></details>
+
+</section>
+<section class="chapter" id="second" data-title="A second chapter" data-builds="_template#first" data-summary="Another one-sentence summary.">
+  <div class="head"><div class="num"></div><h2>A second chapter</h2></div>
+
+  <div class="prose"><p>Each chapter should be followable by someone who only read the chapters before it and the lessons in "Before this unit".</p></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://example.com/" rel="noopener">A reference title</a></span><span class="by">Author · year</span><span class="why">What the reader gets from it.</span></li></ul>
+</section>
+
+<div class="next" data-next="vectors dot-cross"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"example": [
+"Example term",
+"A one-sentence definition.",
+"#first"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="template.js"></script>
+</body>
+</html>

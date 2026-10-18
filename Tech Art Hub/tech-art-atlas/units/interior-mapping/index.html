@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rooms Behind Glass · Tech Art Atlas</title>
+<meta name="description" content="Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+<style>
+.bugnote{border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:.93rem;background:var(--bg)}
+.bugnote b{font-family:var(--font-display)}
+.bugs{display:grid;gap:6px}
+.bugs label{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:.92rem;background:var(--bg)}
+.bugs label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.bugs input{accent-color:var(--accent);margin-top:.3em}
+.minis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.minis figure{margin:0;display:grid;gap:4px}
+.minis figcaption{font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+@media (max-width:520px){.minis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.trace{display:grid;gap:8px;counter-reset:st}
+.trace .st{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--bg)}
+.trace .st h4{margin:0 0 4px;font-family:var(--font-display);font-size:.88rem;display:flex;gap:8px;align-items:baseline}
+.trace .st h4::before{counter-increment:st;content:counter(st);font-family:var(--font-mono);font-size:.72rem;color:var(--accent-ink)}
+.trace .st .f{font-family:var(--font-mono);font-size:.76rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.trace .st .f .c{color:var(--muted)}
+.ax-x{color:var(--ax-x)}.ax-z{color:var(--ax-z)}
+figure.lab{margin-left:0;margin-right:0}
+</style>
+</head>
+<body data-unit="interior-mapping">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Rooms Behind Glass</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Shaders & rendering · Unity HDRP · 14 chapters</div>
+  <h1>Rooms Behind Glass</h1>
+  <p class="lede">Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.</p>
+  <p class="meta">Built for Unity HDRP; the maths transfers to URP and Unreal unchanged. Builds on the Foundations units for vectors, spaces, rays and textures.</p>
+</header>
+<figure class="keyart"><canvas data-render="interior-mapping" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: every window is one flat face, the rooms are traced per pixel.</figcaption></figure>
+<div class="needs" data-needs="rays-math#box spaces#tangent dot-cross#projection textures-sampling#uv"></div>
+
+<section class="chapter" id="trick" data-title="The trick" data-builds="rays-math#ray gpu-basics#per-pixel" data-summary="One flat quad per window; a per-pixel ray against an imaginary box picks a point in a pre-rendered room picture.">
+  <div class="head"><div class="num"></div><h2>The trick</h2></div>
+
+  <div class="prose">
+    <p>A city block has hundreds of windows. Modelling the rooms behind them costs geometry, draw calls, lights and memory, and most of it is seen for half a second from a moving camera. <button type="button" class="term" data-term="interior">Interior mapping</button> replaces all of that with one flat <button type="button" class="term" data-term="glass">glass quad</button> per window and a shader.</p>
+    <p>For every pixel of glass, the shader asks one question: if a box-shaped room stood behind this glass, which point of its walls would this pixel see? It answers with a tiny <a class="x" href="../rays-math/index.html#ray">ray</a> trace against an imaginary box, then looks up the colour of that point in a pre-rendered picture of a room. Nothing is behind the glass.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>A facade of flat windows<span class="lab-hint">Drag to orbit. Every room you see is traced per pixel.</span></div>
+    <div class="lab-body one"><div class="stage">
+    <canvas id="hero-view" class="fig" width="560" height="350" style="aspect-ratio:560/350" aria-label="Software-rendered facade with interior-mapped windows. Drag to orbit."></canvas>
+    <div class="row">
+      <div class="seg" id="hero-time" role="group" aria-label="Time of day"><button type="button" data-v="day" aria-pressed="true">Day</button><button type="button" data-v="dusk" aria-pressed="false">Dusk</button><button type="button" data-v="night" aria-pressed="false">Night</button></div>
+      <label class="chk"><input type="checkbox" id="hero-rects"> Show room rectangles</label>
+    </div>
+  </div></div>
+  </div>
+  <div class="prose"><p>The pipeline has four steps; every chapter takes one apart:</p></div>
+  <ol class="steps-list">
+    <li><div><a href="#room-space">Room space</a>: express the view direction relative to the room: across, up and into it.</div></li>
+    <li><div><a href="#wall">Ray against box</a>: find which wall the sightline hits first, and where.</div></li>
+    <li><div><a href="#picture">Into the picture</a>: turn that 3D wall point into a pixel position in the room render.</div></li>
+    <li><div><a href="#variation">Variation and light</a>: pick a room, mirror it, add curtains, glass reflection and emission.</div></li>
+  </ol>
+  <div class="prose"><p>Before the maths, one decision shapes everything else: what the shader treats as "the room".</p></div>
+
+</section>
+<section class="chapter" id="rooms" data-title="Rooms, not windows" data-builds="textures-sampling#uv buffers#vertex-index" data-summary="roomUV is the position inside the room rectangle, not the window; sizes travel in metres in spare UV channels.">
+  <div class="head"><div class="num"></div><h2>Rooms, not windows</h2></div>
+
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="roomrect">room rectangle</button> is the patch of facade one room occupies, seen from outside: from floor slab to floor slab and from party wall to party wall. The glass is a hole cut into it. One rectangle can hold one big window, two small ones or a tiny bathroom slot.</p>
+    <p>The shader's main input, <button type="button" class="term" data-term="roomuv">roomUV</button>, is the position of a glass pixel <em>inside its room rectangle</em>, from 0 to 1 (<a class="x" href="../textures-sampling/index.html#uv">UV coordinates</a>). It is not 0 to 1 across the window. A small window in the middle of a wide room only gets the middle of the range:</p>
+  </div>
+  <div class="fx" data-fx="roomuv"></div>
+  <div class="prose">
+    <p>This one choice explains two classic artefacts. If every window gets its own 0 to 1, two windows of the same office show two complete, different rooms, and a 60 cm bathroom window shows an entire squashed room. With room rectangles, both windows are holes into one shared box.</p>
+  </div>
+  <figure class="lab" id="lab-data">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Room data inspector <span class="lab-hint">Click any window.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="data-facade" class="fig" style="aspect-ratio:10/8"></canvas>
+        <div class="row"><label class="chk"><input type="checkbox" id="data-perwin"> Per-window UVs (the wrong way)</label></div>
+        <p class="cap">Dashed outlines are room rectangles. Filled shapes are glass. Ground floor is a shop row, then offices, then flats.</p>
+      </div>
+      <div class="side">
+        <canvas id="data-uv" class="fig" style="aspect-ratio:1/1;max-width:220px"></canvas>
+        <p class="cap">UV1 space of the selected room: the square is the room rectangle, the shapes are its glass.</p>
+        <table class="ro" id="data-ro"></table>
+      </div>
+    </div>
+  </figure>
+  <div class="prose">
+    <p>The data travels to the engine in spare <button type="button" class="term" data-term="uvch">UV channels</button> of the mesh, which are <a class="x" href="../buffers/index.html#vertex-index">per-vertex data in the vertex buffer</a>:</p>
+  </div>
+  <dl class="where">
+    <dt>UV0</dt><dd>untouched, for dirt and smudges on the glass</dd>
+    <dt>UV1 RoomUV</dt><dd>position inside the room rectangle, 0 to 1. u runs to the viewer's right, v runs up</dd>
+    <dt>UV2 RoomWH</dt><dd>room width and height in meters</dd>
+    <dt>UV3 RoomDS</dt><dd>room depth in meters, and a random <button type="button" class="term" data-term="seed">seed</button> from 0 to 1</dd>
+    <dt>Color.r</dt><dd>room type divided by 15, which picks an atlas row (office, flat, shop)</dd>
+  </dl>
+  <div class="prose">
+    <p>Sizes are in real meters because the shader divides the view direction by the real room size (chapter 05). That is what lets a 6 m shop and a 3 m bathroom share one shader and both look right.</p>
+  </div>
+  <div class="prose"><p>Sizes are in real metres because the shader divides the view direction by the real room size (<a href="#unit-box">the unit box</a>). That lets a 6 m shop and a 3 m bathroom share one shader.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A 1 m wide window sits centered in a 4 m wide room. What range does its roomUV.x cover?", ["0 to 1", "0.375 to 0.625", "0.25 to 0.75", "0 to 0.25"], 1, "The window spans 1.5 m to 2.5 m of the 4 m rectangle: 1.5/4 = 0.375 and 2.5/4 = 0.625. It only shows the middle of the room."], ["Two windows of the same office show two different rooms. What is the most likely cause?", ["Per-window UVs", "Wrong backWallFrac", "Flipped tangent", "Too much depth jitter"], 0, "With 0 to 1 UVs per window, each window is its own complete room. Measure roomUV inside the room rectangle instead."]]</script></details>
+
+</section>
+<section class="chapter" id="rays" data-title="Rays from the camera" data-builds="rays-math#ray vectors#add-sub" data-summary="The view vector V = P − C from camera to glass is the ray the shader continues into the room.">
+  <div class="head"><div class="num"></div><h2>Rays from the camera</h2></div>
+
+  <div class="prose">
+    <p>A ray is a start point and a direction; every point along it is <code>p(t) = o + t·d</code>, explained step by step in <a class="x" href="../rays-math/index.html#ray">A ray is a formula</a>. <strong>Tracing</strong> means finding the smallest t at which the ray touches something. Interior mapping tests it against the planes of an imaginary box, which is why it is cheap.</p>
+    <p>In a game, the GPU does the first half of the trace for free. Rasterization already found the glass pixel, so the shader knows the glass position P and the camera position C. The <button type="button" class="term" data-term="viewvec">view vector</button> V = P − C (<a class="x" href="../vectors/index.html#add-sub">subtracting two points</a>) is the ray's direction. Interior mapping continues that ray through the glass into the room:</p>
+  </div>
+  <div class="fx" data-fx="viewvec"></div>
+  <figure class="lab" id="lab-fan">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Camera rays, seen from above <span class="lab-hint">Move the camera and follow one ray.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="fan-canvas" class="fig" style="aspect-ratio:16/11"></canvas>
+        <p class="cap">Grey: the part rasterization handles (camera to glass). Teal: the part the shader traces (glass to wall). Rays that hit concrete stop at the facade.</p>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>Camera x</span><input type="range" id="fan-cx" min="-4" max="14" step="0.1" value="2.5"><output id="fan-cx-o"></output></label>
+        <label class="ctl"><span>Rays</span><input type="range" id="fan-n" min="5" max="41" step="2" value="17"><output id="fan-n-o"></output></label>
+        <label class="ctl"><span>Followed ray</span><input type="range" id="fan-i" min="0" max="1" step="0.01" value="0.56"><output id="fan-i-o"></output></label>
+        <label class="ctl"><span>t</span><input type="range" id="fan-t" min="0" max="1" step="0.005" value="0.85"><output id="fan-t-o"></output></label>
+        <table class="ro" id="fan-ro"></table>
+      </div>
+    </div>
+  </figure>
+
+</section>
+<section class="chapter" id="room-space" data-title="Room space" data-builds="spaces#tangent dot-cross#projection dot-cross#cross" data-summary="T = cross(N, up), B = cross(T, N); viewTS = (V·T, V·B, V·N), with z negative for visible glass.">
+  <div class="head"><div class="num"></div><h2>Room space</h2></div>
+
+  <div class="prose">
+    <p>The box maths is simple only if the axes line up with the room: x across the facade, y up, z into the room. The shader builds that frame per pixel from the surface normal: the <button type="button" class="term" data-term="tangent">tangent T</button>, the <button type="button" class="term" data-term="bitangent">bitangent B</button> and the <button type="button" class="term" data-term="normal">normal N</button> (<a class="x" href="../spaces/index.html#tangent">tangent space</a>), built with a <a class="x" href="../dot-cross/index.html#cross">cross product</a>:</p>
+  </div>
+  <pre class="hlsl"><span class="t">float3</span> N = normalize(normalWS);         <span class="c">// out, to the street</span>
+<span class="t">float3</span> T = normalize(cross(N, up));     <span class="c">// viewer's right</span>
+<span class="t">float3</span> B = cross(T, N);                 <span class="c">// up the facade</span>
+<span class="t">float3</span> viewTS = <span class="t">float3</span>(dot(V, T), dot(V, B), dot(V, N));</pre>
+  <div class="prose">
+    <p>A dot product with a unit axis measures how far a vector reaches along that axis, like the length of its shadow (<a class="x" href="../dot-cross/index.html#projection">projection</a>). So <code>viewTS</code> is the same arrow V, described as "this much to the right, this much up, this much along the normal". Seen from above:</p>
+  </div>
+  <div class="fx" data-fx="viewts"></div>
+  <div class="prose">
+    <p>Because N points out of the building and the camera looks in, <code>viewTS.z</code> is always negative for a visible window. Why not use the mesh's own tangents? Unity derives mesh tangents from UV0, while the room UVs live in UV1, so those tangents can point anywhere. The frame above depends only on the normal and world up.</p>
+  </div>
+  <figure class="lab" id="lab-frame">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> The tangent frame, from above <span class="lab-hint">Rotate the building. Flip T to see what a wrong tangent does.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="frame-canvas" class="fig" style="aspect-ratio:4/3"></canvas>
+        <p class="cap"><span class="ax-x">T</span> and <span class="ax-z">N</span> drawn at the glass point, B points out of the screen. Dashed lines are V's shadows on each axis.</p>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>Building yaw</span><input type="range" id="frame-yaw" min="-70" max="70" step="1" value="25"><output id="frame-yaw-o"></output></label>
+        <label class="ctl"><span>Camera x</span><input type="range" id="frame-cx" min="-6" max="6" step="0.1" value="-2.0"><output id="frame-cx-o"></output></label>
+        <label class="chk"><input type="checkbox" id="frame-flip"> Flip T (use cross(up, N))</label>
+        <canvas id="frame-prev" class="fig" style="aspect-ratio:4/3"></canvas>
+        <p class="cap">What this window shows with the current frame.</p>
+        <table class="ro" id="frame-ro"></table>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["You use Shader Graph's View Direction node as the view vector. What else must you do?", ["Nothing", "Negate it", "Transform it to object space", "Square it"], 1, "That node points from the surface to the camera. The ray needs camera to surface."]]</script></details>
+
+</section>
+<section class="chapter" id="unit-box" data-title="The unit box" data-builds="shader-anatomy#functions vectors#scale" data-summary="o = (u·2 − 1, v·2 − 1, 0); d = (V.x / (W/2), V.y / (H/2), −V.z / D).">
+  <div class="head"><div class="num"></div><h2>The unit box</h2></div>
+
+  <div class="prose">
+    <p>Rooms come in every size. Rather than solve each room separately, the shader squashes every room into one standard <button type="button" class="term" data-term="unitbox">unit box</button>: x and y from −1 to 1, z from 0 at the glass to 1 at the back wall. The start point comes from roomUV (<a class="x" href="../shader-anatomy/index.html#functions">the ·2 − 1 remap</a>), and the direction is divided by the room's half width and depth. Here in the top view:</p>
+  </div>
+  <div class="fx" data-fx="unitbox"></div>
+  <div class="prose">
+    <p>The minus on <code>viewTS.z</code> flips z: N points out, but the box's z points in. Squashing changes angles: a 45° ray in a wide, shallow room becomes steep in the box. That is correct, because the same squash applied to the room and the ray keeps every hit on the same wall at the same relative position. And d is not normalized afterwards: all wall candidates in the next chapter use the same d, so comparing their t values still picks the right wall.</p>
+  </div>
+  <figure class="lab" id="lab-norm">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Meters versus the unit box <span class="lab-hint">Change the room. The hit stays on the same wall at the same fraction.</span></figcaption>
+    <div class="lab-body even">
+      <div class="stage"><canvas id="norm-real" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">Real room in meters, seen from above.</p></div>
+      <div class="stage"><canvas id="norm-unit" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">The same ray in the unit box.</p></div>
+    </div>
+    <div class="lab-body even">
+      <div class="side">
+        <label class="ctl"><span>Width W</span><input type="range" id="norm-w" min="2" max="10" step="0.1" value="6"><output id="norm-w-o"></output></label>
+        <label class="ctl"><span>Depth D</span><input type="range" id="norm-d" min="2" max="10" step="0.1" value="3"><output id="norm-d-o"></output></label>
+        <label class="ctl"><span>Entry u</span><input type="range" id="norm-u" min="0.02" max="0.98" step="0.01" value="0.3"><output id="norm-u-o"></output></label>
+        <label class="ctl"><span>View angle</span><input type="range" id="norm-a" min="-75" max="75" step="1" value="40"><output id="norm-a-o"></output></label>
+      </div>
+      <table class="ro" id="norm-ro"></table>
+    </div>
+  </figure>
+
+</section>
+<section class="chapter" id="wall" data-title="Finding the wall" data-builds="rays-math#box rays-math#plane" data-summary="t_x = |1/d.x| − o.x/d.x, t_y likewise, t_z = 1/d.z; the smallest t is the wall that is hit.">
+  <div class="head"><div class="num"></div><h2>Finding the wall</h2></div>
+
+  <div class="prose">
+    <p>The ray starts on the glass and moves inward, so it can only leave the box through three faces: the side wall it moves toward, the floor or ceiling it moves toward, or the back wall. For each, ask at what t the ray reaches that plane: the <a class="x" href="../rays-math/index.html#box">slab test</a>, simplified because the ray starts inside.</p>
+    <p>The side wall it moves toward is at x = sign(d.x). Solving o.x + t·d.x = sign(d.x) gives t = (sign(d.x) − o.x) / d.x, and since sign(d.x) / d.x is always 1/|d.x|, the shader writes it with one <code>abs</code> instead of a branch:</p>
+  </div>
+  <div class="fx" data-fx="slab2"></div>
+  <div class="prose">
+    <p>Why does the smallest t win? The box is convex and the ray starts inside, so the first plane it crosses is where it leaves. The other crossings happen later, outside the box. Why the <button type="button" class="term" data-term="eps">epsilon</button>? Looking straight at a window makes d.x exactly 0, then 1/d.x is infinite and <code>0 · ∞</code> is NaN, which turns the pixel black or white. Clamping tiny components to 1e-5 makes it 100 000 instead, a t that never wins.</p>
+  </div>
+  <pre class="hlsl"><span class="t">float3</span> d = dir;  d = (abs(d) &lt; <span class="n">1e-5</span>) ? <span class="n">1e-5</span> : d;   <span class="c">// avoid 0 · ∞</span>
+<span class="t">float3</span> inv = <span class="n">1.0</span> / d;
+<span class="t">float</span>  tx = abs(inv.x) - o.x * inv.x;
+<span class="t">float</span>  ty = abs(inv.y) - o.y * inv.y;
+<span class="t">float</span>  tz = inv.z;                           <span class="c">// back wall at z = 1, o.z = 0</span>
+<span class="t">float</span>  t  = min(min(tx, ty), tz);
+<span class="t">float3</span> hit = o + t * d;</pre>
+  <figure class="lab" id="lab-slab">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Slab test, step by step <span class="lab-hint">Step through, or drag the sliders.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <div class="lab-body even" style="gap:10px">
+          <div><canvas id="slab-top" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">Top view: x across, z into the room.</p></div>
+          <div><canvas id="slab-side" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">Side view: z into the room, y up.</p></div>
+        </div>
+        <div class="row"><button type="button" class="btn" id="slab-prev">Back</button><button type="button" class="btn primary" id="slab-next">Next step</button><button type="button" class="btn" id="slab-all">Show all</button><span class="pill" id="slab-step"></span></div>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>Origin u</span><input type="range" id="slab-u" min="0" max="1" step="0.01" value="0.3"><output id="slab-u-o"></output></label>
+        <label class="ctl"><span>Origin v</span><input type="range" id="slab-v" min="0" max="1" step="0.01" value="0.55"><output id="slab-v-o"></output></label>
+        <label class="ctl"><span>Yaw</span><input type="range" id="slab-yaw" min="-80" max="80" step="1" value="38"><output id="slab-yaw-o"></output></label>
+        <label class="ctl"><span>Pitch</span><input type="range" id="slab-pitch" min="-70" max="70" step="1" value="-12"><output id="slab-pitch-o"></output></label>
+        <table class="ro" id="slab-ro"></table>
+        <p class="cap" id="slab-explain"></p>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["Why does the slab test take the smallest of the three t values?", ["The box is convex and the ray starts inside, so the first plane crossed is where it leaves", "The largest t is always the back wall", "min avoids NaN values", "GPUs execute min faster than max"], 0, "The other crossings happen later, on plane extensions outside the box."], ["Why clamp tiny direction components to 1e-5?", ["To keep 1/d finite and avoid 0·∞ = NaN when looking straight on", "To add subtle noise", "To improve hash precision", "To keep t negative"], 0, "A component of exactly 0 makes 1/d infinite. 1e-5 turns it into 100 000, a t that never wins."]]</script></details>
+
+</section>
+<section class="chapter" id="picture" data-title="Into the picture" data-builds="spaces#perspective textures-sampling#uv" data-summary="k = 1/b − 1, s = 1 / (1 + z·k), cellUV = hit.xy · s · 0.5 + 0.5.">
+  <div class="head"><div class="num"></div><h2>Into the picture</h2></div>
+
+  <div class="prose">
+    <p>We now know the 3D point the pixel sees; we need its colour. The <button type="button" class="term" data-term="atlas">atlas</button> holds pictures of rooms, each rendered by a camera standing outside the room, centred on the opening, with a field of view that exactly fits it: <button type="button" class="term" data-term="opp">one-point perspective</button>, every depth line running toward the centre.</p>
+    <p>A pinhole camera shrinks things in proportion to their distance (<a class="x" href="../spaces/index.html#perspective">the perspective divide</a>). With the camera at distance c in front of the opening, a point at depth z·D behind the glass is scaled by c / (c + z·D). The shader does not know c, only <b>b</b>, how big the back wall looks in the picture (<button type="button" class="term" data-term="bwf">backWallFrac</button>). From b = c / (c + D) follows D/c = 1/b − 1 = k, and the whole projection is:</p>
+  </div>
+  <div class="fx" data-fx="proj"></div>
+  <div class="prose">
+    <p>Two checks prove it. A side-wall point at the glass (z = 0) gets s = 1 and lands on the edge of the image, where the opening's edge is. A back-wall corner (x = ±1, z = 1) gets s = b and lands at 0.5 ± 0.5·b, the corner of the back wall in the render. b is the entire contract between your render and your shader.</p>
+  </div>
+  <figure class="lab" id="lab-proj">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> The render camera, from the side <span class="lab-hint">Slide the point along the room outline. Change b to move the camera.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="proj-canvas" class="fig" style="aspect-ratio:16/9"></canvas>
+        <p class="cap">Left: render camera. Middle: the opening, which is the image plane. Right: the room. The strip at the far right is the atlas cell's vertical axis.</p>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>b</span><input type="range" id="proj-b" min="0.2" max="0.8" step="0.01" value="0.5"><output id="proj-b-o"></output></label>
+        <label class="ctl"><span>Point</span><input type="range" id="proj-p" min="0" max="1" step="0.002" value="0.22"><output id="proj-p-o"></output></label>
+        <table class="ro" id="proj-ro"></table>
+      </div>
+    </div>
+  </figure>
+  <div class="prose">
+    <h3>Changing depth at runtime</h3>
+    <p><code>hit.z</code> is a fraction of the room's depth, and the projection never uses D. So the back-wall corners always land at the same texels, whatever depth you feed the shader; only the positions along the side walls move. One atlas cell can serve rooms of many depths. Past roughly ±20%, furniture painted on side walls stretches visibly.</p>
+  </div>
+  <figure class="lab" id="lab-depth">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Depth at runtime <span class="lab-hint">The corners stay put. The grid lines on the walls slide.</span></figcaption>
+    <div class="lab-body even">
+      <div class="stage"><canvas id="depth-prev" class="fig" style="aspect-ratio:4/3"></canvas><p class="cap">One window, rendered with the UV-grid atlas (lines every quarter of depth).</p></div>
+      <div class="side">
+        <label class="ctl"><span>Depth D</span><input type="range" id="depth-d" min="1" max="12" step="0.1" value="4"><output id="depth-d-o"></output></label>
+        <label class="ctl"><span>View yaw</span><input type="range" id="depth-yaw" min="-60" max="60" step="1" value="28"><output id="depth-yaw-o"></output></label>
+        <label class="ctl"><span>View pitch</span><input type="range" id="depth-pitch" min="-45" max="45" step="1" value="-10"><output id="depth-pitch-o"></output></label>
+        <canvas id="depth-cell" class="fig" style="aspect-ratio:1/1;max-width:200px"></canvas>
+        <p class="cap">The atlas cell. Dots mark where the four window corners' rays sample it.</p>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["The atlas was rendered with b = 0.5. What is k?", ["0.5", "1", "2", "4"], 1, "k = 1/b − 1 = 1/0.5 − 1 = 1. The render camera stood one room depth in front of the glass."], ["Where does a side-wall point at depth z = 0 land in the atlas cell?", ["At the center", "On the back-wall corner", "On the edge of the cell", "Outside the cell"], 2, "At z = 0, s = 1, so x = ±1 maps to cellUV 0 or 1: the edge of the image, exactly where the opening's edge was in the render."], ["You double a room's depth in the shader. What stays fixed in the atlas cell?", ["Nothing", "The back-wall corners", "The texels along the side walls", "The furniture positions"], 1, "hit.z is a fraction of depth. The back-wall corners (z = 1) always map to 0.5 ± 0.5·b. Only side-wall content slides."]]</script></details>
+
+</section>
+<section class="chapter" id="back-wall" data-title="Why the back wall gets half" data-summary="Back wall area b²; side-wall sharpness ratio 1/b². Render camera: c = b·D / (1 − b), fov = 2·atan((W/2) / c).">
+  <div class="head"><div class="num"></div><h2>Why the back wall gets half</h2></div>
+
+  <div class="prose">
+    <p>b decides how the texels of a cell are shared. The back wall is a square of side b, so it gets b² of the cell's area. Texels are also spread unevenly along the side walls: how fast the image position changes per unit of depth is the slope of s, k / (1 + z·k)²:</p>
+  </div>
+  <div class="fx" data-fx="texrate"></div>
+  <div class="prose">
+    <p>With b = 0.5, the back wall gets 25% of the cell and side walls are 4 times sharper near the glass than near the back. Lower b and the back wall shrinks to a few texels while side walls get a 10× falloff. Raise b and the side walls collapse into slivers that look blurry at grazing angles, which is exactly where they are seen most. 0.5 is the balance most productions settle on. Keep it identical for every cell.</p>
+    <p>b also fixes the render camera, which you need to render the atlas in the first place:</p>
+  </div>
+  <div class="fx" data-fx="rendercam"></div>
+  <figure class="lab" id="lab-bwf">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Spend the texels <span class="lab-hint">Slide b and watch where the pixels go.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <div class="lab-body even" style="gap:10px">
+          <div><canvas id="bwf-cell" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">A cell rendered at this b (UV grid, lines every quarter depth).</p></div>
+          <div><canvas id="bwf-chart" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">Side-wall texels per meter of depth, 512 px cell. Dashed: b = 0.5.</p></div>
+        </div>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>b</span><input type="range" id="bwf-b" min="0.2" max="0.8" step="0.01" value="0.5"><output id="bwf-b-o"></output></label>
+        <label class="ctl"><span>Room W</span><input type="range" id="bwf-w" min="2" max="10" step="0.1" value="4"><output id="bwf-w-o"></output></label>
+        <label class="ctl"><span>Room D</span><input type="range" id="bwf-d" min="2" max="10" step="0.1" value="4"><output id="bwf-d-o"></output></label>
+        <table class="ro" id="bwf-ro"></table>
+      </div>
+    </div>
+  </figure>
+
+</section>
+<section class="chapter" id="trace" data-title="Trace one pixel" data-summary="Every step of the shader for one clicked pixel, with real numbers.">
+  <div class="head"><div class="num"></div><h2>Trace one pixel</h2></div>
+
+  <div class="prose">
+    <p>Here is the whole pipeline running on a real facade. Click any glass pixel and the panel walks through every step for that one pixel, with the actual numbers: <a href="#room-space">room space</a>, <a href="#unit-box">unit box</a>, <a href="#wall">wall</a>, <a href="#picture">picture</a>. The small diagrams show the same ray inside the unit box, and the spot it samples in the atlas cell.</p>
+  </div>
+  <figure class="lab" id="lab-trace">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Pixel inspector <span class="lab-hint">Click glass to pick. Drag to orbit.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="trace-view" class="fig" width="560" height="350" style="aspect-ratio:560/350"></canvas>
+        <div class="row">
+          <div class="seg" id="trace-mode" role="group" aria-label="View"><button type="button" data-v="final" aria-pressed="true">Final</button><button type="button" data-v="hit" aria-pressed="false">Hit xyz</button><button type="button" data-v="wall" aria-pressed="false">Wall</button><button type="button" data-v="cell" aria-pressed="false">cellUV</button></div>
+          <div class="seg" id="trace-tex" role="group" aria-label="Atlas"><button type="button" data-v="art" aria-pressed="true">Room art</button><button type="button" data-v="grid" aria-pressed="false">UV grid</button></div>
+        </div>
+        <label class="ctl"><span>Depth ×</span><input type="range" id="trace-depth" min="0.4" max="2" step="0.01" value="1"><output id="trace-depth-o"></output></label>
+        <div class="minis">
+          <figure><canvas id="trace-top" class="fig" style="aspect-ratio:1/1"></canvas><figcaption>Box, top view</figcaption></figure>
+          <figure><canvas id="trace-side" class="fig" style="aspect-ratio:1/1"></canvas><figcaption>Box, side view</figcaption></figure>
+          <figure><canvas id="trace-cell" class="fig" style="aspect-ratio:1/1"></canvas><figcaption>Atlas cell sample</figcaption></figure>
+        </div>
+      </div>
+      <div class="side"><div class="trace" id="trace-steps"></div></div>
+    </div>
+  </figure>
+
+</section>
+<section class="chapter" id="variation" data-title="Variation from one number" data-builds="shader-anatomy#functions" data-summary="hash(n) = frac(sin(n·12.9898 + 78.233) · 43758.5453); a different multiplier per property.">
+  <div class="head"><div class="num"></div><h2>Variation from one number</h2></div>
+
+  <div class="prose">
+    <p>Each room carries one random <button type="button" class="term" data-term="seed">seed</button> between 0 and 1. The shader turns it into as many independent-looking values as it needs with a <button type="button" class="term" data-term="hash">hash</button>, a function that scrambles its input:</p>
+  </div>
+  <div class="fx" data-fx="hash"></div>
+  <div class="prose">
+    <p>Why it works: <code>sin</code> is smooth, so nearby inputs give nearby outputs. Multiplying by a large, irregular number like 43758.5453 magnifies tiny differences, and <a class="x" href="../shader-anatomy/index.html#functions">frac</a> keeps only the part after the decimal point. Two seeds 0.001 apart end up anywhere in 0 to 1. Keep the sine's argument moderate: large arguments lose float precision and can hash differently on different GPUs.</p>
+    <p>Each property hashes the seed with a different multiplier (17, 31, 47…): hCell = hash(seed·17 + 1), hFlip = hash(seed·31 + 2), hLit = hash(seed·47 + 3) and so on. With one shared input, lit rooms would always be the mirrored ones.</p>
+    <p>Mirroring is the cheapest variation: a box room is symmetric, so flipping <code>cellUV.x</code> gives a believable different room. Keep text and signs out of the atlas, because they mirror too. Lights at dusk: a room is lit when <code>hLit &lt; LitChance</code>; raising LitChance switches rooms on one by one, always in the same order.</p>
+  </div>
+  <figure class="lab" id="lab-hash">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> One seed, many rooms <span class="lab-hint">Pick a property, then raise LitChance.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="hash-facade" class="fig" style="aspect-ratio:10/7"></canvas>
+        <div class="row"><div class="seg" id="hash-prop" role="group" aria-label="Property"><button type="button" data-v="cell" aria-pressed="true">Cell</button><button type="button" data-v="flip" aria-pressed="false">Flip</button><button type="button" data-v="lit" aria-pressed="false">Lit</button><button type="button" data-v="curt" aria-pressed="false">Curtain</button><button type="button" data-v="tint" aria-pressed="false">Tint</button></div></div>
+        <label class="ctl"><span>LitChance</span><input type="range" id="hash-lit" min="0" max="1" step="0.01" value="0.45"><output id="hash-lit-o"></output></label>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>Seed</span><input type="range" id="hash-seed" min="0" max="1" step="0.001" value="0.318"><output id="hash-seed-o"></output></label>
+        <table class="ro" id="hash-ro"></table>
+        <canvas id="hash-plot" class="fig" style="aspect-ratio:2/1"></canvas>
+        <p class="cap">Top: sin alone, smooth. Bottom: after × 43758.5453 and frac, scattered. Seeds 0 to 1 on the horizontal axis.</p>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["Why does each property hash the seed with a different multiplier (17, 31, 47…)?", ["To decorrelate the properties", "To avoid negative numbers", "For speed", "To match the atlas size"], 0, "With the same input every property would get the same value: lit rooms would always be the mirrored ones."]]</script></details>
+
+</section>
+<section class="chapter" id="glass" data-title="Glass and light" data-builds="exposure#multiplier dot-cross#angle" data-summary="F0 = ((n₁ − n₂)/(n₁ + n₂))² ≈ 0.04; F = F0 + (1 − F0)(1 − cos θ)⁵; interior × (1 − F).">
+  <div class="head"><div class="num"></div><h2>Glass and light</h2></div>
+
+  <div class="prose">
+    <p>Render the glass as an <strong>opaque</strong> Lit material, not a transparent one. The interior is computed by the shader anyway, so nothing needs to show through, and opaque surfaces write depth, receive screen-space reflections and sort correctly. The interior goes into Emission; the glass gets a dark base colour and high smoothness, so reflection probes and SSR draw the reflection.</p>
+    <h3>How much reflects: Fresnel</h3>
+    <p>Glass reflects more at grazing angles. The fraction reflected head-on, <button type="button" class="term" data-term="f0">F0</button>, comes from the refractive indices of air (1.0) and glass (about 1.5). Schlick's approximation bends it toward 1 at grazing angles (the same term every PBR material uses: <a class="x" href="../pbr-brdf/index.html#fresnel">Fresnel in a PBR shader</a>). Whatever does not reflect passes through, so the interior is multiplied by the <button type="button" class="term" data-term="trans">transmission</button> 1 − F:</p>
+  </div>
+  <div class="fx" data-fx="fresnel"></div>
+  <figure class="lab" id="lab-fres">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Fresnel on glass</figcaption>
+    <div class="lab-body">
+      <div class="stage"><canvas id="fres-chart" class="fig" style="aspect-ratio:16/9"></canvas><p class="cap">Reflectance against viewing angle. Solid: Schlick. Dashed: exact Fresnel (unpolarized).</p></div>
+      <div class="side">
+        <label class="ctl"><span>Angle θ</span><input type="range" id="fres-a" min="0" max="89" step="1" value="60"><output id="fres-a-o"></output></label>
+        <label class="ctl"><span>IOR n</span><input type="range" id="fres-n" min="1.0" max="2.4" step="0.01" value="1.5"><output id="fres-n-o"></output></label>
+        <table class="ro" id="fres-ro"></table>
+      </div>
+    </div>
+  </figure>
+  <div class="prose">
+    <h3>How bright the room is: nits and exposure</h3>
+    <p>HDRP lights in physical units. Emission is in <button type="button" class="term" data-term="nits">nits</button>, and the camera's exposure scales everything on screen: screen value = luminance / (1.2 · 2^EV100), explained in <a class="x" href="../exposure/index.html#multiplier">From EV to a multiplier</a>. With the Emission node's exposure weight at 1, the interior is exposed like every other light: dim at noon next to a sunlit facade, glowing at night. At weight 0 it looks the same at noon and midnight.</p>
+  </div>
+  <figure class="lab" id="lab-exp">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Exposure <span class="lab-hint">Pick a time of day, then nudge EV.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage"><canvas id="exp-canvas" class="fig" style="aspect-ratio:16/7"></canvas></div>
+      <div class="side">
+        <div class="seg" id="exp-preset" role="group" aria-label="Scene"><button type="button" data-v="noon" aria-pressed="true">Noon</button><button type="button" data-v="dusk" aria-pressed="false">Dusk</button><button type="button" data-v="night" aria-pressed="false">Night</button></div>
+        <label class="ctl"><span>EV100</span><input type="range" id="exp-ev" min="0" max="16" step="0.1" value="14"><output id="exp-ev-o"></output></label>
+        <table class="ro" id="exp-ro"></table>
+        <p class="cap">Starting values, tune by eye: daylight interiors 100–300 nits, lamp-lit rooms 20–80 nits on top.</p>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["What is the head-on reflectance F0 of glass with n = 1.5?", ["0.5", "0.04", "0.15", "0.004"], 1, "((1 − 1.5)/(1 + 1.5))² = (0.5/2.5)² = 0.04."]]</script></details>
+
+</section>
+<section class="chapter" id="curtains" data-title="Curtains and cards" data-builds="interior-mapping#wall" data-summary="t_c = z_c / d.z, visible only if t_c ≤ t of the wall.">
+  <div class="head"><div class="num"></div><h2>Curtains and cards</h2></div>
+
+  <div class="prose">
+    <p>Any plane parallel to the glass is a free extra layer. A <button type="button" class="term" data-term="curtain">curtain plane</button> at depth z<sub>c</sub> is hit like the back wall, with z<sub>c</sub> instead of 1: t<sub>c</sub> = z<sub>c</sub> / d.z. It is visible only if the ray reaches it before a wall:</p>
+  </div>
+  <div class="fx" data-fx="curtain"></div>
+  <div class="prose">
+    <p>The check matters in narrow rooms seen at steep angles: the ray can hit a side wall before it reaches the curtain depth. Without it, the curtain draws on top of a wall that is in front of it. A z<sub>c</sub> of 0.05 to 0.1 gives curtains a little parallax against the frame. A <button type="button" class="term" data-term="card">midground card</button> works the same way at z ≈ 0.4: a cut-out of furniture with alpha, for hero buildings only.</p>
+    <p>The shader also darkens by depth, <code>lerp(1, 0.6, hit.z)</code> (<a class="x" href="../shader-anatomy/index.html#functions">lerp</a>): a cheap stand-in for daylight falling off away from the window.</p>
+  </div>
+  <figure class="lab" id="lab-curt">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> The curtain plane <span class="lab-hint">Make the room narrow and the view steep, then switch off the check.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <div class="lab-body even" style="gap:10px">
+          <div><canvas id="curt-top" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">Unit box from above. Dashed amber: curtain plane.</p></div>
+          <div><canvas id="curt-prev" class="fig" style="aspect-ratio:1/1"></canvas><p class="cap">The window from the camera.</p></div>
+        </div>
+      </div>
+      <div class="side">
+        <label class="ctl"><span>Curtain z_c</span><input type="range" id="curt-z" min="0.02" max="0.6" step="0.01" value="0.1"><output id="curt-z-o"></output></label>
+        <label class="ctl"><span>Room W</span><input type="range" id="curt-w" min="1" max="6" step="0.1" value="1.4"><output id="curt-w-o"></output></label>
+        <label class="ctl"><span>View yaw</span><input type="range" id="curt-yaw" min="-75" max="75" step="1" value="58"><output id="curt-yaw-o"></output></label>
+        <div class="seg" id="curt-state" role="group" aria-label="Curtain state"><button type="button" data-v="0" aria-pressed="false">Open</button><button type="button" data-v="1" aria-pressed="false">Half</button><button type="button" data-v="2" aria-pressed="false">Blinds</button><button type="button" data-v="3" aria-pressed="true">Sheer</button></div>
+        <label class="chk"><input type="checkbox" id="curt-nocheck"> Skip the t_c ≤ t check</label>
+        <table class="ro" id="curt-ro"></table>
+      </div>
+    </div>
+  </figure>
+
+</section>
+<section class="chapter" id="mips" data-title="Mips and seams" data-builds="texture-memory#mips textures-sampling#filter" data-summary="Atlas UV jumps between rooms give huge derivatives and a seam; pass gradients from world position instead.">
+  <div class="head"><div class="num"></div><h2>Mips and seams</h2></div>
+
+  <div class="prose">
+    <p>The GPU picks a <button type="button" class="term" data-term="mip">mip</button> level per pixel from how fast the UV changes between neighbouring pixels, measured across each 2×2 quad (<a class="x" href="../texture-memory/index.html#mips">how the GPU picks a mip</a>). Inside one room, cellUV is continuous, even across wall corners. But where two rooms share one strip of glass, the atlas UV leaps from one cell to another. A quad straddling that jump sees a huge change and picks a tiny mip:</p>
+  </div>
+  <div class="fx" data-fx="seam"></div>
+  <div class="prose">
+    <p>That one line of averaged colour is the seam. The fix is to hand the sampler gradients computed from something continuous. The world position is continuous everywhere, so the include projects <code>ddx(positionWS)</code> onto T and B, divides by the room size, scales by s and the atlas grid, and passes the result to <code>SAMPLE_TEXTURE2D_GRAD</code>. Bilinear filtering also reads one texel past the sample, so cellUV is clamped half a texel inside each cell.</p>
+  </div>
+  <figure class="lab" id="lab-mip">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> One glass strip, two rooms <span class="lab-hint">Pixels are enlarged so you can see the quads.</span></figcaption>
+    <div class="lab-body one">
+      <div class="stage">
+        <div class="lab-body even" style="gap:10px">
+          <div><canvas id="mip-img" class="fig" style="aspect-ratio:2/1;image-rendering:pixelated"></canvas><p class="cap">Sampled result.</p></div>
+          <div><canvas id="mip-heat" class="fig" style="aspect-ratio:2/1;image-rendering:pixelated"></canvas><p class="cap">Chosen mip level, dark = 0, bright = 8.</p></div>
+        </div>
+        <div class="row"><div class="seg" id="mip-src" role="group" aria-label="Gradient source"><button type="button" data-v="uv" aria-pressed="true">Gradients from atlas UV</button><button type="button" data-v="world" aria-pressed="false">Gradients from world position</button></div></div>
+      </div>
+    </div>
+  </figure>
+  <details class="check"><summary></summary><script type="application/json">[["A one-pixel line of wrong color appears exactly where two rooms meet on one strip of glass. Why?", ["The atlas UV jumps, the 2×2 quad sees a huge derivative and picks a tiny mip", "Fresnel peaks at room borders", "The b values differ between rooms", "The rooms have different seeds"], 0, "Feed SampleGrad with gradients from world position, which is continuous across room borders."]]</script></details>
+
+</section>
+<section class="chapter" id="bugs" data-title="Bug lab" data-summary="Per-window UVs, flipped tangents, un-negated view vectors, mismatched b and ignored room sizes each have a signature.">
+  <div class="head"><div class="num"></div><h2>Bug lab</h2></div>
+
+  <div class="prose">
+    <p>Most interior-mapping bugs come from a handful of sign and space mistakes, each with a recognisable symptom. Switch one on, orbit the building, and learn the look. Then switch the view to Hit xyz: a correct shader shows a clean box gradient, red growing to the right, green growing up, blue growing with depth (<a class="x" href="../color-values/index.html#rgb">colours as numbers</a>).</p>
+  </div>
+  <figure class="lab" id="lab-bug">
+    <figcaption class="lab-head"><span class="lab-tag">Lab</span> Break it on purpose <span class="lab-hint">Drag to orbit. Strafing reveals most bugs.</span></figcaption>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="bug-view" class="fig" width="560" height="350" style="aspect-ratio:560/350"></canvas>
+        <div class="row">
+          <div class="seg" id="bug-mode" role="group" aria-label="View"><button type="button" data-v="final" aria-pressed="true">Final</button><button type="button" data-v="hit" aria-pressed="false">Hit xyz</button><button type="button" data-v="wall" aria-pressed="false">Wall</button></div>
+          <div class="seg" id="bug-lod" role="group" aria-label="LOD"><button type="button" data-v="0" aria-pressed="true">LOD0</button><button type="button" data-v="1" aria-pressed="false">LOD1</button><button type="button" data-v="2" aria-pressed="false">LOD2</button></div>
+        </div>
+        <div class="bugnote" id="bug-note"></div>
+      </div>
+      <div class="side">
+        <div class="bugs" id="bug-list">
+          <label><input type="radio" name="bug" value="none" checked><span>No bug</span></label>
+          <label><input type="radio" name="bug" value="perwin"><span>Per-window UVs</span></label>
+          <label><input type="radio" name="bug" value="tflip"><span>Tangent flipped</span></label>
+          <label><input type="radio" name="bug" value="vneg"><span>View vector not negated</span></label>
+          <label><input type="radio" name="bug" value="bwf"><span>Shader b ≠ render b</span></label>
+          <label><input type="radio" name="bug" value="nonorm"><span>Room size ignored</span></label>
+        </div>
+        <div class="key"><b>Checklist</b>
+          <ol style="margin:4px 0 0;padding-left:1.2em;font-size:.92rem;display:grid;gap:4px">
+            <li>Hit xyz shows a clean box.</li>
+            <li>Strafe past a window: the back wall moves less than the facade.</li>
+            <li>From the far left you see the room's right wall.</li>
+            <li>Two windows of one room show one continuous room.</li>
+            <li>Corners line up with the render at every depth.</li>
+          </ol></div>
+      </div>
+    </div>
+  </figure>
+  <div class="prose"><h3>Level of detail</h3><p>The full shader matters within roughly 50 to 100 m. Beyond that, <strong>LOD1</strong> skips the box: it finds where the ray meets the back plane, <code>p = o.xy + d.xy / d.z</code>, clamps it to the back wall and samples there, one fetch at a fixed mip. <strong>LOD2</strong> is a flat color per room plus the lit flag, which is all a city skyline needs. Both use the same hashes as LOD0, so the room's cell, mirroring and lights don't pop when the LOD group swaps. Try the LOD buttons in the lab.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Seen from the far left, a room shows its left wall. Which bug is it?", ["Per-window UVs", "Flipped tangent", "b mismatch", "Room size ignored"], 1, "From the left you should see the room's right wall. Seeing the near-side wall means viewTS.x has the wrong sign."]]</script></details>
+
+</section>
+<section class="chapter" id="numbers" data-title="Every number, explained" data-ref>
+  <div class="head"><div class="num"></div><h2>Every number, explained</h2></div>
+  <div class="tablewrap"><table class="vals"><thead><tr><th>Value</th><th>Default</th><th>Why</th></tr></thead><tbody><tr><td class="k">backWallFrac b</td><td class="m">0.5</td><td>Back wall gets 25 % of the cell and side walls a 4:1 sharpness falloff. Lower starves the back wall, higher crushes the side walls into slivers. Must match the renders exactly.</td></tr><tr><td class="k">k</td><td class="m">1</td><td>Follows from b: 1/b − 1. The render camera stood one room depth in front of the glass.</td></tr><tr><td class="k">Render FOV</td><td class="m">53° for 4 × 4 m</td><td>2·atan((W/2)/c) with c = 4 m. The opening must exactly fill the frame.</td></tr><tr><td class="k">Render lens</td><td class="m">36 mm on 36 mm sensor</td><td>36·c/W with c = W = 4 m. Other room shapes give other lenses; b stays the same.</td></tr><tr><td class="k">Epsilon</td><td class="m">1e-5</td><td>1/1e-5 = 100 000 is finite in 32-bit float and far larger than any real t, yet too small to bend a real direction.</td></tr><tr><td class="k">DepthJitter</td><td class="m">0.2</td><td>Corners stay fixed whatever the depth, side-wall content stretches. Past about ±20 % the stretch shows on furniture.</td></tr><tr><td class="k">Room sizes</td><td class="m">3–6 m × 3–4.2 m × 3–6.5 m</td><td>Real meters, because the view direction is divided by them. Ground floors and shops are taller and deeper.</td></tr><tr><td class="k">Storey heights</td><td class="m">4.2 m ground, 3.2 m upper</td><td>Typical floor-to-floor heights including the slab. Use what the building has.</td></tr><tr><td class="k">Curtain depth z_c</td><td class="m">0.05–0.1</td><td>20 to 40 cm in a 4 m room: enough parallax against the frame without looking detached.</td></tr><tr><td class="k">Midground card</td><td class="m">z ≈ 0.4</td><td>Far enough from the back wall for strong parallax, in front of most wall furniture.</td></tr><tr><td class="k">Depth darkening</td><td class="m">lerp(1, 0.6, z)</td><td>A cheap falloff of window light. 0.6 keeps the back wall readable.</td></tr><tr><td class="k">F0</td><td class="m">0.04</td><td>((1 − 1.5)/(1 + 1.5))² for air to glass.</td></tr><tr><td class="k">Schlick exponent</td><td class="m">5</td><td>Schlick's fit to the exact Fresnel equations. Invisible difference for glass, far cheaper.</td></tr><tr><td class="k">Glass base color</td><td class="m">≈ 0.02</td><td>Glass has almost no diffuse reflection. The interior lives in Emission.</td></tr><tr><td class="k">Glass smoothness</td><td class="m">0.9–0.95</td><td>Clean glass reflects sharply. The dirt map on UV0 lowers it locally.</td></tr><tr><td class="k">Daylight interior</td><td class="m">100–300 nits</td><td>Starting point. At noon (EV ≈ 14) this sits far below a sunlit facade, like real windows do.</td></tr><tr><td class="k">Lamp-lit room</td><td class="m">+20–80 nits</td><td>Starting point so lit rooms glow at night (EV ≈ 5–6) without clipping.</td></tr><tr><td class="k">Exposure weight</td><td class="m">1</td><td>Emission is exposed like every other light, so day and night need no retuning.</td></tr><tr><td class="k">Hash constants</td><td class="m">12.9898, 78.233, 43758.5453</td><td>Folklore from early shader code. Any large irregular numbers work. Keep the sine argument moderate for float precision.</td></tr><tr><td class="k">Hash multipliers</td><td class="m">17, 31, 47, 59, 71, 83, 97</td><td>Different primes per property decorrelate everything derived from one seed.</td></tr><tr><td class="k">LitChance</td><td class="m">0 → ~0.6 at dusk</td><td>Rooms with hLit below it are lit. Animating it switches rooms on in a fixed order.</td></tr><tr><td class="k">CurtainChance</td><td class="m">≈ 0.55</td><td>Share of rooms with a curtain. Each then picks one of four states from hState.</td></tr><tr><td class="k">Half-texel inset</td><td class="m">0.5 / cell size</td><td>Bilinear filtering reads one texel past the sample. The inset keeps it inside the cell.</td></tr><tr><td class="k">Atlas grid</td><td class="m">4 × 3 here</td><td>Columns are variants picked by hCell, rows are room types picked by vertex color.</td></tr><tr><td class="k">Room type encoding</td><td class="m">type / 15</td><td>Sixteen types fit an 8-bit vertex color with an exact round trip. Decode with round(r · 15).</td></tr><tr><td class="k">Window frame</td><td class="m">6 cm</td><td>Visual only. Frames hide the hard edge where the interior starts.</td></tr><tr><td class="k">LOD distance</td><td class="m">50–100 m</td><td>Past that, side walls are a few pixels wide and LOD1 looks the same.</td></tr><tr><td class="k">PLANE_TOL</td><td class="m">0.6 m</td><td>Blender script: glass may sit this far from its room plane, for recessed windows.</td></tr><tr><td class="k">EDGE_TOL</td><td class="m">0.01 m</td><td>Blender script: slack for glass that touches a room edge.</td></tr></tbody></table></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Paper</span><a href="http://www.interiormapping.net/" rel="noopener">Interior Mapping: A new technique for rendering realistic buildings</a></span><span class="by">Joost van Dongen · Computer Graphics International 2008</span><span class="why">The original technique: rays traced against implicit room planes behind a facade.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/udk/Three/DevelopmentKitGemsInteriorMapping.html" rel="noopener">Development Kit Gems: Interior Mapping</a></span><span class="by">Epic Games · UDK</span><span class="why">A material-graph version of the same idea, useful when porting to Unreal.</span></li><li><span><span class="kind">Article</span><a href="https://iquilezles.org/articles/intersectors" rel="noopener">Intersectors</a></span><span class="by">Inigo Quilez</span><span class="why">Compact ray-box and other intersection functions, including the slab test.</span></li><li><span><span class="kind">Notes</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf" rel="noopener">Real Shading in Unreal Engine 4</a></span><span class="by">Brian Karis · SIGGRAPH 2013</span><span class="why">Schlick Fresnel with F0 in a production shading model.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Camera-Relative-Rendering.html" rel="noopener">Camera-relative rendering</a></span><span class="by">Unity · HDRP 17</span><span class="why">Why world positions in HDRP shaders are relative to the camera.</span></li></ul>
+</section>
+
+<div class="next" data-next="parallax ray-sphere pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"interior": [
+"Interior mapping",
+"A shader technique that fakes rooms behind flat window glass by ray tracing an imaginary box per pixel and reading the hit point's color from a pre-rendered room picture.",
+"#trick"
+],
+"glass": [
+"Glass quad",
+"The flat polygon that fills a window opening. It is the only real geometry; everything you see behind it is computed by its shader.",
+"#trick"
+],
+"roomrect": [
+"Room rectangle (facade rectangle)",
+"The patch of facade one room occupies as seen from outside, slab to slab and wall to wall. Windows are holes in it. roomUV is measured inside it.",
+"#rooms"
+],
+"roomuv": [
+"roomUV",
+"The 0 to 1 position of a glass pixel inside its room rectangle, stored in UV1. Not 0 to 1 per window.",
+"#rooms"
+],
+"uvch": [
+"UV channels",
+"Extra per-vertex 2D values a mesh can carry. Here UV1 holds roomUV, UV2 room width and height, UV3 depth and seed.",
+"#rooms"
+],
+"seed": [
+"Seed",
+"One random number per room, 0 to 1, stored in UV3.y. Every per-room variation is hashed from it.",
+"#variation"
+],
+"ray": [
+"Ray",
+"A start point plus a direction. Points along it are p(t) = o + t·d.",
+"#rays"
+],
+"t": [
+"Parameter t",
+"How far along a ray, measured in steps of d. The smallest positive t at which the ray touches something is the hit.",
+"#rays"
+],
+"viewvec": [
+"View vector V",
+"The direction from the camera to the surface point, V = P − C. In HDRP the camera-relative world position already is this vector.",
+"#rays"
+],
+"tangent": [
+"Tangent T",
+"The room-space x axis: along the facade, to the viewer's right. Built from the normal and world up, not from the mesh's UV0 tangents.",
+"#room-space"
+],
+"bitangent": [
+"Bitangent B",
+"The room-space y axis: up along the facade. B = cross(T, N).",
+"#room-space"
+],
+"normal": [
+"Normal N",
+"The direction straight out of the facade toward the street. Room-space z is −N.",
+"#room-space"
+],
+"dot": [
+"Dot product",
+"a·b = |a||b|cos θ. With a unit axis, it measures how far a vector reaches along that axis.",
+"#room-space"
+],
+"unitbox": [
+"Unit box",
+"Every room squashed into one standard box: x and y from −1 to 1, z from 0 at the glass to 1 at the back wall.",
+"#unit-box"
+],
+"vp": [
+"Vanishing point",
+"The image point where all depth lines of a one-point perspective meet. In the unit box it is the center (0, 0).",
+"#unit-box"
+],
+"slab": [
+"Slab test",
+"Ray-box intersection done one axis at a time: compute when the ray reaches each candidate plane and take the smallest t.",
+"#wall"
+],
+"eps": [
+"Epsilon guard",
+"Clamping tiny direction components to 1e-5 so 1/d stays finite and 0·∞ never makes a NaN.",
+"#wall"
+],
+"atlas": [
+"Atlas",
+"One texture holding many room renders in a grid of cells. Columns are variants, rows are room types.",
+"#picture"
+],
+"opp": [
+"One-point perspective",
+"A view straight down a box with the camera centered: every line running into depth points to one vanishing point.",
+"#picture"
+],
+"bwf": [
+"backWallFrac b",
+"The fraction of the cell width the back wall covers in the render. The one number shared by renders and shader. Usually 0.5.",
+"#picture"
+],
+"k": [
+"k",
+"Ratio of room depth to render-camera distance, D/c = 1/b − 1. 1 when b = 0.5.",
+"#picture"
+],
+"s": [
+"Scale s",
+"How much a point at depth z shrinks toward the image center: s = 1/(1 + z·k).",
+"#picture"
+],
+"hash": [
+"Hash",
+"A function that scrambles its input into a value that looks random but is repeatable. Here frac(sin(n·12.9898 + 78.233)·43758.5453).",
+"#variation"
+],
+"f0": [
+"F0",
+"Reflectance when looking straight at a surface. ((n₁ − n₂)/(n₁ + n₂))², 0.04 for glass.",
+"#glass"
+],
+"trans": [
+"Transmission",
+"The light fraction that passes through the glass instead of reflecting: 1 − F. The interior is multiplied by it.",
+"#glass"
+],
+"nits": [
+"Nits",
+"Candela per square meter, the unit of luminance. HDRP emission is authored in nits.",
+"#glass"
+],
+"ev": [
+"Exposure (EV100)",
+"The camera's brightness setting. Screen value = luminance / (1.2 · 2^EV100). Higher EV, darker image.",
+"#glass"
+],
+"curtain": [
+"Curtain plane",
+"A plane parallel to the glass at depth z_c, hit at t_c = z_c/d.z, drawn only if the ray gets there before a wall.",
+"#curtains"
+],
+"card": [
+"Midground card",
+"A cut-out furniture layer on a plane at z ≈ 0.4. It gives real parallax against the back wall.",
+"#curtains"
+],
+"mip": [
+"Mip",
+"A pre-shrunk copy of a texture. The GPU picks one per pixel from how fast the UV changes across the screen.",
+"#mips"
+],
+"ddx": [
+"Derivatives (ddx, ddy)",
+"The change of a value between neighboring pixels, computed by differencing within a 2×2 quad. Used to choose the mip.",
+"#mips"
+],
+"quad": [
+"2×2 quad",
+"GPUs shade pixels in 2×2 blocks so they can difference values between neighbors.",
+"#mips"
+],
+"cellUV": [
+"cellUV",
+"The 0 to 1 position inside one atlas cell, after projection: hit.xy·s·0.5 + 0.5.",
+"#picture"
+],
+"atlasUV": [
+"atlasUV",
+"The final texture coordinate: (cell index + cellUV) / grid size.",
+"#trace"
+],
+"hitpt": [
+"Hit point",
+"The point where the ray meets the box, o + t·d, in unit-box coordinates.",
+"#wall"
+],
+"flip": [
+"Flip",
+"Mirroring cellUV.x for some rooms, chosen by the hash. A free extra variant per cell.",
+"#variation"
+],
+"litc": [
+"LitChance",
+"The fraction of rooms with lights on. A room is lit when its hLit is below it.",
+"#variation"
+],
+"jitter": [
+"Depth jitter",
+"Per-room random scale of depth, typically ±20 %, free because the corners don't move.",
+"#picture"
+],
+"grad": [
+"SampleGrad",
+"A texture fetch with explicitly supplied derivatives, so the mip comes from continuous values instead of jumping UVs.",
+"#mips"
+],
+"inset": [
+"Half-texel inset",
+"Clamping cellUV half a texel inside the cell so bilinear filtering never reads the neighbor cell.",
+"#mips"
+],
+"lod": [
+"LOD",
+"Level of detail: cheaper shader variants for distant buildings. LOD1 samples the back plane only, LOD2 a flat color.",
+"#bugs"
+],
+"cube": [
+"Cubemap interior",
+"An alternative that stores each room as six 90° faces seen from its center. Cleaner at steep angles, but more memory and poorer furniture parallax.",
+"#picture"
+],
+"camrel": [
+"Camera-relative rendering",
+"HDRP stores world positions relative to the camera to keep float precision. So the world Position node is the camera-to-surface vector.",
+"#rays"
+],
+"schlick": [
+"Schlick approximation",
+"F(θ) = F0 + (1 − F0)(1 − cos θ)⁵, a cheap fit to the Fresnel equations.",
+"#glass"
+],
+"viewts": [
+"viewTS",
+"The view vector expressed in room space: (V·T, V·B, V·N).",
+"#room-space"
+],
+"rtype": [
+"Room type",
+"Which atlas row a room uses (office, flat, shop), stored as vertex color red = type / 15.",
+"#rooms"
+],
+"expw": [
+"Exposure weight",
+"An HDRP Emission node setting. 1 means emission is exposed like any light; 0 means it ignores exposure.",
+"#glass"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="rooms.js"></script>
+<script src="rooms-fx.js"></script>
+</body>
+</html>

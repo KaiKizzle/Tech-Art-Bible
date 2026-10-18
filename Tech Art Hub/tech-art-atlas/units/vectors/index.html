@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vectors · Tech Art Atlas</title>
+<meta name="description" content="Positions, directions, light, normals and rays are all vectors. Five operations cover almost everything shaders do with them.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="vectors">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Vectors</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Vectors</h1>
+  <p class="lede">Positions, directions, light, normals and rays are all vectors. Five operations cover almost everything shaders do with them.</p>
+  <p class="meta">Every drawing below can be dragged. The numbers update as you move.</p>
+</header>
+<figure class="keyart"><canvas data-render="vectors" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the x, y and z axes and their sum, as arrows.</figcaption></figure>
+<div class="needs" data-needs="shader-anatomy#types"></div>
+
+<section class="chapter" id="what" data-title="Arrows made of numbers" data-builds="shader-anatomy#types" data-summary="A vector is a list of numbers; it can mean a position or a direction, and both are drawn as arrows.">
+  <div class="head"><div class="num"></div><h2>Arrows made of numbers</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="vector">vector</button> is a short list of numbers, written in brackets: (3, 2) in 2D, (3, 2, 1) in 3D. The numbers are its <em>components</em>, named x, y and z.</p>
+    <p>The same list can mean two different things, and shaders use both all the time:</p>
+    <ul>
+      <li>A <strong>position</strong>: a point in space, "3 to the right and 2 up from the origin".</li>
+      <li>A <strong>direction</strong> (or offset): "go 3 right and 2 up", from wherever you are. A light direction, a surface normal and a camera ray are directions.</li>
+    </ul>
+    <p>Either way, it helps to draw it as an arrow: from the origin to the point, or from anywhere in the direction. Drag the arrow's tip:</p>
+  </div>
+  <div class="fx" data-fx="components"></div>
+  <div class="prose"><p>In a shader a 3D vector is a <code>float3</code> (see <a class="x" href="../shader-anatomy/index.html#types">types</a>). Nothing in the type says whether it is a point or a direction; that is up to you. Mixing them up is a common bug, and later lessons show where the difference matters (<a class="x" href="../spaces/index.html#transform">moving a direction ignores translation</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A shader has float3 lightDir = (0, 1, 0). What is it most likely?", ["A position one unit above the origin", "A direction pointing straight up", "A colour", "It cannot be told from the numbers alone; the name says it is a direction"], 3, "Positions and directions are both float3; only the meaning differs. The name tells you it is used as a direction."]]</script></details>
+
+</section>
+<section class="chapter" id="add-sub" data-title="Adding and subtracting" data-builds="vectors#what" data-summary="Add component by component; B − A is the arrow from A to B.">
+  <div class="head"><div class="num"></div><h2>Adding and subtracting</h2></div>
+
+  <div class="prose">
+    <p>To add two vectors, add their components: (1, 2) + (3, −1) = (4, 1). As arrows, put the second one at the tip of the first; the sum points to where you end up.</p>
+  </div>
+  <div class="fx" data-fx="add"></div>
+  <div class="prose">
+    <p>Subtracting is the operation you will use most. <strong>B − A is the arrow that goes from A to B.</strong> "Direction from the surface to the light", "from the camera to this pixel's position", "from the sphere's centre to the ray origin": each is one subtraction.</p>
+  </div>
+  <div class="fx" data-fx="sub"></div>
+  <details class="check"><summary></summary><script type="application/json">[["A pixel is at P = (4, 0, 2). The light is at L = (4, 3, 2). Which vector points from the pixel to the light?", ["P − L = (0, −3, 0)", "L − P = (0, 3, 0)", "L + P", "(4, 3, 2)"], 1, "Target minus start: L − P."], ["(2, 5) + (−2, 1) = ?", ["(0, 6)", "(4, 4)", "(0, 4)", "(−4, 5)"], 0, "2 − 2 = 0 and 5 + 1 = 6."]]</script></details>
+
+</section>
+<section class="chapter" id="scale" data-title="Scaling" data-builds="vectors#what" data-summary="k × v multiplies every component: longer, shorter or flipped, same line.">
+  <div class="head"><div class="num"></div><h2>Scaling</h2></div>
+
+  <div class="prose">
+    <p>Multiplying a vector by a single number <i>k</i> multiplies every component: 2 × (1, 3) = (2, 6). The arrow keeps its direction and gets <i>k</i> times longer. A negative <i>k</i> flips it around; 0 shrinks it to nothing.</p>
+  </div>
+  <div class="fx" data-fx="scale"></div>
+  <details class="check"><summary></summary><script type="application/json">[["−1 × (2, −3) = ?", ["(2, 3)", "(−2, 3)", "(−2, −3)", "(2, −3)"], 1, "Each component changes sign."]]</script></details>
+
+</section>
+<section class="chapter" id="length" data-title="Length" data-builds="vectors#add-sub" data-summary="|v| = √(x² + y² + z²); distance(A, B) = length(B − A).">
+  <div class="head"><div class="num"></div><h2>Length</h2></div>
+
+  <div class="prose">
+    <p>How long is the arrow (3, 4)? Its components form the two short sides of a right-angled triangle, and the arrow is the long side. Pythagoras gives the length:</p>
+  </div>
+  <div class="fx" data-fx="length"></div>
+  <div class="prose">
+    <p>In 3D a third term joins under the root: |v| = √(x² + y² + z²). The distance between two points is the length of their difference, <code>distance(A, B) = length(B − A)</code>, which combines this chapter with the previous one.</p>
+    <p class="side-note"><b>Cheaper comparisons.</b> The square root is the expensive part. If you only need to know whether something is closer than <i>r</i>, compare the squared length with <i>r</i>² instead. The <a class="x" href="../rays-math/index.html#sphere">sphere test</a> uses exactly this.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["What is the length of (6, 8)?", ["14", "10", "48", "100"], 1, "√(36 + 64) = √100 = 10."], ["Which is cheaper and gives the same yes/no answer to 'is |v| < 5'?", ["|v|² < 25", "|v| < 25", "v.x < 5", "normalize(v) < 5"], 0, "Both sides are positive, so squaring keeps the comparison and avoids the root."]]</script></details>
+
+</section>
+<section class="chapter" id="normalize" data-title="Normalizing: keeping only the direction" data-builds="vectors#length vectors#scale" data-summary="v̂ = v / |v| has length 1 and keeps the direction.">
+  <div class="head"><div class="num"></div><h2>Normalizing: keeping only the direction</h2></div>
+
+  <div class="prose">
+    <p>Often only the direction matters, not the length: which way the light comes from, which way a surface faces. Dividing a vector by its own length gives a vector of length exactly 1 pointing the same way. This is called <button type="button" class="term" data-term="normalize">normalizing</button>, and a length-1 vector is a <em>unit vector</em>, often written with a hat: v̂.</p>
+  </div>
+  <div class="fx" data-fx="normalize"></div>
+  <div class="prose">
+    <p>Unit vectors always end on the circle (in 3D, the sphere) of radius 1. That is what makes the <a class="x" href="../dot-cross/index.html#angle">dot product</a> of two unit vectors equal to the cosine of the angle between them, the basis of all lighting.</p>
+    <p class="side-note"><b>Watch for zero.</b> normalize((0, 0, 0)) divides by zero and returns NaN, which turns pixels black or white and spreads through every calculation that touches it. Guard directions that can become zero, for example with <code>normalize(v + 1e-6)</code> or a length check.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["normalize((0, 5)) = ?", ["(0, 5)", "(0, 1)", "(1, 0)", "(0, 0.2)"], 1, "Length 5; (0, 5) / 5 = (0, 1)."], ["Why do surface normals and light directions get normalized before lighting?", ["To save memory", "So their dot product is the cosine of the angle, independent of length", "Because GPUs require it", "To make them positive"], 1, "With unit vectors, a·b = cos θ."]]</script></details>
+
+</section>
+<section class="chapter" id="axes" data-title="Which way is up" data-summary="Unity is Y-up left-handed in metres, Unreal Z-up left-handed in centimetres, Blender Z-up right-handed.">
+  <div class="head"><div class="num"></div><h2>Which way is up</h2></div>
+
+  <div class="prose">
+    <p>A vector's numbers only mean something once you know which axis points where. Engines disagree, and every asset that moves between Blender, Unity and Unreal crosses these conventions:</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Diagram</span>Axis conventions<span class="lab-hint">Each gizmo shows the three axes as the program defines them.</span></div>
+    <canvas id="axes-cv" class="fig" width="900" height="260" aria-label="Axis gizmos of Unity, Unreal and Blender"></canvas>
+  </div>
+  <div class="tablewrap" style="margin-top:14px"><table class="vals">
+    <thead><tr><th>Program</th><th>Up</th><th>Forward</th><th>Handedness</th><th>1 unit is</th></tr></thead>
+    <tbody>
+      <tr><td>Unity</td><td class="m">+Y</td><td class="m">+Z</td><td>left-handed</td><td>1 metre</td></tr>
+      <tr><td>Unreal Engine</td><td class="m">+Z</td><td class="m">+X</td><td>left-handed</td><td>1 centimetre</td></tr>
+      <tr><td>Blender</td><td class="m">+Z</td><td class="m">−Y (front view looks along +Y)</td><td>right-handed</td><td>1 metre</td></tr>
+    </tbody></table></div>
+  <div class="prose" style="margin-top:14px">
+    <p><button type="button" class="term" data-term="handedness">Handedness</button> decides which way the third axis points once two are fixed, and which way <a class="x" href="../dot-cross/index.html#cross">cross products</a> and rotations turn. Exporters handle the conversion (Blender's FBX export has <em>Forward</em> and <em>Up</em> settings), but shader code that hard-codes "up" as (0, 1, 0) must be changed to (0, 0, 1) in Unreal.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A Unity shader uses float3(0, 1, 0) as 'up'. What is up in Unreal?", ["float3(0, 1, 0)", "float3(0, 0, 1)", "float3(1, 0, 0)", "float3(0, −1, 0)"], 1, "Unreal is Z-up."], ["A 2 m tall door in Unreal is how many units?", ["2", "20", "200", "2000"], 2, "1 Unreal unit is 1 cm."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Video course</span><a href="https://www.3blue1brown.com/topics/linear-algebra" rel="noopener">Essence of linear algebra</a></span><span class="by">3Blue1Brown</span><span class="why">Vectors, combinations and transformations explained visually.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Getting-started/Coordinate-Systems" rel="noopener">Coordinate Systems</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">Model, view and projection matrices with code, in OpenGL conventions.</span></li><li><span><span class="kind">Book</span><a href="https://raytracing.github.io/books/RayTracingInOneWeekend.html" rel="noopener">Ray Tracing in One Weekend</a></span><span class="by">Peter Shirley et al.</span><span class="why">A small vec3 class and every operation on it, used for a working renderer.</span></li></ul>
+</section>
+
+<div class="next" data-next="dot-cross spaces rays-math"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"vector": [
+"Vector",
+"A list of numbers (components) that describes a position or a direction. In shaders: float2, float3, float4."
+],
+"normalize": [
+"Normalize",
+"Divide a vector by its length so that it has length 1. Keeps the direction."
+],
+"handedness": [
+"Handedness",
+"Whether the z axis follows from x and y by the left-hand or the right-hand rule. Unity and Unreal are left-handed, Blender right-handed."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="vectors.js"></script>
+</body>
+</html>

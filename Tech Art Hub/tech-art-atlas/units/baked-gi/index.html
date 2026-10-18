@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Baked Light: Lightmaps and Probes · Tech Art Atlas</title>
+<meta name="description" content="Most of the light indoors has bounced at least once. This unit explains indirect light, then the ways games store it: lightmaps, spherical harmonics probes and reflection probes, and where each one breaks.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="baked-gi">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Baked Light: Lightmaps and Probes</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <h1>Baked Light: Lightmaps and Probes</h1>
+  <p class="lede">Most of the light indoors has bounced at least once. This unit explains indirect light, then the ways games store it: lightmaps, spherical harmonics probes and reflection probes, and where each one breaks.</p>
+  <p class="meta">Builds on the light units and the slab test. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="baked-gi" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a room lit by one opening, with colour bleeding from the walls.</figcaption></figure>
+<div class="needs" data-needs="exposure#units dot-cross#lambert rays-math#box"></div>
+
+<section class="chapter" id="indirect" data-title="Light that bounces" data-builds="exposure#units dot-cross#lambert" data-summary="E_bounce ≈ ρ_wall · E_wall · F; each bounce multiplies by ρ · F.">
+  <div class="head"><div class="num"></div><h2>Light that bounces</h2></div>
+
+  <div class="prose">
+    <p>A room lit through one window is not black outside the sunbeam. The sunlit patch on the floor reflects light onto the walls, the walls onto the ceiling, and so on. That <button type="button" class="term" data-term="indirect">indirect light</button> is often most of what you see indoors, and it carries colour: a red carpet tints the walls red. Global illumination (GI) is the name for computing it.</p>
+    <p>One bounce follows from formulas you know. A sunlit wall reflects ρ·E (<a class="x" href="../exposure/index.html#units">lux to nits</a>); a surface facing it receives that light weighted by how much of its view the wall fills, the <button type="button" class="term" data-term="viewfactor">view factor</button>:</p>
+  </div>
+  <div class="fx" data-fx="bounce"></div>
+  <div class="prose"><p>Each further bounce multiplies by ρ·F again, so with typical albedos of 0.3 to 0.6 the light fades within a few bounces. Computing this for every surface point toward every other is far too slow per frame, so most games compute it ahead of time and store the result: that is <em>baking</em>.</p></div>
+
+</section>
+<section class="chapter" id="lightmaps" data-title="Lightmaps" data-builds="texture-memory#density textures-sampling#filter" data-summary="texels = area · density²; static, cheap at runtime, needs a unique UV set.">
+  <div class="head"><div class="num"></div><h2>Lightmaps</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="lightmap">lightmap</button> is a texture laid over the static geometry that stores the light arriving at each point, baked offline by a path tracer. Every surface needs its own space in it, so lightmaps use a second, non-overlapping UV set (UV1 in Unity, often called the lightmap UV), with padding between islands so filtering does not bleed light across them (<a class="x" href="../textures-sampling/index.html#filter">filtering</a>). The budget works exactly like <a class="x" href="../texture-memory/index.html#density">texel density</a>:</p>
+  </div>
+  <div class="fx" data-fx="lmbudget"></div>
+  <div class="prose"><p>Lightmaps are cheap at runtime (one texture sample) and capture soft, multi-bounce light and contact shadows that real-time methods struggle with. In return they are static: moving a light or opening a door means baking again, and dynamic objects need another method to receive the same light: probes.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Doubling the lightmap density (texels per metre) multiplies the texel count by…", ["2", "4", "8", "1"], 1, "Both directions double: 2 × 2."]]</script></details>
+
+</section>
+<section class="chapter" id="irradiance" data-title="Light from a whole sky" data-builds="dot-cross#lambert exposure#units" data-summary="E(θ) = π · (L_sky · (1 + cos θ)/2 + L_ground · (1 − cos θ)/2).">
+  <div class="head"><div class="num"></div><h2>Light from a whole sky</h2></div>
+
+  <div class="prose">
+    <p>A point outdoors is lit by the entire sky, not one direction. The light it receives, its <button type="button" class="term" data-term="irradiance">irradiance</button>, adds up every direction above the surface weighted by the cosine (<a class="x" href="../dot-cross/index.html#lambert">Lambert</a>). For the simplest sky, a uniform bright upper half and a dark ground, the sum has a neat closed form, the <em>hemisphere light</em> many engines use for ambient light:</p>
+  </div>
+  <div class="fx" data-fx="hemi"></div>
+  <div class="prose"><p>Note the π: a uniform sky of luminance L delivers π·L to a surface facing it, the inverse of the π in <a class="x" href="../exposure/index.html#units">L = ρ·E / π</a>. And note how smooth E is: tilting the normal changes it gently. That smoothness is what the next chapter exploits.</p></div>
+
+</section>
+<section class="chapter" id="sh" data-title="Spherical harmonics" data-builds="baked-gi#irradiance" data-summary="Irradiance is smooth: 3 SH bands (9 coefficients per channel) reproduce it almost exactly.">
+  <div class="head"><div class="num"></div><h2>Spherical harmonics</h2></div>
+
+  <div class="prose">
+    <p>Real environments are not two flat halves. Storing irradiance for every possible normal direction would need a whole cubemap per point. But irradiance is so smooth that a handful of numbers describe it well. <button type="button" class="term" data-term="sh">Spherical harmonics</button> (SH) are to directions what a Fourier series is to a waveform: band 0 is the average, band 1 a single "brighter on one side" gradient, band 2 adds finer variation. Three bands are 9 coefficients per colour channel.</p>
+    <p>Below is a slice of the idea for light that only varies with height (a bright sky window around the zenith): the light, its approximation with the first bands, and the irradiance a surface receives at each tilt:</p>
+  </div>
+  <div class="fx" data-fx="sh"></div>
+  <div class="prose"><p>The light itself is approximated badly: a sharp window cannot be built from three smooth bands. The irradiance, however, is almost exact, because the cosine weighting already blurs away everything the higher bands would carry. That is why light probes store L2 SH (9 coefficients) and why it works for diffuse light only: shiny reflections need the detail, so they get <a href="#reflection">reflection probes</a>.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["How many numbers does a band-2 (L2) SH probe store for RGB light?", ["9", "27", "3", "16"], 1, "9 coefficients per channel × 3 channels."]]</script></details>
+
+</section>
+<section class="chapter" id="probes" data-title="Light probes and leaking" data-builds="baked-gi#sh shader-anatomy#functions" data-summary="Objects lerp between nearby probes; walls are invisible to the lerp, so light leaks.">
+  <div class="head"><div class="num"></div><h2>Light probes and leaking</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="probe">light probe</button> is a point where the baker stores the incoming light as SH. Dynamic objects (characters, props) and small static ones read the probes around them and <a class="x" href="../shader-anatomy/index.html#functions">interpolate</a> between them. Interpolation does not know about walls, though. A probe outside in the sun and a probe inside a dark room blend straight through the wall between them:</p>
+  </div>
+  <div class="fx" data-fx="leak"></div>
+  <div class="prose"><p>That is <button type="button" class="term" data-term="leak">light leaking</button>: dark rooms with glowing characters, or sunlit balconies that look dull. Fixes: put probes on both sides of every wall close to it, and use systems that know about geometry. Adaptive probe volumes and DDGI store visibility or validity per probe and ignore probes behind a surface.</p></div>
+
+</section>
+<section class="chapter" id="reflection" data-title="Reflection probes and box projection" data-builds="rays-math#box pbr-brdf#ibl" data-summary="hit = slab test of the reflection ray against the room box; sample the cubemap toward hit − probe centre.">
+  <div class="head"><div class="num"></div><h2>Reflection probes and box projection</h2></div>
+
+  <div class="prose">
+    <p>Shiny surfaces need sharp environment light. A <button type="button" class="term" data-term="reflprobe">reflection probe</button> captures a cubemap from one point, prefiltered by roughness (<a class="x" href="../pbr-brdf/index.html#ibl">light from the environment</a>). Looking it up with the reflection direction alone treats the room as infinitely far away, so reflections slide over the floor as you walk. <em>Box projection</em> fixes that for rooms: intersect the reflection ray with the room's box (<a class="x" href="../rays-math/index.html#box">the slab test</a>), then look up the direction from the probe's centre to that hit:</p>
+  </div>
+  <div class="fx" data-fx="boxproj"></div>
+  <div class="prose"><p>The correction is exact for points on the box walls and approximate for furniture inside. Outdoors there is no box, so reflection probes there are left unprojected.</p></div>
+
+</section>
+<section class="chapter" id="modern" data-title="Baked, probe-based and real-time GI" data-summary="Lightmaps, probes, reflection probes and real-time GI trade quality, memory and flexibility.">
+  <div class="head"><div class="num"></div><h2>Baked, probe-based and real-time GI</h2></div>
+
+  <div class="prose">
+    <p>Today's engines mix the approaches. The choice is a trade between quality, memory, iteration time and how much may move:</p>
+  </div>
+  <div class="tablewrap"><table class="vals"><thead><tr><th>Method</th><th>Moving lights</th><th>Moving objects</th><th>Cost</th><th>Typical use</th></tr></thead><tbody>
+    <tr><td class="k">Lightmaps</td><td>no</td><td>receive via probes</td><td>memory, bake time</td><td>static levels, mobile</td></tr>
+    <tr><td class="k">Probe grids / APV</td><td>no (or blend bakes)</td><td>yes</td><td>small memory, leaks</td><td>open worlds, dynamic props</td></tr>
+    <tr><td class="k">Reflection probes</td><td>no (or re-render)</td><td>yes</td><td>cubemap memory</td><td>shiny surfaces everywhere</td></tr>
+    <tr><td class="k">Real-time GI (Lumen, SSGI, DDGI)</td><td>yes</td><td>yes</td><td>GPU time every frame</td><td>high-end, changing worlds</td></tr>
+  </tbody></table></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p><em>Adaptive Probe Volumes</em> (APV) place probes automatically by geometry density, store validity to reduce leaking, and support blending between baked lighting scenarios (day, night). Lightmaps are baked with the GPU or CPU progressive lightmapper; <em>Screen Space Global Illumination</em> and ray-traced GI add real-time bounces.</p></div><div class="eng" data-engine="urp"><p>URP supports lightmaps, light probes (classic tetrahedral probe groups) and, in recent versions, Adaptive Probe Volumes as well. Reflection probes support box projection; blending between probes is optional per URP asset.</p></div><div class="eng" data-engine="unreal"><p><em>Lumen</em> is the default real-time GI and reflection system in UE5: it traces against simplified scene representations every frame, so no baking is needed. Baked lightmaps (Lightmass / GPU Lightmass) remain for platforms without Lumen. Sphere and box <em>Reflection Captures</em> are still used as a fallback.</p></div></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Paper</span><a href="https://graphics.stanford.edu/papers/envmap/" rel="noopener">An Efficient Representation for Irradiance Environment Maps</a></span><span class="by">Ravi Ramamoorthi, Pat Hanrahan · SIGGRAPH 2001</span><span class="why">Why 9 SH coefficients reproduce diffuse lighting so well.</span></li><li><span><span class="kind">Paper</span><a href="https://www.ppsloan.org/publications/StupidSH36.pdf" rel="noopener">Stupid Spherical Harmonics (SH) Tricks</a></span><span class="by">Peter-Pike Sloan · GDC 2008</span><span class="why">Practical SH for games: projection, rotation, windowing against ringing.</span></li><li><span><span class="kind">Article</span><a href="https://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/" rel="noopener">Image-based Lighting approaches and parallax-corrected cubemap</a></span><span class="by">Sébastien Lagarde</span><span class="why">Box projection and its limits in production.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine" rel="noopener">Lumen Technical Details</a></span><span class="by">Epic Games</span><span class="why">How Unreal computes GI and reflections in real time.</span></li></ul>
+</section>
+
+<div class="next" data-next="pbr-brdf light-types shadow-maps"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"indirect": [
+"Indirect light",
+"Light that reached a surface after bouncing off other surfaces."
+],
+"viewfactor": [
+"View factor",
+"The share of a surface's view taken up by another surface, which decides how much of its light arrives.",
+"#indirect"
+],
+"lightmap": [
+"Lightmap",
+"A texture storing baked lighting for static geometry, laid out in its own UV set.",
+"#lightmaps"
+],
+"irradiance": [
+"Irradiance",
+"All light arriving at a point from every direction, weighted by the cosine; measured in lux.",
+"#irradiance"
+],
+"sh": [
+"Spherical harmonics",
+"A small set of smooth functions over directions, used to store low-frequency lighting in a few coefficients.",
+"#sh"
+],
+"probe": [
+"Light probe",
+"A point where incoming light is stored (usually as SH) for nearby objects to interpolate.",
+"#probes"
+],
+"leak": [
+"Light leaking",
+"Light appearing where it should not because interpolation ignores walls.",
+"#probes"
+],
+"reflprobe": [
+"Reflection probe",
+"A cubemap of the surroundings captured at one point, used for specular reflections.",
+"#reflection"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="baked-gi.js"></script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Transparency and Alpha · Tech Art Atlas</title>
+<meta name="description" content="Glass, smoke, foliage and fades all need something to show through. This unit explains what the GPU does with alpha, why order matters, and the four ways around sorting.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="transparency">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Transparency and Alpha</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Shaders & rendering · 8 chapters</div>
+  <h1>Transparency and Alpha</h1>
+  <p class="lede">Glass, smoke, foliage and fades all need something to show through. This unit explains what the GPU does with alpha, why order matters, and the four ways around sorting.</p>
+  <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
+</header>
+<figure class="keyart"><canvas data-render="transparency" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: three tinted glass spheres, blended back to front.</figcaption></figure>
+<div class="needs" data-needs="shader-anatomy#functions buffers#render-targets textures-sampling#filter"></div>
+
+<section class="chapter" id="alpha" data-title="What alpha means" data-builds="shader-anatomy#functions buffers#render-targets" data-summary="result = src · a + dst · (1 − a): a lerp from the background to the new colour.">
+  <div class="head"><div class="num"></div><h2>What alpha means</h2></div>
+
+  <div class="prose">
+    <p>Opaque surfaces simply replace the pixel behind them. A transparent surface has to <em>mix</em> with it, and the fourth channel of a colour, <button type="button" class="term" data-term="alpha">alpha</button>, says how much: 1 covers the background completely, 0 leaves it untouched. The GPU does the mixing after the pixel shader, when it writes the colour into the render target (<a class="x" href="../buffers/index.html#render-targets">render targets</a>), so it can read what is already there.</p>
+    <p>The standard mix is the <button type="button" class="term" data-term="over">over operator</button>. It is exactly a <a class="x" href="../shader-anatomy/index.html#functions">lerp</a> from the background to the new colour, by alpha:</p>
+  </div>
+  <div class="fx" data-fx="over"></div>
+  <div class="prose"><p>The new colour is called the <em>source</em>, the colour already in the target the <em>destination</em>. Every channel (red, green, blue) is mixed the same way, independently (<a class="x" href="../color-values/index.html#rgb">colours as numbers</a>). Mixing has to happen in linear values to look right (<a class="x" href="../color-values/index.html#linear-srgb">linear and sRGB</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A white particle (1) with alpha 0.25 is drawn over a black background (0). What is the result?", ["0", "0.25", "0.75", "1"], 1, "1 · 0.25 + 0 · 0.75 = 0.25."]]</script></details>
+
+</section>
+<section class="chapter" id="modes" data-title="Blend modes are one formula" data-builds="transparency#alpha color-values#rgb" data-summary="result = src · SrcFactor + dst · DstFactor; alpha, additive, multiply and premultiplied are factor choices.">
+  <div class="head"><div class="num"></div><h2>Blend modes are one formula</h2></div>
+
+  <div class="prose">
+    <p>The blending hardware always computes the same thing: <code>result = src · SrcFactor + dst · DstFactor</code>. A blend mode is just a choice of the two factors. The over operator uses (SrcAlpha, OneMinusSrcAlpha); fire and glows use <strong>additive</strong> (One, One), which only ever brightens; dirt and shadows use <strong>multiply</strong> (DstColor, Zero), which only ever darkens:</p>
+  </div>
+  <div class="fx" data-fx="modes"></div>
+  <pre class="hlsl"><span class="c">// Unity ShaderLab blend states for the four modes above</span>
+Blend SrcAlpha OneMinusSrcAlpha   <span class="c">// alpha (over)</span>
+Blend One One                     <span class="c">// additive</span>
+Blend DstColor Zero               <span class="c">// multiply</span>
+Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span></pre>
+  <div class="prose"><p>Additive and multiply have a useful property the over operator lacks: the order of the layers does not matter, because adding and multiplying do not care about order. The next chapter shows why that matters so much.</p></div>
+
+</section>
+<section class="chapter" id="order" data-title="Why the order matters" data-builds="transparency#modes reading-a-frame#overdraw" data-summary="Over is order-dependent: sort transparents back to front. Sorting is per object and fails for intersections.">
+  <div class="head"><div class="num"></div><h2>Why the order matters</h2></div>
+
+  <div class="prose">
+    <p>Draw a red layer and then a blue layer over the background, and you get a different colour than blue first and red second: the over operator puts more weight on whatever is drawn last. The only correct order is <strong>back to front</strong>. Try both:</p>
+  </div>
+  <div class="fx" data-fx="order"></div>
+  <div class="prose">
+    <p>Engines therefore draw opaque objects first, then sort the transparent objects by distance and draw them from far to near. Sorting is per <em>object</em>, by the distance of its centre, not per pixel. That breaks in three common cases: two transparent objects that intersect; a large object (water, a glass facade) whose centre is behind a small one in front of it; and a single mesh whose own triangles overlap (hair cards, a glass bottle). Every transparent layer is also shaded in full, which is why transparency is the main source of <a class="x" href="../reading-a-frame/index.html#overdraw">overdraw</a>.</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Set <em>Surface Type: Transparent</em>. <em>Sorting Priority</em> overrides the distance sort per material. <em>Transparent Depth Prepass</em> and <em>Postpass</em> write depth for transparents, which fixes self-sorting in many single-mesh cases and lets transparents receive depth-based effects.</p></div><div class="eng" data-engine="urp"><p>Set <em>Surface Type: Transparent</em> and pick a <em>Blending Mode</em> (Alpha, Premultiply, Additive, Multiply). <em>Sorting Priority</em> (or the render queue) overrides the order. Transparent objects do not write depth by default.</p></div><div class="eng" data-engine="unreal"><p>Blend modes <em>Translucent</em>, <em>Additive</em> and <em>Modulate</em>. <em>Translucency Sort Priority</em> on the component overrides sorting; <em>Separate Translucency</em> and the <em>Translucency Pass</em> choose when they draw relative to depth of field.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which mode can be drawn in any order and still give the same result?", ["Alpha (over)", "Additive", "Premultiplied over", "None"], 1, "Addition does not depend on order: a + b = b + a."]]</script></details>
+
+</section>
+<section class="chapter" id="premultiplied" data-title="Premultiplied alpha and dark fringes" data-builds="textures-sampling#filter" data-summary="Store colour × alpha; filtering then mixes correctly and blending uses One, OneMinusSrcAlpha.">
+  <div class="head"><div class="num"></div><h2>Premultiplied alpha and dark fringes</h2></div>
+
+  <div class="prose">
+    <p>A leaf texture has opaque green texels next to fully transparent ones. The transparent texels still store <em>some</em> colour, usually black. When the GPU <a class="x" href="../textures-sampling/index.html#filter">filters</a> between a green and a transparent texel, it blends the colours too, so the edge becomes half green, half black, at half alpha. Drawn with the over operator, that black shows up as a dark fringe.</p>
+    <p><button type="button" class="term" data-term="premult">Premultiplied alpha</button> stores colour already multiplied by alpha. A transparent texel is then (0, 0, 0, 0) by definition, filtering mixes the right amounts, and blending uses (One, OneMinusSrcAlpha):</p>
+  </div>
+  <div class="fx" data-fx="fringe"></div>
+  <div class="prose"><p>A second bonus: with premultiplied alpha, one blend state can do both normal and additive blending. A texel with colour but alpha 0 adds light without covering anything, which is how many particle systems mix smoke and fire in one texture.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A texel is red (1, 0, 0) with alpha 0.5. What does it store when premultiplied?", ["(1, 0, 0, 0.5)", "(0.5, 0, 0, 0.5)", "(0.5, 0, 0, 1)", "(1, 0, 0, 1)"], 1, "Colour times alpha: (0.5, 0, 0), alpha stays 0.5."]]</script></details>
+
+</section>
+<section class="chapter" id="alpha-test" data-title="Alpha test and thinning foliage" data-builds="texture-memory#mips" data-summary="clip(alpha − cutoff) gives opaque, sortable cutouts; mip averaging thins them unless coverage is preserved.">
+  <div class="head"><div class="num"></div><h2>Alpha test and thinning foliage</h2></div>
+
+  <div class="prose">
+    <p>Foliage, fences and hair cards usually avoid blending altogether. <button type="button" class="term" data-term="cutout">Alpha test</button> throws a pixel away when its alpha is below a cutoff (<code>clip(alpha − cutoff)</code>). The rest is drawn as fully opaque: no sorting, it writes depth and receives shadows. The cost is a hard edge, and that the GPU cannot always reject hidden pixels before running the shader.</p>
+    <p>Alpha test has one classic bug. <a class="x" href="../texture-memory/index.html#mips">Mip levels</a> average neighbouring texels, so a thin, fully opaque twig next to transparent texels becomes a wide, half-transparent texel in the next mip. Below the cutoff, it disappears:</p>
+  </div>
+  <div class="fx" data-fx="mipcoverage"></div>
+  <div class="prose"><p>That is why trees thin out and go bald in the distance. The fix is to rescale the alpha of each mip so that the fraction of texels above the cutoff stays the same as in mip 0 (<em>coverage-preserving mips</em>), an import option in most engines.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Enable <em>Alpha Clipping</em> on the material. In the texture importer, <em>Mip Maps Preserve Coverage</em> with an <em>Alpha Cutoff Value</em> equal to the material's keeps foliage full in the distance.</p></div><div class="eng" data-engine="urp"><p>Same: <em>Alpha Clipping</em> on the material and <em>Mip Maps Preserve Coverage</em> in the importer.</p></div><div class="eng" data-engine="unreal"><p>Blend mode <em>Masked</em> with <em>Opacity Mask Clip Value</em>. The texture setting <em>Mip Gen Settings</em> plus <em>Preserve Alpha Coverage</em> (with its reference value) preserves coverage across mips.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["A twig is 1 texel wide. In mip 2 one texel covers 4 × 4 mip-0 texels. Roughly what alpha does the twig's mip-2 texel get?", ["1", "0.5", "0.25", "0"], 2, "One opaque column out of four averages to about 0.25: below a 0.5 cutoff, the twig vanishes."]]</script></details>
+
+</section>
+<section class="chapter" id="a2c" data-title="Alpha to coverage" data-summary="covered samples = round(alpha · N): soft edges for cutouts with MSAA.">
+  <div class="head"><div class="num"></div><h2>Alpha to coverage</h2></div>
+
+  <div class="prose">
+    <p>With MSAA, each pixel has several coverage samples. <button type="button" class="term" data-term="a2c">Alpha to coverage</button> turns alpha into a number of covered samples instead of a hard yes or no, which gives cutouts soft, anti-aliased edges while keeping them opaque and order-free:</p>
+  </div>
+  <div class="fx" data-fx="a2c"></div>
+  <div class="prose"><p>It only works with MSAA, which forward renderers (URP Forward, HDRP Forward, Unreal Forward Shading) can use and deferred ones generally cannot. With TAA instead of MSAA, dithering (next chapter) plays the same role.</p></div>
+
+</section>
+<section class="chapter" id="dither" data-title="Dithered transparency" data-builds="reading-a-frame#lods" data-summary="visible if alpha &gt; threshold(x, y) from a Bayer pattern; TAA smooths the pattern.">
+  <div class="head"><div class="num"></div><h2>Dithered transparency</h2></div>
+
+  <div class="prose">
+    <p>Dithering fakes transparency with alpha test: each pixel compares alpha with a different threshold from a small repeating pattern, a <button type="button" class="term" data-term="bayer">Bayer matrix</button>. At alpha 0.5, half the pixels in every 4 × 4 block survive. The result is opaque, needs no sorting and writes depth; the pattern is smoothed by temporal anti-aliasing, which blends several frames with shifted patterns:</p>
+  </div>
+  <div class="fx" data-fx="dither"></div>
+  <div class="prose"><p>Typical uses: fading objects that come between the camera and the player, cross-fading between two <a class="x" href="../reading-a-frame/index.html#lods">LODs</a> without a pop, and hair. Without TAA, the pattern is visible as a screen-door grid.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Why does a dithered fade not need sorting?", ["The GPU sorts it", "Each pixel is either fully drawn or discarded, like an opaque surface", "It is drawn last", "It has no depth"], 1, "No pixel is blended, so the order does not matter."]]</script></details>
+
+</section>
+<section class="chapter" id="oit" data-title="Order-independent transparency" data-builds="transparency#order" data-summary="C = Σ cᵢaᵢwᵢ / Σ aᵢwᵢ, revealage = Π(1 − aᵢ), result = C·(1 − revealage) + dst·revealage.">
+  <div class="head"><div class="num"></div><h2>Order-independent transparency</h2></div>
+
+  <div class="prose">
+    <p>Sorting per object fails for intersecting layers. <button type="button" class="term" data-term="oit">Order-independent transparency</button> techniques avoid sorting altogether. The simplest one in production, <em>weighted blended OIT</em>, adds up all layers with weights (order does not matter for sums, see <a href="#modes">blend modes</a>), counts how much background survives as a product (also order-free), and divides at the end:</p>
+  </div>
+  <div class="fx" data-fx="oit"></div>
+  <div class="prose"><p>The result is an approximation: with two strongly coloured, nearly opaque layers it cannot tell which is in front, which the depth-based weight only partly fixes. For glass, smoke and particles with moderate alpha it is very close, and it never pops when objects cross.</p></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-OpenGL/Blending" rel="noopener">Blending</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">Blend factors, sorting and alpha discard with code.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/SL-Blend.html" rel="noopener">ShaderLab command: Blend</a></span><span class="by">Unity</span><span class="why">Every blend factor and operation available in Unity shaders.</span></li><li><span><span class="kind">Paper</span><a href="https://jcgt.org/published/0002/02/09/" rel="noopener">Weighted Blended Order-Independent Transparency</a></span><span class="by">Morgan McGuire, Louis Bavoil · JCGT 2013</span><span class="why">The OIT method from the last chapter, with weight functions.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased Alpha Test: The Esoteric Alpha To Coverage</a></span><span class="by">Ben Golus</span><span class="why">Alpha test, mip coverage and alpha to coverage in depth.</span></li><li><span><span class="kind">Article</span><a href="http://www.ludicon.com/castano/blog/articles/computing-alpha-mipmaps/" rel="noopener">Computing Alpha Mipmaps</a></span><span class="by">Ignacio Castaño</span><span class="why">The coverage-preserving mip rescale used by engines.</span></li></ul>
+</section>
+
+<div class="next" data-next="depth-effects cloud-march reading-a-frame"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"alpha": [
+"Alpha",
+"The fourth colour channel; for blending, how much a surface covers what is behind it (0 to 1)."
+],
+"over": [
+"Over operator",
+"src · a + dst · (1 − a): drawing a semi-transparent layer over what is already there.",
+"#alpha"
+],
+"premult": [
+"Premultiplied alpha",
+"Storing colour already multiplied by alpha, so filtering and blending mix correctly.",
+"#premultiplied"
+],
+"cutout": [
+"Alpha test",
+"Discarding pixels whose alpha is below a cutoff; the rest is drawn as opaque. Also called alpha clipping or masked.",
+"#alpha-test"
+],
+"a2c": [
+"Alpha to coverage",
+"Using alpha to decide how many MSAA samples of a pixel are covered.",
+"#a2c"
+],
+"bayer": [
+"Bayer matrix",
+"A small grid of thresholds used for ordered dithering.",
+"#dither"
+],
+"oit": [
+"Order-independent transparency",
+"Blending methods whose result does not depend on draw order.",
+"#oit"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="transparency.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Colour as Numbers · Tech Art Atlas</title>
+<meta name="description" content="Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="color-values">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Colour as Numbers</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 4 chapters</div>
+  <h1>Colour as Numbers</h1>
+  <p class="lede">Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.</p>
+  <p class="meta">Swatches below show the colours as your screen displays them.</p>
+</header>
+<figure class="keyart"><canvas data-render="color-values" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: red, green and blue lights adding up on a grey floor.</figcaption></figure>
+<div class="needs" data-needs="vectors#what shader-anatomy#functions"></div>
+
+<section class="chapter" id="rgb" data-title="A colour is three numbers" data-builds="vectors#what shader-anatomy#types" data-summary="A colour is (r, g, b) from 0 to 1; 8-bit images store 0–255.">
+  <div class="head"><div class="num"></div><h2>A colour is three numbers</h2></div>
+
+  <div class="prose">
+    <p>Screens make every colour from three lights per pixel: red, green and blue. A colour in a shader is therefore three numbers, usually written from 0 (off) to 1 (full). Image files and colour pickers often show the same values as 0 to 255, because they store each number in 8 bits; divide by 255 to get the shader's value.</p>
+  </div>
+  <div class="fx" data-fx="rgb"></div>
+  <div class="prose">
+    <p>Because a colour is a <a class="x" href="../vectors/index.html#what">vector</a>, colour maths is vector maths, done <a class="x" href="../shader-anatomy/index.html#types">part by part</a>. Adding two colours adds light, like two lamps on one wall. Multiplying filters, like light passing through tinted glass or bouncing off a coloured surface.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A colour picker shows (255, 128, 0). What does the shader see?", ["(255, 128, 0)", "(1, 0.5, 0)", "(1, 0.502, 0) before any sRGB decoding", "(0.5, 0.25, 0)"], 2, "Divide by 255. Whether the value is then decoded from sRGB is the next chapter."]]</script></details>
+
+</section>
+<section class="chapter" id="linear-srgb" data-title="Linear values and sRGB encoding" data-builds="color-values#rgb shader-anatomy#functions" data-summary="Stored colours are sRGB-encoded; lighting and blending must use decoded, linear values.">
+  <div class="head"><div class="num"></div><h2>Linear values and sRGB encoding</h2></div>
+
+  <div class="prose">
+    <p>Our eyes notice small changes in dark tones far more than in bright ones. To spend the 256 steps of an 8-bit image where they are most visible, images and screens use an encoding called <button type="button" class="term" data-term="srgb">sRGB</button>: the stored number is roughly the true light value raised to the power 1/2.2. A stored 0.5 does not mean "half the light"; it means about 21% of it.</p>
+  </div>
+  <div class="fx" data-fx="srgb"></div>
+  <div class="prose">
+    <p>Lighting maths must happen on the true, <button type="button" class="term" data-term="linear">linear</button> values: light adds up physically only there. Blending is the classic example. Mixing pure red and pure green 50/50 should give a yellow as bright as each of them; doing it on the encoded values gives a dark, muddy yellow:</p>
+  </div>
+  <div class="fx" data-fx="blend"></div>
+  <div class="prose">
+    <p>Engines handle this for you when settings are right: colour textures are flagged sRGB so the GPU decodes them when sampled, the shader works in linear, and the final image is encoded once at the end (<a class="x" href="../exposure/index.html#display">Sun to Screen: encoding for the display</a>). Data textures such as roughness must <em>not</em> be decoded (<a class="x" href="../texture-memory/index.html#color-data">Texels on a Budget: colour data and other data</a>).</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP always works in linear. Colour textures need <em>sRGB (Color Texture)</em> ticked in the importer; data textures need it unticked.</p></div><div class="eng" data-engine="urp"><p>Check <em>Project Settings → Player → Color Space = Linear</em>. Gamma mode exists for very old mobile devices and makes lighting and blending wrong in the way shown above.</p></div><div class="eng" data-engine="unreal"><p>Unreal works in linear. The texture's <em>sRGB</em> checkbox and the material sampler type (<em>Color</em> versus <em>Linear Color</em> or <em>Masks</em>) must agree.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["A texture texel stores 0.5 and is flagged sRGB. Roughly what value does the shader receive?", ["0.5", "0.21", "0.73", "0.25"], 1, "sRGB decoding of 0.5 gives about 0.214."], ["Why must lighting be computed on linear values?", ["It is faster", "Only linear values add up like real light", "sRGB cannot store negative numbers", "The GPU requires it"], 1, "Two lamps double the light only in linear values."]]</script></details>
+
+</section>
+<section class="chapter" id="hdr" data-title="Values above 1" data-builds="color-values#linear-srgb" data-summary="Scenes are rendered in HDR with values above 1; exposure and tonemapping bring them into 0–1.">
+  <div class="head"><div class="num"></div><h2>Values above 1</h2></div>
+
+  <div class="prose">
+    <p>A screen can only show 0 to 1, but light in a scene has no upper limit: the sun is many thousand times brighter than a lamp-lit wall. Renderers therefore compute in <button type="button" class="term" data-term="hdr">high dynamic range</button>: colour values far above 1, stored in 16-bit float <a class="x" href="../buffers/index.html#render-targets">render targets</a>. At the end of the frame, exposure scales them and a tonemapping curve squeezes them into 0–1:</p>
+  </div>
+  <div class="fx" data-fx="hdr"></div>
+  <div class="prose"><p>Exposure and the curves used for this, with real light units, are the whole subject of <a class="x" href="../exposure/index.html#range">Sun to Screen</a>.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A pixel's linear value is 6.0 before tonemapping. Is that a bug?", ["Yes, colours must stay below 1", "No, HDR values above 1 are normal until tonemapping", "Only on mobile", "Only for red"], 1, "Bright light sources and sunlit surfaces are far above 1 in linear HDR."]]</script></details>
+
+</section>
+<section class="chapter" id="luminance" data-title="How bright a colour looks" data-builds="color-values#linear-srgb dot-cross#dot" data-summary="Luminance Y = 0.2126 R + 0.7152 G + 0.0722 B on linear values.">
+  <div class="head"><div class="num"></div><h2>How bright a colour looks</h2></div>
+
+  <div class="prose">
+    <p>The eye is most sensitive to green and least to blue, so (0, 1, 0) looks much brighter than (0, 0, 1) at the same value. The <button type="button" class="term" data-term="luminance">luminance</button> of a linear colour weighs the three parts accordingly. Use it whenever you need one brightness number from a colour: desaturation, bloom thresholds, auto exposure.</p>
+  </div>
+  <div class="fx" data-fx="luma"></div>
+  <div class="prose"><p>The weights 0.2126, 0.7152 and 0.0722 are those of the Rec. 709 / sRGB primaries and only make sense on linear values. In HLSL: <code>dot(c, float3(0.2126, 0.7152, 0.0722))</code>, a <a class="x" href="../dot-cross/index.html#dot">dot product</a>; Unity's <code>Luminance()</code> function does the same.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which looks brightest at the same value: pure red, pure green or pure blue?", ["Red", "Green", "Blue", "All equal"], 1, "Green carries 71.5% of the luminance weight."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/" rel="noopener">What every coder should know about gamma</a></span><span class="by">John Novak</span><span class="why">Linear against sRGB values with clear pictures of what goes wrong.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/LinearLighting.html" rel="noopener">Linear or gamma workflow</a></span><span class="by">Unity</span><span class="why">How Unity handles colour space and which textures are sRGB.</span></li><li><span><span class="kind">Reference</span><a href="https://en.wikipedia.org/wiki/SRGB" rel="noopener">sRGB</a></span><span class="by">Wikipedia</span><span class="why">The transfer function constants used in this unit.</span></li></ul>
+</section>
+
+<div class="next" data-next="exposure textures-sampling texture-memory"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"srgb": [
+"sRGB encoding",
+"The curve images and screens use to store colour: roughly value^(1/2.2). Gives dark tones more of the available steps."
+],
+"linear": [
+"Linear values",
+"Colour values proportional to the amount of light. Required for lighting and blending."
+],
+"hdr": [
+"HDR",
+"High dynamic range: rendering with values far above 1, compressed for display at the end of the frame.",
+"../exposure/index.html#curves"
+],
+"luminance": [
+"Luminance",
+"Perceived brightness of a linear colour: 0.2126 R + 0.7152 G + 0.0722 B.",
+"../exposure/index.html#units"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="color-values.js"></script>
+</body>
+</html>

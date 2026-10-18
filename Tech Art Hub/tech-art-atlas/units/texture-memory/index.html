@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Texels on a Budget · Tech Art Atlas</title>
+<meta name="description" content="Textures are usually the biggest item in a game&#x27;s memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="texture-memory">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Texels on a Budget</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 9 chapters</div>
+  <h1>Texels on a Budget</h1>
+  <p class="lede">Textures are usually the biggest item in a game's memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.</p>
+  <p class="meta">From bytes per texel down to the bits in a 4×4 block, with notes for Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="texture-memory" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser. Left: the lit material. Right: the mip level each pixel samples at 1080p.</figcaption></figure>
+<div class="needs" data-needs="textures-sampling#texture textures-sampling#mips color-values#linear-srgb spaces#tangent"></div>
+
+<section class="chapter" id="cost" data-title="What a texture costs" data-builds="textures-sampling#texture" data-summary="bytes = width · height · bpp / 8, × 4/3 with mips. Resolution ×2 = memory ×4.">
+  <div class="head"><div class="num"></div><h2>What a texture costs</h2></div>
+
+  <div class="prose">
+    <p>A texture in GPU memory is a grid of <button type="button" class="term" data-term="texel">texels</button> (<a class="x" href="../textures-sampling/index.html#texture">what a texture is</a>). Its format fixes how many <button type="button" class="term" data-term="bpp">bits each texel takes</button>. Multiply, divide by 8 for bytes, and add a third if the texture has a <a class="x" href="../textures-sampling/index.html#mips">mip chain</a>:</p>
+  </div>
+  <div class="fx" data-fx="texmem"></div>
+  <div class="prose">
+    <p>Two things stand out when you move the sliders. Doubling the resolution quadruples the memory, because both sides double. And the format changes the result by a factor of eight: compression is not a polish step, it is the main lever.</p>
+    <p>The file on disk tells you nothing. A 6 MB PNG and a 40 MB TGA of the same image become the same few megabytes once the engine imports and compresses them. Always read the size in the engine's importer or memory profiler.</p>
+  </div>
+  <div class="lab">
+      <div class="lab-head"><span class="lab-tag">Lab</span>What one material costs<span class="lab-hint">Set resolution and format per map, then scale up to a level.</span></div>
+      <div class="memrows" id="mem-rows"></div>
+      <label class="chk"><input type="checkbox" id="mem-mips" checked> Generate mipmaps</label>
+      <canvas id="mem-bar" class="fig" width="560" height="64" aria-label="Memory per map"></canvas>
+      <div class="ctl"><label for="mem-n">Materials</label><input type="range" id="mem-n" min="1" max="400" step="1" value="120"><output id="mem-n-o"></output></div>
+      <p class="cap" id="mem-cap"></p>
+    </div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>The texture inspector's preview footer shows the imported size and format for the selected platform. <em>Window → Analysis → Memory Profiler</em> lists textures in a captured build by size. Max Size, Format and Compression can be overridden per platform tab in the importer.</p></div>
+    <div class="eng" data-engine="urp"><p>Same importer and profiler as HDRP. On mobile targets the platform tab defaults to ASTC; check the block size there, because ASTC 4×4 is four times the memory of ASTC 8×8.</p></div>
+    <div class="eng" data-engine="unreal"><p>The texture editor shows <em>Resource Size</em> and the format chosen by the <em>Compression Settings</em>. In the console, <code>ListTextures</code> prints every loaded texture with size and format; the <em>Size Map</em> on an asset shows what it pulls in. <em>Maximum Texture Size</em> and <em>LOD Bias</em> cap resolution without reimporting.</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A 2048×2048 texture in BC7 with mips. Roughly how much memory?", ["1.3 MiB", "4 MiB", "5.3 MiB", "16 MiB"], 2, "2048² × 8 bits / 8 = 4 MiB, × 4/3 for mips ≈ 5.3 MiB."], ["You halve a texture's resolution from 4096² to 2048². What happens to its memory?", ["Halves", "Drops to a quarter", "Drops to an eighth", "Unchanged, only mips change"], 1, "Both dimensions halve: ½ × ½ = ¼."]]</script></details>
+
+</section>
+<section class="chapter" id="mips" data-title="Mipmaps and how the GPU picks one" data-builds="textures-sampling#mips textures-sampling#filter" data-summary="The chain adds 1/3. Mip level = log₂(texels per pixel), measured from UV derivatives across a 2×2 quad.">
+  <div class="head"><div class="num"></div><h2>Mipmaps and how the GPU picks one</h2></div>
+
+  <div class="prose">
+    <p>A mip chain stores the texture at full size, then half, quarter and so on down to 1×1. Each level has a quarter of the texels of the one before, so the whole chain adds up to a third more:</p>
+  </div>
+  <div class="fx" data-fx="mipsum"></div>
+  <div class="prose">
+    <p>Mips prevent <button type="button" class="term" data-term="aliasing">aliasing</button>: far away, one pixel covers many texels, and picking just one of them gives a different texel each frame, so detail crawls and sparkles. A smaller mip has already averaged them. They also keep neighbouring pixels reading neighbouring texels, which stay in the GPU's texture cache.</p>
+    <p>The GPU picks the level by itself. Pixels are shaded in 2×2 <button type="button" class="term" data-term="quad">quads</button> (<a class="x" href="../reading-a-frame/index.html#quads">why quads matter for cost</a>), so it can measure how much the UV changes from one pixel to the next: the <button type="button" class="term" data-term="derivative">screen-space derivatives</button> <code>ddx(uv)</code> and <code>ddy(uv)</code>. Turned into texels, that says how many texels one pixel spans; its log₂ is the mip level:</p>
+  </div>
+  <div class="fx" data-fx="miplevel"></div>
+  <div class="prose">
+    <p>With <button type="button" class="term" data-term="aniso">anisotropic filtering</button>, the GPU takes several samples along the long side of the pixel's footprint and picks the mip from the short side, so floors at a grazing angle stay sharp. Compare in the lab.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Which mip at which distance<span class="lab-hint">A floor seen by a standing player. Colors are mip levels. Hover for the numbers.</span></div>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="mip" class="fig" width="560" height="340" aria-label="Floor plane colored by mip level"></canvas>
+        <div class="swatches" id="mip-key"></div>
+      </div>
+      <div class="side">
+        <div class="ctl"><label for="mip-d">Texel density</label><input type="range" id="mip-d" min="6" max="11" step="1" value="9"><output id="mip-d-o"></output></div>
+        <div class="ctl"><label for="mip-res">Screen height</label><input type="range" id="mip-res" min="0" max="3" step="1" value="1"><output id="mip-res-o"></output></div>
+        <div class="ctl"><label for="mip-fov">Vertical FOV</label><input type="range" id="mip-fov" min="30" max="90" step="1" value="60"><output id="mip-fov-o"></output></div>
+        <div class="seg" id="mip-aniso" role="group" aria-label="Filtering"><button type="button" data-v="1" aria-pressed="true">Trilinear</button><button type="button" data-v="4">Aniso 4×</button><button type="button" data-v="16">Aniso 16×</button></div>
+        <table class="ro" id="mip-ro"></table>
+      </div>
+    </div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["How does the GPU choose a mip level?", ["From the distance to the camera", "From the UV change between neighboring pixels in a 2×2 quad", "From the triangle size", "From the texture's import setting"], 1, "Screen-space derivatives give texels per pixel; the log₂ of that is the mip level."]]</script></details>
+
+</section>
+<section class="chapter" id="density" data-title="Texel density" data-builds="texture-memory#mips spaces#perspective" data-summary="Screen px per metre = screenHeight / (2·d·tan(fov/2)). Mip ≈ log₂(density / that).">
+  <div class="head"><div class="num"></div><h2>Texel density</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="density">Texel density</button> is texels per metre of surface. It keeps a project consistent: if a wall gets 512 px/m and the crate next to it 2048 px/m, the crate looks sharp and the wall blurry, although both "are 2K textures".</p>
+    <p>How much density can the screen show? It depends on how many pixels a metre of surface covers, which falls with distance (the <a class="x" href="../spaces/index.html#perspective">perspective divide</a>). Compare the two, and you know which mip the GPU will pick and whether the top mips are ever seen:</p>
+  </div>
+  <div class="fx" data-fx="density"></div>
+  <div class="prose">
+    <p>At 1080p and a 60° field of view, a surface 1 m away gets about 935 screen pixels per metre. Anything above that is invisible at that distance and only costs memory. Typical targets are 1024 px/m for first-person games, where players press against walls, and 512 px/m for third-person cameras. Pick a number per project, write it down, and check assets against it.</p>
+  </div>
+  <div class="key" style="margin-top:18px"><b>Rule of thumb</b>Each halving of distance needs double the density. A prop only ever seen from 4 m needs a quarter of the density of one the player can touch.</div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>Unity has no built-in density view. Use a checker texture with known texels per meter, or the mip map views in HDRP's Rendering Debugger (<em>Rendering</em> panel) to see where textures are under- or over-sampled.</p></div>
+    <div class="eng" data-engine="urp"><p>A checker material with a fixed tiling and a known texels-per-meter value is the quickest density check. Recent Unity 6 versions add mipmap debug views to the Rendering Debugger for URP as well.</p></div>
+    <div class="eng" data-engine="unreal"><p>The <em>Required Texture Resolution</em> view mode compares texture resolution with what the screen needs, and <em>Texture Streaming Accuracy</em> modes show where the streamer guesses wrong. Both are under <em>Optimization Viewmodes</em>.</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["At 1080p, 60° vertical FOV, roughly how many screen pixels does a camera-facing surface get per meter at 4 m?", ["≈ 935", "≈ 470", "≈ 234", "≈ 117"], 2, "1080 / (2 × 4 × tan 30°) = 1080 / 4.62 ≈ 234."]]</script></details>
+
+</section>
+<section class="chapter" id="blocks" data-title="Block compression" data-summary="4×4 blocks at a fixed size. BC1: two endpoints + a 2-bit index per texel, 8 bytes per block, 4 bpp.">
+  <div class="head"><div class="num"></div><h2>Block compression</h2></div>
+
+  <div class="prose">
+    <p>GPU texture formats are not JPEG. The GPU must read any texel at once without decoding the rest of the image, so the texture is cut into fixed 4×4 <button type="button" class="term" data-term="block">blocks</button> and every block compresses to the same number of bytes. To find texel (x, y), the GPU computes the block index directly.</p>
+    <p>The oldest scheme, <button type="button" class="term" data-term="bc1">BC1</button> (DXT1), stores a block in 8 bytes: two endpoint colours and a 2-bit index per texel. The two endpoints and two blends between them at ⅓ and ⅔ form a four-colour palette; every texel stores which of the four it is closest to. Here is the idea in one channel:</p>
+  </div>
+  <div class="fx" data-fx="bc1"></div>
+  <div class="prose">
+    <p>That design explains every BC1 artefact. All four palette colours lie on one straight line through RGB space, so a block containing red, green and blue at once cannot be represented and smears. And the endpoints are stored with 5 bits for red and blue and 6 for green, so smooth gradients step. Click blocks in the lab to see both.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>A BC1 encoder<span class="lab-hint">Click a block. Compare the two ways of picking endpoints.</span></div>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="bc" class="fig" width="600" height="230" aria-label="Original, BC1 compressed and error images"></canvas>
+        <p class="cap">Left: 64×64 source. Middle: after BC1. Right: error × 6. The outlined square is the selected block.</p>
+      </div>
+      <div class="side">
+        <div class="seg" id="bc-mode" role="group" aria-label="Endpoint method"><button type="button" data-v="box" aria-pressed="false">Bounding box</button><button type="button" data-v="pca" aria-pressed="true">Principal axis</button></div>
+        <canvas id="bc-block" class="fig" width="340" height="150" aria-label="Selected block detail"></canvas>
+        <table class="ro" id="bc-ro"></table>
+      </div>
+    </div>
+  </div>
+  <h3 style="margin-top:30px">The formats you will meet</h3>
+  <div class="tablewrap">
+  <table class="vals">
+    <thead><tr><th>Format</th><th>bpp</th><th>Channels</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td class="k">RGBA8</td><td class="m">32</td><td>RGBA, uncompressed</td><td>UI that must be exact, small lookup textures</td></tr>
+      <tr><td class="k">BC1 (DXT1)</td><td class="m">4</td><td>RGB, 1-bit alpha</td><td>Opaque color where some blockiness is acceptable</td></tr>
+      <tr><td class="k">BC3 (DXT5)</td><td class="m">8</td><td>RGB as BC1 + separate alpha block</td><td>Color with smooth alpha; legacy packed masks</td></tr>
+      <tr><td class="k">BC4</td><td class="m">4</td><td>One channel, 8 levels per block between two 8-bit ends</td><td>Height, single masks, roughness alone</td></tr>
+      <tr><td class="k">BC5</td><td class="m">8</td><td>Two BC4 channels</td><td>Tangent-space normal maps (X, Y)</td></tr>
+      <tr><td class="k">BC6H</td><td class="m">8</td><td>RGB half-float</td><td>HDR: skies, lightmaps, reflection probes</td></tr>
+      <tr><td class="k">BC7</td><td class="m">8</td><td>RGB or RGBA, many partition modes</td><td>High-quality color and packed masks on PC and console</td></tr>
+      <tr><td class="k">ASTC 4×4 … 12×12</td><td class="m">8 … 0.89</td><td>Any, 128 bits per block of any size</td><td>Mobile (and Switch). Block size trades quality for memory</td></tr>
+      <tr><td class="k">ETC2 RGB / RGBA</td><td class="m">4 / 8</td><td>RGB, RGBA</td><td>Older Android devices without ASTC</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>In the importer's platform override choose formats directly: <em>RGB Compressed BC1</em>, <em>RGBA Compressed BC7</em>, <em>R Compressed BC4</em>, <em>RG Compressed BC5</em>, <em>RGB HDR Compressed BC6H</em>. With <em>Automatic</em>, the <em>Compression</em> quality setting decides; <em>High Quality</em> usually selects BC7.</p></div>
+    <div class="eng" data-engine="urp"><p>Same formats on desktop. For Android and iOS the default is ASTC with a block size per texture; 6×6 is a common middle ground for color, 4×4 for normals and UI, 8×8 for large blurry maps.</p></div>
+    <div class="eng" data-engine="unreal"><p>Pick a <em>Compression Settings</em> preset rather than a raw format: <em>Default</em> (BC1, or BC3 with alpha), <em>Normalmap</em> (BC5), <em>Masks</em> (BC1/BC3 with sRGB off), <em>Grayscale</em> (single channel), <em>HDR</em> and <em>HDR Compressed</em> (BC6H), <em>BC7</em>. The preset also sets sRGB and mip behaviour correctly.</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Why can GPUs not use JPEG for textures?", ["JPEG has no alpha", "Sampling needs any texel in constant time; JPEG must decode large regions", "JPEG is patented", "JPEG is too lossy"], 1, "Block formats compress fixed 4×4 blocks to fixed sizes, so the GPU can find and decode any block directly."], ["A BC1 block contains a sharp red, green and blue pattern. What does the encoder struggle with?", ["Alpha", "The four palette colors lie on one line in RGB, which cannot pass through all three", "565 has too much precision", "Mipmaps"], 1, "All four palette entries are interpolated between two endpoints, so they lie on a straight segment in color space."], ["In BC1, which channel has the most precision?", ["Red", "Green", "Blue", "Alpha"], 1, "RGB565: green gets 6 bits, red and blue 5."]]</script></details>
+
+</section>
+<section class="chapter" id="color-data" data-title="Colour data and other data" data-builds="color-values#linear-srgb" data-summary="Colour maps: sRGB on. Data maps (roughness, masks, normals): sRGB off, or 0.5 reads as 0.21.">
+  <div class="head"><div class="num"></div><h2>Colour data and other data</h2></div>
+
+  <div class="prose">
+    <p>Colour textures are painted on sRGB monitors, so they are stored <button type="button" class="term" data-term="srgb">sRGB-encoded</button> (<a class="x" href="../color-values/index.html#linear-srgb">what that means</a>). When the shader samples them, the GPU decodes to linear values for free, because lighting maths must happen in linear.</p>
+    <p>Everything else is data: roughness, metallic, AO, masks, height, normals. Those numbers mean exactly what they say and must be imported with sRGB off. If a roughness map is flagged as sRGB, the GPU "decodes" it anyway:</p>
+  </div>
+  <div class="fx" data-fx="wrongflag"></div>
+  <div class="prose"><p>Every surface becomes glossier than painted, and the artist compensates by hand until nothing matches the reference.</p></div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>What the shader actually reads<span class="lab-hint">A data texture sampled with the wrong flag.</span></div>
+    <div class="lab-body even">
+      <div class="stage">
+        <canvas id="srgb" class="fig" width="460" height="300" aria-label="Stored value versus value read by the shader"></canvas>
+      </div>
+      <div class="side">
+        <div class="ctl"><label for="sr-v">Stored byte</label><input type="range" id="sr-v" min="0" max="255" step="1" value="128"><output id="sr-v-o"></output></div>
+        <table class="ro" id="sr-ro"></table>
+        <p class="cap">The spheres show a roughness ramp from 0.15 to 0.9. Top row as painted, bottom row as the shader sees it with the sRGB flag on.</p>
+        <canvas id="srgb-spec" class="fig" width="340" height="110" aria-label="Highlight size with correct and wrong flag"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>Untick <em>sRGB (Color Texture)</em> in the importer for every data map. Texture Type <em>Normal map</em> handles it automatically. HDRP mask maps and detail maps are data.</p></div>
+    <div class="eng" data-engine="urp"><p>Same checkbox. URP's metallic/smoothness map is data; base color and emission are color.</p></div>
+    <div class="eng" data-engine="unreal"><p>The <em>sRGB</em> checkbox in the texture editor. The <em>Masks</em> and <em>Normalmap</em> compression presets turn it off for you. In the material, a Texture Sample's <em>Sampler Type</em> must match (<em>Linear Color</em> or <em>Masks</em> for data), or the editor shows an error.</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A roughness map is imported with sRGB on. A texel stores 0.5. What does the shader read?", ["0.5", "≈ 0.73", "≈ 0.21", "1.0"], 2, "sRGB decode of 0.5 is about 0.214. Surfaces become glossier than painted."]]</script></details>
+
+</section>
+<section class="chapter" id="packing" data-title="Channel packing" data-builds="shader-anatomy#types" data-summary="Up to four greyscale maps in one RGBA texture. Match the engine layout; smoothness = 1 − roughness.">
+  <div class="head"><div class="num"></div><h2>Channel packing</h2></div>
+
+  <div class="prose">
+    <p>Roughness, metallic and AO are each a single number per texel. Storing each in its own RGB texture wastes two thirds of it and costs three samples. <button type="button" class="term" data-term="packing">Channel packing</button> puts up to four greyscale maps into the R, G, B and A of one texture (<a class="x" href="../shader-anatomy/index.html#types">a float4, read with swizzles</a>):</p>
+  </div>
+  <div class="fx" data-fx="packmem"></div>
+  <div class="prose">
+    <p>Two details decide whether a packed map looks good. <strong>The format</strong>: BC1 and BC3 encode R, G and B together along one line, so unrelated maps interfere; BC7 handles it far better, and alpha is always compressed separately, which makes A the best slot for the most important map. <strong>The layout</strong>: each engine's standard shader expects a specific one, and Unity stores <em>smoothness</em> where Unreal conventions store <em>roughness</em>. Smoothness = 1 − roughness, so moving maps between engines means inverting that channel, not just moving it.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Pack a mask map<span class="lab-hint">Load an engine layout, then try to break it.</span></div>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="pack" class="fig" width="600" height="190" aria-label="Packed channels and combined preview"></canvas>
+        <div class="slots" id="pack-slots"></div>
+      </div>
+      <div class="side">
+        <div class="seg" id="pack-preset" role="group" aria-label="Layout"><button type="button" data-v="hdrp" aria-pressed="true">HDRP Mask</button><button type="button" data-v="urp">URP Metallic</button><button type="button" data-v="unreal">Unreal ORM</button></div>
+        <div class="row"><label class="chk" for="pack-fmt">Format</label><select class="sel" id="pack-fmt"><option value="bc1">BC1 · 4 bpp</option><option value="bc3">BC3 · 8 bpp</option><option value="bc7" selected>BC7 · 8 bpp</option></select><label class="chk"><input type="checkbox" id="pack-srgb"> sRGB</label></div>
+        <ul class="warns" id="pack-warn"></ul>
+      </div>
+    </div>
+  </div>
+  <div class="tablewrap">
+  <table class="vals">
+    <thead><tr><th>Layout</th><th>R</th><th>G</th><th>B</th><th>A</th></tr></thead>
+    <tbody>
+      <tr><td>HDRP Lit · Mask Map</td><td>Metallic</td><td>Ambient occlusion</td><td>Detail mask</td><td>Smoothness</td></tr>
+      <tr><td>HDRP Lit · Detail Map</td><td>Albedo (desaturated, 0.5 neutral)</td><td>Normal Y</td><td>Smoothness</td><td>Normal X</td></tr>
+      <tr><td>URP Lit · Metallic Map</td><td>Metallic</td><td>—</td><td>—</td><td>Smoothness (source: Metallic Alpha)</td></tr>
+      <tr><td>Unreal · ORM (common convention)</td><td>Occlusion</td><td>Roughness</td><td>Metallic</td><td>free (height, opacity)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cap" style="margin-top:8px">Unreal's materials read any channel you wire, so ORM is a team convention rather than an engine rule.</p>
+  <details class="check"><summary></summary><script type="application/json">[["You move an Unreal ORM map into HDRP's mask map slot unchanged. What goes wrong?", ["Nothing, the layouts match", "AO lands in metallic, roughness in AO and metallic in the detail mask, and alpha (smoothness) holds nothing useful", "Only the sRGB flag is wrong", "HDRP rejects the texture"], 1, "HDRP expects R metallic, G AO, B detail mask, A smoothness. The channels must be moved, and roughness inverted into alpha."]]</script></details>
+
+</section>
+<section class="chapter" id="normals" data-title="Normal maps" data-builds="spaces#tangent vectors#normalize" data-summary="Stored as n·0.5 + 0.5; keep X, Y in BC5 and rebuild z = √(1 − x² − y²). Check the green convention.">
+  <div class="head"><div class="num"></div><h2>Normal maps</h2></div>
+
+  <div class="prose">
+    <p>A tangent-space <button type="button" class="term" data-term="normalmap">normal map</button> stores a direction per texel in the surface's own frame (<a class="x" href="../spaces/index.html#tangent">tangent space</a>): X along U, Y along V, Z out of the surface. Directions run from −1 to 1, texels from 0 to 1, so each component is stored as n · 0.5 + 0.5. Flat is (0, 0, 1), stored as (0.5, 0.5, 1): the typical lilac.</p>
+    <p>A normal has length 1 and Z is always positive in tangent space, so Z can be rebuilt from X and Y. Engines store only X and Y, in a two-channel format (<button type="button" class="term" data-term="bc5">BC5</button>) that gives each its own high-precision block:</p>
+  </div>
+  <div class="fx" data-fx="nz"></div>
+  <div class="prose">
+    <p>The one convention that differs between tools is the sign of Y, the <button type="button" class="term" data-term="greenflip">green channel</button>. OpenGL style (Y+) means green points up the texture, DirectX style (Y−) down. Unity and Blender use Y+, Unreal and 3ds Max use Y−. A map with the wrong convention lights as if every bump were a dent, but only for light from above or below, which is why it slips through review. A normal map changes lighting only; to make the surface hide parts of itself, add a height map and <a class="x" href="../parallax/index.html#heightmap">parallax</a>.</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Bumps or dents<span class="lab-hint">Rotate the light. Then flip green and rotate again.</span></div>
+    <div class="lab-body">
+      <div class="stage">
+        <canvas id="nrm" class="fig" width="600" height="300" aria-label="Normal map and lit result"></canvas>
+      </div>
+      <div class="side">
+        <div class="ctl"><label for="nrm-a">Light angle</label><input type="range" id="nrm-a" min="0" max="360" step="1" value="90"><output id="nrm-a-o"></output></div>
+        <div class="ctl"><label for="nrm-e">Light height</label><input type="range" id="nrm-e" min="10" max="80" step="1" value="35"><output id="nrm-e-o"></output></div>
+        <label class="chk"><input type="checkbox" id="nrm-flip"> Read with flipped green (wrong convention)</label>
+        <label class="chk"><input type="checkbox" id="nrm-2ch" checked> Store X, Y only and rebuild Z</label>
+        <table class="ro" id="nrm-ro"></table>
+      </div>
+    </div>
+  </div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>Set Texture Type to <em>Normal map</em>. Unity then encodes it as BC5 or as DXT5nm (BC3 with X moved to alpha, depending on platform) and <code>UnpackNormal</code> in shaders handles both. Shader Graph's <em>Sample Texture 2D</em> needs its Type set to <em>Normal</em> for the same reason.</p></div>
+    <div class="eng" data-engine="urp"><p>Same as HDRP. Maps baked for Unreal need their green channel inverted before import; there is no flip checkbox in Unity's importer.</p></div>
+    <div class="eng" data-engine="unreal"><p>Use the <em>Normalmap</em> compression preset (BC5, sRGB off). The texture editor has <em>Flip Green Channel</em> for maps baked in the OpenGL convention.</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Why store normal maps in BC5 rather than BC1?", ["BC5 is smaller", "BC5 keeps X and Y in separate high-precision blocks and Z is rebuilt in the shader", "BC1 does not support blue", "BC5 is sRGB"], 1, "BC5 is two independent BC4 channels; BC1 forces X, Y, Z onto one color line with 5–6 bit endpoints."], ["A normal map shows bumps correctly when lit from the side, but they look like dents when lit from above. Most likely cause?", ["Wrong sRGB flag", "Green channel convention (Y+ vs Y−) is wrong", "Mips are disabled", "Tangent space is missing"], 1, "Flipping Y only inverts the response to light coming along the V direction."]]</script></details>
+
+</section>
+<section class="chapter" id="streaming" data-title="Streaming and budgets" data-summary="Dropping the top k mips divides resident memory by about 4^k.">
+  <div class="head"><div class="num"></div><h2>Streaming and budgets</h2></div>
+
+  <div class="prose">
+    <p>Even compressed, textures rarely all fit in memory at full resolution. <button type="button" class="term" data-term="streaming">Texture streaming</button> keeps only the mips the camera needs and loads finer ones as you approach, inside a fixed memory pool. It uses the same maths as the <a href="#density">density chapter</a> to predict the mip. Because each mip is a quarter of the one above, leaving out the top levels saves a lot:</p>
+  </div>
+  <div class="fx" data-fx="stream"></div>
+  <div class="prose">
+    <p><button type="button" class="term" data-term="vt">Virtual texturing</button> goes further and streams fixed-size tiles of each mip, so a huge texture costs only the tiles on screen. It suits terrain and very large unique textures, at the cost of an extra lookup per sample and occasional tile pop-in.</p>
+    <p>A useful review habit: capture a frame in the busiest spot of a level and list the resident textures by size. The top ten usually explain most of the memory.</p>
+  </div>
+  <div class="engines">
+    <div class="eng" data-engine="hdrp"><p>Enable <em>Texture Mipmap Streaming</em> in Quality settings with a memory budget, and tick <em>Mip Streaming</em> on each texture's importer. HDRP also supports Streaming Virtual Texturing through Shader Graph's <em>Sample Virtual Texture</em> node.</p></div>
+    <div class="eng" data-engine="urp"><p>The same Quality setting applies. On mobile, streaming budgets are tight; combine them with lower max sizes on the Android/iOS import tabs rather than relying on streaming alone.</p></div>
+    <div class="eng" data-engine="unreal"><p>Streaming is on by default with a pool set by <code>r.Streaming.PoolSize</code>; "Texture streaming pool over budget" warnings mean the pool is too small for what is visible. Runtime and streaming virtual textures are enabled per project and per texture (<em>Virtual Texture Streaming</em>).</p></div>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["What does texture streaming primarily save?", ["Disk space", "Resident GPU memory for mips the view does not need", "Shader instructions", "Draw calls"], 1, "It keeps only the needed mips resident within a pool."]]</script></details>
+
+</section>
+<section class="chapter" id="checklist" data-title="An import checklist" data-summary="sRGB, format and mobile format per map type.">
+  <div class="head"><div class="num"></div><h2>An import checklist</h2></div>
+
+  <div class="prose">
+    <p>Every texture that enters a project should pass the same few questions. Write them into your import presets so the defaults are right and reviews only catch exceptions.</p>
+  </div>
+  <div class="tablewrap">
+  <table class="vals">
+    <thead><tr><th>Map</th><th>sRGB</th><th>PC / console format</th><th>Mobile</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Base color, opaque</td><td>On</td><td class="m">BC1 or BC7</td><td class="m">ASTC 6×6</td><td>BC7 when gradients or saturated edges band</td></tr>
+      <tr><td>Base color + alpha</td><td>On</td><td class="m">BC7 or BC3</td><td class="m">ASTC 6×6 / 4×4</td><td>Alpha-tested foliage: keep alpha mips sharp (coverage-preserving mips)</td></tr>
+      <tr><td>Normal</td><td>Off</td><td class="m">BC5</td><td class="m">ASTC 4×4</td><td>Check the green convention on import</td></tr>
+      <tr><td>Packed masks</td><td>Off</td><td class="m">BC7</td><td class="m">ASTC 6×6</td><td>Match the engine layout; most precise map in alpha</td></tr>
+      <tr><td>Single mask / height</td><td>Off</td><td class="m">BC4</td><td class="m">ASTC or EAC R11</td><td>Height for displacement may need 16-bit uncompressed</td></tr>
+      <tr><td>Emission, HDR sky</td><td>On / —</td><td class="m">BC7 / BC6H</td><td class="m">ASTC HDR or RGB9E5</td><td>HDR content needs an HDR format, not intensity baked into 8 bits</td></tr>
+      <tr><td>UI</td><td>On</td><td class="m">RGBA8 or BC7</td><td class="m">ASTC 4×4</td><td>No mips for screen-space UI; atlas small sprites</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="key" style="margin-top:18px"><b>The cheapest optimization</b>Before tuning formats, check resolution against density. A prop with a 4K map that never fills more than a quarter of the screen is the single most common waste in texture budgets.</div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/" rel="noopener">Understanding BCn Texture Compression Formats</a></span><span class="by">Nathan Reed · 2012</span><span class="why">The clearest overview of BC1 to BC7: block layouts, endpoints and what each format is for.</span></li><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11" rel="noopener">Texture Block Compression in Direct3D 11</a></span><span class="by">Microsoft</span><span class="why">The reference definition of the BC formats, including BC6H and BC7.</span></li><li><span><span class="kind">Spec</span><a href="https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf" rel="noopener">Texture level of detail (mip selection)</a></span><span class="by">Khronos · OpenGL 4.6 core, section 8.14</span><span class="why">The official formula for λ = log₂ ρ from derivatives, used in chapter 2.</span></li><li><span><span class="kind">Guide</span><a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/ASTC_User_Guide_102162_0001_01.pdf" rel="noopener">ASTC User Guide</a></span><span class="by">Arm</span><span class="why">Block sizes, quality settings and encoder choices for mobile.</span></li><li><span><span class="kind">Article</span><a href="https://aras-p.info/blog/2022/06/23/Comparing-BCn-texture-decoders/" rel="noopener">Comparing BCn texture decoders</a></span><span class="by">Aras Pranckevičius · 2022</span><span class="why">How BCn decoding works in practice.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased Alpha Test: The Esoteric Alpha To Coverage</a></span><span class="by">Ben Golus</span><span class="why">Why alpha-tested foliage thins out in the distance and how to keep coverage in mips.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Mask-Map-and-Detail-Map.html" rel="noopener">Mask and detail maps</a></span><span class="by">Unity · HDRP 17</span><span class="why">The HDRP mask and detail map layouts.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/4.27/RenderingAndGraphics/Textures/TextureCompressionSettings" rel="noopener">Texture Compression Settings</a></span><span class="by">Epic Games</span><span class="why">What each Unreal compression preset produces.</span></li></ul>
+</section>
+
+<div class="next" data-next="parallax reading-a-frame pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"texel": [
+"Texel",
+"One element of a texture, the texture's equivalent of a pixel."
+],
+"bpp": [
+"Bits per texel (bpp)",
+"Storage cost of one texel in a format. RGBA8 is 32, BC1 is 4, BC7 is 8. For block formats it is the block size in bits divided by the texels per block."
+],
+"mip": [
+"Mip chain",
+"Pre-filtered copies of a texture at half, quarter and smaller sizes, down to 1×1. Adds one third to memory."
+],
+"aliasing": [
+"Aliasing",
+"Shimmering and moiré when a pixel samples far fewer texels than it covers. Mipmaps prevent it by pre-averaging."
+],
+"quad": [
+"Pixel quad",
+"GPUs shade pixels in 2×2 groups so they can compute derivatives by differencing neighbors."
+],
+"derivative": [
+"Screen-space derivative",
+"How much a value (like UV) changes from one pixel to its neighbor, ddx and ddy in HLSL. Used for mip selection."
+],
+"aniso": [
+"Anisotropic filtering",
+"Taking several samples along the long axis of a stretched pixel footprint and choosing the mip from the short axis, keeping grazing surfaces sharp."
+],
+"density": [
+"Texel density",
+"Texels per meter of surface. The project-wide number that keeps sharpness consistent between assets."
+],
+"block": [
+"Compression block",
+"A fixed group of texels (4×4 for BC formats) compressed to a fixed number of bytes, so any texel can be decoded independently."
+],
+"bc1": [
+"BC1 (DXT1)",
+"8 bytes per 4×4 block: two RGB565 endpoints and 2-bit indices into a 4-color palette. 4 bpp."
+],
+"srgb": [
+"sRGB texture",
+"A texture whose values are stored gamma-encoded. The GPU decodes them to linear when sampling. For color only."
+],
+"packing": [
+"Channel packing",
+"Storing several grayscale maps in the R, G, B and A channels of one texture to save memory and samples."
+],
+"normalmap": [
+"Tangent-space normal map",
+"A texture storing surface directions relative to the mesh's tangent, bitangent and normal, remapped to [0,1]."
+],
+"greenflip": [
+"Green channel convention",
+"Whether a normal map's Y points up (OpenGL, Y+) or down (DirectX, Y−) in texture space. Unity: Y+. Unreal: Y−."
+],
+"streaming": [
+"Texture streaming",
+"Loading only the mips that the current view needs into a fixed memory pool, and refining as the camera approaches."
+],
+"vt": [
+"Virtual texturing",
+"Streaming a texture in fixed-size tiles per mip through an indirection table, so only visible tiles occupy memory."
+],
+"bc5": [
+"BC5",
+"Two independent BC4 channels in 16 bytes per block. The standard format for normal maps."
+],
+"bc7": [
+"BC7",
+"16 bytes per block with several modes and partitions. High-quality RGB and RGBA at 8 bpp."
+],
+"astc": [
+"ASTC",
+"Adaptive Scalable Texture Compression. 128 bits per block, block size from 4×4 to 12×12. Standard on modern mobile GPUs."
+],
+"smoothness": [
+"Smoothness",
+"Unity's name for 1 − perceptual roughness. 1 is a mirror, 0 is fully rough."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="textures.js"></script>
+<script src="texture-fx.js"></script>
+</body>
+</html>

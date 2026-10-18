@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Buffers and Render Targets · Tech Art Atlas</title>
+<meta name="description" content="Shaders only see what is already in GPU memory. This unit covers every kind of memory a shader reads and writes: meshes, per-draw values, lists of your own data, lists built on the GPU, and the images frames are drawn into.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="buffers">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Buffers and Render Targets</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Foundations · 6 chapters</div>
+  <h1>Buffers and Render Targets</h1>
+  <p class="lede">Shaders only see what is already in GPU memory. This unit covers every kind of memory a shader reads and writes: meshes, per-draw values, lists of your own data, lists built on the GPU, and the images frames are drawn into.</p>
+  <p class="meta">Builds on How a GPU Draws a Frame. Code is HLSL; engine notes show the C# and C++ side.</p>
+</header>
+<figure class="keyart"><canvas data-render="buffers" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: three buffers as rows of memory cells, partly filled.</figcaption></figure>
+<div class="needs" data-needs="gpu-basics shader-anatomy#properties"></div>
+
+<section class="chapter" id="memory" data-title="A buffer is a list in GPU memory" data-builds="gpu-basics#parallel" data-summary="A buffer is a list of equally sized elements in GPU memory: size = count × stride.">
+  <div class="head"><div class="num"></div><h2>A buffer is a list in GPU memory</h2></div>
+
+  <div class="prose">
+    <p>Shaders cannot read files or ask the CPU for data while they run. Everything they use must already sit in GPU memory. A <button type="button" class="term" data-term="buffer">buffer</button> is the simplest form of that memory: a list of equally sized elements, one after the other. Textures are the other form, a grid with filtering (<a class="x" href="../textures-sampling/index.html#texture">Textures and Sampling</a>).</p>
+    <p>Two numbers describe a buffer: how many elements it holds (the <em>count</em>) and how many bytes each element takes (the <button type="button" class="term" data-term="stride">stride</button>). Element <i>i</i> starts at byte <i>i</i> × stride, so the GPU can jump straight to any element.</p>
+  </div>
+  <div class="fx" data-fx="bufsize"></div>
+  <div class="prose">
+    <p>A <code>float</code> is 4 bytes, so a float3 is 12 and a float4 16. A particle with a position (float3), a velocity (float3) and a lifetime (float) is 28 bytes. The chapters below look at the kinds of buffers you will meet, in the order a frame uses them.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A buffer holds 10 000 elements of 32 bytes. How big is it?", ["320 KB (about 312.5 KiB)", "32 KB", "10 KB", "3.2 MB"], 0, "10 000 × 32 = 320 000 bytes."], ["Where does element 5 start in a buffer with stride 16?", ["Byte 5", "Byte 16", "Byte 80", "Byte 21"], 2, "5 × 16 = 80 (counting from element 0)."]]</script></details>
+
+</section>
+<section class="chapter" id="vertex-index" data-title="Vertex and index buffers: the mesh" data-builds="buffers#memory gpu-basics#pipeline" data-summary="Vertex buffers store each corner once; index buffers list triangles as references to them.">
+  <div class="head"><div class="num"></div><h2>Vertex and index buffers: the mesh</h2></div>
+
+  <div class="prose">
+    <p>A mesh reaches the GPU as two buffers. The <strong>vertex buffer</strong> lists every corner once, with all its data: position, normal, UV, maybe a colour. The <strong>index buffer</strong> lists triangles as three numbers each, pointing into the vertex buffer. Neighbouring triangles share corners, so they simply repeat the same index instead of storing the vertex again.</p>
+    <p>For a flat grid of <i>n</i> × <i>n</i> quads (two triangles each), the saving is large:</p>
+  </div>
+  <div class="fx" data-fx="mesh"></div>
+  <div class="prose">
+    <p>The vertex shader runs once per vertex in the vertex buffer it reads (with a cache for repeated indices), which is why the vertex count, not the triangle count, is what modelling tools and profilers usually report. Hard edges and UV seams split vertices, because one position then needs two normals or two UVs. That is why an exported mesh often has more vertices than the modelling tool showed.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Why does an index buffer save memory?", ["It compresses positions", "Shared corners are stored once and referenced by number", "It removes normals", "It stores triangles as quads"], 1, "An index is 2 or 4 bytes; a vertex is often 32 or more."], ["A cube has 8 corners. Why do exported cubes usually have 24 vertices?", ["Export bug", "Each corner has three different face normals at the hard edges", "Triangulation", "Index buffers"], 1, "Each of the 3 faces meeting at a corner needs its own normal, so the corner is split into 3 vertices: 8 × 3 = 24."]]</script></details>
+
+</section>
+<section class="chapter" id="constant" data-title="Constant buffers: values for the whole draw" data-builds="buffers#memory shader-anatomy#properties" data-summary="Constant buffers hold per-draw values in 16-byte rows; a value never crosses a row.">
+  <div class="head"><div class="num"></div><h2>Constant buffers: values for the whole draw</h2></div>
+
+  <div class="prose">
+    <p><a class="x" href="../shader-anatomy/index.html#properties">Material properties</a>, the camera's matrices and the time are the same for every pixel of a draw. They are collected into small buffers called <button type="button" class="term" data-term="cbuffer">constant buffers</button> (cbuffers). When you call <code>material.SetFloat</code>, the engine writes the new value into the material's constant buffer, and the next draw reads it.</p>
+    <p>Constant buffers have one rule that surprises everyone once: values are packed into rows of 16 bytes (four floats), and <strong>a value may not cross from one row into the next</strong>. If it would, it moves to the start of the next row and the gap stays empty. Add variables in different orders and watch the padding:</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Pack a cbuffer<span class="lab-hint">Each row is 16 bytes. Hatched cells are wasted padding.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="cb-cv" class="fig" width="560" height="300" aria-label="Constant buffer byte layout"></canvas><pre class="hlsl" id="cb-code"></pre></div>
+      <div class="side">
+        <div class="row" id="cb-add"><button type="button" class="btn" data-t="float">+ float</button><button type="button" class="btn" data-t="float2">+ float2</button><button type="button" class="btn" data-t="float3">+ float3</button><button type="button" class="btn" data-t="float4">+ float4</button></div>
+        <div class="row"><button type="button" class="btn" id="cb-undo">Remove last</button><button type="button" class="btn" id="cb-good">Example: well packed</button><button type="button" class="btn" id="cb-bad">Example: badly packed</button></div>
+        <table class="ro" id="cb-ro"></table>
+      </div>
+    </div>
+  </div>
+  <div class="prose"><p>Padding wastes a little memory, but the real cost of a bad layout is bugs: if C# code fills a buffer assuming tight packing, every value after the first gap lands in the wrong place. Order constant-buffer variables from largest to smallest, or group a float3 with a float.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Put material properties in <code>CBUFFER_START(UnityPerMaterial)</code>. Unity lays it out for you; you only meet the 16-byte rule when you fill a cbuffer yourself from C# with <code>SetConstantBuffer</code> and a struct, which must then mirror the padding.</p></div><div class="eng" data-engine="urp"><p>Same as HDRP. Global values used by many shaders can go in your own cbuffer set with <code>Shader.SetGlobalConstantBuffer</code>, or as individual globals with <code>Shader.SetGlobalVector</code>.</p></div><div class="eng" data-engine="unreal"><p>Material parameters become uniform buffers generated by the material compiler. In C++ shaders, <code>BEGIN_SHADER_PARAMETER_STRUCT</code> declares parameters and the macros insert the required alignment for you.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["A cbuffer declares float2 a; float3 b;. At which byte does b start?", ["8", "12", "16", "20"], 2, "b needs 12 bytes; 8 + 12 would cross the 16-byte boundary, so b moves to 16."], ["Which order packs without any padding?", ["float, float3, float2, float3", "float3, float, float3, float", "float2, float3, float3", "float, float4, float3"], 1, "float3 + float fill one row exactly, twice."]]</script></details>
+
+</section>
+<section class="chapter" id="structured" data-title="Structured buffers: lists of your own data" data-builds="buffers#memory gpu-basics#parallel" data-summary="Structured buffers hold lists of your own structs; compute shaders process them in groups.">
+  <div class="head"><div class="num"></div><h2>Structured buffers: lists of your own data</h2></div>
+
+  <div class="prose">
+    <p>Sometimes a shader needs many records of its own kind: ten thousand particles, the positions of grass blades, a list of lights. A <button type="button" class="term" data-term="structured">structured buffer</button> is a list of a struct you define. Any shader can read it by index; a <button type="button" class="term" data-term="compute">compute shader</button> can also write it.</p>
+    <p>Compute shaders run in groups of threads, like pixel shaders run in <a class="x" href="../gpu-basics/index.html#parallel">waves</a>, but you choose the group size and how many groups to launch. To process <i>N</i> elements you launch enough groups to cover them, rounding up, and the last group checks that its index is still inside the list:</p>
+  </div>
+  <div class="fx" data-fx="dispatch"></div>
+  <pre class="hlsl"><span class="c">// HLSL: a compute shader that moves every particle</span>
+<span class="k">struct</span> <span class="t">Particle</span> { <span class="t">float3</span> pos; <span class="t">float3</span> vel; <span class="t">float</span> life; };   <span class="c">// stride 28 bytes</span>
+<span class="t">RWStructuredBuffer</span>&lt;<span class="t">Particle</span>&gt; _Particles;
+<span class="t">uint</span> _Count; <span class="t">float</span> _DeltaTime;
+
+[numthreads(<span class="n">64</span>, <span class="n">1</span>, <span class="n">1</span>)]
+<span class="k">void</span> Simulate(<span class="t">uint3</span> id : SV_DispatchThreadID)
+{
+    <span class="k">if</span> (id.x &gt;= _Count) <span class="k">return</span>;                <span class="c">// the last group may run past the end</span>
+    <span class="t">Particle</span> p = _Particles[id.x];
+    p.pos += p.vel * _DeltaTime;
+    p.life -= _DeltaTime;
+    _Particles[id.x] = p;
+}</pre>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p><code>var buf = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, 28);</code> then <code>buf.SetData(array)</code>, <code>compute.SetBuffer(kernel, "_Particles", buf)</code> and <code>compute.Dispatch(kernel, Mathf.CeilToInt(count / 64f), 1, 1)</code>. A material reads it with <code>material.SetBuffer("_Particles", buf)</code> and <code>StructuredBuffer&lt;Particle&gt;</code>. Call <code>buf.Release()</code> when done.</p></div><div class="eng" data-engine="urp"><p>Same API as HDRP. On mobile, check <code>SystemInfo.supportsComputeShaders</code> and the maximum number of buffers a vertex shader may read, which can be as low as zero on old GPUs.</p></div><div class="eng" data-engine="unreal"><p>In the Render Dependency Graph: <code>FRDGBufferRef Buf = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateStructuredDesc(sizeof(FParticle), Count), TEXT("Particles"));</code>, a UAV with <code>GraphBuilder.CreateUAV(Buf)</code> for writing, and <code>FComputeShaderUtils::AddPass</code> with <code>FComputeShaderUtils::GetGroupCount(Count, 64)</code>. Niagara exposes similar data to artists without C++.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["You have 1000 particles and 64 threads per group. How many groups?", ["15", "16", "64", "1000"], 1, "⌈1000 / 64⌉ = 16; the last group has 24 threads past the end, which return early."], ["Why does the shader check id.x >= _Count?", ["For speed", "Because the last group may contain threads past the end of the list", "To skip dead particles", "HLSL requires it"], 1, "Writing past the end corrupts memory or is dropped; reading returns garbage."]]</script></details>
+
+</section>
+<section class="chapter" id="append" data-title="Append buffers: collecting a list on the GPU" data-builds="buffers#structured" data-summary="Append buffers let many threads add elements through an atomic hidden counter; reset it every frame.">
+  <div class="head"><div class="num"></div><h2>Append buffers: collecting a list on the GPU</h2></div>
+
+  <div class="prose">
+    <p>Often only some elements produce output: the grass blades that are inside the camera view, the particles that are still alive, the pixels brighter than a threshold. Thousands of threads run at once and none of them knows how many others will also produce something, so none can know in advance at which index to write.</p>
+    <p>An <button type="button" class="term" data-term="append">append buffer</button> solves this with a hidden counter. Each thread that wants to add an element calls <code>Append</code>; the GPU increments the counter <em>atomically</em> (no two threads can get the same number) and writes the element at the old value. Run the lab a few times:</p>
+  </div>
+  <div class="lab">
+    <div class="lab-head"><span class="lab-tag">Lab</span>Sixteen threads, one counter<span class="lab-hint">Threads whose value passes the test append their ID. The order changes every run.</span></div>
+    <div class="lab-body">
+      <div class="stage"><canvas id="ap-cv" class="fig" width="560" height="300" aria-label="Threads appending to a buffer"></canvas></div>
+      <div class="side">
+        <div class="row"><button type="button" class="btn primary" id="ap-run">Run the dispatch</button></div>
+        <div class="ctl"><label for="ap-th">Keep if value ≥</label><input type="range" id="ap-th" min="0" max="1" step="0.05" value="0.5"><output id="ap-th-o"></output></div>
+        <table class="ro" id="ap-ro"></table>
+      </div>
+    </div>
+  </div>
+  <div class="prose">
+    <p>Three things to remember. The <strong>order is not defined</strong>; never rely on it. The counter is <strong>not reset automatically</strong>; reset it to 0 before every dispatch or the list keeps growing. And the CPU does not know the final count, so the usual next step stays on the GPU: copy the counter into an <em>arguments buffer</em> and draw that many instances with an indirect draw call.</p>
+  </div>
+  <pre class="hlsl"><span class="c">// HLSL: keep only visible grass blades</span>
+<span class="t">StructuredBuffer</span>&lt;<span class="t">float3</span>&gt;       _AllBlades;
+<span class="t">AppendStructuredBuffer</span>&lt;<span class="t">float3</span>&gt; _Visible;    <span class="c">// has a hidden counter</span>
+
+[numthreads(<span class="n">64</span>, <span class="n">1</span>, <span class="n">1</span>)]
+<span class="k">void</span> Cull(<span class="t">uint3</span> id : SV_DispatchThreadID)
+{
+    <span class="k">if</span> (id.x &gt;= _Count) <span class="k">return</span>;
+    <span class="t">float3</span> p = _AllBlades[id.x];
+    <span class="k">if</span> (InsideFrustum(p))
+        _Visible.Append(p);                   <span class="c">// counter++ and write, as one atomic step</span>
+}
+
+<span class="c">// The same without an append buffer, on platforms or engines that prefer it:</span>
+<span class="t">RWStructuredBuffer</span>&lt;<span class="t">float3</span>&gt; _Out;
+<span class="t">RWStructuredBuffer</span>&lt;<span class="t">uint</span>&gt;   _Counter;           <span class="c">// one uint, reset to 0 each frame</span>
+<span class="c">//   uint slot; InterlockedAdd(_Counter[0], 1, slot); _Out[slot] = p;</span></pre>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p><code>visible = new GraphicsBuffer(GraphicsBuffer.Target.Append, maxCount, 12);</code>. Each frame: <code>visible.SetCounterValue(0)</code>, dispatch the cull kernel, then <code>GraphicsBuffer.CopyCount(visible, args, 4)</code> to write the count into an indirect-arguments buffer (<code>GraphicsBuffer.Target.IndirectArguments</code>, here at the instance-count slot) and draw with <code>Graphics.RenderMeshIndirect</code> or <code>RenderPrimitivesIndirect</code>. Reading the count back to C# with <code>GetData</code> stalls the CPU; avoid it every frame.</p></div><div class="eng" data-engine="urp"><p>Same API as HDRP. Some mobile drivers handle append buffers poorly; the <code>InterlockedAdd</code> version shown above behaves the same everywhere.</p></div><div class="eng" data-engine="unreal"><p>Engine code mostly uses the <code>InterlockedAdd</code> pattern on an RDG buffer created with <code>FRDGBufferDesc::CreateStructuredDesc</code> plus a separate counter buffer, then an indirect dispatch or draw that reads the count on the GPU. Niagara GPU simulations do this for you when particles spawn and die.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["You forget to reset the append buffer's counter each frame. What happens?", ["Nothing", "New elements are added after last frame's, and the list overflows", "The GPU resets it", "Elements are written in reverse"], 1, "The hidden counter keeps its value until you set it."], ["Why copy the count into an arguments buffer instead of reading it in C#?", ["It is required by HLSL", "Reading GPU data back makes the CPU wait for the GPU", "C# cannot read integers", "To sort the list"], 1, "A readback stalls the pipeline; indirect draws keep the count on the GPU."], ["Two threads call Append at the same moment. Can they get the same slot?", ["Yes, sometimes", "No, the increment is atomic", "Only on AMD", "Only if the buffer is full"], 1, "Atomic means the read-increment-write happens as one indivisible step."]]</script></details>
+
+</section>
+<section class="chapter" id="render-targets" data-title="Render targets: images you draw into" data-builds="buffers#memory textures-sampling#texture" data-summary="Render targets are textures the GPU draws into; later passes read them. Depth buffers and G-buffers are render targets.">
+  <div class="head"><div class="num"></div><h2>Render targets: images you draw into</h2></div>
+
+  <div class="prose">
+    <p>The pixel shader's output has to go somewhere. A <button type="button" class="term" data-term="rt">render target</button> is a texture the GPU draws into instead of reading from. The final image is one, but a frame uses many more: depth, normals for lighting, a half-resolution buffer for bloom, a shadow map. A later pass reads them as ordinary textures, which is how a pixel finally gets to see its neighbours' results (<a class="x" href="../gpu-basics/index.html#parallel">the rule from chapter 3 of How a GPU Draws a Frame</a>).</p>
+    <p>Their memory is easy to work out and adds up quickly at high resolutions:</p>
+  </div>
+  <div class="fx" data-fx="rt"></div>
+  <div class="prose">
+    <p>Two kinds deserve a name. The <strong>depth buffer</strong> stores, per pixel, the distance of the nearest surface drawn so far; the depth test compares against it before shading (<a class="x" href="../reading-a-frame/index.html#overdraw">overdraw</a>), and many effects read it afterwards (<a class="x" href="../depth-effects/index.html#what-depth">Reading the Depth Buffer</a>). A <strong>G-buffer</strong> is a set of render targets written at the same time (albedo, normal, roughness…) so that lighting can run once per pixel afterwards; this is deferred rendering, the default in HDRP and Unreal.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A 1920 × 1080 RGBA16F render target needs about…", ["8 MiB", "16 MiB", "32 MiB", "2 MiB"], 1, "1920 × 1080 × 8 bytes ≈ 15.8 MiB."], ["How can a post-processing effect read the colour of neighbouring pixels?", ["Ask the neighbour's pixel shader", "Read the previous pass's render target as a texture", "Use a constant buffer", "It cannot"], 1, "Once a pass has finished writing a render target, the next pass can sample it anywhere."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules" rel="noopener">Packing rules for constant variables</a></span><span class="by">Microsoft</span><span class="why">The 16-byte rows behind constant buffer layouts.</span></li><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/sm5-object-appendstructuredbuffer" rel="noopener">AppendStructuredBuffer</a></span><span class="by">Microsoft</span><span class="why">Append buffers and their hidden counter.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/GraphicsBuffer.html" rel="noopener">GraphicsBuffer</a></span><span class="by">Unity</span><span class="why">Creating structured, append and indirect-argument buffers from C#.</span></li><li><span><span class="kind">Series</span><a href="https://fgiesen.wordpress.com/2011/07/09/a-trip-through-the-graphics-pipeline-2011-index/" rel="noopener">A trip through the Graphics Pipeline 2011</a></span><span class="by">Fabian Giesen</span><span class="why">What the hardware does between a draw call and a pixel, in depth.</span></li></ul>
+</section>
+
+<div class="next" data-next="depth-effects transparency reading-a-frame"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"buffer": [
+"Buffer",
+"A list of equally sized elements in GPU memory."
+],
+"stride": [
+"Stride",
+"The size in bytes of one element of a buffer."
+],
+"cbuffer": [
+"Constant buffer",
+"A small buffer of values shared by a whole draw, packed into 16-byte rows."
+],
+"structured": [
+"Structured buffer",
+"A buffer holding a list of a struct you define. RWStructuredBuffer can be written by compute shaders."
+],
+"compute": [
+"Compute shader",
+"A shader that runs in thread groups on any data, not tied to pixels or vertices. Launched with Dispatch."
+],
+"append": [
+"Append buffer",
+"A structured buffer with a hidden atomic counter; threads add elements with Append in no fixed order."
+],
+"rt": [
+"Render target",
+"A texture the GPU renders into. Later passes can read it."
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="buffers.js"></script>
+</body>
+</html>

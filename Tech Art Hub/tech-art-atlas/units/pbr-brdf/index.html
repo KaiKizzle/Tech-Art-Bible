@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Inside a PBR Shader · Tech Art Atlas</title>
+<meta name="description" content="Every lit material in a modern engine runs the same few formulas: Lambert for diffuse, and GGX, Fresnel and a geometry term for specular. This unit builds them one at a time and shows what each slider in your material really changes.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="pbr-brdf">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Inside a PBR Shader</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Lighting & GI · 8 chapters</div>
+  <h1>Inside a PBR Shader</h1>
+  <p class="lede">Every lit material in a modern engine runs the same few formulas: Lambert for diffuse, and GGX, Fresnel and a geometry term for specular. This unit builds them one at a time and shows what each slider in your material really changes.</p>
+  <p class="meta">Builds on the dot product and light units. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="pbr-brdf" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: roughness from 0 to 1, metal above, non-metal below.</figcaption></figure>
+<div class="needs" data-needs="dot-cross#lambert dot-cross#reflect exposure#units"></div>
+
+<section class="chapter" id="split" data-title="Two ways a surface reflects" data-builds="dot-cross#lambert exposure#units" data-summary="Light either bounces (specular) or enters and scatters (diffuse); k_d = (1 − F)(1 − metallic).">
+  <div class="head"><div class="num"></div><h2>Two ways a surface reflects</h2></div>
+
+  <div class="prose">
+    <p>Light that hits a surface does one of two things. Some of it bounces straight off the boundary, like a mirror: that is <button type="button" class="term" data-term="specular">specular</button> reflection, and it keeps the colour of the light. The rest enters the material, scatters around inside, and comes back out in all directions, tinted by the material: that is <button type="button" class="term" data-term="diffuse">diffuse</button> reflection. A PBR shader computes both and adds them.</p>
+    <p>Energy cannot be created: light that bounced off as specular is no longer available for diffuse. And metals absorb all light that enters them, so they have no diffuse at all. The share left for diffuse is:</p>
+  </div>
+  <div class="fx" data-fx="split"></div>
+  <div class="prose"><p>The share that bounces, F, comes from the <a href="#fresnel">Fresnel term</a> later in this unit. The rest of the unit builds each half from formulas you already know, starting with the easier one.</p></div>
+
+</section>
+<section class="chapter" id="diffuse" data-title="Diffuse: Lambert again" data-builds="dot-cross#lambert exposure#units" data-summary="diffuse = albedo / π · E · max(N·L, 0).">
+  <div class="head"><div class="num"></div><h2>Diffuse: Lambert again</h2></div>
+
+  <div class="prose">
+    <p>The diffuse half is <a class="x" href="../dot-cross/index.html#lambert">Lambert's law</a>: the light arriving falls with the cosine of its angle, and a matte surface spreads what it reflects evenly over the half-sphere above it, which divides by π. That is the same formula as in <a class="x" href="../exposure/index.html#units">lux to nits</a>, written as a shader term:</p>
+  </div>
+  <div class="fx" data-fx="diffuse"></div>
+  <div class="prose"><p>The <code>albedo / π</code> part is the diffuse <button type="button" class="term" data-term="brdf">BRDF</button>: the function that says how much of the light arriving from one direction leaves toward another. For Lambert it is the same for every direction, which is what "matte" means.</p></div>
+
+</section>
+<section class="chapter" id="half" data-title="Microfacets and the half vector" data-builds="vectors#normalize dot-cross#reflect" data-summary="H = normalize(L + V); only facets facing H reflect light from L to V.">
+  <div class="head"><div class="num"></div><h2>Microfacets and the half vector</h2></div>
+
+  <div class="prose">
+    <p>A rough surface is modelled as countless tiny mirrors, <button type="button" class="term" data-term="microfacet">microfacets</button>, pointing in slightly different directions. A mirror reflects light from L toward the viewer V only if its normal lies exactly halfway between them (the <a class="x" href="../dot-cross/index.html#reflect">law of reflection</a>). That direction is the <button type="button" class="term" data-term="halfvec">half vector</button>:</p>
+  </div>
+  <div class="fx" data-fx="half"></div>
+  <div class="prose"><p>So the specular question becomes: what fraction of the microfacets points along H? A smooth surface has almost all of them aligned with N and shows a small, sharp highlight; a rough one spreads them out and shows a wide, dim one.</p></div>
+
+</section>
+<section class="chapter" id="ndf" data-title="How many facets face H: GGX" data-builds="pbr-brdf#half" data-summary="D = α² / (π · ((N·H)² · (α² − 1) + 1)²), α = roughness².">
+  <div class="head"><div class="num"></div><h2>How many facets face H: GGX</h2></div>
+
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="ndf">normal distribution function</button> D gives that fraction. The standard one in games is GGX (also called Trowbridge–Reitz). Artists set <em>roughness</em>; the formula uses α = roughness², which makes the slider feel even:</p>
+  </div>
+  <div class="fx" data-fx="ggx"></div>
+  <div class="prose"><p>GGX has a long tail: even far from the centre, a few facets still face H. That tail is the soft glow around highlights on real materials, and the reason GGX replaced older models. Animate the angle on a rough and a smooth setting: the area under both curves is the same, only its shape changes, because roughness redistributes reflection, it does not create or remove it.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Roughness 0.5 gives which α?", ["0.5", "0.25", "0.707", "1"], 1, "α = roughness² = 0.25."]]</script></details>
+
+</section>
+<section class="chapter" id="fresnel" data-title="How much bounces: Fresnel" data-builds="interior-mapping#glass shader-anatomy#functions" data-summary="F0 = lerp(0.04, baseColor, metallic); F = F0 + (1 − F0)(1 − V·H)⁵.">
+  <div class="head"><div class="num"></div><h2>How much bounces: Fresnel</h2></div>
+
+  <div class="prose">
+    <p>The share of light that reflects at the surface depends on the material and the angle. Head-on, it is <b>F0</b>: about 4% for most non-metals (plastic, stone, wood, skin), and high and coloured for metals. Toward grazing angles, every material approaches 100% (<a class="x" href="../interior-mapping/index.html#glass">the same Schlick formula as for glass</a>). The metallic workflow stores F0 inside the base colour:</p>
+  </div>
+  <div class="fx" data-fx="f0"></div>
+  <div class="prose"><p>For metals the base colour <em>is</em> the reflection colour: gold reflects yellow, copper orange. For non-metals the base colour is the diffuse albedo and F0 stays at a fixed grey 0.04. Unreal's <em>Specular</em> input scales that: F0 = 0.08 · Specular, so the default 0.5 gives 0.04.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Base colour (0.9, 0.6, 0.2), metallic 1. What is F0?", ["(0.04, 0.04, 0.04)", "(0.9, 0.6, 0.2)", "(1, 1, 1)", "(0.47, 0.32, 0.12)"], 1, "lerp(0.04, baseColor, 1) = baseColor."]]</script></details>
+
+</section>
+<section class="chapter" id="geometry" data-title="Facets hiding facets" data-builds="pbr-brdf#ndf" data-summary="G₁(x) = x / (x(1 − k) + k), G = G₁(N·L) · G₁(N·V).">
+  <div class="head"><div class="num"></div><h2>Facets hiding facets</h2></div>
+
+  <div class="prose">
+    <p>On a rough surface some facets are hidden from the light by their neighbours (shadowing), or hidden from the viewer (masking). The <button type="button" class="term" data-term="gterm">geometry term</button> G gives the fraction that is both lit and visible. It matters most at grazing angles and on rough surfaces, where it stops the edges of objects from glowing too brightly. The common Smith–Schlick form uses one factor per direction:</p>
+  </div>
+  <div class="fx" data-fx="smith"></div>
+  <div class="prose"><p>Unreal and many engines use k = (roughness + 1)² / 8 for direct light, which keeps very smooth surfaces from getting too dark at the edges. For environment lighting k = α / 2.</p></div>
+
+</section>
+<section class="chapter" id="full" data-title="Putting the BRDF together" data-builds="pbr-brdf#ndf pbr-brdf#fresnel pbr-brdf#geometry" data-summary="spec = D·F·G / (4 N·L N·V); color = (k_d · albedo / π + spec) · light · N·L.">
+  <div class="head"><div class="num"></div><h2>Putting the BRDF together</h2></div>
+
+  <div class="prose">
+    <p>The specular BRDF multiplies the three terms and divides by 4 (N·L)(N·V), a correction for converting between microfacet and surface quantities (the Cook–Torrance model). Add the diffuse half and multiply by the light arriving:</p>
+  </div>
+  <div class="fx" data-fx="brdf"></div>
+  <pre class="hlsl"><span class="t">float3</span> H   = normalize(L + V);
+<span class="t">float</span>  NoL = saturate(dot(N, L)), NoV = saturate(dot(N, V)) + <span class="n">1e-4</span>, NoH = saturate(dot(N, H)), VoH = saturate(dot(V, H));
+<span class="t">float</span>  a   = roughness * roughness, a2 = a * a;
+<span class="t">float</span>  D   = a2 / (PI * pow(NoH * NoH * (a2 - <span class="n">1</span>) + <span class="n">1</span>, <span class="n">2</span>));
+<span class="t">float3</span> F0  = lerp(<span class="n">0.04</span>, baseColor, metallic);
+<span class="t">float3</span> F   = F0 + (<span class="n">1</span> - F0) * pow(<span class="n">1</span> - VoH, <span class="n">5</span>);
+<span class="t">float</span>  k   = (roughness + <span class="n">1</span>) * (roughness + <span class="n">1</span>) / <span class="n">8</span>;
+<span class="t">float</span>  G   = (NoL / (NoL * (<span class="n">1</span> - k) + k)) * (NoV / (NoV * (<span class="n">1</span> - k) + k));
+<span class="t">float3</span> spec = D * F * G / (<span class="n">4</span> * NoL * NoV + <span class="n">1e-4</span>);
+<span class="t">float3</span> kd   = (<span class="n">1</span> - F) * (<span class="n">1</span> - metallic);
+<span class="t">float3</span> color = (kd * baseColor / PI + spec) * lightColor * NoL;</pre>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP Lit uses this model. Its <em>Smoothness</em> is 1 − the roughness used in this unit (Unity calls that value perceptual roughness), so α = (1 − smoothness)². The mask map's alpha holds smoothness. A <em>Specular Color</em> workflow is available as an alternative to metallic.</p></div><div class="eng" data-engine="urp"><p>URP Lit uses the same terms, slightly simplified for mobile (a combined visibility approximation). Smoothness again is 1 − perceptual roughness, stored in the metallic map's alpha or the albedo alpha.</p></div><div class="eng" data-engine="unreal"><p>The default lit shading model is this BRDF with <em>Roughness</em> as perceptual roughness, <em>Metallic</em>, <em>Base Color</em> and <em>Specular</em> (F0 = 0.08 · Specular for non-metals). The terms match Karis' 2013 notes in the sources.</p></div></div>
+
+</section>
+<section class="chapter" id="ibl" data-title="Light from the environment" data-builds="textures-sampling#mips" data-summary="Rough surfaces read blurrier, pre-filtered mips: mip ≈ roughness · (mip count − 1).">
+  <div class="head"><div class="num"></div><h2>Light from the environment</h2></div>
+
+  <div class="prose">
+    <p>Point lights come from one direction. The sky and the surroundings come from all directions at once, and integrating the BRDF over a whole environment per pixel is far too slow. Engines precompute it. The environment is stored in a cubemap whose <a class="x" href="../textures-sampling/index.html#mips">mip levels</a> are blurred by the GGX lobe of increasing roughness, so a rough surface simply samples a blurrier mip:</p>
+  </div>
+  <div class="fx" data-fx="ibl"></div>
+  <div class="prose"><p>The second half of the "split sum" approximation is a small 2D lookup texture with the integral of F·G for every roughness and viewing angle: the result is <code>prefiltered · (F0 · A + B)</code>, with A and B read from that texture. Diffuse environment light uses an even blurrier version, usually stored as spherical harmonics (<a class="x" href="../baked-gi/index.html#sh">Baked Light</a>).</p></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Notes</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf" rel="noopener">Real Shading in Unreal Engine 4</a></span><span class="by">Brian Karis · SIGGRAPH 2013</span><span class="why">The exact D, F and G used here, the k remapping and the split-sum approximation.</span></li><li><span><span class="kind">Notes</span><a href="https://media.disneyanimation.com/uploads/production/publication_asset/48/asset/s2012_pbs_disney_brdf_notes_v3.pdf" rel="noopener">Physically Based Shading at Disney</a></span><span class="by">Brent Burley · SIGGRAPH 2012</span><span class="why">Where roughness² and the metallic parameter come from.</span></li><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: Physically Based Rendering</a></span><span class="by">Google</span><span class="why">A complete, carefully explained real-time PBR implementation.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/PBR/Theory" rel="noopener">PBR Theory</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">The same model with code, followed by IBL chapters.</span></li><li><span><span class="kind">Talk</span><a href="https://blog.selfshadow.com/publications/s2014-shading-course/" rel="noopener">Moving Frostbite to Physically Based Rendering</a></span><span class="by">Lagarde, de Rousiers · SIGGRAPH 2014</span><span class="why">Energy conservation, roughness mapping and image-based lighting in a game engine.</span></li></ul>
+</section>
+
+<div class="next" data-next="light-types baked-gi shadow-maps"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"specular": [
+"Specular reflection",
+"Light that bounces off the surface boundary, keeping the light's colour (tinted for metals)."
+],
+"diffuse": [
+"Diffuse reflection",
+"Light that enters the material, scatters and leaves in all directions, tinted by the albedo."
+],
+"brdf": [
+"BRDF",
+"Bidirectional reflectance distribution function: how much light arriving from one direction leaves toward another.",
+"#diffuse"
+],
+"microfacet": [
+"Microfacets",
+"The tiny mirror-like facets a rough surface is modelled as.",
+"#half"
+],
+"halfvec": [
+"Half vector",
+"H = normalize(L + V), the facet normal that reflects light from L toward V.",
+"#half"
+],
+"ndf": [
+"Normal distribution function",
+"D: the share of microfacets facing a direction. GGX is the common choice.",
+"#ndf"
+],
+"gterm": [
+"Geometry term",
+"G: the share of microfacets that are neither shadowed nor masked.",
+"#geometry"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="pbr-brdf.js"></script>
+</body>
+</html>

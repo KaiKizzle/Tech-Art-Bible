@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reading the Depth Buffer · Tech Art Atlas</title>
+<meta name="description" content="One number per pixel says how far away the scene is. Soft particles, water, fog, decals, outlines and ambient occlusion all start by reading it. This unit takes the number apart and builds the effects on top.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="depth-effects">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Reading the Depth Buffer</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Shaders & rendering · 8 chapters</div>
+  <h1>Reading the Depth Buffer</h1>
+  <p class="lede">One number per pixel says how far away the scene is. Soft particles, water, fog, decals, outlines and ambient occlusion all start by reading it. This unit takes the number apart and builds the effects on top.</p>
+  <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
+</header>
+<figure class="keyart"><canvas data-render="depth-effects" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser. Left: lit. Right: the same view as linear depth, the image every effect here starts from.</figcaption></figure>
+<div class="needs" data-needs="buffers#render-targets spaces#perspective ray-sphere#view-ray"></div>
+
+<section class="chapter" id="what-depth" data-title="What the depth buffer stores" data-builds="buffers#render-targets gpu-basics#pipeline" data-summary="One distance per pixel; a new fragment is kept only if it is nearer than the stored one.">
+  <div class="head"><div class="num"></div><h2>What the depth buffer stores</h2></div>
+
+  <div class="prose">
+    <p>When the GPU draws a triangle, many triangles can land on the same pixel. To keep only the nearest one, it keeps a second image next to the colour: the <button type="button" class="term" data-term="depthbuffer">depth buffer</button>, one number per pixel saying how far away the surface drawn there is (<a class="x" href="../buffers/index.html#render-targets">a render target</a>).</p>
+    <p>Before shading a new pixel, the GPU compares its depth with the stored one. If the new surface is nearer, it wins: its colour is written and its depth replaces the stored value. If not, it is thrown away. That is the <button type="button" class="term" data-term="ztest">depth test</button>:</p>
+  </div>
+  <div class="fx" data-fx="ztest"></div>
+  <div class="prose">
+    <p>Because every opaque object writes its depth, the finished depth buffer is a picture of the scene's shape: for every pixel, the distance to the nearest surface. Every effect in this unit reads that picture after the opaque objects are drawn.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A new fragment has depth 0.4, the stored depth is 0.3, and the test is 'less or equal' (smaller = nearer). What happens?", ["It is drawn and writes 0.4", "It is discarded", "It is blended", "It writes 0.3"], 1, "0.4 is farther than 0.3, so the test fails and the fragment is discarded."]]</script></details>
+
+</section>
+<section class="chapter" id="nonlinear" data-title="Why stored depth is not distance" data-builds="spaces#perspective" data-summary="Stored depth is proportional to 1/z: precise near the camera, coarse far away. Reversed-Z float fixes it.">
+  <div class="head"><div class="num"></div><h2>Why stored depth is not distance</h2></div>
+
+  <div class="prose">
+    <p>The depth buffer does not store metres. It stores the depth after the <a class="x" href="../spaces/index.html#perspective">perspective divide</a>, a value from 0 to 1 between the camera's near and far planes. That value is proportional to 1/z, not to z, so most of the range is spent close to the camera:</p>
+  </div>
+  <div class="fx" data-fx="devdepth"></div>
+  <div class="prose">
+    <p>With a near plane of 0.1 m and a far plane of 1000 m, half of all depth values are used up in the first 20 cm. Far away, neighbouring surfaces get the same stored value and flicker against each other: <button type="button" class="term" data-term="zfight">z-fighting</button>. How large is the smallest distance step the buffer can tell apart?</p>
+  </div>
+  <div class="fx" data-fx="zprec"></div>
+  <div class="prose">
+    <p>The fix used by every modern engine is <button type="button" class="term" data-term="reversedz">reversed-Z</button>: store 1 at the near plane and 0 at the far plane, in a 32-bit float. Floats have their finest steps near 0 (<a class="x" href="../ray-sphere/index.html#world-ray">float precision</a>), exactly where 1/z needs them, and the two effects cancel out. The precision becomes almost the same fraction of the distance everywhere. Unity (on DirectX 11+, Vulkan and Metal) and Unreal both use it, so in shaders "nearer" means a <em>larger</em> raw depth value.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Raising the near plane from 0.01 m to 0.1 m with a standard depth buffer…", ["has no effect", "greatly improves precision far away", "only changes the far plane", "makes the buffer smaller"], 1, "Precision depends on z²/n: a ten times larger near plane gives ten times finer steps everywhere."], ["With reversed-Z, a raw depth of 0.9 compared with 0.2 is…", ["farther", "nearer", "equal", "invalid"], 1, "Reversed-Z stores 1 at the near plane, so larger values are nearer."]]</script></details>
+
+</section>
+<section class="chapter" id="linearize" data-title="Getting metres back" data-builds="depth-effects#nonlinear buffers#constant" data-summary="z = n·f / (f − d·(f − n)); engines wrap it as LinearEyeDepth.">
+  <div class="head"><div class="num"></div><h2>Getting metres back</h2></div>
+
+  <div class="prose">
+    <p>Effects need real distances, so the first thing a depth-based shader does is invert the formula from the previous chapter. Solve it for z and you get the <button type="button" class="term" data-term="eyedepth">linear eye depth</button>, the distance along the camera's forward axis:</p>
+  </div>
+  <div class="fx" data-fx="lineyedepth"></div>
+  <div class="prose">
+    <p>You rarely type this formula: engines pack the near and far values into a constant (<a class="x" href="../buffers/index.html#constant">a constant buffer</a>) and give you a function. A second, normalized version, <code>Linear01Depth</code>, divides by the far plane so that 1 means "at the far plane".</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Sample the depth with <code>SampleCameraDepth(uv)</code> (or the <em>Scene Depth</em> node), then <code>LinearEyeDepth(rawDepth, _ZBufferParams)</code>. The Scene Depth node has a <em>Sampling Mode</em> with Raw, Linear01 and Eye. The depth texture holds the opaque objects only.</p></div><div class="eng" data-engine="urp"><p>Enable <em>Depth Texture</em> in the URP asset (or on the camera). In code, include <code>DeclareDepthTexture.hlsl</code> and call <code>SampleSceneDepth(uv)</code>, then <code>LinearEyeDepth(raw, _ZBufferParams)</code>. In Shader Graph, the <em>Scene Depth</em> node in Eye mode does both.</p></div><div class="eng" data-engine="unreal"><p>The <em>SceneDepth</em> material node already returns linear depth in centimetres (translucent and post-process materials only). <em>PixelDepth</em> is the depth of the pixel being shaded. Raw device depth is rarely needed in materials.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Why can a transparent material read the depth texture, but an opaque material cannot rely on it?", ["Opaque materials have no UVs", "The depth texture is made from the opaque pass, which is still being drawn", "Depth textures are only for post-processing", "It is too expensive"], 1, "Engines copy depth after the opaque pass; during it the copy does not exist yet."]]</script></details>
+
+</section>
+<section class="chapter" id="reconstruct" data-title="Rebuilding the position of a pixel" data-builds="ray-sphere#view-ray spaces#chain" data-summary="posVS = (ndc.x·tan·aspect, ndc.y·tan, 1) · eyeDepth.">
+  <div class="head"><div class="num"></div><h2>Rebuilding the position of a pixel</h2></div>
+
+  <div class="prose">
+    <p>Depth plus the pixel's position on screen is enough to recover the full 3D point. The pixel's NDC gives the direction of its <a class="x" href="../ray-sphere/index.html#view-ray">view ray</a>; walking along that ray to the linear depth lands on the surface. In view space, with the camera looking along +z:</p>
+  </div>
+  <div class="fx" data-fx="reconstruct"></div>
+  <div class="prose">
+    <p>The horizontal axis works the same with the aspect ratio. Rotate the result by the camera-to-world matrix (<a class="x" href="../spaces/index.html#chain">the chain of spaces</a>) for a world position. This one step turns a 2D image into geometry: decals, fog, SSAO and screen-space reflections all start with it.</p>
+  </div>
+  <pre class="hlsl"><span class="c">// view-space position of a pixel from its UV and raw depth</span>
+<span class="t">float</span>  eye = LinearEyeDepth(rawDepth, _ZBufferParams);
+<span class="t">float2</span> ndc = uv * <span class="n">2</span> - <span class="n">1</span>;
+<span class="t">float3</span> posVS = <span class="t">float3</span>(ndc.x * tanHalfFov * aspect, ndc.y * tanHalfFov, <span class="n">1</span>) * eye;
+<span class="c">// Unity also offers ComputeWorldSpacePosition(uv, rawDepth, UNITY_MATRIX_I_VP)</span></pre>
+  <details class="check"><summary></summary><script type="application/json">[["A pixel at NDC y = 0.5, with tan(fov/2) = 0.6 and eye depth 10 m. How high above the view axis is the surface?", ["0.3 m", "3 m", "6 m", "5 m"], 1, "y = 0.5 · 0.6 · 10 = 3 m."]]</script></details>
+
+</section>
+<section class="chapter" id="soft-particles" data-title="Soft particles" data-builds="depth-effects#linearize shader-anatomy#functions" data-summary="fade = saturate((sceneDepth − particleDepth) / distance).">
+  <div class="head"><div class="num"></div><h2>Soft particles</h2></div>
+
+  <div class="prose">
+    <p>A flat particle sprite that cuts through the ground shows a hard, straight line where it intersects. The fix compares two depths: the scene behind the particle (from the depth texture) and the particle itself. Where they are close, fade the particle out:</p>
+  </div>
+  <div class="fx" data-fx="softfade"></div>
+  <div class="prose">
+    <p>Both depths must be linear (previous chapters), otherwise the fade would be thin far away and wide up close. The <a class="x" href="../shader-anatomy/index.html#functions">saturate</a> keeps the fade between 0 and 1.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["The fade distance is 0.5 m; the particle is 0.1 m in front of the wall. What fraction of its opacity remains?", ["10%", "20%", "50%", "80%"], 1, "0.1 / 0.5 = 0.2."]]</script></details>
+
+</section>
+<section class="chapter" id="water" data-title="Water depth and shorelines" data-builds="ray-sphere#output" data-summary="Water transmittance = e^(−σ·(sceneDepth − surfaceDepth)), per colour channel.">
+  <div class="head"><div class="num"></div><h2>Water depth and shorelines</h2></div>
+
+  <div class="prose">
+    <p>The same difference tells a water surface how much water lies below it. Light travelling through water is absorbed exponentially (the same Beer–Lambert law as in <a class="x" href="../ray-sphere/index.html#output">clouds</a>), so shallow water shows the ground and deep water turns into the water colour:</p>
+  </div>
+  <div class="fx" data-fx="waterdepth"></div>
+  <div class="prose">
+    <p>Strictly the light travels further than the vertical depth when you look at a grazing angle. The depth difference along the view ray already includes that, which is why water looks deeper and darker when you look across it. Shoreline foam uses the same value with a small threshold, like the soft particle fade.</p>
+  </div>
+
+</section>
+<section class="chapter" id="ssao" data-title="Ambient occlusion from depth" data-builds="depth-effects#reconstruct" data-summary="AO ≈ 1 − blocked samples / all samples, with a range check against distant blockers.">
+  <div class="head"><div class="num"></div><h2>Ambient occlusion from depth</h2></div>
+
+  <div class="prose">
+    <p>Corners and creases receive less ambient light because the surroundings block part of the sky. <button type="button" class="term" data-term="ssao">Screen-space ambient occlusion</button> estimates that from the depth buffer alone. For each pixel, rebuild its position (<a href="#reconstruct">previous chapter</a>), scatter a few sample points in the half-sphere above it, and check each one against the depth buffer: if the stored depth at that point's screen position is nearer than the sample, something is in front of it, and that sample counts as blocked.</p>
+  </div>
+  <div class="fx" data-fx="ssao"></div>
+  <div class="prose">
+    <p>The <strong>range check</strong> matters: a far-away wall behind a character would otherwise darken the character's edges. Samples whose blocker is more than the radius away do not count. Real implementations use 8 to 32 samples, rotate the pattern per pixel with noise and blur the result, because the noise from a few samples is easier to hide than banding.</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Add <em>Screen Space Ambient Occlusion</em> to a Volume. HDRP's version is a GTAO-style technique with temporal accumulation; <em>Radius</em> and <em>Intensity</em> match the parameters here.</p></div><div class="eng" data-engine="urp"><p>Add the <em>Screen Space Ambient Occlusion</em> renderer feature to the URP renderer. It works from the depth texture (or depth-normals). <em>Radius</em>, <em>Sample Count</em> and <em>Direct Lighting Strength</em> are the main controls.</p></div><div class="eng" data-engine="unreal"><p>SSAO lives in the Post Process Volume under <em>Ambient Occlusion</em> (Intensity, Radius). With Lumen enabled, screen-space AO is largely replaced by Lumen's own short-range occlusion.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Why is the range check needed?", ["To save samples", "So blockers far behind or in front do not darken unrelated surfaces", "To make AO brighter", "To avoid NaNs"], 1, "Without it, a pixel next to a large depth jump treats the distant surface as a nearby blocker."]]</script></details>
+
+</section>
+<section class="chapter" id="edges" data-title="Outlines from depth" data-builds="depth-effects#linearize" data-summary="edge if |z − z_neighbour| / z &gt; threshold.">
+  <div class="head"><div class="num"></div><h2>Outlines from depth</h2></div>
+
+  <div class="prose">
+    <p>Where depth jumps between neighbouring pixels, two surfaces meet: an object's silhouette. Compare each pixel with its neighbours and draw a line where the difference is large. Dividing by the depth itself makes the test work at every distance, because a 10 cm gap matters at 2 m but not at 200 m:</p>
+  </div>
+  <div class="fx" data-fx="edge"></div>
+  <div class="prose">
+    <p>Floors seen at a grazing angle also have large depth steps from pixel to pixel and produce false lines. Adding a normal comparison (from a normals buffer) and scaling the threshold with the viewing angle removes most of them.</p>
+  </div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://www.reedbeta.com/blog/depth-precision-visualized/" rel="noopener">Depth Precision Visualized</a></span><span class="by">Nathan Reed · 2015</span><span class="why">Graphs of standard and reversed-Z depth precision, the basis of chapter 2.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-OpenGL/Depth-testing" rel="noopener">Depth testing</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">The depth test, non-linear depth and z-fighting with code.</span></li><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-Lighting/SSAO" rel="noopener">SSAO</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">A complete SSAO implementation with sample kernels, noise and blur.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/writing-shaders-urp-reconstruct-world-position.html" rel="noopener">Reconstruct the world space positions of pixels from the depth buffer</a></span><span class="by">Unity · URP 17</span><span class="why">The URP shader functions for chapter 4.</span></li></ul>
+</section>
+
+<div class="next" data-next="transparency cloud-march shadow-maps"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"depthbuffer": [
+"Depth buffer",
+"An image with one depth value per pixel, used to keep only the nearest surface. Also called the Z-buffer."
+],
+"ztest": [
+"Depth test",
+"The comparison of a fragment's depth with the stored depth that decides whether it is drawn.",
+"#what-depth"
+],
+"zfight": [
+"Z-fighting",
+"Flicker between two surfaces that are so close the depth buffer stores the same value for both."
+],
+"reversedz": [
+"Reversed-Z",
+"Storing 1 at the near plane and 0 at the far plane in a float depth buffer, which evens out precision.",
+"#nonlinear"
+],
+"eyedepth": [
+"Linear eye depth",
+"The distance from the camera along its forward axis, in world units, recovered from the stored depth.",
+"#linearize"
+],
+"ssao": [
+"SSAO",
+"Screen-space ambient occlusion: darkening creases by testing sample points against the depth buffer.",
+"#ssao"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="depth-effects.js"></script>
+</body>
+</html>
