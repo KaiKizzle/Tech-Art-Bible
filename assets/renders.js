@@ -669,6 +669,126 @@ vec3 render(vec2 frag){
   vec3 lp = PP - ro; float b = dot(lp, rd); float d2 = dot(lp, lp) - b*b; c += vec3(1.0, .55, .22)*.012/max(d2, .0004)*step(0.0, b);
   return c; }`
   });
+  /* ---------- third wave: characters and mapping ---------- */
+  Object.assign(SCENES, {
+    /* A bust lit from the side: left half with wrapped, red-bleeding diffuse and light through the ears, right half plain Lambert. */
+    skin: '#define KEYDIR vec3(.8, .45, .35)\n' + SDF + `
+float smin(float a, float b, float k){ float h = clamp(.5 + .5*(b - a)/k, 0.0, 1.0); return mix(b, a, h) - k*h*(1.0 - h); }
+float sdEll(vec3 p, vec3 r){ float k0 = length(p/r), k1 = length(p/(r*r)); return k0*(k0 - 1.0)/k1; }
+float bust(vec3 p){ vec3 q = p - vec3(0.0, 1.55, 0.0), e = vec3(abs(q.x), q.yz);
+  float d = sdEll(q, vec3(.5, .6, .56));
+  d = smin(d, sdEll(q - vec3(0.0, -.36, .15), vec3(.34, .33, .37)), .18);
+  d = smin(d, sdCapsule(q, vec3(0.0, .04, .5), vec3(0.0, -.17, .63), .065), .06);
+  d = -smin(-d, sdSphere(e - vec3(.17, .07, .56), .085), .05); d = min(d, sdSphere(e - vec3(.17, .07, .47), .07));
+  d = smin(d, sdEll(e - vec3(.5, -.06, -.04), vec3(.045, .16, .1)), .035);
+  d = smin(d, sdCapsule(p, vec3(0.0, .5, -.05), vec3(0.0, 1.15, -.02), .22), .12);
+  d = smin(d, sdEll(p - vec3(0.0, .28, -.1), vec3(.95, .32, .42)), .2); return d; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); r = U(r, bust(p), 1.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ return id < .5 ? FLOOR : vec3(.5, .26, .19); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){
+  vec3 ro = vec3(-1.8, 1.8, 3.4); vec2 uv = screenUV(frag); mat3 cam = lookAt(ro, vec3(-.05, 1.25, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.5));
+  vec2 h = march(ro, rd); if (h.x < 0.0) return studio(rd);
+  float split = uRes.x*.5; vec3 edge = vec3(.5, .25, .05)*smoothstep(1.5, 0.0, abs(frag.x - split));
+  if (h.y < .5) return shadeHit(ro, rd, h) + edge;
+  vec3 p = ro + rd*h.x, n = calcN(p), v = -rd, alb = vec3(.5, .26, .19);
+  float nl = dot(n, KEY), sh = softSh(p + n*.01, KEY), oc = calcAO(p, n);
+  vec3 dif;
+  if (frag.x < split){ vec3 w = vec3(.6, .25, .14); dif = clamp((vec3(nl) + w)/(1.0 + w), 0.0, 1.0)*pow(vec3(sh), vec3(.3, .75, 1.0));
+    float th = 0.0; for (int i = 1; i < 6; i++) th += max(-map(p - n*(.04*float(i))).x, 0.0);
+    dif += exp(-th*vec3(6.0, 22.0, 35.0))*max(-nl, 0.0)*vec3(1.4, .3, .15); }
+  else dif = vec3(max(nl, 0.0)*sh);
+  vec3 hh = normalize(KEY + v); float nh = max(dot(n, hh), 0.0), fr = .028 + .972*pow(1.0 - max(dot(n, v), 0.0), 5.0);
+  vec3 c = alb*(dif*vec3(1.7, 1.55, 1.4) + mix(vec3(.03, .03, .04), vec3(.1, .11, .14), n.y*.5 + .5)*oc);
+  c += vec3(2.0)*(pow(nh, 90.0)*.3 + pow(nh, 14.0)*.06)*fr*4.0*sh*step(0.0, nl);
+  return c + edge; }`,
+
+    /* A ball of hair: strands run down from the crown, Kajiya–Kay diffuse and two shifted highlight bands. */
+    hair: `
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.35, 4.0); mat3 cam = lookAt(ro, vec3(0.0, .05, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.6));
+  vec2 q = sphIntersect(ro, rd, vec4(0.0, 0.0, 0.0, 1.0));
+  if (q.x < 0.0){ vec3 c = studio(rd); if (rd.y < 0.0){ float t = (-1.0 - ro.y)/rd.y; vec3 p = ro + rd*t; c = mix(vec3(.03)*(.25 + .75*smoothstep(.6, 1.6, length(p.xz))), c, smoothstep(3.0, 7.0, length(p.xz))); } return c; }
+  vec3 p = ro + rd*q.x, n = normalize(p);
+  vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), n) + vec3(0.0, 0.0, 1e-4)); vec3 T = cross(n, east);
+  float az = atan(n.z, n.x), pol = acos(clamp(n.y, -1.0, 1.0));
+  float s1 = noise3(vec3(az*70.0, pol*2.5, 0.0)), s2 = noise3(vec3(az*230.0, pol*7.0, 3.0));
+  vec3 L = normalize(vec3(-.4, .45, .8)), V = -rd, H = normalize(L + V);
+  float shift = (s1 - .5)*.16;
+  vec3 TR = normalize(T + n*(.1 + shift)), TT = normalize(T + n*(-.25 + shift));
+  float a = dot(TR, H), b = dot(TT, H), c0 = dot(T, L);
+  float spR = pow(sqrt(max(0.0, 1.0 - a*a)), 260.0), spT = pow(sqrt(max(0.0, 1.0 - b*b)), 45.0), kd = sqrt(max(0.0, 1.0 - c0*c0));
+  vec3 base = mix(vec3(.025, .011, .005), vec3(.16, .065, .025), smoothstep(.1, 1.7, pol))*(.55 + .9*s2);
+  float nl = clamp(dot(n, L)*.6 + .4, 0.0, 1.0);
+  vec3 c = base*(kd*nl*1.4 + .08) + vec3(1.0, .85, .7)*spR*nl*.45 + base*4.0*spT*nl;
+  return c*mix(.55, 1.05, s1)*smoothstep(.02, .25, pol); }`,
+
+    /* Two draped forms: red velvet with Charlie sheen and blue satin with anisotropic GGX, key light plus a rim light. */
+    cloth: '#define KEYDIR vec3(-.55, .6, .6)\n' + SDF + `
+float drape(vec3 q){ float a = atan(q.z, q.x), y = clamp((.7 - q.y)/.7, 0.0, 1.0);
+  float r = .412 + .27*y*y + .03*y*sin(a*9.0 + q.y*3.0);
+  float skirt = max(max(length(q.xz) - r, -q.y), q.y - .7)*.6;
+  return min(skirt, sdSphere(q - vec3(0.0, .7, 0.0), .42)); }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); r = U(r, drape(p - vec3(-1.0, 0.0, 0.0)), 1.0); r = U(r, drape(p - vec3(1.0, 0.0, 0.0)), 2.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ return FLOOR; }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.55, 4.6); mat3 cam = lookAt(ro, vec3(0.0, .5, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.5));
+  vec2 h = march(ro, rd); if (h.x < 0.0) return studio(rd); if (h.y < .5) return shadeHit(ro, rd, h);
+  vec3 p = ro + rd*h.x, n = calcN(p), v = -rd; float sh = softSh(p + n*.01, KEY), oc = calcAO(p, n), nv = max(dot(n, v), 1e-3);
+  vec3 base = h.y < 1.5 ? vec3(.16, .006, .02) : vec3(.03, .07, .32);
+  vec3 c = base*mix(vec3(.04, .04, .05), vec3(.14, .15, .19), n.y*.5 + .5)*oc;
+  for (int k = 0; k < 2; k++){
+    vec3 l = k == 0 ? KEY : normalize(vec3(.6, .45, -.9)); vec3 lc = k == 0 ? vec3(2.4, 2.25, 2.05)*sh : vec3(1.0, 1.1, 1.4);
+    float nl = max(dot(n, l), 0.0); vec3 hh = normalize(l + v); float nh = max(dot(n, hh), 0.0);
+    if (h.y < 1.5){
+      float inv = 1.0/.22, s2 = max(1.0 - nh*nh, 0.0); float D = (2.0 + inv)*pow(s2, inv*.5)/(2.0*PI); float Vc = 1.0/(4.0*(nl + nv - nl*nv) + 1e-3);
+      float w = clamp((dot(n, l) + .5)/2.25, 0.0, 1.0);
+      c += lc*(base/PI*w*clamp(vec3(.5, .1, .15) + dot(n, l), 0.0, 1.0)*1.5 + vec3(1.0, .45, .5)*D*Vc*nl*2.2);
+    } else {
+      vec3 T = normalize(cross(vec3(0.0, 1.0, 0.0), n) + vec3(1e-4)), B = cross(n, T);
+      float ax = .07, ay = .38, th = dot(T, hh)/ax, bh = dot(B, hh)/ay, dd = th*th + bh*bh + nh*nh; float D = 1.0/(PI*ax*ay*dd*dd);
+      float F = .04 + .96*pow(1.0 - max(dot(v, hh), 0.0), 5.0);
+      c += lc*(base/PI*nl*2.0 + vec3(.75, .8, 1.0)*D*F*nl/(4.0*nl*nv + .15)*.6);
+    }
+  }
+  return c; }`,
+
+    /* A curtain gathered on a rod: tight pleats at the top open into soft folds at the bottom. */
+    'fabric-folds': '#define KEYDIR vec3(-.9, .45, .5)\n' + SDF + `
+float hf(vec2 q){ float y = clamp((2.5 - q.y)/2.35, 0.0, 1.0); return (.05 + .1*y)*sin(q.x*8.0 + .5*sin(q.x*1.3 + y*2.0)) + .06*y*y*sin(q.x*2.6 + 1.2); }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  float h = hf(p.xy), g = (hf(p.xy + vec2(.002, 0.0)) - hf(p.xy - vec2(.002, 0.0)))/.004;
+  float d = (abs(p.z - h) - .012)/sqrt(1.0 + g*g)*.8;
+  d = max(d, sdBox(p - vec3(0.0, 1.33, 0.0), vec3(1.5, 1.18, .5)));
+  r = U(r, d, 1.0);
+  r = U(r, sdCapsule(p, vec3(-1.75, 2.58, .02), vec3(1.75, 2.58, .02), .028), 2.0);
+  r = U(r, sdSphere(p - vec3(-1.78, 2.58, .02), .06), 2.0); r = U(r, sdSphere(p - vec3(1.78, 2.58, .02), .06), 2.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) return vec3(.55, .2, .06); return vec3(.25); }
+vec3 emit(float id, vec3 p, vec3 n){ return id > .5 && id < 1.5 ? vec3(.55, .2, .06)*.05*(1.0 - abs(n.z)) : vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(1.3, 1.6, 4.9), vec3(0.0, 1.3, 0.0), 2.2, frag); }`,
+
+    /* One rounded cube, three ways: planar from above (smeared sides), triplanar (tinted by axis) and a matcap. */
+    mapping: SDF + `
+vec3 C1 = vec3(-1.45, .55, 0.0), C2 = vec3(0.0, .55, 0.0), C3 = vec3(1.45, .55, 0.0);
+float shp(vec3 q){ return sdBox(q, vec3(.34)) - .14; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); mat3 m = rY(.6)*rX(.45);
+  r = U(r, shp((p - C1)*m), 1.0); r = U(r, shp((p - C2)*m), 2.0); r = U(r, shp((p - C3)*m), 3.0); return r; }
+float chk(vec2 u){ vec2 g = floor(u*4.0); return mod(g.x + g.y, 2.0); }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; mat3 m = rY(.6)*rX(.45);
+  if (id < 1.5){ vec3 q = (p - C1)*m; return mix(vec3(.06), ORANGE*.8, chk(q.xz + .5)); }
+  if (id < 2.5){ vec3 q = (p - C2)*m, nq = abs(n*m); vec3 w = nq*nq*nq*nq; w /= w.x + w.y + w.z;
+    return w.x*mix(vec3(.06), RED*.8, chk(q.zy + .5)) + w.y*mix(vec3(.06), GREEN*.8, chk(q.xz + .5)) + w.z*mix(vec3(.06), ZBLUE*.8, chk(q.xy + .5)); }
+  return vec3(0.0); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 matcap(vec2 m){ float nz = sqrt(max(0.0, 1.0 - dot(m, m))); vec3 nn = vec3(m, nz), l = normalize(vec3(-.5, .6, .62));
+  float dif = max(dot(nn, l), 0.0), sp = pow(max(dot(nn, normalize(l + vec3(0.0, 0.0, 1.0))), 0.0), 50.0), rim = pow(1.0 - nz, 3.0);
+  return vec3(.55, .22, .16)*(.06 + .9*dif) + vec3(1.2)*sp + rim*vec3(.25, .35, .6); }
+vec3 render(vec2 frag){ vec3 ro = vec3(0.0, 1.9, 4.6); vec2 uv = screenUV(frag); mat3 cam = lookAt(ro, vec3(0.0, .45, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.5));
+  vec2 h = march(ro, rd); if (h.x < 0.0) return studio(rd);
+  if (h.y > 2.5){ vec3 n = calcN(ro + rd*h.x); return matcap(vec2(dot(n, cam[0]), dot(n, cam[1]))); }
+  return shadeHit(ro, rd, h); }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

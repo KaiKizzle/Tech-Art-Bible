@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cloth Shading · Tech Art Atlas</title>
+<meta name="description" content="Velvet glows at its edges, satin streaks, cotton is soft. This unit explains why fabric needs its own shading terms and builds them: sheen, a cloth visibility term, wrapped diffuse, anisotropic silk, fuzz and weave.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="cloth">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Cloth Shading</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Characters · 6 chapters</div>
+  <h1>Cloth Shading</h1>
+  <p class="lede">Velvet glows at its edges, satin streaks, cotton is soft. This unit explains why fabric needs its own shading terms and builds them: sheen, a cloth visibility term, wrapped diffuse, anisotropic silk, fuzz and weave.</p>
+  <p class="meta">Builds on Inside a PBR Shader. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="cloth" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: velvet with a Charlie sheen on the left, anisotropic satin on the right.</figcaption></figure>
+<div class="needs" data-needs="pbr-brdf#ndf pbr-brdf#geometry spaces#tangent"></div>
+
+<section class="chapter" id="why" data-title="Why fabric needs its own model" data-builds="pbr-brdf#full" data-summary="Loose fibres catch light at grazing angles (sheen); parallel threads stretch the highlight (anisotropy).">
+  <div class="head"><div class="num"></div><h2>Why fabric needs its own model</h2></div>
+
+  <div class="prose">
+    <p>The standard <a class="x" href="../pbr-brdf/index.html#full">PBR model</a> describes a solid surface covered in tiny mirror facets. Fabric is not solid: it is a tangle of fibres, many of them sticking out of the surface. Those loose fibres catch light at grazing angles, so the outline of a velvet cushion glows (<button type="button" class="term" data-term="sheen">sheen</button>) while the part facing you stays soft and dark. GGX does the opposite: its highlight sits where the surface faces the light and viewer. That is why cloth rendered with the standard model looks like plastic.</p>
+    <p>Fabrics fall into two groups. <strong>Fuzzy</strong> fabrics (cotton, wool, velvet, felt) have fibres pointing every way and need a sheen term. <strong>Smooth, woven</strong> fabrics (silk, satin, nylon) have long parallel threads and need an <a href="#silk">anisotropic</a> highlight.</p>
+  </div>
+
+</section>
+<section class="chapter" id="sheen" data-title="The sheen distribution" data-builds="pbr-brdf#ndf pbr-brdf#half" data-summary="D = (2 + 1/α) · sin(θ_H)^(1/α) / 2π: peaks at grazing angles.">
+  <div class="head"><div class="num"></div><h2>The sheen distribution</h2></div>
+
+  <div class="prose">
+    <p>The usual sheen term is the "Charlie" distribution from Sony Imageworks. Where <a class="x" href="../pbr-brdf/index.html#ndf">GGX</a> puts most facets near the normal, Charlie puts them near 90° from it, like fibres standing out of the surface. Compare the two, and see what it does to a ball of velvet lit from the front:</p>
+  </div>
+  <div class="fx" data-fx="charlie"></div>
+  <div class="prose"><p>The light comes from almost the same direction as the view, yet the brightest part is the rim. Roughness here controls how far the fibres lean: low values concentrate the sheen in a thin rim, high values spread it.</p></div>
+
+</section>
+<section class="chapter" id="visibility" data-title="The cloth visibility term" data-builds="cloth#sheen pbr-brdf#geometry" data-summary="V = 1 / (4 · (N·L + N·V − N·L · N·V)); spec = D · V · sheenColor.">
+  <div class="head"><div class="num"></div><h2>The cloth visibility term</h2></div>
+
+  <div class="prose">
+    <p>The <a class="x" href="../pbr-brdf/index.html#geometry">geometry term</a> of GGX assumes facets on a surface shadowing each other. For fibres a much simpler term works (Neubelt and Pettineo's, used in Filament and many engines). It replaces both G and the 4 · N·L · N·V denominator, and it stays finite at grazing angles, where the sheen lives:</p>
+  </div>
+  <div class="fx" data-fx="clothvis"></div>
+  <div class="prose"><p>The full cloth specular is D · V · sheenColor. There is no Fresnel term: fibres scatter at every angle, so the sheen colour itself sets the strength. It is usually a lighter, less saturated version of the base colour, or white for satin-like shine.</p></div>
+
+</section>
+<section class="chapter" id="diffuse" data-title="Soft diffuse and subsurface colour" data-builds="skin#wrap dot-cross#lambert" data-summary="diffuse = albedo / π · saturate((N·L + w) / (1 + w)²) · saturate(subsurface + N·L).">
+  <div class="head"><div class="num"></div><h2>Soft diffuse and subsurface colour</h2></div>
+
+  <div class="prose">
+    <p>Light also passes between and through fibres, so the shadow side of fabric is soft and slightly coloured, like <a class="x" href="../skin/index.html#wrap">wrap lighting on skin</a>. Filament's cloth model wraps the diffuse and multiplies it by saturate(subsurface + N·L): where the light hits directly that factor is 1, and as the light wraps around it fades to the <em>subsurface colour</em>:</p>
+  </div>
+  <div class="fx" data-fx="clothdiff"></div>
+
+</section>
+<section class="chapter" id="silk" data-title="Silk and satin: anisotropic highlights" data-builds="pbr-brdf#ndf hair#highlight spaces#tangent" data-summary="D = 1 / (π αₓ α_y ((T·H / αₓ)² + (B·H / α_y)² + (N·H)²)²).">
+  <div class="head"><div class="num"></div><h2>Silk and satin: anisotropic highlights</h2></div>
+
+  <div class="prose">
+    <p>In satin and silk, long threads run in one direction. Facets are spread differently along the threads than across them, so the highlight stretches into a streak across the thread direction, like on <a class="x" href="../hair/index.html#highlight">hair</a>. Anisotropic GGX has two roughness values, one along the tangent T (the threads) and one along the bitangent B (across them). The threads are smooth along their length and curved across it, so α<sub>B</sub> is the larger one:</p>
+  </div>
+  <div class="fx" data-fx="aniso"></div>
+  <div class="prose"><p>The thread direction comes from the mesh tangents (<a class="x" href="../spaces/index.html#tangent">tangent space</a>) or from a flow map, exactly as for hair. Rotating it per panel of a garment, following the real cut of the fabric, is what makes a satin dress read as sewn rather than painted.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A satin ribbon runs horizontally. Which way does its highlight stretch?", ["Along the ribbon", "Across the ribbon, perpendicular to the threads", "It is round", "It disappears"], 1, "Like hair, the highlight forms across the thread direction."]]</script></details>
+
+</section>
+<section class="chapter" id="fuzz" data-title="Fuzz and weave" data-builds="fabric-folds#baked texture-memory#density" data-summary="fuzz = fuzzColor · (1 − N·V)ᵖ; fade the weave once threads get smaller than a pixel.">
+  <div class="head"><div class="num"></div><h2>Fuzz and weave</h2></div>
+
+  <div class="prose">
+    <p>Two cheap layers complete a fabric. A <strong>fuzz</strong> rim adds a soft halo at the silhouette for felt, wool and peach-skin fabrics, independent of the light:</p>
+  </div>
+  <div class="fx" data-fx="fuzz"></div>
+  <div class="prose"><p>The <strong>weave</strong> is a tiling detail normal map (and sometimes an alpha or AO map) at the real thread scale, blended over the folds (<a class="x" href="../fabric-folds/index.html#baked">blending normals</a>). Threads are tiny, so the weave must fade out before it becomes finer than a pixel, or it shimmers:</p></div>
+  <div class="fx" data-fx="weavefade"></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>The <em>Fabric</em> Shader Graph target has two material types: <em>Cotton Wool</em> (Charlie sheen with the cloth visibility term, a sheen colour and a subsurface mask) and <em>Silk</em> (anisotropic GGX with an anisotropy value and tangent map).</p></div><div class="eng" data-engine="urp"><p>URP has no fabric model. Build the sheen term and wrapped diffuse with a <em>Custom Function</em> node and the main light from the lighting functions, or approximate velvet with a fresnel-driven rim in an Unlit or Lit graph.</p></div><div class="eng" data-engine="unreal"><p>The <em>Cloth</em> shading model adds <em>Fuzz Color</em> and a <em>Cloth</em> blend amount to the default lit inputs (an Ashikhmin-style sheen). Anisotropy is available through the <em>Anisotropy</em> and <em>Tangent</em> inputs, and Substrate adds a dedicated fuzz layer.</p></div></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: Cloth model</a></span><span class="by">Google</span><span class="why">Charlie sheen, the Neubelt visibility term and wrapped subsurface diffuse (section 4.12).</span></li><li><span><span class="kind">Course</span><a href="https://blog.selfshadow.com/publications/s2017-shading-course/" rel="noopener">Physically Based Shading in Theory and Practice 2017 (Production Friendly Microfacet Sheen BRDF)</a></span><span class="by">Alejandro Conty Estevez, Christopher Kulla · SIGGRAPH 2017</span><span class="why">Where the Charlie distribution comes from.</span></li><li><span><span class="kind">Course</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/" rel="noopener">Physically Based Shading in Theory and Practice 2013 (Crafting a Next-Gen Material Pipeline for The Order: 1886)</a></span><span class="by">David Neubelt, Matt Pettineo · SIGGRAPH 2013</span><span class="why">The cloth visibility term and a production fabric pipeline.</span></li></ul>
+</section>
+
+<div class="next" data-next="fabric-folds hair skin"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"sheen": [
+"Sheen",
+"The soft brightening of fabric at grazing angles caused by fibres standing out of the surface.",
+"#sheen"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="cloth.js"></script>
+</body>
+</html>

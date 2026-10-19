@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Skin: Light Under the Surface · Tech Art Atlas</title>
+<meta name="description" content="Skin glows because light travels under it before it comes back out. This unit builds the techniques games use for that, from a one-line wrap to diffusion profiles, pre-integration and light through ears, plus the two-lobe specular on top.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="skin">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Skin: Light Under the Surface</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Characters · 7 chapters</div>
+  <h1>Skin: Light Under the Surface</h1>
+  <p class="lede">Skin glows because light travels under it before it comes back out. This unit builds the techniques games use for that, from a one-line wrap to diffusion profiles, pre-integration and light through ears, plus the two-lobe specular on top.</p>
+  <p class="meta">Builds on Inside a PBR Shader. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="skin" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a lit bust, with subsurface scattering on the left half and plain Lambert on the right.</figcaption></figure>
+<div class="needs" data-needs="pbr-brdf#diffuse pbr-brdf#ndf dot-cross#lambert"></div>
+
+<section class="chapter" id="why" data-title="Why skin is not Lambert" data-builds="pbr-brdf#diffuse" data-summary="Light enters skin and leaves millimetres away; red travels farthest, so terminators and shadow edges turn warm and soft.">
+  <div class="head"><div class="num"></div><h2>Why skin is not Lambert</h2></div>
+
+  <div class="prose">
+    <p>A Lambert surface reflects light from the exact point where it arrives (<a class="x" href="../pbr-brdf/index.html#diffuse">the diffuse term</a>). Skin does not. Most light enters it, scatters around in the layers underneath, and leaves a few millimetres away. That <button type="button" class="term" data-term="sss">subsurface scattering</button> softens every shadow edge and gives the transition from lit to unlit a warm red band, because red light travels much farther through tissue than green or blue before it is absorbed:</p>
+  </div>
+  <div class="fx" data-fx="mfp"></div>
+  <div class="prose"><p>The numbers here are illustrative, of the order engines use for skin. What matters is the ratio: red reaches several times deeper than blue. Every technique in this unit is a way to spread the lighting sideways by those distances, cheaply.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Why does the edge of a shadow on a face look reddish?", ["Blood vessels are red", "Red light scatters farther under the skin before it is absorbed, so it reaches into the shadow", "The sun is red", "Specular is red"], 1, "Red light travels farther sideways, so it spills past the shadow edge."]]</script></details>
+
+</section>
+<section class="chapter" id="wrap" data-title="The cheapest trick: wrap lighting" data-builds="dot-cross#lambert" data-summary="diffuse = saturate((N·L + w) / (1 + w)), with a larger w for red.">
+  <div class="head"><div class="num"></div><h2>The cheapest trick: wrap lighting</h2></div>
+
+  <div class="prose">
+    <p>The simplest approximation lets the light "wrap" past the point where N·L reaches zero, as if it scattered a little around the curve. Shift the cosine by w and divide by (1 + w) so a surface facing the light stays at the same brightness (<a class="x" href="../dot-cross/index.html#lambert">Lambert</a> is w = 0):</p>
+  </div>
+  <div class="fx" data-fx="wrap"></div>
+  <div class="prose"><p>Using a larger w for red than for blue gives the warm terminator. Wrap lighting is a single line and runs on any platform, which makes it the usual choice for mobile, stylised characters and URP. It ignores the size of the object, though: the same w softens a nose and a forehead equally, which the next chapters fix.</p></div>
+
+</section>
+<section class="chapter" id="profile" data-title="The diffusion profile" data-builds="skin#why" data-summary="R(r) = Σ wᵢ · e^(−r² / 2vᵢ) / (2πvᵢ), one weight per colour channel.">
+  <div class="head"><div class="num"></div><h2>The diffusion profile</h2></div>
+
+  <div class="prose">
+    <p>Shine a thin laser into skin and the glow around the entry point fades with distance. That falloff is the <button type="button" class="term" data-term="profile">diffusion profile</button> R(r). For human skin it is well described by a sum of a few Gaussians of different widths, one weight per colour channel (the fit from NVIDIA's skin research). A wide red Gaussian is what carries red light far:</p>
+  </div>
+  <div class="fx" data-fx="profile"></div>
+  <div class="prose"><p>All skin techniques use some form of this profile: blur the diffuse lighting by R. The engines expose it as a <em>scattering distance</em> per colour (HDRP) or a <em>subsurface profile</em> asset (Unreal), from which they build the kernel.</p></div>
+
+</section>
+<section class="chapter" id="screen-space" data-title="Blurring in screen space" data-builds="buffers#render-targets depth-effects#linearize texture-memory#density" data-summary="kernel in pixels = radius · screenHeight / (2 · d · tan(fov/2)); depth-aware, diffuse only.">
+  <div class="head"><div class="num"></div><h2>Blurring in screen space</h2></div>
+
+  <div class="prose">
+    <p>The most common real-time method renders the diffuse lighting of skin into its own buffer (<a class="x" href="../buffers/index.html#render-targets">a render target</a>), then blurs it with the profile as a kernel, in screen space. The kernel must cover the same number of <em>millimetres</em> at every distance, so its size in pixels shrinks as the face moves away:</p>
+  </div>
+  <div class="fx" data-fx="ssswidth"></div>
+  <div class="prose"><p>The blur also reads the <a class="x" href="../depth-effects/index.html#linearize">depth buffer</a> and skips samples that lie on a different surface, otherwise the face would bleed into the background. Specular light is kept out of the blur: it reflects at the surface and stays sharp.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Set the material type to <em>Subsurface Scattering</em> and assign a <em>Diffusion Profile</em> asset. The profile's <em>Scattering Distance</em> colour and <em>World Scale</em> are the r of this chapter; up to 15 profiles are active per frame, listed in the HDRP global settings.</p></div><div class="eng" data-engine="urp"><p>URP has no screen-space SSS. Use wrap lighting or the pre-integrated method of the next chapter in Shader Graph, plus the transmission trick for ears.</p></div><div class="eng" data-engine="unreal"><p>Use the <em>Subsurface Profile</em> shading model and a Subsurface Profile asset (scatter radius, falloff colour, dual specular parameters). The screen-space pass is controlled with <code>r.SSS.*</code> settings.</p></div></div>
+
+</section>
+<section class="chapter" id="preintegrated" data-title="Pre-integrated skin" data-builds="skin#profile textures-sampling#texture" data-summary="diffuse = LUT(N·L, 1/r): the profile integrated around a circle of radius r.">
+  <div class="head"><div class="num"></div><h2>Pre-integrated skin</h2></div>
+
+  <div class="prose">
+    <p>A cheaper method avoids the extra pass. On a curved surface, the scattered light around a point comes from neighbours that face the light at slightly different angles. If the surface is a sphere of radius r, that blur can be computed once, for every N·L and every radius, and stored in a small lookup texture. The shader then reads it with N·L and the local <button type="button" class="term" data-term="curvature">curvature</button> 1/r (from the change of the normal between pixels, or a baked curvature map):</p>
+  </div>
+  <div class="fx" data-fx="preint"></div>
+  <div class="prose"><p>With the profile as measured, the effect is limited to very small radii: nostril rims, ear edges, fine wrinkles. Productions usually widen the profile (the scale slider) so that noses, lips and eyelids also get a soft red terminator, while cheeks and forehead stay close to Lambert. The lookup texture is computed exactly as the widget does it, once, offline.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["On which part of a face does pre-integrated skin differ most from Lambert?", ["The forehead", "The tip of the nose", "Flat cheeks", "It is the same everywhere"], 1, "Small radius means high curvature: the scattering covers a large part of the curve."]]</script></details>
+
+</section>
+<section class="chapter" id="transmission" data-title="Light through ears" data-builds="ray-sphere#output skin#why" data-summary="T = e^(−thickness / ℓ) per channel, lit from behind with max(0, −N·L).">
+  <div class="head"><div class="num"></div><h2>Light through ears</h2></div>
+
+  <div class="prose">
+    <p>Backlit ears and nostrils glow red because light passes all the way through thin tissue. Shaders model it separately from the surface scattering: a <button type="button" class="term" data-term="thickness">thickness map</button> stores how thick the object is at each texel (baked by casting rays inward), and the light that makes it through falls off exponentially with thickness, per colour, like <a class="x" href="../ray-sphere/index.html#output">Beer–Lambert</a>:</p>
+  </div>
+  <div class="fx" data-fx="trans"></div>
+  <div class="prose"><p>The light used for transmission comes from behind, so the shader uses max(0, −N·L) (often wrapped as well). HDRP can also take the thickness from the shadow map instead of a texture, which handles animated characters better.</p></div>
+
+</section>
+<section class="chapter" id="specular" data-title="Skin specular: two lobes" data-builds="pbr-brdf#ndf pbr-brdf#fresnel" data-summary="spec = lerp(D(r₁), D(r₂), mix) · F(F0 = 0.028) · cavity.">
+  <div class="head"><div class="num"></div><h2>Skin specular: two lobes</h2></div>
+
+  <div class="prose">
+    <p>The surface of skin is covered in a thin oily layer over a rougher base, so its highlight is a sharp, faint lobe on top of a broad one. Engines model it as two <a class="x" href="../pbr-brdf/index.html#ndf">GGX</a> lobes with different roughness, mixed. The reflectance at normal incidence is low, F0 ≈ 0.028 (refractive index about 1.4), and a <em>cavity map</em> darkens specular in pores and wrinkles:</p>
+  </div>
+  <div class="fx" data-fx="dualspec"></div>
+  <div class="prose"><p>Pore detail lives in a tiling micro-normal map blended over the main normal map (<a class="x" href="../fabric-folds/index.html#baked">blending normals</a>), faded with distance like any <a class="x" href="../mapping/index.html#detail">detail map</a>.</p></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-14-advanced-techniques-realistic-real-time-skin" rel="noopener">GPU Gems 3, chapter 14: Advanced Techniques for Realistic Real-Time Skin Rendering</a></span><span class="by">Eugene d'Eon, David Luebke · NVIDIA</span><span class="why">The sum-of-Gaussians skin profile used in chapter 3, and texture-space diffusion.</span></li><li><span><span class="kind">Article</span><a href="http://www.iryoku.com/separable-sss/" rel="noopener">Separable Subsurface Scattering</a></span><span class="by">Jorge Jimenez et al.</span><span class="why">The screen-space method used by most engines today.</span></li><li><span><span class="kind">Course</span><a href="https://advances.realtimerendering.com/s2011/" rel="noopener">Advances in Real-Time Rendering 2011 (Pre-Integrated Skin Shading)</a></span><span class="by">Eric Penner</span><span class="why">The curvature lookup method from chapter 5.</span></li><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: Subsurface and cloth models</a></span><span class="by">Google</span><span class="why">Wrap diffuse with a subsurface colour in a real-time engine.</span></li></ul>
+</section>
+
+<div class="next" data-next="hair cloth fabric-folds"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"sss": [
+"Subsurface scattering",
+"Light entering a material, scattering inside it and leaving at a different point.",
+"#why"
+],
+"profile": [
+"Diffusion profile",
+"How the light leaving a material falls off with distance from where it entered, per colour.",
+"#profile"
+],
+"curvature": [
+"Curvature",
+"How strongly a surface bends: 1 / radius of the sphere that fits it locally.",
+"#preintegrated"
+],
+"thickness": [
+"Thickness map",
+"A texture storing how thick a model is at each point, used for light passing through.",
+"#transmission"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="skin.js"></script>
+</body>
+</html>

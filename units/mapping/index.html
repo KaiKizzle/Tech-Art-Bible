@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Simple Mapping Techniques · Tech Art Atlas</title>
+<meta name="description" content="Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="mapping">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Simple Mapping Techniques</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 7 chapters</div>
+  <h1>Simple Mapping Techniques</h1>
+  <p class="lede">Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.</p>
+  <p class="meta">Builds on Textures and Spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="mapping" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one shape textured with planar, triplanar and matcap mapping.</figcaption></figure>
+<div class="needs" data-needs="textures-sampling#uv spaces#transform texture-memory#normals"></div>
+
+<section class="chapter" id="planar" data-title="Planar projection: world position as UV" data-builds="textures-sampling#uv spaces#transform" data-summary="uv = worldPos.xz · scale; stretch = 1 / |N · axis|.">
+  <div class="head"><div class="num"></div><h2>Planar projection: world position as UV</h2></div>
+
+  <div class="prose">
+    <p>A mesh's <a class="x" href="../textures-sampling/index.html#uv">UVs</a> are painted by hand. A projection computes them in the shader instead, from the position of the pixel. The simplest one drops one axis: viewed from above, the world X and Z coordinates are already a perfect UV. This is how terrain, floors and "world-space" dirt or snow layers are textured, and it never needs unwrapping. Its weakness is surfaces that turn away from the projection axis: the same strip of texture covers more and more surface, so it smears:</p>
+  </div>
+  <div class="fx" data-fx="planar"></div>
+  <pre class="hlsl"><span class="c">// planar projection from above: one texture unit every 1 / scale metres</span>
+<span class="t">float2</span> uv  = worldPos.xz * scale;
+<span class="t">float4</span> col = tex.Sample(samp, uv);</pre>
+  <div class="prose"><p>On a character, use object space (the position before the <a class="x" href="../spaces/index.html#transform">model matrix</a>) instead of world space, or the texture slides over the mesh as it walks. Object space still swims on skinned parts, because the vertices move inside the object; for those, bake the projection into a UV channel.</p></div>
+
+</section>
+<section class="chapter" id="triplanar" data-title="Triplanar mapping" data-builds="mapping#planar dot-cross#dot" data-summary="wᵢ = |Nᵢ|ᵏ / Σ|Nⱼ|ᵏ; three samples per texture.">
+  <div class="head"><div class="num"></div><h2>Triplanar mapping</h2></div>
+
+  <div class="prose">
+    <p>Triplanar mapping projects three times, along X, Y and Z, and blends the three samples by how much the surface faces each axis. The weights come from the normal: raise its absolute components to a power k to sharpen the transition, then divide by their sum so they add up to 1:</p>
+  </div>
+  <div class="fx" data-fx="triblend"></div>
+  <div class="prose"><p>Low k gives wide, blurry transitions where two projections double up; high k gives a narrow seam. Something like 4 to 8 is common. The cost is three samples of every texture instead of one:</p></div>
+  <div class="fx" data-fx="tricost"></div>
+  <div class="prose"><p>Two cheaper variants: sample only the dominant axis (one sample, but a hard seam), or <em>biplanar</em> mapping, which samples the two strongest axes. A blend that skips samples with a weight below a small threshold also helps, since most pixels face one axis clearly.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Shader Graph has a <em>Triplanar</em> node with a <em>Blend</em> (the k above) and a type of <em>Default</em> or <em>Normal</em>. The Lit shader can also use <em>Planar</em> or <em>Triplanar</em> as its <em>UV Mapping</em> (Base UV Mapping option).</p></div><div class="eng" data-engine="urp"><p>The same <em>Triplanar</em> node in Shader Graph. Use object-space position and normal for anything that moves.</p></div><div class="eng" data-engine="unreal"><p>The <em>WorldAlignedTexture</em> material function projects a texture triplanar, and <em>WorldAlignedNormal</em> does the same for normal maps. Both take a texture size in world units.</p></div></div>
+
+</section>
+<section class="chapter" id="normals" data-title="Triplanar normal maps" data-builds="mapping#triplanar texture-memory#normals fabric-folds#baked" data-summary="Swizzle each projection&#x27;s normal into world axes, whiteout-blend with the surface normal, then weight.">
+  <div class="head"><div class="num"></div><h2>Triplanar normal maps</h2></div>
+
+  <div class="prose">
+    <p>Albedo can be blended as above, but a <a class="x" href="../texture-memory/index.html#normals">normal map</a> cannot. Each projection's normal map stores its bumps relative to its own plane, and they have to be turned into world space for the plane they were projected on. Using the sample as if it were already the surface normal points every bump the same way:</p>
+  </div>
+  <div class="fx" data-fx="trinormal"></div>
+  <div class="prose"><p>The fix is cheap, because each projection plane lines up with two world axes. Swizzle the tangent-space sample into place, add the surface normal with a whiteout blend (<a class="x" href="../fabric-folds/index.html#baked">blending normals</a>), and flip the sign on the negative side:</p></div>
+  <pre class="hlsl"><span class="c">// whiteout triplanar normals (after Ben Golus). tnX, tnY, tnZ: unpacked tangent-space samples</span>
+<span class="t">float3</span> axisSign = sign(N);
+tnX.x *= axisSign.x;  tnY.x *= axisSign.y;  tnZ.x *= -axisSign.z;
+tnX = <span class="t">float3</span>(tnX.xy + N.zy, abs(tnX.z) * N.x);
+tnY = <span class="t">float3</span>(tnY.xy + N.xz, abs(tnY.z) * N.y);
+tnZ = <span class="t">float3</span>(tnZ.xy + N.xy, abs(tnZ.z) * N.z);
+<span class="t">float3</span> worldN = normalize(tnX.zyx * w.x + tnY.xzy * w.y + tnZ.xyz * w.z);</pre>
+  <div class="prose"><p>The UVs must use the matching axes: X projection samples at worldPos.zy, Y at worldPos.xz, Z at worldPos.xy, with their x flipped by the same signs so the back sides are not mirrored. Engine triplanar nodes for normals do this for you.</p></div>
+
+</section>
+<section class="chapter" id="detail" data-title="Detail maps" data-builds="texture-memory#density texture-memory#mips" data-summary="colour = base · 2 · detail (0.5 = no change), faded out with distance.">
+  <div class="head"><div class="num"></div><h2>Detail maps</h2></div>
+
+  <div class="prose">
+    <p>A character's main textures cover the whole body, so each texel is a few millimetres wide (<a class="x" href="../texture-memory/index.html#density">texel density</a>). Pores, fabric weave and fine scratches need far more. A <button type="button" class="term" data-term="detail">detail map</button> is a small tiling texture repeated many times across the surface and combined with the base. Detail colour is usually stored around mid-grey and combined as an <em>overlay</em>: 0.5 changes nothing, darker values darken and lighter values brighten. Up close it adds the fine grain; farther away it should fade out, before it turns into noise:</p>
+  </div>
+  <div class="fx" data-fx="detail"></div>
+  <div class="prose"><p>Detail normals are blended over the main normal map with the same <a class="x" href="../fabric-folds/index.html#baked">blends as fold maps</a>. A mask (often a channel of the mask map) limits the detail to where it belongs: pores on the face, not on the lips; weave on the shirt, not on the buttons.</p></div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>The Lit shader's <em>Detail Map</em> packs four channels: desaturated albedo (R), smoothness (B) and the detail normal's X and Y (A and G). 0.5 is neutral for albedo and smoothness. The <em>Detail Mask</em> is the blue channel of the mask map.</p></div><div class="eng" data-engine="urp"><p>URP Lit has <em>Detail Inputs</em>: a mask, a <em>Detail Base Map</em> (combined like an overlay, 0.5 neutral) and a <em>Detail Normal Map</em>, each with its own tiling.</p></div><div class="eng" data-engine="unreal"><p>Multiply a scaled texture coordinate for the detail texture and combine with the base. The <em>DetailTexturing</em> material function does the colour and normal combination in one node.</p></div></div>
+
+</section>
+<section class="chapter" id="flow" data-title="Scrolling and flow maps" data-builds="textures-sampling#wrap hair#tangent" data-summary="Two copies offset by flow · frac(t) and flow · frac(t + ½), blended with w = |1 − 2 · frac(t)|.">
+  <div class="head"><div class="num"></div><h2>Scrolling and flow maps</h2></div>
+
+  <div class="prose">
+    <p>Moving a texture over a surface is a single addition: <code>uv + speed · time</code>. That works for a conveyor belt or a waterfall, where everything moves in one direction. For water running around a rock, lava, or energy flowing along a sword, every point should move in its own direction. A <button type="button" class="term" data-term="flowmap">flow map</button> stores that direction in two channels. Simply offsetting by direction × time distorts the texture more and more, so the trick is to reset the offset periodically and hide the reset by blending two copies half a period apart:</p>
+  </div>
+  <div class="fx" data-fx="flow"></div>
+  <pre class="hlsl"><span class="t">float2</span> flow  = flowTex.Sample(samp, uv).rg * <span class="n">2</span> - <span class="n">1</span>;   <span class="c">// direction, -1..1</span>
+<span class="t">float</span>  t0    = frac(time * speed);
+<span class="t">float</span>  t1    = frac(time * speed + <span class="n">0.5</span>);
+<span class="t">float4</span> a     = tex.Sample(samp, uv - flow * t0 * strength);
+<span class="t">float4</span> b     = tex.Sample(samp, uv - flow * t1 * strength + <span class="n">0.5</span>);  <span class="c">// offset so the copies differ</span>
+<span class="t">float</span>  w     = abs(<span class="n">1</span> - <span class="n">2</span> * t0);                     <span class="c">// 1 when copy a resets, 0 halfway</span>
+<span class="t">float4</span> col   = lerp(a, b, w);</pre>
+  <div class="prose"><p>Each copy is invisible at the moment it jumps back. Flow maps are also how <a class="x" href="../hair/index.html#tangent">hair</a> and <a class="x" href="../cloth/index.html#silk">satin</a> store their strand direction: the same two channels, read as a tangent instead of a velocity.</p></div>
+
+</section>
+<section class="chapter" id="matcap" data-title="Matcaps and spherical lookups" data-builds="spaces#chain vectors#normalize" data-summary="matcap uv = N_view.xy · ½ + ½; equirect u = atan2(z, x) / 2π + ½, v = acos(y) / π.">
+  <div class="head"><div class="num"></div><h2>Matcaps and spherical lookups</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="matcap">matcap</button> (material capture) is a picture of a lit sphere. Every direction a surface can face toward the camera appears somewhere on that sphere, so the shader can look up the colour directly with the <a class="x" href="../spaces/index.html#chain">view-space</a> normal: X and Y, mapped from −1..1 to 0..1. No lights, no BRDF, one texture sample:</p>
+  </div>
+  <div class="fx" data-fx="matcap"></div>
+  <div class="prose"><p>Sculpting programs use matcaps for clay previews, and stylised games use them for metal, toon shading or eyes on mobile. Because the lighting is painted relative to the camera, it turns with the view: fine for a character that is always seen from the front, wrong for a scene with a fixed sun.</p>
+  <p>The same idea with world directions instead of view directions gives an environment lookup. An <em>equirectangular</em> (latitude–longitude) image, the usual format of HDRI skies, maps a direction to UV with two angles:</p></div>
+  <div class="fx" data-fx="equirect"></div>
+
+</section>
+<section class="chapter" id="decals" data-title="Projected decals" data-builds="depth-effects#reconstruct mapping#planar" data-summary="local = worldToDecal · worldPos; uv = local.xy + ½; fade by the angle to the projection axis.">
+  <div class="head"><div class="num"></div><h2>Projected decals</h2></div>
+
+  <div class="prose">
+    <p>Wounds, dirt, tattoos and blood are rarely painted into a character's textures. They are <button type="button" class="term" data-term="decal">decals</button>: a box placed against the surface, projecting a texture along its forward axis. Deferred and screen-space decals reconstruct the position of every pixel inside the box from the <a class="x" href="../depth-effects/index.html#reconstruct">depth buffer</a>, move it into the box's local space and use X and Y as UV. Like any <a href="#planar">planar projection</a>, they stretch on surfaces that turn away, so they fade out by angle:</p>
+  </div>
+  <div class="fx" data-fx="decal"></div>
+  <pre class="hlsl"><span class="t">float3</span> local = mul(worldToDecal, <span class="t">float4</span>(worldPos, <span class="n">1</span>)).xyz;   <span class="c">// box spans -0.5..0.5</span>
+clip(<span class="n">0.5</span> - abs(local));                                        <span class="c">// outside the box: discard</span>
+<span class="t">float2</span> uv   = local.xy + <span class="n">0.5</span>;
+<span class="t">float</span>  fade = saturate((dot(N, -decalForward) - cosLimit) / (<span class="n">1</span> - cosLimit));</pre>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>Add a <em>Decal Projector</em> with a material using the <em>HDRP/Decal</em> shader or a Decal Shader Graph. <em>Angle Fade</em> is the cos limit above. Decal layers keep a character's decals off the floor and the reverse.</p></div><div class="eng" data-engine="urp"><p>Enable the <em>Decal</em> Renderer Feature (DBuffer or screen space) in the URP Renderer, then use a <em>URP Decal Projector</em>. Rendering layers limit which objects receive it.</p></div><div class="eng" data-engine="unreal"><p>Use a material with the <em>Deferred Decal</em> material domain on a <em>Decal Actor</em> or a <em>Decal Component</em> attached to the character. <em>Receives Decals</em> on a mesh turns them off for it.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["A blood decal smears into long streaks on the side of a character's arm. Why?", ["The texture is too small", "The arm turns away from the decal's projection axis, so the planar projection stretches there", "Decals do not work on skinned meshes", "The depth buffer is wrong"], 1, "Planar projection stretches by 1 / cos of the angle: fade by angle, or project from a better direction."]]</script></details>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a" rel="noopener">Normal Mapping for a Triplanar Shader</a></span><span class="by">Ben Golus</span><span class="why">Every common triplanar normal method, compared, with the whiteout swizzle used in chapter 3.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu" rel="noopener">GPU Gems 3, chapter 1: Generating Complex Procedural Terrains Using the GPU</a></span><span class="by">Ryan Geiss · NVIDIA</span><span class="why">The classic description of triplanar texturing.</span></li><li><span><span class="kind">Tutorial</span><a href="https://catlikecoding.com/unity/tutorials/flow/texture-distortion/" rel="noopener">Texture Distortion (Flow series)</a></span><span class="by">Jasper Flick · Catlike Coding</span><span class="why">Flow maps step by step in Unity, including the two-phase blend.</span></li><li><span><span class="kind">Talk</span><a href="https://alex.vlachos.com/graphics/Vlachos-SIGGRAPH10-WaterFlow.pdf" rel="noopener">Water Flow in Portal 2</a></span><span class="by">Alex Vlachos · SIGGRAPH 2010</span><span class="why">Where flow maps in games come from.</span></li><li><span><span class="kind">Article</span><a href="https://blog.selfshadow.com/publications/blending-in-detail/" rel="noopener">Blending in Detail</a></span><span class="by">Colin Barré-Brisebois, Stephen Hill</span><span class="why">Detail normal blending.</span></li></ul>
+</section>
+
+<div class="next" data-next="fabric-folds cloth texture-memory"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"detail": [
+"Detail map",
+"A small tiling texture that adds fine grain on top of a surface's main textures.",
+"#detail"
+],
+"flowmap": [
+"Flow map",
+"A texture storing a 2D direction per texel, used to move or orient other textures.",
+"#flow"
+],
+"matcap": [
+"Matcap",
+"A picture of a lit sphere, looked up with the view-space normal instead of computing lighting.",
+"#matcap"
+],
+"decal": [
+"Decal",
+"A texture projected onto existing surfaces from a box, without changing their UVs.",
+"#decals"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="mapping.js"></script>
+</body>
+</html>

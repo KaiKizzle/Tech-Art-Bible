@@ -34,6 +34,11 @@ regenerates the link index after you add or change chapters; the site runs witho
 | Lighting & GI | Baked Light: Lightmaps and Probes (SH, leaking, box projection) | `units/baked-gi/` |
 | Lighting & GI | Light Types and Falloff (point, spot, sun, area, IES) | `units/light-types/` |
 | Materials & texture pipeline | Texels on a Budget (memory, mips, compression, packing) | `units/texture-memory/` |
+| Materials & texture pipeline | Simple Mapping Techniques (planar, triplanar, detail, flow, matcap, decals) | `units/mapping/` |
+| Characters | Skin: Light Under the Surface (wrap, diffusion profiles, pre-integrated, transmission) | `units/skin/` |
+| Characters | Hair: Strands and Cards (Kajiya–Kay, shifted highlights, sorting) | `units/hair/` |
+| Characters | Cloth Shading (sheen, cloth visibility, silk anisotropy, fuzz, weave) | `units/cloth/` |
+| Characters | Fabric and Folds in Real Time (normal blending, wrinkle maps, Verlet cloth lab) | `units/fabric-folds/` |
 | Performance & tools | Reading a Frame (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
 
 Rooms Behind Glass was written against Unity HDRP; its maths carries over to other engines, and the catalogue

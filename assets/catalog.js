@@ -17,6 +17,7 @@
     { id: 'shade', name: 'Shaders & rendering', color: 'cat-shade', blurb: 'What the GPU computes per pixel, and the maths that makes cheap tricks look expensive.' },
     { id: 'light', name: 'Lighting & GI', color: 'cat-light', blurb: 'Physical light, exposure and the path from scene light to display pixels.' },
     { id: 'tex', name: 'Materials & texture pipeline', color: 'cat-tex', blurb: 'How textures are authored, packed, compressed and budgeted for the GPU.' },
+    { id: 'char', name: 'Characters', color: 'cat-char', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
     { id: 'perf', name: 'Performance & tools', color: 'cat-perf', blurb: 'Finding what is slow in a frame and the tools that show it.' }
   ];
 
@@ -25,7 +26,8 @@
     { name: 'Shader basics from zero', units: ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'color-values', 'rays-math'] },
     { name: 'Ray-traced effects in shaders', units: ['vectors', 'spaces', 'rays-math', 'ray-sphere', 'cloud-march', 'parallax', 'interior-mapping'] },
     { name: 'Light for artists', units: ['color-values', 'exposure', 'light-types', 'pbr-brdf', 'shadow-maps', 'baked-gi'] },
-    { name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] }
+    { name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] },
+    { name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] }
   ];
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
@@ -100,6 +102,23 @@
     { slug: 'texture-memory', cat: 'tex', title: 'Texels on a Budget', topic: 'Texture memory and compression', minutes: 70, level: 'Beginner', engines: ALL,
       summary: 'What a texture costs, mipmaps and texel density, BC1 to BC7 and ASTC, sRGB versus data, channel packing per engine, and normal maps.',
       tags: ['texture', 'compression', 'bc1', 'bc7', 'bc5', 'astc', 'mipmap', 'texel density', 'srgb', 'mask map', 'orm', 'channel packing', 'normal map'] },
+    { slug: 'mapping', cat: 'tex', title: 'Simple Mapping Techniques', topic: 'Planar, triplanar, detail, flow, matcap', minutes: 55, level: 'Beginner', engines: ALL,
+      summary: 'Texturing without (or beyond) UVs: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals.',
+      tags: ['triplanar', 'planar mapping', 'world space uv', 'detail map', 'overlay', 'flow map', 'uv scrolling', 'matcap', 'equirectangular', 'decal'] },
+
+    /* Characters */
+    { slug: 'skin', cat: 'char', title: 'Skin: Light Under the Surface', topic: 'Subsurface scattering', minutes: 60, level: 'Intermediate', engines: ALL,
+      summary: 'Why skin is not Lambert: wrap lighting, diffusion profiles, screen-space and pre-integrated scattering, transmission through ears, and a dual-lobe specular.',
+      tags: ['skin', 'subsurface scattering', 'sss', 'diffusion profile', 'pre-integrated', 'wrap lighting', 'transmission', 'thickness', 'dual specular', 'character'] },
+    { slug: 'hair', cat: 'char', title: 'Hair: Strands and Cards', topic: 'Hair cards and anisotropic shading', minutes: 55, level: 'Intermediate', engines: ALL,
+      summary: 'Hair cards and their cost, shading along the strand (Kajiya–Kay), shifted highlights, sorting and alpha, and root-to-tip variation.',
+      tags: ['hair', 'hair cards', 'kajiya kay', 'marschner', 'anisotropic', 'strand', 'flow map', 'groom', 'character'] },
+    { slug: 'cloth', cat: 'char', title: 'Cloth Shading', topic: 'Sheen, velvet, silk', minutes: 50, level: 'Intermediate', engines: ALL,
+      summary: 'Why fabric looks different from plastic: the Charlie sheen, the cloth visibility term, wrapped diffuse, anisotropic silk and fuzz.',
+      tags: ['cloth', 'fabric', 'sheen', 'charlie', 'velvet', 'silk', 'satin', 'anisotropic', 'fuzz', 'weave', 'character'] },
+    { slug: 'fabric-folds', cat: 'char', title: 'Fabric Folds in Real Time', topic: 'Wrinkles, normal blending, cloth sim', minutes: 65, level: 'Intermediate', engines: ALL,
+      summary: 'How folds form, baked folds and blending detail normals, wrinkle maps driven by stretch and joint angles, and a cloth simulation you can drag.',
+      tags: ['folds', 'wrinkles', 'wrinkle map', 'tension map', 'cloth simulation', 'verlet', 'position based dynamics', 'normal blending', 'rnm', 'character'] },
 
     /* Performance */
     { slug: 'reading-a-frame', cat: 'perf', title: 'Reading a Frame', topic: 'Profiling and GPU cost', minutes: 70, level: 'Intermediate', engines: ALL,

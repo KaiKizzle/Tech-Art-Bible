@@ -86,6 +86,46 @@ window.ATLAS_INDEX = {
     "checks": 13
    }
   },
+  "cloth": {
+   "title": "Cloth Shading",
+   "chapters": [
+    {
+     "id": "why",
+     "title": "Why fabric needs its own model",
+     "summary": "Loose fibres catch light at grazing angles (sheen); parallel threads stretch the highlight (anisotropy)."
+    },
+    {
+     "id": "sheen",
+     "title": "The sheen distribution",
+     "summary": "D = (2 + 1/α) · sin(θ_H)^(1/α) / 2π: peaks at grazing angles."
+    },
+    {
+     "id": "visibility",
+     "title": "The cloth visibility term",
+     "summary": "V = 1 / (4 · (N·L + N·V − N·L · N·V)); spec = D · V · sheenColor."
+    },
+    {
+     "id": "diffuse",
+     "title": "Soft diffuse and subsurface colour",
+     "summary": "diffuse = albedo / π · saturate((N·L + w) / (1 + w)²) · saturate(subsurface + N·L)."
+    },
+    {
+     "id": "silk",
+     "title": "Silk and satin: anisotropic highlights",
+     "summary": "D = 1 / (π αₓ α_y ((T·H / αₓ)² + (B·H / α_y)² + (N·H)²)²)."
+    },
+    {
+     "id": "fuzz",
+     "title": "Fuzz and weave",
+     "summary": "fuzz = fuzzColor · (1 − N·V)ᵖ; fade the weave once threads get smaller than a pixel."
+    }
+   ],
+   "stats": {
+    "fx": 6,
+    "labs": 0,
+    "checks": 1
+   }
+  },
   "cloud-march": {
    "title": "Marching a Cloud Layer",
    "chapters": [
@@ -316,6 +356,46 @@ window.ATLAS_INDEX = {
     "checks": 12
    }
   },
+  "fabric-folds": {
+   "title": "Fabric and Folds in Real Time",
+   "chapters": [
+    {
+     "id": "why",
+     "title": "Where folds come from",
+     "summary": "Compression c must go somewhere: fold height A ≈ λ · √c / π. Stiffer fabric, longer λ."
+    },
+    {
+     "id": "baked",
+     "title": "Folds in the normal map",
+     "summary": "Angles of base and detail should add: RNM does exactly that; linear averaging halves the detail."
+    },
+    {
+     "id": "tension",
+     "title": "Wrinkles from stretch and squash",
+     "summary": "squash = saturate((1 − L / L₀) · k) fades a wrinkle map in; stretch = saturate((L / L₀ − 1) · k)."
+    },
+    {
+     "id": "drivers",
+     "title": "Wrinkles driven by joints",
+     "summary": "weight = smoothstep(θ₀, θ₁, joint angle); squash = dot(mask, weights)."
+    },
+    {
+     "id": "sim",
+     "title": "Simulating cloth: particles and sticks",
+     "summary": "x_new = x + (x − x_prev) · (1 − damping) + a · Δt²; then pull neighbours back to their rest distance."
+    },
+    {
+     "id": "solver",
+     "title": "Stiffness, iterations and cost",
+     "summary": "After n passes: 1 − (1 − s)ⁿ of the error is fixed; cost = particles · constraints · iterations · substeps."
+    }
+   ],
+   "stats": {
+    "fx": 7,
+    "labs": 1,
+    "checks": 3
+   }
+  },
   "gpu-basics": {
    "title": "How a GPU Draws a Frame",
    "chapters": [
@@ -349,6 +429,46 @@ window.ATLAS_INDEX = {
     "fx": 5,
     "labs": 2,
     "checks": 11
+   }
+  },
+  "hair": {
+   "title": "Hair: Strands and Cards",
+   "chapters": [
+    {
+     "id": "cards",
+     "title": "Strands or cards",
+     "summary": "Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw."
+    },
+    {
+     "id": "tangent",
+     "title": "Shading along the strand",
+     "summary": "diffuse = sin(T, L) = √(1 − (T·L)²)."
+    },
+    {
+     "id": "highlight",
+     "title": "The highlight band",
+     "summary": "spec = sin(T, H)ᵖ: a band where the strand is perpendicular to H."
+    },
+    {
+     "id": "shift",
+     "title": "Two shifted highlights",
+     "summary": "T′ = normalize(T + shift · N); R with a small shift, TRT tinted, wider and shifted the other way."
+    },
+    {
+     "id": "sorting",
+     "title": "Alpha, sorting and depth",
+     "summary": "Opaque pass with a high cutoff, blended pass for the wisps, or alpha to coverage / dithering."
+    },
+    {
+     "id": "variation",
+     "title": "Root to tip, and self-shadowing",
+     "summary": "colour = lerp(root, tip, v^g) · lerp(AO, 1, v); self-shadow by the amount of hair in front."
+    }
+   ],
+   "stats": {
+    "fx": 6,
+    "labs": 0,
+    "checks": 1
    }
   },
   "interior-mapping": {
@@ -472,6 +592,51 @@ window.ATLAS_INDEX = {
    ],
    "stats": {
     "fx": 7,
+    "labs": 0,
+    "checks": 1
+   }
+  },
+  "mapping": {
+   "title": "Simple Mapping Techniques",
+   "chapters": [
+    {
+     "id": "planar",
+     "title": "Planar projection: world position as UV",
+     "summary": "uv = worldPos.xz · scale; stretch = 1 / |N · axis|."
+    },
+    {
+     "id": "triplanar",
+     "title": "Triplanar mapping",
+     "summary": "wᵢ = |Nᵢ|ᵏ / Σ|Nⱼ|ᵏ; three samples per texture."
+    },
+    {
+     "id": "normals",
+     "title": "Triplanar normal maps",
+     "summary": "Swizzle each projection&#x27;s normal into world axes, whiteout-blend with the surface normal, then weight."
+    },
+    {
+     "id": "detail",
+     "title": "Detail maps",
+     "summary": "colour = base · 2 · detail (0.5 = no change), faded out with distance."
+    },
+    {
+     "id": "flow",
+     "title": "Scrolling and flow maps",
+     "summary": "Two copies offset by flow · frac(t) and flow · frac(t + ½), blended with w = |1 − 2 · frac(t)|."
+    },
+    {
+     "id": "matcap",
+     "title": "Matcaps and spherical lookups",
+     "summary": "matcap uv = N_view.xy · ½ + ½; equirect u = atan2(z, x) / 2π + ½, v = acos(y) / π."
+    },
+    {
+     "id": "decals",
+     "title": "Projected decals",
+     "summary": "local = worldToDecal · worldPos; uv = local.xy + ½; fade by the angle to the projection axis."
+    }
+   ],
+   "stats": {
+    "fx": 9,
     "labs": 0,
     "checks": 1
    }
@@ -806,6 +971,51 @@ window.ATLAS_INDEX = {
     "checks": 3
    }
   },
+  "skin": {
+   "title": "Skin: Light Under the Surface",
+   "chapters": [
+    {
+     "id": "why",
+     "title": "Why skin is not Lambert",
+     "summary": "Light enters skin and leaves millimetres away; red travels farthest, so terminators and shadow edges turn warm and soft."
+    },
+    {
+     "id": "wrap",
+     "title": "The cheapest trick: wrap lighting",
+     "summary": "diffuse = saturate((N·L + w) / (1 + w)), with a larger w for red."
+    },
+    {
+     "id": "profile",
+     "title": "The diffusion profile",
+     "summary": "R(r) = Σ wᵢ · e^(−r² / 2vᵢ) / (2πvᵢ), one weight per colour channel."
+    },
+    {
+     "id": "screen-space",
+     "title": "Blurring in screen space",
+     "summary": "kernel in pixels = radius · screenHeight / (2 · d · tan(fov/2)); depth-aware, diffuse only."
+    },
+    {
+     "id": "preintegrated",
+     "title": "Pre-integrated skin",
+     "summary": "diffuse = LUT(N·L, 1/r): the profile integrated around a circle of radius r."
+    },
+    {
+     "id": "transmission",
+     "title": "Light through ears",
+     "summary": "T = e^(−thickness / ℓ) per channel, lit from behind with max(0, −N·L)."
+    },
+    {
+     "id": "specular",
+     "title": "Skin specular: two lobes",
+     "summary": "spec = lerp(D(r₁), D(r₂), mix) · F(F0 = 0.028) · cavity."
+    }
+   ],
+   "stats": {
+    "fx": 7,
+    "labs": 0,
+    "checks": 2
+   }
+  },
   "spaces": {
    "title": "Coordinate Spaces",
    "chapters": [
@@ -1040,6 +1250,11 @@ window.ATLAS_INDEX = {
     "Light from a whole sky"
    ],
    [
+    "cloth",
+    "diffuse",
+    "Soft diffuse and subsurface colour"
+   ],
+   [
     "exposure",
     "units",
     "Four units of light"
@@ -1058,6 +1273,11 @@ window.ATLAS_INDEX = {
     "pbr-brdf",
     "diffuse",
     "Diffuse: Lambert again"
+   ],
+   [
+    "skin",
+    "wrap",
+    "The cheapest trick: wrap lighting"
    ]
   ],
   "exposure#units": [
@@ -1097,6 +1317,33 @@ window.ATLAS_INDEX = {
     "Diffuse: Lambert again"
    ]
   ],
+  "texture-memory#density": [
+   [
+    "baked-gi",
+    "lightmaps",
+    "Lightmaps"
+   ],
+   [
+    "cloth",
+    "fuzz",
+    "Fuzz and weave"
+   ],
+   [
+    "mapping",
+    "detail",
+    "Detail maps"
+   ],
+   [
+    "shadow-maps",
+    "resolution",
+    "How big is a shadow texel?"
+   ],
+   [
+    "skin",
+    "screen-space",
+    "Blurring in screen space"
+   ]
+  ],
   "textures-sampling#filter": [
    [
     "baked-gi",
@@ -1117,18 +1364,6 @@ window.ATLAS_INDEX = {
     "transparency",
     "premultiplied",
     "Premultiplied alpha and dark fringes"
-   ]
-  ],
-  "texture-memory#density": [
-   [
-    "baked-gi",
-    "lightmaps",
-    "Lightmaps"
-   ],
-   [
-    "shadow-maps",
-    "resolution",
-    "How big is a shadow texel?"
    ]
   ],
   "shader-anatomy#functions": [
@@ -1212,6 +1447,28 @@ window.ATLAS_INDEX = {
     "Reflection probes and box projection"
    ]
   ],
+  "gpu-basics#parallel": [
+   [
+    "buffers",
+    "memory",
+    "A buffer is a list in GPU memory"
+   ],
+   [
+    "buffers",
+    "structured",
+    "Structured buffers: lists of your own data"
+   ],
+   [
+    "buffers",
+    "render-targets",
+    "Render targets: images you draw into"
+   ],
+   [
+    "reading-a-frame",
+    "shader-cost",
+    "What a shader costs"
+   ]
+  ],
   "textures-sampling#texture": [
    [
     "buffers",
@@ -1234,31 +1491,14 @@ window.ATLAS_INDEX = {
     "Thousands of pixels at the same time"
    ],
    [
+    "skin",
+    "preintegrated",
+    "Pre-integrated skin"
+   ],
+   [
     "texture-memory",
     "cost",
     "What a texture costs"
-   ]
-  ],
-  "gpu-basics#parallel": [
-   [
-    "buffers",
-    "memory",
-    "A buffer is a list in GPU memory"
-   ],
-   [
-    "buffers",
-    "structured",
-    "Structured buffers: lists of your own data"
-   ],
-   [
-    "buffers",
-    "render-targets",
-    "Render targets: images you draw into"
-   ],
-   [
-    "reading-a-frame",
-    "shader-cost",
-    "What a shader costs"
    ]
   ],
   "gpu-basics#pipeline": [
@@ -1305,6 +1545,23 @@ window.ATLAS_INDEX = {
     "Getting the settings to the shader"
    ]
   ],
+  "reading-a-frame#overdraw": [
+   [
+    "buffers",
+    "render-targets",
+    "Render targets: images you draw into"
+   ],
+   [
+    "hair",
+    "cards",
+    "Strands or cards"
+   ],
+   [
+    "transparency",
+    "order",
+    "Why the order matters"
+   ]
+  ],
   "depth-effects#what-depth": [
    [
     "buffers",
@@ -1322,16 +1579,125 @@ window.ATLAS_INDEX = {
     "Seeing the scene from the light"
    ]
   ],
-  "reading-a-frame#overdraw": [
+  "pbr-brdf#full": [
    [
-    "buffers",
-    "render-targets",
-    "Render targets: images you draw into"
+    "cloth",
+    "why",
+    "Why fabric needs its own model"
+   ]
+  ],
+  "pbr-brdf#ndf": [
+   [
+    "cloth",
+    "sheen",
+    "The sheen distribution"
    ],
    [
-    "transparency",
-    "order",
-    "Why the order matters"
+    "cloth",
+    "silk",
+    "Silk and satin: anisotropic highlights"
+   ],
+   [
+    "skin",
+    "specular",
+    "Skin specular: two lobes"
+   ]
+  ],
+  "pbr-brdf#half": [
+   [
+    "cloth",
+    "sheen",
+    "The sheen distribution"
+   ],
+   [
+    "hair",
+    "highlight",
+    "The highlight band"
+   ]
+  ],
+  "pbr-brdf#geometry": [
+   [
+    "cloth",
+    "visibility",
+    "The cloth visibility term"
+   ]
+  ],
+  "skin#wrap": [
+   [
+    "cloth",
+    "diffuse",
+    "Soft diffuse and subsurface colour"
+   ]
+  ],
+  "hair#highlight": [
+   [
+    "cloth",
+    "silk",
+    "Silk and satin: anisotropic highlights"
+   ]
+  ],
+  "spaces#tangent": [
+   [
+    "cloth",
+    "silk",
+    "Silk and satin: anisotropic highlights"
+   ],
+   [
+    "dot-cross",
+    "cross",
+    "The cross product: a perpendicular vector"
+   ],
+   [
+    "fabric-folds",
+    "baked",
+    "Folds in the normal map"
+   ],
+   [
+    "hair",
+    "tangent",
+    "Shading along the strand"
+   ],
+   [
+    "interior-mapping",
+    "room-space",
+    "Room space"
+   ],
+   [
+    "parallax",
+    "heightmap",
+    "What parallax fixes"
+   ],
+   [
+    "texture-memory",
+    "normals",
+    "Normal maps"
+   ]
+  ],
+  "fabric-folds#baked": [
+   [
+    "cloth",
+    "fuzz",
+    "Fuzz and weave"
+   ],
+   [
+    "mapping",
+    "normals",
+    "Triplanar normal maps"
+   ],
+   [
+    "mapping",
+    "detail",
+    "Detail maps"
+   ],
+   [
+    "skin",
+    "specular",
+    "Skin specular: two lobes"
+   ],
+   [
+    "texture-memory",
+    "normals",
+    "Normal maps"
    ]
   ],
   "ray-sphere#hit": [
@@ -1375,6 +1741,11 @@ window.ATLAS_INDEX = {
     "depth-effects",
     "water",
     "Water depth and shorelines"
+   ],
+   [
+    "skin",
+    "transmission",
+    "Light through ears"
    ]
   ],
   "dot-cross#angle": [
@@ -1382,6 +1753,11 @@ window.ATLAS_INDEX = {
     "cloud-march",
     "phase",
     "Which way the light scatters"
+   ],
+   [
+    "hair",
+    "tangent",
+    "Shading along the strand"
    ],
    [
     "interior-mapping",
@@ -1411,6 +1787,11 @@ window.ATLAS_INDEX = {
     "What it costs"
    ],
    [
+    "fabric-folds",
+    "solver",
+    "Stiffness, iterations and cost"
+   ],
+   [
     "gpu-basics",
     "frame",
     "A frame and its time budget"
@@ -1421,33 +1802,6 @@ window.ATLAS_INDEX = {
     "cloud-march",
     "cost",
     "What it costs"
-   ]
-  ],
-  "vectors#what": [
-   [
-    "color-values",
-    "rgb",
-    "A colour is three numbers"
-   ],
-   [
-    "dot-cross",
-    "dot",
-    "The dot product: multiply and add"
-   ],
-   [
-    "rays-math",
-    "ray",
-    "A ray is a formula"
-   ],
-   [
-    "shader-anatomy",
-    "types",
-    "Numbers and groups of numbers"
-   ],
-   [
-    "spaces",
-    "why",
-    "One point, many coordinates"
    ]
   ],
   "shader-anatomy#types": [
@@ -1477,11 +1831,31 @@ window.ATLAS_INDEX = {
     "Arrows made of numbers"
    ]
   ],
-  "exposure#display": [
+  "vectors#what": [
    [
     "color-values",
-    "linear-srgb",
-    "Linear values and sRGB encoding"
+    "rgb",
+    "A colour is three numbers"
+   ],
+   [
+    "dot-cross",
+    "dot",
+    "The dot product: multiply and add"
+   ],
+   [
+    "rays-math",
+    "ray",
+    "A ray is a formula"
+   ],
+   [
+    "shader-anatomy",
+    "types",
+    "Numbers and groups of numbers"
+   ],
+   [
+    "spaces",
+    "why",
+    "One point, many coordinates"
    ]
   ],
   "texture-memory#color-data": [
@@ -1491,11 +1865,11 @@ window.ATLAS_INDEX = {
     "Linear values and sRGB encoding"
    ]
   ],
-  "exposure#range": [
+  "exposure#display": [
    [
     "color-values",
-    "hdr",
-    "Values above 1"
+    "linear-srgb",
+    "Linear values and sRGB encoding"
    ]
   ],
   "buffers#render-targets": [
@@ -1520,9 +1894,21 @@ window.ATLAS_INDEX = {
     "From triangles to pixels"
    ],
    [
+    "skin",
+    "screen-space",
+    "Blurring in screen space"
+   ],
+   [
     "transparency",
     "alpha",
     "What alpha means"
+   ]
+  ],
+  "exposure#range": [
+   [
+    "color-values",
+    "hdr",
+    "Values above 1"
    ]
   ],
   "dot-cross#dot": [
@@ -1530,6 +1916,11 @@ window.ATLAS_INDEX = {
     "color-values",
     "luminance",
     "How bright a colour looks"
+   ],
+   [
+    "mapping",
+    "triplanar",
+    "Triplanar mapping"
    ],
    [
     "shader-anatomy",
@@ -1615,6 +2006,11 @@ window.ATLAS_INDEX = {
     "From triangles to pixels"
    ],
    [
+    "mapping",
+    "matcap",
+    "Matcaps and spherical lookups"
+   ],
+   [
     "ray-sphere",
     "world-ray",
     "Turning the ray into the world, camera-relative"
@@ -1647,6 +2043,11 @@ window.ATLAS_INDEX = {
     "dot-cross",
     "angle",
     "What the number means: the angle"
+   ],
+   [
+    "mapping",
+    "matcap",
+    "Matcaps and spherical lookups"
    ],
    [
     "pbr-brdf",
@@ -1698,28 +2099,6 @@ window.ATLAS_INDEX = {
     "The cross product: a perpendicular vector"
    ]
   ],
-  "spaces#tangent": [
-   [
-    "dot-cross",
-    "cross",
-    "The cross product: a perpendicular vector"
-   ],
-   [
-    "interior-mapping",
-    "room-space",
-    "Room space"
-   ],
-   [
-    "parallax",
-    "heightmap",
-    "What parallax fixes"
-   ],
-   [
-    "texture-memory",
-    "normals",
-    "Normal maps"
-   ]
-  ],
   "color-values#luminance": [
    [
     "exposure",
@@ -1751,6 +2130,74 @@ window.ATLAS_INDEX = {
     "What alpha means"
    ]
   ],
+  "vectors#length": [
+   [
+    "fabric-folds",
+    "why",
+    "Where folds come from"
+   ],
+   [
+    "fabric-folds",
+    "sim",
+    "Simulating cloth: particles and sticks"
+   ],
+   [
+    "ray-sphere",
+    "planet",
+    "The planet and the layer as spheres"
+   ],
+   [
+    "rays-math",
+    "sphere",
+    "Hitting a sphere: setting up the equation"
+   ]
+  ],
+  "cloth#fuzz": [
+   [
+    "fabric-folds",
+    "baked",
+    "Folds in the normal map"
+   ]
+  ],
+  "texture-memory#normals": [
+   [
+    "fabric-folds",
+    "baked",
+    "Folds in the normal map"
+   ],
+   [
+    "mapping",
+    "normals",
+    "Triplanar normal maps"
+   ],
+   [
+    "spaces",
+    "tangent",
+    "Tangent space: a frame on every surface"
+   ]
+  ],
+  "vectors#add-sub": [
+   [
+    "fabric-folds",
+    "sim",
+    "Simulating cloth: particles and sticks"
+   ],
+   [
+    "interior-mapping",
+    "rays",
+    "Rays from the camera"
+   ],
+   [
+    "rays-math",
+    "ray",
+    "A ray is a formula"
+   ],
+   [
+    "spaces",
+    "transform",
+    "Moving, turning and scaling with a matrix"
+   ]
+  ],
   "color-values#rgb": [
    [
     "gpu-basics",
@@ -1773,13 +2220,6 @@ window.ATLAS_INDEX = {
     "Blend modes are one formula"
    ]
   ],
-  "ray-sphere#pixel-uv": [
-   [
-    "gpu-basics",
-    "per-pixel",
-    "One small program per pixel"
-   ]
-  ],
   "reading-a-frame#shader-cost": [
    [
     "gpu-basics",
@@ -1797,11 +2237,30 @@ window.ATLAS_INDEX = {
     "How many layers?"
    ]
   ],
+  "ray-sphere#pixel-uv": [
+   [
+    "gpu-basics",
+    "per-pixel",
+    "One small program per pixel"
+   ]
+  ],
   "buffers#memory": [
    [
     "gpu-basics",
     "parallel",
     "Thousands of pixels at the same time"
+   ]
+  ],
+  "reading-a-frame#quads": [
+   [
+    "gpu-basics",
+    "pipeline",
+    "From triangles to pixels"
+   ],
+   [
+    "texture-memory",
+    "mips",
+    "Mipmaps and how the GPU picks one"
    ]
   ],
   "dot-cross#cross": [
@@ -1826,28 +2285,46 @@ window.ATLAS_INDEX = {
     "Which way is up"
    ]
   ],
-  "reading-a-frame#quads": [
+  "transparency#alpha": [
    [
-    "gpu-basics",
-    "pipeline",
-    "From triangles to pixels"
-   ],
-   [
-    "texture-memory",
-    "mips",
-    "Mipmaps and how the GPU picks one"
+    "hair",
+    "cards",
+    "Strands or cards"
    ]
   ],
-  "rays-math#ray": [
+  "transparency#dither": [
    [
-    "interior-mapping",
-    "trick",
-    "The trick"
-   ],
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ]
+  ],
+  "transparency#order": [
    [
-    "interior-mapping",
-    "rays",
-    "Rays from the camera"
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ]
+  ],
+  "transparency#a2c": [
+   [
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ]
+  ],
+  "transparency#alpha-test": [
+   [
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ]
+  ],
+  "skin#transmission": [
+   [
+    "hair",
+    "variation",
+    "Root to tip, and self-shadowing"
    ]
   ],
   "gpu-basics#per-pixel": [
@@ -1872,6 +2349,18 @@ window.ATLAS_INDEX = {
     "UV coordinates: where to read"
    ]
   ],
+  "rays-math#ray": [
+   [
+    "interior-mapping",
+    "trick",
+    "The trick"
+   ],
+   [
+    "interior-mapping",
+    "rays",
+    "Rays from the camera"
+   ]
+  ],
   "textures-sampling#uv": [
    [
     "interior-mapping",
@@ -1882,6 +2371,11 @@ window.ATLAS_INDEX = {
     "interior-mapping",
     "picture",
     "Into the picture"
+   ],
+   [
+    "mapping",
+    "planar",
+    "Planar projection: world position as UV"
    ],
    [
     "parallax",
@@ -1904,23 +2398,6 @@ window.ATLAS_INDEX = {
     "shader-anatomy",
     "stages",
     "Two programs: vertex and pixel"
-   ]
-  ],
-  "vectors#add-sub": [
-   [
-    "interior-mapping",
-    "rays",
-    "Rays from the camera"
-   ],
-   [
-    "rays-math",
-    "ray",
-    "A ray is a formula"
-   ],
-   [
-    "spaces",
-    "transform",
-    "Moving, turning and scaling with a matrix"
    ]
   ],
   "dot-cross#projection": [
@@ -1964,14 +2441,19 @@ window.ATLAS_INDEX = {
     "Finding the wall"
    ]
   ],
-  "exposure#multiplier": [
+  "pbr-brdf#fresnel": [
    [
     "interior-mapping",
     "glass",
     "Glass and light"
+   ],
+   [
+    "skin",
+    "specular",
+    "Skin specular: two lobes"
    ]
   ],
-  "pbr-brdf#fresnel": [
+  "exposure#multiplier": [
    [
     "interior-mapping",
     "glass",
@@ -1983,6 +2465,11 @@ window.ATLAS_INDEX = {
     "interior-mapping",
     "mips",
     "Mips and seams"
+   ],
+   [
+    "mapping",
+    "detail",
+    "Detail maps"
    ],
    [
     "parallax",
@@ -2022,6 +2509,66 @@ window.ATLAS_INDEX = {
     "light-types",
     "many",
     "Many lights: what they cost"
+   ]
+  ],
+  "spaces#transform": [
+   [
+    "mapping",
+    "planar",
+    "Planar projection: world position as UV"
+   ],
+   [
+    "ray-sphere",
+    "world-ray",
+    "Turning the ray into the world, camera-relative"
+   ],
+   [
+    "shader-anatomy",
+    "types",
+    "Numbers and groups of numbers"
+   ],
+   [
+    "shadow-maps",
+    "light-space",
+    "Into light space"
+   ],
+   [
+    "vectors",
+    "what",
+    "Arrows made of numbers"
+   ]
+  ],
+  "cloth#silk": [
+   [
+    "mapping",
+    "flow",
+    "Scrolling and flow maps"
+   ]
+  ],
+  "hair#tangent": [
+   [
+    "mapping",
+    "flow",
+    "Scrolling and flow maps"
+   ],
+   [
+    "pbr-brdf",
+    "full",
+    "Putting the BRDF together"
+   ]
+  ],
+  "textures-sampling#wrap": [
+   [
+    "mapping",
+    "flow",
+    "Scrolling and flow maps"
+   ]
+  ],
+  "depth-effects#reconstruct": [
+   [
+    "mapping",
+    "decals",
+    "Projected decals"
    ]
   ],
   "interior-mapping#room-space": [
@@ -2064,6 +2611,20 @@ window.ATLAS_INDEX = {
     "How much bounces: Fresnel"
    ]
   ],
+  "cloth#why": [
+   [
+    "pbr-brdf",
+    "full",
+    "Putting the BRDF together"
+   ]
+  ],
+  "skin#why": [
+   [
+    "pbr-brdf",
+    "full",
+    "Putting the BRDF together"
+   ]
+  ],
   "textures-sampling#mips": [
    [
     "pbr-brdf",
@@ -2095,38 +2656,16 @@ window.ATLAS_INDEX = {
     "From a pixel to UV and NDC"
    ]
   ],
-  "spaces#transform": [
+  "rays-math#quadratic": [
    [
     "ray-sphere",
-    "world-ray",
-    "Turning the ray into the world, camera-relative"
+    "hit",
+    "Where the ray enters and leaves the layer"
    ],
-   [
-    "shader-anatomy",
-    "types",
-    "Numbers and groups of numbers"
-   ],
-   [
-    "shadow-maps",
-    "light-space",
-    "Into light space"
-   ],
-   [
-    "vectors",
-    "what",
-    "Arrows made of numbers"
-   ]
-  ],
-  "vectors#length": [
    [
     "ray-sphere",
-    "planet",
-    "The planet and the layer as spheres"
-   ],
-   [
-    "rays-math",
-    "sphere",
-    "Hitting a sphere: setting up the equation"
+    "output",
+    "Writing the result into the frame"
    ]
   ],
   "rays-math#which-t": [
@@ -2139,18 +2678,6 @@ window.ATLAS_INDEX = {
     "ray-sphere",
     "cases",
     "When the camera is inside or above the layer"
-   ]
-  ],
-  "rays-math#quadratic": [
-   [
-    "ray-sphere",
-    "hit",
-    "Where the ray enters and leaves the layer"
-   ],
-   [
-    "ray-sphere",
-    "output",
-    "Writing the result into the frame"
    ]
   ],
   "transparency#modes": [
@@ -2212,14 +2739,35 @@ window.ATLAS_INDEX = {
     "Soft edges: PCF"
    ]
   ],
-  "texture-memory#normals": [
+  "pbr-brdf#diffuse": [
    [
-    "spaces",
-    "tangent",
-    "Tangent space: a frame on every surface"
+    "skin",
+    "why",
+    "Why skin is not Lambert"
+   ]
+  ],
+  "depth-effects#linearize": [
+   [
+    "skin",
+    "screen-space",
+    "Blurring in screen space"
+   ]
+  ],
+  "mapping#detail": [
+   [
+    "skin",
+    "specular",
+    "Skin specular: two lobes"
    ]
   ],
   "parallax#heightmap": [
+   [
+    "texture-memory",
+    "normals",
+    "Normal maps"
+   ]
+  ],
+  "mapping#normals": [
    [
     "texture-memory",
     "normals",
@@ -2238,6 +2786,13 @@ window.ATLAS_INDEX = {
     "textures-sampling",
     "uv",
     "UV coordinates: where to read"
+   ]
+  ],
+  "hair#cards": [
+   [
+    "transparency",
+    "alpha-test",
+    "Alpha test and thinning foliage"
    ]
   ],
   "reading-a-frame#lods": [

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hair: Strands and Cards · Tech Art Atlas</title>
+<meta name="description" content="Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="hair">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Hair: Strands and Cards</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Characters · 6 chapters</div>
+  <h1>Hair: Strands and Cards</h1>
+  <p class="lede">Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.</p>
+  <p class="meta">Builds on PBR shading and Transparency. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="hair" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a lock of strands with Kajiya–Kay shading and two shifted highlights.</figcaption></figure>
+<div class="needs" data-needs="pbr-brdf#half transparency#alpha-test spaces#tangent"></div>
+
+<section class="chapter" id="cards" data-title="Strands or cards" data-builds="transparency#alpha reading-a-frame#overdraw" data-summary="Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw.">
+  <div class="head"><div class="num"></div><h2>Strands or cards</h2></div>
+
+  <div class="prose">
+    <p>A human head has about 100 000 hairs. Film renders every one as a curve; games mostly cannot. The standard real-time solution is <button type="button" class="term" data-term="hcard">hair cards</button>: strips of a few quads, each textured with an image of many hairs and their alpha (<a class="x" href="../transparency/index.html#alpha">transparency</a>). A full head takes a few hundred to a few thousand cards. Compare the geometry:</p>
+  </div>
+  <div class="fx" data-fx="strands"></div>
+  <div class="prose"><p>Geometry is not the only cost. Cards overlap in many layers, and every layer runs the hair shader (<a class="x" href="../reading-a-frame/index.html#overdraw">overdraw</a>):</p></div>
+  <div class="fx" data-fx="cardcost"></div>
+  <div class="prose"><p>Strand rendering in real time exists (Unreal's groom system, compute rasterizers), but it remains a high-end option for close-up characters. This unit focuses on cards; the shading model is the same for both.</p></div>
+
+</section>
+<section class="chapter" id="tangent" data-title="Shading along the strand" data-builds="spaces#tangent dot-cross#angle" data-summary="diffuse = sin(T, L) = √(1 − (T·L)²).">
+  <div class="head"><div class="num"></div><h2>Shading along the strand</h2></div>
+
+  <div class="prose">
+    <p>A hair is a thin cylinder. Its surface normal points every way around the strand, so a single normal per pixel makes no sense. What is well defined is the strand's direction, its <button type="button" class="term" data-term="htangent">tangent</button> T. Hair shading models use T instead of N. Kajiya and Kay's diffuse term is the light a cylinder receives from L, averaged around it, which works out as the sine of the angle between T and L:</p>
+  </div>
+  <div class="fx" data-fx="kkdiff"></div>
+  <div class="prose"><p>Light along the strand gives almost nothing (you see the hair end-on); light across it gives full brightness. On cards, T comes from the direction of the texture's V axis, or from a <em>flow map</em> that stores the strand direction per texel, transformed into world space with the <a class="x" href="../spaces/index.html#tangent">tangent frame</a>.</p></div>
+
+</section>
+<section class="chapter" id="highlight" data-title="The highlight band" data-builds="hair#tangent pbr-brdf#half" data-summary="spec = sin(T, H)ᵖ: a band where the strand is perpendicular to H.">
+  <div class="head"><div class="num"></div><h2>The highlight band</h2></div>
+
+  <div class="prose">
+    <p>The specular highlight of a cylinder is not a dot but a line across it, wherever the strand runs perpendicular to the <a class="x" href="../pbr-brdf/index.html#half">half vector</a>. Kajiya–Kay specular measures exactly that, raised to a power for sharpness. Along a head, the strand direction turns, and the highlight forms the familiar band:</p>
+  </div>
+  <div class="fx" data-fx="kkspec"></div>
+  <pre class="hlsl"><span class="c">// Kajiya–Kay specular with the usual directional fade</span>
+<span class="t">float</span> StrandSpecular(<span class="t">float3</span> T, <span class="t">float3</span> V, <span class="t">float3</span> L, <span class="t">float</span> exponent)
+{
+    <span class="t">float3</span> H = normalize(L + V);
+    <span class="t">float</span>  TdotH = dot(T, H);
+    <span class="t">float</span>  sinTH = sqrt(<span class="n">1</span> - TdotH * TdotH);
+    <span class="t">float</span>  dirAtten = smoothstep(<span class="n">-1</span>, <span class="n">0</span>, TdotH);
+    <span class="k">return</span> dirAtten * pow(sinTH, exponent);
+}</pre>
+
+</section>
+<section class="chapter" id="shift" data-title="Two shifted highlights" data-builds="hair#highlight" data-summary="T′ = normalize(T + shift · N); R with a small shift, TRT tinted, wider and shifted the other way.">
+  <div class="head"><div class="num"></div><h2>Two shifted highlights</h2></div>
+
+  <div class="prose">
+    <p>Real hair shows two highlights. Light reflecting off the outer surface (R) gives a sharp, white one. Light entering the fibre, reflecting off its back and leaving again (TRT) gives a wider one tinted with the hair colour. Because the scales on a hair's surface are tilted, the two appear at slightly different places along the strand: R toward the root, TRT toward the tip (Marschner's measurements). Shaders reproduce that by tilting the tangent toward the normal by a different amount for each lobe:</p>
+  </div>
+  <div class="fx" data-fx="shift"></div>
+  <div class="prose"><p>A noise texture added to the shift varies it per strand, which breaks the band into the streaky look of real hair. A third term from Marschner, TT (light passing straight through), makes backlit hair glow; it is usually added as a simple back-light term with the hair colour.</p></div>
+
+</section>
+<section class="chapter" id="sorting" data-title="Alpha, sorting and depth" data-builds="transparency#order transparency#alpha-test transparency#dither" data-summary="Opaque pass with a high cutoff, blended pass for the wisps, or alpha to coverage / dithering.">
+  <div class="head"><div class="num"></div><h2>Alpha, sorting and depth</h2></div>
+
+  <div class="prose">
+    <p>Hair cards combine every problem of <a class="x" href="../transparency/index.html#order">transparency</a>: thousands of overlapping layers in one mesh, which cannot be sorted per object. The common recipe has two passes:</p>
+    <ol>
+      <li><strong>Opaque pass</strong> with <a class="x" href="../transparency/index.html#alpha-test">alpha test</a> at a high cutoff (0.5 to 0.9): the dense core of the hair, writing depth and receiving shadows.</li>
+      <li><strong>Blended pass</strong> for the soft, thin parts below the cutoff, drawn after it with depth testing against the first pass, so the wispy ends blend over a correct base.</li>
+    </ol>
+    <p>Alternatives are <a class="x" href="../transparency/index.html#a2c">alpha to coverage</a> with MSAA, and <a class="x" href="../transparency/index.html#dither">dithering</a> with TAA, which is what most deferred renderers use. Sorting the cards inside the mesh from the scalp outward (in the modelling tool) helps the blended pass a lot.</p>
+  </div>
+  <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP has a <em>Hair</em> material type in Shader Graph with a Kajiya–Kay approximation and a physically based Marschner model. <em>Alpha Clipping</em>, <em>Transparent Depth Prepass/Postpass</em> and <em>Alpha to Mask</em> cover the passes above.</p></div><div class="eng" data-engine="urp"><p>URP has no hair shader. Build Kajiya–Kay in Shader Graph with a <em>Custom Function</em> node (the code above), use Alpha Clipping for the opaque core and optionally a second transparent material on a duplicated mesh.</p></div><div class="eng" data-engine="unreal"><p>Cards use the <em>Hair</em> shading model with <em>Masked</em> blend mode and dithered opacity; strands use the <em>Groom</em> system with its own rasterizer. The Hair shading model is a Marschner implementation with R, TT and TRT lobes.</p></div></div>
+  <details class="check"><summary></summary><script type="application/json">[["Why does the opaque hair pass use a high alpha cutoff?", ["To save memory", "So only the solid core writes depth, and the soft ends are left for the blended pass", "To make hair darker", "Because hair has no alpha"], 1, "High cutoff = only confident pixels go opaque."]]</script></details>
+
+</section>
+<section class="chapter" id="variation" data-title="Root to tip, and self-shadowing" data-builds="hair#cards skin#transmission" data-summary="colour = lerp(root, tip, v^g) · lerp(AO, 1, v); self-shadow by the amount of hair in front.">
+  <div class="head"><div class="num"></div><h2>Root to tip, and self-shadowing</h2></div>
+
+  <div class="prose">
+    <p>Hair is darker near the scalp, both because roots are often darker and because the outer hair shadows the inner layers. Cards carry a gradient from root to tip in a UV channel or texture, used to darken the colour and the ambient light:</p>
+  </div>
+  <div class="fx" data-fx="roottip"></div>
+  <div class="prose"><p>For direct light, hair needs soft self-shadowing: a single shadow-map depth would make the outer layer shadow everything below completely. Engines estimate how much hair lies between a point and the light (deep opacity maps, or a thickness value from the shadow map) and attenuate exponentially, like <a class="x" href="../skin/index.html#transmission">light through skin</a>.</p></div>
+
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Paper</span><a href="http://www.graphics.stanford.edu/papers/hair/" rel="noopener">Light Scattering from Human Hair Fibers</a></span><span class="by">Marschner, Jensen, Cammarano, Worley, Hanrahan · SIGGRAPH 2003</span><span class="why">The R, TT and TRT lobes and their shifted positions.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-23-hair-animation-and-rendering-nalu-demo" rel="noopener">GPU Gems 2, chapter 23: Hair Animation and Rendering in the Nalu Demo</a></span><span class="by">Hubert Nguyen, William Donnelly · NVIDIA</span><span class="why">A complete real-time hair shading pipeline.</span></li><li><span><span class="kind">Course</span><a href="https://blog.selfshadow.com/publications/s2016-shading-course/" rel="noopener">Physically Based Shading in Theory and Practice 2016 (Physically Based Hair Shading in Unreal)</a></span><span class="by">Brian Karis and others · SIGGRAPH 2016</span><span class="why">How Unreal approximates Marschner's model in real time.</span></li></ul>
+</section>
+
+<div class="next" data-next="skin cloth fabric-folds"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"hcard": [
+"Hair card",
+"A strip of polygons textured with an image of many hairs and their alpha.",
+"#cards"
+],
+"htangent": [
+"Strand tangent",
+"The direction a hair runs, used instead of a surface normal for shading.",
+"#tangent"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="hair.js"></script>
+</body>
+</html>

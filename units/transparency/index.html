@@ -87,7 +87,7 @@ Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span><
   <div class="head"><div class="num"></div><h2>Alpha test and thinning foliage</h2></div>
 
   <div class="prose">
-    <p>Foliage, fences and hair cards usually avoid blending altogether. <button type="button" class="term" data-term="cutout">Alpha test</button> throws a pixel away when its alpha is below a cutoff (<code>clip(alpha − cutoff)</code>). The rest is drawn as fully opaque: no sorting, it writes depth and receives shadows. The cost is a hard edge, and that the GPU cannot always reject hidden pixels before running the shader.</p>
+    <p>Foliage, fences and <a class="x" href="../hair/index.html#cards">hair cards</a> usually avoid blending altogether. <button type="button" class="term" data-term="cutout">Alpha test</button> throws a pixel away when its alpha is below a cutoff (<code>clip(alpha − cutoff)</code>). The rest is drawn as fully opaque: no sorting, it writes depth and receives shadows. The cost is a hard edge, and that the GPU cannot always reject hidden pixels before running the shader.</p>
     <p>Alpha test has one classic bug. <a class="x" href="../texture-memory/index.html#mips">Mip levels</a> average neighbouring texels, so a thin, fully opaque twig next to transparent texels becomes a wide, half-transparent texel in the next mip. Below the cutoff, it disappears:</p>
   </div>
   <div class="fx" data-fx="mipcoverage"></div>
@@ -133,7 +133,7 @@ Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span><
   <ul class="refs"><li><span><span class="kind">Tutorial</span><a href="https://learnopengl.com/Advanced-OpenGL/Blending" rel="noopener">Blending</a></span><span class="by">Joey de Vries · LearnOpenGL</span><span class="why">Blend factors, sorting and alpha discard with code.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/SL-Blend.html" rel="noopener">ShaderLab command: Blend</a></span><span class="by">Unity</span><span class="why">Every blend factor and operation available in Unity shaders.</span></li><li><span><span class="kind">Paper</span><a href="https://jcgt.org/published/0002/02/09/" rel="noopener">Weighted Blended Order-Independent Transparency</a></span><span class="by">Morgan McGuire, Louis Bavoil · JCGT 2013</span><span class="why">The OIT method from the last chapter, with weight functions.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased Alpha Test: The Esoteric Alpha To Coverage</a></span><span class="by">Ben Golus</span><span class="why">Alpha test, mip coverage and alpha to coverage in depth.</span></li><li><span><span class="kind">Article</span><a href="http://www.ludicon.com/castano/blog/articles/computing-alpha-mipmaps/" rel="noopener">Computing Alpha Mipmaps</a></span><span class="by">Ignacio Castaño</span><span class="why">The coverage-preserving mip rescale used by engines.</span></li></ul>
 </section>
 
-<div class="next" data-next="depth-effects cloud-march reading-a-frame"></div>
+<div class="next" data-next="depth-effects hair cloud-march"></div>
 <section class="chapter" id="glossary" data-title="Glossary" data-ref>
   <div class="head"><div class="num"></div><h2>Glossary</h2></div>
   <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
