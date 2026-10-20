@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · start here · 5 chapters</div>
+  <div class="eyebrow">Foundations · start here · 6 chapters</div>
   <h1>How a GPU Draws a Frame</h1>
   <p class="lede">Every technique on this site is a small change to one process: a GPU colouring every pixel of the screen, many times per second. This unit explains that process from zero.</p>
   <p class="meta">No maths or programming knowledge is needed. Coloured symbols in formulas are sliders you can move; dotted words open a definition; links with an arrow lead to the lesson that explains that idea.</p>
@@ -136,6 +136,55 @@
   </div>
   <details class="check"><summary></summary><script type="application/json">[["A game targets 60 fps. How long may one frame take?", ["60 ms", "16.7 ms", "6 ms", "1.6 ms"], 1, "1000 ms / 60 ≈ 16.7 ms."], ["A feature costs 2 ms. Where does it hurt the frame rate more?", ["At 30 fps", "At 60 fps", "Equally at both", "Neither"], 1, "2 ms is 12% of a 16.7 ms frame but only 6% of a 33.3 ms frame."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="gpu-basics#per-pixel gpu-basics#frame" data-summary="An Unlit Shader Graph with a per-pixel Custom Function, and a frame-time readout with FrameTimingManager.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Two small exercises make this unit concrete: a first Shader Graph that colours every pixel by its own position, and a script that shows your frame time against the budget. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit graph: one pixel shader, built from nodes.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>PixelGrid.hlsl: a few lines that see the pixel grid.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>FrameBudget.cs: CPU and GPU milliseconds on screen.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>UV</em> node and connect it to <em>Base Color</em>. Every pixel now shows its own UV as red and green: the same program, a different input per pixel.</div></li><li><div>Save <code>PixelGrid.hlsl</code> (below) anywhere under <code>Assets</code>, for example <code>Assets/Shaders/Atlas/</code>.</div></li><li><div>Add a <em>Screen Position</em> node with <em>Mode</em> set to <code>Pixel</code>: it gives each pixel its position in whole pixels.</div></li><li><div>In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>PixelGrid.hlsl</code> and <em>Name</em> to <code>PixelGrid</code> (without the <code>_float</code> suffix). Add the inputs <b>PixelPos (Vector 2), Cell (Float)</b> and the outputs <b>Out (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect Screen Position to <em>PixelPos</em>, a Float property <code>Cell</code> (default 8) to <em>Cell</em>, and <em>Out</em> to <em>Base Color</em>. Right-click the graph and choose <em>Create &gt; Material</em>, then assign the material to an object. Change the Game view resolution: the checker stays locked to the screen, not to the object.</div></li><li><div>Add <code>FrameBudget.cs</code> to any GameObject and enable <em>Project Settings &gt; Player &gt; Other Settings &gt; Frame Timing Stats</em>. Press Play to see CPU and GPU time next to the budget.</div></li></ol>
+<div class="files"><div class="file" data-name="PixelGrid.hlsl" data-lang="hlsl"><pre>#ifndef PIXEL_GRID_INCLUDED
+#define PIXEL_GRID_INCLUDED
+
+// Colours blocks of Cell x Cell screen pixels as a checkerboard,
+// so you can see that the shader runs once per pixel.
+void PixelGrid_float(float2 PixelPos, float Cell, out float3 Out)
+{
+    float2 c = floor(PixelPos / max(Cell, 1.0));
+    float  k = fmod(c.x + c.y, 2.0);
+    Out = lerp(float3(0.08, 0.08, 0.10), float3(0.95, 0.55, 0.20), k);
+}
+
+#endif</pre></div><div class="file" data-name="FrameBudget.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Shows CPU and GPU frame time next to the budget for a target frame rate.
+// Requires Project Settings &gt; Player &gt; Other Settings &gt; Frame Timing Stats.
+public class FrameBudget : MonoBehaviour
+{
+    public float targetFps = 60f;
+
+    readonly FrameTiming[] timings = new FrameTiming[1];
+    double cpuMs, gpuMs;
+
+    void Update()
+    {
+        FrameTimingManager.CaptureFrameTimings();
+        if (FrameTimingManager.GetLatestTimings(1, timings) &gt; 0)
+        {
+            cpuMs = timings[0].cpuFrameTime;
+            gpuMs = timings[0].gpuFrameTime;
+        }
+    }
+
+    void OnGUI()
+    {
+        float budget = 1000f / targetFps;
+        string slow = cpuMs &gt; gpuMs ? &quot;CPU&quot; : &quot;GPU&quot;;
+        GUI.Label(new Rect(10, 10, 600, 24),
+            $&quot;Budget {budget:0.0} ms   CPU {cpuMs:0.0} ms   GPU {gpuMs:0.0} ms   (slowest: {slow})&quot;);
+    }
+}</pre></div></div>
+<div class="prose"><p>The GPU number is the one to compare with the <a href="#frame">frame budget</a> when you work on shaders. For a detailed breakdown, open <em>Window &gt; Analysis &gt; Profiler</em> (GPU module) or the HDRP <em>Rendering Debugger</em>, covered in <a class="x" href="../reading-a-frame/index.html#implement">Reading a Frame</a>.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Create an <em>Unlit Shader Graph</em> under <em>Shader Graph &gt; URP</em>; the nodes, the HLSL file and the script are identical.</p></div><div class="eng" data-engine="unreal"><p>Make a Material with <em>Shading Model: Unlit</em>, connect <em>TexCoord</em> to <em>Emissive Color</em>, and use <em>ScreenPosition</em> (pixel position output) with a <em>Custom</em> node holding the PixelGrid body. <code>stat unit</code> in the console shows Game, Draw and GPU time.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

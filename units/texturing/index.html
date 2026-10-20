@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Texturing a Game Asset · Tech Art Atlas</title>
+<meta name="description" content="How a model gets its textures: unwrapping UVs, padding against mip bleeding, texel density targets, baking from a high-poly model, why hard edges cost vertices, when to share textures, and exporting to the engine.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="texturing">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Texturing a Game Asset</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
+  <h1>Texturing a Game Asset</h1>
+  <p class="lede">How a model gets its textures: unwrapping UVs, padding against mip bleeding, texel density targets, baking from a high-poly model, why hard edges cost vertices, when to share textures, and exporting to the engine.</p>
+  <p class="meta">Builds on Textures and Sampling. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="texturing" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a crate with its UV checker on one side and its finished material on the other.</figcaption></figure>
+<div class="needs" data-needs="textures-sampling#uv texture-memory#mips"></div>
+
+<section class="chapter" id="uvs" data-title="UVs: flattening the surface" data-builds="textures-sampling#uv" data-summary="Cut seams where they hide; keep islands unstretched (aspect 1) and at even density.">
+  <div class="head"><div class="num"></div><h2>UVs: flattening the surface</h2></div>
+
+  <div class="prose">
+    <p>A texture is flat; a model is not. <button type="button" class="term" data-term="unwrap">Unwrapping</button> cuts the surface along <em>seams</em> into pieces (<em>islands</em>) that can lie flat, and lays them out in the 0–1 square of <a class="x" href="../textures-sampling/index.html#uv">UV space</a>. Two things make an unwrap good: islands keep their proportions (no stretching), and every island gets the same amount of texture per metre (even density). Stretch an island and watch the checker:</p>
+  </div>
+  <div class="fx" data-fx="stretch"></div>
+  <div class="prose"><p>Seams are unavoidable, so hide them: along hard edges, in crevices, on the side of an object that faces away from the camera, under straps and belts on characters. Every seam is also a place where the texture is discontinuous, so normal map details and painted strokes must be continued across it in the painting tool.</p></div>
+
+</section>
+<section class="chapter" id="padding" data-title="Padding and mip bleeding" data-builds="texture-memory#mips texturing#uvs" data-summary="At mip k a texel covers 2ᵏ texels: padding p keeps seams clean down to mip ⌊log₂ p⌋.">
+  <div class="head"><div class="num"></div><h2>Padding and mip bleeding</h2></div>
+
+  <div class="prose">
+    <p>The empty space between islands is not empty to the GPU. <a class="x" href="../texture-memory/index.html#mips">Mipmaps</a> average 2 × 2 texels into one, then 4 × 4, and so on, so at a distance the background colour bleeds into the edges of every island and shows up as thin dark or bright lines along the seams. The fix is <button type="button" class="term" data-term="padding">padding</button> (also called dilation or edge padding): fill the space around each island with the island's own colours. At mip level k one texel covers 2ᵏ original texels, so padding of p texels keeps the edges clean down to mip log₂ p:</p>
+  </div>
+  <div class="fx" data-fx="padding"></div>
+  <div class="prose"><p>Substance Painter, Designer and most bakers dilate on export (<em>Dilation</em> or <em>Padding: infinite</em>). Islands need a gap of about twice the padding between them so their paddings do not overwrite each other; 8 to 16 px at 2048 is common.</p></div>
+
+</section>
+<section class="chapter" id="density" data-title="Texel density targets" data-builds="texture-memory#density" data-summary="density = T · √(u / A) texels per metre; match the team target.">
+  <div class="head"><div class="num"></div><h2>Texel density targets</h2></div>
+
+  <div class="prose">
+    <p>Assets made by different artists must match in sharpness, or a crisp crate sits next to a blurry wall. Teams agree on a <button type="button" class="term" data-term="td">texel density</button> target in texels per metre, and every asset is unwrapped to hit it. For a surface with area A that uses a fraction u of a texture of size T:</p>
+  </div>
+  <div class="fx" data-fx="td"></div>
+  <div class="prose"><p>Typical targets are around 512 px/m for third-person games and 1024 px/m or more for first-person views, often with exceptions for heroes and props the player picks up. Why those numbers work is the topic of <a class="x" href="../texture-memory/index.html#density">texel density and the screen</a>.</p></div>
+
+</section>
+<section class="chapter" id="baking" data-title="Baking a high-poly model" data-builds="spaces#tangent texture-memory#normals" data-summary="Rays from the low-poly mesh must reach the detail (d ≥ h) but stop before other surfaces (d &lt; g). Bake in MikkTSpace.">
+  <div class="head"><div class="num"></div><h2>Baking a high-poly model</h2></div>
+
+  <div class="prose">
+    <p>Detail too small for the game mesh is modelled or sculpted on a high-resolution copy and <button type="button" class="term" data-term="bake">baked</button> into textures. For every texel of the low-poly mesh, the baker casts a ray along the surface normal, finds the high-poly surface and records its normal, its distance (height), how occluded it is (AO), its curvature and thickness. Rays need a maximum distance (or a <em>cage</em>, an inflated copy of the low-poly mesh that sets the distance per vertex). Too short and the ray misses the detail; too long and it hits a different part of the model:</p>
+  </div>
+  <div class="fx" data-fx="cage"></div>
+  <div class="prose"><p>One more rule decides whether a baked normal map looks right in the engine: the baker and the engine must use the same <em>tangent basis</em>. Unity, Unreal, Substance and Blender all use <em>MikkTSpace</em>; bake with it and import the mesh with tangents calculated the same way (Unity: <em>Tangents: Calculate Mikktspace</em>). Bake with the final low-poly mesh, triangulated, and with the same smoothing as in the game, otherwise shading gradients appear on flat faces.</p></div>
+
+</section>
+<section class="chapter" id="splits" data-title="Hard edges, seams and vertex count" data-builds="buffers#vertex-index texturing#uvs" data-summary="GPU vertices ≈ positions · (1 + seam share + hard-edge share); put hard edges on UV seams.">
+  <div class="head"><div class="num"></div><h2>Hard edges, seams and vertex count</h2></div>
+
+  <div class="prose">
+    <p>A vertex on the GPU has exactly one position, one normal and one UV. Where a hard edge (two normals) or a UV seam (two UVs) passes through a vertex, the engine has to duplicate it. That is why a hard edge should always also be a UV seam: the vertex is split anyway, and the normal map bakes cleanly on both sides. The cost shows up in the vertex count the GPU actually processes:</p>
+  </div>
+  <div class="fx" data-fx="splits"></div>
+  <div class="prose"><p>The vertex count your modelling tool shows is the number of positions; the engine's statistics (Unity's <em>Stats</em> panel, the mesh preview) show the split count. A difference of 30 to 50 % is normal for an unwrapped game mesh.</p></div>
+
+</section>
+<section class="chapter" id="reuse" data-title="Unique, tiling and trim sheets" data-builds="texture-memory#cost" data-summary="Unique memory grows with asset count; tiling and trim sheets are shared.">
+  <div class="head"><div class="num"></div><h2>Unique, tiling and trim sheets</h2></div>
+
+  <div class="prose">
+    <p>Not every asset deserves its own textures. Three strategies, often mixed on one model:</p>
+    <ul>
+      <li><strong>Unique textures</strong>: every texel belongs to one place on one model. Best for characters and hero props; the memory grows with every asset.</li>
+      <li><strong>Tiling materials</strong>: a material that repeats seamlessly (brick, plaster, metal), mapped by UVs larger than 0–1 or by <a class="x" href="../mapping/index.html#triplanar">projection</a>, with masks or vertex colours to blend variants.</li>
+      <li><strong><button type="button" class="term" data-term="trim">Trim sheets</button></strong>: one texture holding horizontal strips of detail (panel edges, bolts, mouldings). Modellers map the faces of many assets onto those strips. One trim sheet can texture a whole building set.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="texmem"></div>
+
+</section>
+<section class="chapter" id="export" data-title="From the painting tool to the engine" data-builds="texture-settings#packing texturing#padding" data-summary="Engine export preset, the right green channel, padding on, suffixes in names, 8 bit except displacement heights.">
+  <div class="head"><div class="num"></div><h2>From the painting tool to the engine</h2></div>
+
+  <div class="prose">
+    <p>The painting tool works with many layers and full-precision maps; the engine wants a few packed, compressed textures. The export step decides how they meet:</p>
+    <ol>
+      <li><strong>Use the engine's export preset.</strong> Substance Painter ships presets for HDRP (base colour, normal, and the mask map with metallic, AO, detail mask and smoothness), URP and Unreal (base colour, normal, and an occlusion/roughness/metallic texture). The channel layouts are explained in <a class="x" href="../texture-settings/index.html#packing">packing layouts</a>.</li>
+      <li><strong>Normal map convention.</strong> OpenGL (Y+) for Unity, DirectX (Y−) for Unreal; most tools convert on export.</li>
+      <li><strong>Padding on.</strong> Dilation to infinity, so the mip chain stays clean.</li>
+      <li><strong>Names with suffixes.</strong> <code>Crate_BC</code>, <code>Crate_N</code>, <code>Crate_MS</code>: the engine can then set import settings automatically (<a class="x" href="../texture-settings/index.html#implement">an import script</a>).</li>
+      <li><strong>Resolution and bit depth.</strong> Export at the size you will ship (or larger and let the engine's <em>Max Size</em> scale down); 8 bits per channel is enough for everything except height maps used for displacement (16 bits).</li>
+    </ol>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Thin dark lines appear along UV seams when the camera moves away. What is missing?", ["A higher texture resolution", "Padding (dilation) around the UV islands", "A different normal map format", "More UV seams"], 1, "Mips average the background into the island edges unless the islands are padded."], ["Your baked normal map shows faint gradients on flat faces in Unity. Most likely cause?", ["The texture is too small", "Baker and engine use different tangent bases or smoothing", "sRGB is off", "The cage is too large"], 1, "Bake and import in MikkTSpace with the same smoothing as the game mesh."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="texturing#density texturing#baking" data-summary="Mikktspace import, the HDRP export preset, a texel density debug view from screen derivatives, and a px/m report per mesh.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Three tools close the loop from the painting tool to the engine: the right model import settings, a debug view that colours every surface by its texel density, and an editor report that measures it per mesh. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Model import: normals, Mikktspace tangents, lightmap UVs.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit debug graph for texel density.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>TexelDensity.hlsl: texels per metre from screen derivatives.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>TexelDensityReport.cs: px/m per selected mesh.</span></div></div>
+<ol class="impl-steps"><li><div>Select the FBX. In the <em>Model</em> tab set <em>Normals</em> to <code>Import</code> and <em>Tangents</em> to <code>Calculate Mikktspace</em>, matching the baker. Tick <em>Generate Lightmap UVs</em> only if the object is lightmapped and has no second UV set of its own.</div></li><li><div>Export textures from Substance Painter with the <em>Unity HD Render Pipeline (Metallic Standard)</em> preset (or your own with the same layout), normal map format OpenGL, padding <em>Infinite</em>.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>UV</em> node and a <em>Position</em> node (World). Save <code>TexelDensity.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>TexelDensity.hlsl</code> and <em>Name</em> to <code>TexelDensity</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), PositionWS (Vector 3), TextureSize (Float), Target (Float)</b> and the outputs <b>Color (Vector 3), Density (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Set <em>TextureSize</em> to the size of the material's textures (2048) and <em>Target</em> to your team's px/m (512). Green is on target, blue too blurry, red sharper than needed. Swap this material onto assets while checking them.</div></li><li><div>Put <code>TexelDensityReport.cs</code> in an <code>Editor</code> folder, select objects in the scene and use <em>Tools &gt; Atlas &gt; Texel Density of Selection</em>.</div></li></ol>
+<div class="files"><div class="file" data-name="TexelDensity.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_TEXEL_DENSITY_INCLUDED
+#define ATLAS_TEXEL_DENSITY_INCLUDED
+
+// Texels per metre at this pixel: how far the UV moves (in texels) per screen pixel,
+// divided by how far the surface moves (in metres) per screen pixel.
+void TexelDensity_float(float2 UV, float3 PositionWS, float TextureSize, float Target,
+                        out float3 Color, out float Density)
+{
+    float tx = length(ddx(UV)) * TextureSize, ty = length(ddy(UV)) * TextureSize;   // texels per pixel
+    float mx = length(ddx(PositionWS)),       my = length(ddy(PositionWS));         // metres per pixel
+    Density = 0.5 * (tx / max(mx, 1e-6) + ty / max(my, 1e-6));
+
+    float r = log2(max(Density, 1e-3) / Target);          // 0 = on target, -1 = half, +1 = double
+    float3 low = float3(0.15, 0.35, 1.0), ok = float3(0.2, 0.85, 0.3), high = float3(1.0, 0.25, 0.15);
+    Color = r &lt; 0 ? lerp(ok, low, saturate(-r)) : lerp(ok, high, saturate(r));
+
+    float2 g = abs(frac(UV * TextureSize / 64.0) - 0.5);  // a grid line every 64 texels
+    Color *= 0.7 + 0.3 * step(0.45, max(g.x, g.y));
+}
+
+#endif</pre></div><div class="file" data-name="TexelDensityReport.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using UnityEditor;
+using UnityEngine;
+
+// Texel density of each selected mesh: T * sqrt(UV area / world area).
+// Overlapping or mirrored UV islands are counted twice, so treat the result as a check, not gospel.
+public static class TexelDensityReport
+{
+    [MenuItem(&quot;Tools/Atlas/Texel Density of Selection&quot;)]
+    static void Report()
+    {
+        foreach (var go in Selection.gameObjects)
+        {
+            var mf = go.GetComponent&lt;MeshFilter&gt;();
+            if (mf == null || mf.sharedMesh == null) continue;
+            Mesh mesh = mf.sharedMesh;
+            Vector3[] v = mesh.vertices;
+            Vector2[] uv = mesh.uv;
+            int[] t = mesh.triangles;
+            if (uv.Length == 0) { Debug.LogWarning($&quot;{go.name}: no UVs&quot;); continue; }
+
+            Matrix4x4 m = go.transform.localToWorldMatrix;
+            double world = 0, uvArea = 0;
+            for (int i = 0; i &lt; t.Length; i += 3)
+            {
+                Vector3 a = m.MultiplyPoint3x4(v[t[i]]), b = m.MultiplyPoint3x4(v[t[i + 1]]), c = m.MultiplyPoint3x4(v[t[i + 2]]);
+                world += Vector3.Cross(b - a, c - a).magnitude * 0.5;
+                Vector2 p = uv[t[i]], q = uv[t[i + 1]], s = uv[t[i + 2]];
+                uvArea += Mathf.Abs((q.x - p.x) * (s.y - p.y) - (s.x - p.x) * (q.y - p.y)) * 0.5;
+            }
+
+            var r = go.GetComponent&lt;Renderer&gt;();
+            Texture tex = r != null &amp;&amp; r.sharedMaterial != null ? r.sharedMaterial.mainTexture : null;
+            int size = tex != null ? tex.width : 2048;
+            double density = size * System.Math.Sqrt(uvArea / System.Math.Max(world, 1e-9));
+            Debug.Log($&quot;{go.name}: {world:0.00} m², UV coverage {uvArea * 100:0} %, {density:0} px/m at {size} px&quot;);
+        }
+    }
+}
+#endif</pre></div></div>
+<div class="prose"><p>The debug view uses screen derivatives, so it measures what the camera actually sees, including scaling of the object in the scene. Mirrored or overlapping islands are fine for the view but inflate the report's UV coverage.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical. Substance Painter's URP preset packs metallic and smoothness into one texture (R and A) with AO separate.</p></div><div class="eng" data-engine="unreal"><p>FBX import: <em>Normal Import Method</em> Import Normals, <em>Use MikkTSpace</em> on (default). The <em>Required Texture Resolution</em> view mode and the editor's <em>Texture Streaming Accuracy</em> views show how texel density compares with the screen. Export from Substance Painter with the <em>Unreal Engine (Packed)</em> preset (ORM).</p></div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://helpx.adobe.com/substance-3d-painter/texturing/baking-textures.html" rel="noopener">Substance 3D Painter: Baking and Export</a></span><span class="by">Adobe</span><span class="why">Bakers, cages, ray distances and export presets for each engine.</span></li><li><span><span class="kind">Article</span><a href="http://www.mikktspace.com/" rel="noopener">MikkTSpace</a></span><span class="by">Morten S. Mikkelsen</span><span class="why">The tangent basis used by Unity, Unreal, Blender and Substance.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/FBXImporter-Model.html" rel="noopener">Model import settings: Tangents</a></span><span class="by">Unity</span><span class="why">Normals and tangents options on import.</span></li><li><span><span class="kind">Wiki</span><a href="http://wiki.polycount.com/wiki/Texture_Baking" rel="noopener">Polycount wiki: Texture Baking, Edge Padding, Trim Sheets</a></span><span class="by">Polycount community</span><span class="why">Practical baking and texturing knowledge collected by game artists.</span></li></ul>
+</section>
+
+<div class="next" data-next="texture-settings pbr-basics mapping"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"unwrap": [
+"Unwrapping",
+"Cutting a model's surface into flat pieces (UV islands) and laying them out in texture space.",
+"#uvs"
+],
+"padding": [
+"Padding / dilation",
+"Extending each UV island's colours into the empty space around it so mipmaps do not bleed.",
+"#padding"
+],
+"td": [
+"Texel density",
+"Texture resolution per metre of surface: T · √(UV area / surface area).",
+"#density"
+],
+"bake": [
+"Baking",
+"Transferring detail from a high-poly model into textures for the low-poly game mesh.",
+"#baking"
+],
+"trim": [
+"Trim sheet",
+"A texture of reusable detail strips that many models map their faces onto.",
+"#reuse"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="texturing.js"></script>
+</body>
+</html>

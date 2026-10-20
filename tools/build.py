@@ -9,7 +9,7 @@ import json, re, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 UNITS = ROOT / 'units'
-SEC = re.compile(r'<section\b([^>]*\bclass="chapter"[^>]*)>(.*?)</section>', re.S)
+SEC = re.compile(r'<section\b([^>]*\bclass="chapter(?: [^"]*)?"[^>]*)>(.*?)</section>', re.S)
 ATTR = lambda name: re.compile(r'\b' + name + r'="([^"]*)"')
 LINK = re.compile(r'<a\b[^>]*\bclass="x"[^>]*\bhref="\.\./([\w-]+)/(?:index\.html)?(?:#([\w-]+))?"', re.S)
 LINK2 = re.compile(r'<a\b[^>]*\bhref="\.\./([\w-]+)/(?:index\.html)?(?:#([\w-]+))?"[^>]*\bclass="x"', re.S)

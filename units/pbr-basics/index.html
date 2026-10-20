@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PBR Materials: the Basics · Tech Art Atlas</title>
+<meta name="description" content="What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="pbr-basics">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">PBR Materials: the Basics</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
+  <h1>PBR Materials: the Basics</h1>
+  <p class="lede">What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.</p>
+  <p class="meta">No prerequisites beyond Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="pbr-basics" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the same sphere as rough plastic, polished plastic, rough metal and polished gold.</figcaption></figure>
+<div class="needs" data-needs="color-values#linear-srgb"></div>
+
+<section class="chapter" id="idea" data-title="What PBR asks of you" data-builds="pbr-brdf#split color-values#linear-srgb" data-summary="Author what the surface is; light does the rest. Reflected ≈ F0 + (1 − F0) · albedo, always below 1.">
+  <div class="head"><div class="num"></div><h2>What PBR asks of you</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="pbr">Physically based rendering</button> splits the work cleanly. You describe what a surface <em>is</em>, with a handful of measurable properties, and the lighting decides how it <em>looks</em>. A well-made material then reads correctly in a dark corridor, at noon and under a red warning light, without retouching. The shading maths is the topic of <a class="x" href="../pbr-brdf/index.html#split">Inside a PBR Shader</a>; this unit is about the inputs you author.</p>
+    <p>The one physical rule behind the inputs: a surface cannot send back more light than arrives. Part of the light reflects at the surface (specular, about 4 % for most non-metals), the rest enters and comes back coloured by the base colour (diffuse), and whatever is left is absorbed:</p>
+  </div>
+  <div class="fx" data-fx="energy"></div>
+  <div class="prose"><p>That is why a base colour of pure white is wrong even for snow: nothing in nature sends back all of the diffuse light. The next chapters give the ranges that keep each input physical.</p></div>
+
+</section>
+<section class="chapter" id="basecolor" data-title="Base colour: colour without light" data-builds="color-values#linear-srgb pbr-basics#idea" data-summary="No baked lighting; non-metals roughly 30–240 sRGB; 128 sRGB is only about 22 % reflectance.">
+  <div class="head"><div class="num"></div><h2>Base colour: colour without light</h2></div>
+
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="basecolor">base colour</button> (albedo) map holds the colour of the surface as if it were lit evenly from all sides: no shadows, no ambient occlusion, no highlights. All of those come from the lighting, and painting them in makes the surface wrong under every other light.</p>
+    <p>For non-metals, real materials sit in a fairly narrow band. Substance's PBR guide recommends keeping the darkest values above roughly 30 to 50 and the brightest below about 240, in the sRGB 0–255 values your paint program shows. Check a value:</p>
+  </div>
+  <div class="fx" data-fx="albedo"></div>
+  <div class="prose"><p>The reference marks are approximate. Note how much of the 0–255 range is spent on dark values: an sRGB value of 128 is only 22 % reflectance (<a class="x" href="../color-values/index.html#linear-srgb">linear values</a>). Base colour textures are colour data, so their import setting has <em>sRGB</em> ticked.</p></div>
+
+</section>
+<section class="chapter" id="metallic" data-title="Metallic is a switch" data-builds="pbr-brdf#fresnel pbr-basics#basecolor" data-summary="Metallic 0 or 1: F0 = lerp(0.04, base, m), diffuse = base · (1 − m). Metals: bright base colour.">
+  <div class="head"><div class="num"></div><h2>Metallic is a switch</h2></div>
+
+  <div class="prose">
+    <p>Metals and non-metals reflect light in different ways. A non-metal has a coloured diffuse part and a faint, uncoloured reflection (F0 ≈ 0.04). A metal has no diffuse part at all: it reflects strongly, and its reflection is coloured. The <button type="button" class="term" data-term="metallic">metallic</button> input switches between the two, and the base colour changes meaning with it: for a metal it is the colour of the reflection, so it must be bright (roughly 180–255 sRGB):</p>
+  </div>
+  <div class="fx" data-fx="metal"></div>
+  <div class="prose"><p>Values in between describe no real material: half diffuse, half dark reflection, a muddy grey. Use 0 or 1, and let in-between values appear only where two materials meet within a texel: the edge of rust on steel, dust on a metal plate, a scratch through paint. Approximate reflectance of common metals (linear, from Filament's table): silver (0.97, 0.96, 0.91), aluminium (0.91, 0.92, 0.92), iron (0.77, 0.78, 0.78), gold (1.00, 0.85, 0.57), copper (0.97, 0.74, 0.62).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A painted metal door. What is its metallic value?", ["1, it is metal", "0, the paint is what you see; only scratches through the paint are 1", "0.5", "Whatever looks good"], 1, "The visible surface is paint, a non-metal. Bare metal shows only where the paint is gone."]]</script></details>
+
+</section>
+<section class="chapter" id="roughness" data-title="Roughness: how blurry reflections are" data-builds="pbr-brdf#ndf pbr-brdf#ibl" data-summary="Rough = blurry, dim, wide highlight; same total energy. Smoothness = 1 − roughness.">
+  <div class="head"><div class="num"></div><h2>Roughness: how blurry reflections are</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="roughness">Roughness</button> describes the microscopic bumps of a surface, too small for a normal map. A smooth surface reflects a sharp image of its surroundings; a rough one spreads the same light into a wide, dim highlight. The total amount of reflected light stays the same, only its spread changes. Unity uses <em>smoothness</em>, which is simply 1 − roughness:</p>
+  </div>
+  <div class="fx" data-fx="rough"></div>
+  <div class="prose"><p>Roughness is where most of a material's character lives: fingerprints on glass, worn paths on a floor, the satin sheen of handled wood. Paint it with as much care as the base colour, as a data map (sRGB off). The shader squares it internally (α = roughness², <a class="x" href="../pbr-brdf/index.html#ndf">the GGX distribution</a>) so that the slider feels even.</p></div>
+
+</section>
+<section class="chapter" id="maps" data-title="Normal, occlusion and height" data-builds="texture-memory#normals parallax#heightmap" data-summary="Normal and height add small shapes; AO darkens only ambient light, so keep it out of the base colour.">
+  <div class="head"><div class="num"></div><h2>Normal, occlusion and height</h2></div>
+
+  <div class="prose">
+    <p>Three more maps complete a typical material. The <strong>normal map</strong> fakes small shapes by changing the direction the surface faces per pixel (<a class="x" href="../texture-memory/index.html#normals">normal maps</a>). The <strong>height map</strong> stores the same small shapes as heights, used for <a class="x" href="../parallax/index.html#heightmap">parallax</a>, tessellation or blending. The <strong><button type="button" class="term" data-term="ao">ambient occlusion</button></strong> map stores how hidden each point is from its surroundings.</p>
+    <p>Occlusion only applies to the light that comes from all around (sky, bounce light, reflections). Direct light from the sun or a lamp reaches a crevice that faces it just fine, and its shadow comes from shadow maps. Multiplying AO into the base colour darkens direct light too, which is why it is a separate input:</p>
+  </div>
+  <div class="fx" data-fx="ao"></div>
+  <div class="prose"><p>HDRP applies the AO input to indirect diffuse light and derives <em>specular occlusion</em> from it, so reflections in crevices also darken. Small-scale crevice darkening that should affect everything (dirt in cracks) belongs in the base colour, painted as dirt, not as AO.</p></div>
+
+</section>
+<section class="chapter" id="workflows" data-title="Specular/gloss and other conventions" data-builds="pbr-basics#metallic pbr-basics#roughness" data-summary="specular = lerp(0.04, base, m), diffuse = base · (1 − m), gloss = 1 − roughness.">
+  <div class="head"><div class="num"></div><h2>Specular/gloss and other conventions</h2></div>
+
+  <div class="prose">
+    <p>Older content and some engines use the <em>specular/gloss</em> workflow: a diffuse colour map, a specular colour map (F0 directly) and a glossiness map. It can describe the same materials, plus a few the metal workflow cannot (non-metals with an unusual F0). Converting from metal/roughness is direct:</p>
+  </div>
+  <div class="fx" data-fx="convert"></div>
+  <div class="prose"><p>Watch three conventions when moving materials between tools: smoothness versus roughness (invert), the green channel of normal maps (OpenGL in Unity and Substance by default, DirectX in Unreal), and which channel holds what in packed masks (<a class="x" href="../texture-settings/index.html#packing">packing layouts</a>).</p></div>
+
+</section>
+<section class="chapter" id="validate" data-title="Checking your values" data-builds="pbr-basics#basecolor exposure#workflow" data-summary="Neutral light, fixed exposure; the Material Validator and single-input views catch most errors.">
+  <div class="head"><div class="num"></div><h2>Checking your values</h2></div>
+
+  <div class="prose">
+    <p>Materials are judged under lighting, and lighting can hide mistakes. A routine that catches most of them:</p>
+    <ol>
+      <li><strong>Neutral lighting first.</strong> Check materials in a scene with a calibrated sky or HDRI, fixed exposure (<a class="x" href="../exposure/index.html#workflow">a lighting workflow</a>) and no colour grading.</li>
+      <li><strong>Validate the base colour.</strong> HDRP's <em>Rendering Debugger</em> has a <em>Material Validator</em> that highlights base colours outside a luminance range and metals that are too dark. Substance Painter has a <em>PBR Validate</em> filter that does the same while you paint.</li>
+      <li><strong>Look at single inputs.</strong> The Rendering Debugger's <em>Material</em> view shows albedo, smoothness, metal or AO alone. Painted shadows in the albedo stand out immediately.</li>
+      <li><strong>Compare with a reference.</strong> Put a photo-scanned material or a known value chart in the same scene.</li>
+    </ol>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Your base colour has dark painted shadows under every bolt. What happens in a dark scene with a flashlight pointing into the shadow?", ["It looks perfect", "The painted shadow stays dark even where the flashlight lights it, which looks wrong", "The engine removes it", "Nothing changes"], 1, "Lighting belongs to the renderer; painted shadows ignore it."], ["Smoothness 0.8 in Unity. What roughness does Unreal need for the same look?", ["0.8", "0.2", "0.64", "0.36"], 1, "Smoothness = 1 − roughness."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="pbr-basics#validate pbr-basics#maps" data-summary="HDRP/Lit inputs and remapping, the same inputs in Shader Graph, the Material Validator, and a base-colour range check.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Lit shader takes exactly the inputs of this unit. The steps set up a material with the stock shader, the same inputs in a Shader Graph, and an editor check for base colour ranges. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>A material with the HDRP/Lit shader.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>The same inputs in a Lit Shader Graph, for custom materials.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>MaskMap.hlsl: unpacks HDRP's mask map with remapping.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>BaseColorRangeCheck.cs: counts texels outside 30–240.</span></div></div>
+<ol class="impl-steps"><li><div>Create a material (<em>Create &gt; Material</em>); HDRP assigns <em>HDRP/Lit</em>. Under <em>Surface Inputs</em>: <em>Base Map</em> (colour, sRGB on), <em>Mask Map</em> (sRGB off, layout R metallic, G AO, B detail mask, A smoothness), <em>Normal Map</em> (Texture Type Normal map).</div></li><li><div>With a mask map assigned, the Metallic and Smoothness sliders become <em>Remapping</em> ranges: they scale the texture values, for example to make a whole material slightly rougher without repainting.</div></li><li><div>For a height map, set <em>Displacement Mode</em> to <code>Pixel displacement</code> (parallax occlusion) or <code>Vertex</code>/<code>Tessellation</code> (needs the Tessellation option) and assign the <em>Height Map</em>.</div></li><li><div>Shader Graph version: create a Lit Shader Graph (<em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>). Sample the base map into <em>Base Color</em>, the normal map (Sample Texture 2D, Type <code>Normal</code>) into <em>Normal (Tangent Space)</em>, and the mask map through <code>MaskMap.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>MaskMap.hlsl</code> and <em>Name</em> to <code>MaskMap</code> (without the <code>_float</code> suffix). Add the inputs <b>Mask (Vector 4), MetallicRange (Vector 2), SmoothnessRange (Vector 2), AORange (Vector 2)</b> and the outputs <b>Metallic (Float), Smoothness (Float), AO (Float), DetailMask (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Check values: <em>Window &gt; Analysis &gt; Rendering Debugger &gt; Material</em>. <em>Material Validator</em> highlights base colours outside a luminance range and metals that are too dark; the <em>Material</em> dropdown shows albedo, smoothness, metal or AO alone.</div></li><li><div>Put <code>BaseColorRangeCheck.cs</code> in an <code>Editor</code> folder. Select base colour textures and use <em>Assets &gt; Atlas &gt; Check Base Color Range</em> to log how many texels fall outside 30–240 sRGB.</div></li></ol>
+<div class="files"><div class="file" data-name="MaskMap.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_MASK_MAP_INCLUDED
+#define ATLAS_MASK_MAP_INCLUDED
+
+// HDRP mask map: R metallic, G ambient occlusion, B detail mask, A smoothness.
+// Ranges remap 0..1 to (min, max), like the Lit material&#x27;s Remapping sliders.
+void MaskMap_float(float4 Mask, float2 MetallicRange, float2 SmoothnessRange, float2 AORange,
+                   out float Metallic, out float Smoothness, out float AO, out float DetailMask)
+{
+    Metallic   = lerp(MetallicRange.x,   MetallicRange.y,   Mask.r);
+    AO         = lerp(AORange.x,         AORange.y,         Mask.g);
+    DetailMask = Mask.b;
+    Smoothness = lerp(SmoothnessRange.x, SmoothnessRange.y, Mask.a);
+}
+
+#endif</pre></div><div class="file" data-name="BaseColorRangeCheck.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using UnityEditor;
+using UnityEngine;
+
+// Logs how many texels of the selected base colour textures fall outside 30..240 sRGB.
+// Meant for non-metals; metals are supposed to be bright.
+public static class BaseColorRangeCheck
+{
+    [MenuItem(&quot;Assets/Atlas/Check Base Color Range&quot;)]
+    static void Check()
+    {
+        foreach (var obj in Selection.objects)
+        {
+            if (!(obj is Texture2D tex)) continue;
+
+            // Blit into an sRGB render target and read it back: works without Read/Write Enabled.
+            var rt = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(tex, rt);
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var copy = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false, false);
+            copy.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0);
+            copy.Apply();
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+
+            Color32[] px = copy.GetPixels32();
+            Object.DestroyImmediate(copy);
+            int dark = 0, bright = 0;
+            foreach (var c in px)
+            {
+                int max = Mathf.Max(c.r, Mathf.Max(c.g, c.b)), min = Mathf.Min(c.r, Mathf.Min(c.g, c.b));
+                if (max &lt; 30) dark++;
+                else if (min &gt; 240) bright++;
+            }
+            float n = px.Length;
+            Debug.Log($&quot;{tex.name}: {dark / n:P1} too dark (&lt; 30), {bright / n:P1} too bright (&gt; 240)&quot;);
+        }
+    }
+}
+#endif</pre></div></div>
+<div class="prose"><p>Smoothness, not roughness: if your textures come with roughness, invert it on export or in the packer (<a class="x" href="../texture-settings/index.html#implement">Texture Packing and Import Settings</a>). Amplify Shader Editor: paste the function body into a <em>Custom Expression</em> node (mode <em>Call</em> with the file included, or <em>Create</em> with the code inline); inputs and outputs map the same way.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP/Lit uses a <em>Metallic Map</em> (R metallic, A smoothness, with <em>Source</em> set to Metallic Alpha) and a separate <em>Occlusion Map</em> (G channel). The Shader Graph version is identical apart from the mask layout.</p></div><div class="eng" data-engine="unreal"><p>Material inputs <em>Base Color</em>, <em>Metallic</em>, <em>Roughness</em>, <em>Specular</em> (leave at 0.5, which is F0 = 0.04) and <em>Ambient Occlusion</em>; usually from an ORM texture (R AO, G roughness, B metallic) with compression <em>Masks</em>. The <em>Base Color</em> and <em>Roughness</em> buffer visualizations check values.</p></div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Guide</span><a href="https://www.adobe.com/learn/substance-3d-designer/web/the-pbr-guide-part-1" rel="noopener">The PBR Guide, parts 1 and 2</a></span><span class="by">Wes McDermott · Adobe Substance 3D</span><span class="why">The metal/roughness workflow and value ranges for base colour from the artist side.</span></li><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: Material parameterization</a></span><span class="by">Google</span><span class="why">Base colour, metallic and roughness definitions, and the table of metal reflectances.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/index.html" rel="noopener">HDRP Lit shader and Rendering Debugger</a></span><span class="by">Unity</span><span class="why">Lit material inputs, the mask map layout and the Material Validator.</span></li><li><span><span class="kind">Course</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/" rel="noopener">Physically Based Shading in Theory and Practice</a></span><span class="by">SIGGRAPH course notes</span><span class="why">Where the conventions in this unit come from.</span></li></ul>
+</section>
+
+<div class="next" data-next="texturing texture-settings pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"pbr": [
+"Physically based rendering",
+"Shading from measurable surface properties so materials look right under any lighting.",
+"#idea"
+],
+"basecolor": [
+"Base colour / albedo",
+"The surface colour without lighting; for metals, the colour of the reflection.",
+"#basecolor"
+],
+"metallic": [
+"Metallic",
+"A 0 or 1 switch between non-metal (diffuse + faint white reflection) and metal (coloured reflection, no diffuse).",
+"#metallic"
+],
+"roughness": [
+"Roughness / smoothness",
+"How spread out reflections are; smoothness = 1 − roughness.",
+"#roughness"
+],
+"ao": [
+"Ambient occlusion",
+"How hidden a point is from its surroundings; darkens ambient light only.",
+"#maps"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="pbrbasics.js"></script>
+</body>
+</html>

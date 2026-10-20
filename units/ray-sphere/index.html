@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · 9 chapters</div>
+  <div class="eyebrow">Shaders & rendering · 10 chapters</div>
   <h1>Rays, Spheres and Shaders</h1>
   <p class="lede">The first stage of any sky, atmosphere or cloud effect: for every pixel, the direction it looks and where that ray crosses a layer around a curved planet. Every step is a formula you can move.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Test values are given so you can check your own implementation.</p>
@@ -196,6 +196,98 @@
 }</pre>
   <details class="check"><summary></summary><script type="application/json">[["A pixel outputs alpha (T) = 1 with the blend Blend One SrcAlpha. What is the result?", ["The background, unchanged (plus the cloud colour)", "Black", "Only the cloud colour", "White"], 0, "result = src + dst × 1: all background light passes through."], ["σ = 0.001 per metre over 1000 m of layer. What fraction of the background shows through?", ["0.1%", "37%", "90%", "100%"], 1, "e^(−1) ≈ 0.37."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="ray-sphere#cases ray-sphere#cpu-gpu" data-summary="A Fullscreen Shader Graph in a Custom Pass Volume, with camera basis and lens sent from C# and the layer interval in HLSL.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The full-screen pass of this unit, built the HDRP way: a Fullscreen Shader Graph drawn by a Custom Pass Volume, with the camera settings sent by C# exactly as in <a href="#cpu-gpu">getting the settings to the shader</a>. The debug output shows the distance through the cloud layer. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="pass"><b>Custom Pass</b><span>A Custom Pass Volume with a FullScreen Custom Pass.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Fullscreen Shader Graph.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>RayLayer.hlsl: pixel to ray, ray against the layer.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>CameraRayParams.cs: camera basis and lens, once per frame.</span></div></div>
+<ol class="impl-steps"><li><div>Add <code>CameraRayParams.cs</code> to the main camera.</div></li><li><div>Create <em>Create &gt; Shader Graph &gt; HDRP &gt; Fullscreen Shader Graph</em>. In Graph Settings set <em>Blend Mode</em> to <code>Alpha</code>.</div></li><li><div>Save <code>RayLayer.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>RayLayer.hlsl</code> and <em>Name</em> to <code>RayLayerDebug</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), PlanetRadius (Float), CameraHeight (Float), Bottom (Float), Top (Float)</b> and the outputs <b>Color (Vector 3), Alpha (Float), Distance (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect a <em>Screen Position</em> node (Mode <code>Default</code>, .xy) to UV, and Floats for the planet radius (6 371 000), the camera height (or the camera's y from a property), the layer bottom (1500) and top (2500). Connect Color and Alpha to the fragment outputs.</div></li><li><div>Create a material from the graph. Add an empty GameObject with a <em>Custom Pass Volume</em> (Mode <code>Global</code>, Injection Point <code>Before Post Process</code>), click <em>+</em>, choose <em>FullScreen Custom Pass</em> and assign the material.</div></li><li><div>The view shows the distance through the layer as a gradient over the sky; geometry in front is left alone because the shader checks the scene depth. Fly the camera into and above the layer to see the three cases.</div></li></ol>
+<div class="files"><div class="file" data-name="RayLayer.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_CAMERA_RAY_DECLARED
+#define ATLAS_CAMERA_RAY_DECLARED
+float3 _CamRight, _CamUp, _CamForward, _CamPosAWS;
+float4 _CamLens;                 // x = tan(fov/2), y = aspect
+
+// Screen UV (0..1, origin bottom-left) to a normalized world-space ray direction.
+float3 CameraRay(float2 uv)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+    float3 dView = float3(ndc.x * _CamLens.x * _CamLens.y, ndc.y * _CamLens.x, 1.0);
+    return normalize(dView.x * _CamRight + dView.y * _CamUp + dView.z * _CamForward);
+}
+
+// Ray from a point at height h above a planet of radius R against the sphere of radius r.
+// Planet centre is at (0, -(R + h), 0) in camera-relative space.
+float2 RaySphereFromHeight(float3 dir, float R, float h, float r)
+{
+    float b = (R + h) * dir.y;
+    float c = (R + h) * (R + h) - r * r;
+    float d = b * b - c;
+    if (d &lt; 0) return float2(-1, -1);
+    d = sqrt(d);
+    return float2(-b - d, -b + d);
+}
+
+// Where a ray enters and leaves the layer between R + bottom and R + top (camera below, inside or above).
+float2 LayerInterval(float3 dir, float R, float h, float bottom, float top)
+{
+    float2 lo = RaySphereFromHeight(dir, R, h, R + bottom);
+    float2 hi = RaySphereFromHeight(dir, R, h, R + top);
+    float t0, t1;
+    if (h &lt; bottom)      { t0 = lo.y; t1 = hi.y; }                                   // below the layer
+    else if (h &lt; top)    { t0 = 0; t1 = (lo.x &gt; 0) ? lo.x : hi.y; }                  // inside
+    else                 { if (hi.x &lt; 0) return float2(-1, -1); t0 = hi.x; t1 = (lo.x &gt; 0) ? lo.x : hi.y; }  // above
+    return float2(max(t0, 0), t1);
+}
+#endif
+
+#ifndef ATLAS_RAY_LAYER_INCLUDED
+#define ATLAS_RAY_LAYER_INCLUDED
+
+void RayLayerDebug_float(float2 UV, float PlanetRadius, float CameraHeight, float Bottom, float Top,
+                         out float3 Color, out float Alpha, out float Distance)
+{
+    float3 dir = CameraRay(UV);
+    float2 seg = LayerInterval(dir, PlanetRadius, CameraHeight, Bottom, Top);
+    Distance = seg.y &gt; seg.x ? seg.y - seg.x : 0.0;
+
+    // skip pixels covered by geometry (HDRP: depth from the camera&#x27;s depth buffer)
+#ifdef SHADERGRAPH_PREVIEW
+    float depth = 0;                                          // no depth buffer in the node preview
+#else
+    float depth = SampleCameraDepth(UV);
+#endif
+    bool sky = depth &lt;= 0.0 + 1e-7 || depth &gt;= 1.0 - 1e-7;   // reversed Z: the far plane is 0
+    float k = saturate(Distance / 20000.0);
+    Color = lerp(float3(0.1, 0.2, 0.6), float3(1.0, 0.6, 0.2), k);
+    Alpha = (sky &amp;&amp; Distance &gt; 0) ? 0.85 : 0.0;
+}
+
+#endif</pre></div><div class="file" data-name="CameraRayParams.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Sends the camera&#x27;s basis, field of view and position to all shaders, once per frame.
+// Put it on the camera that renders the full-screen pass.
+[ExecuteAlways, RequireComponent(typeof(Camera))]
+public class CameraRayParams : MonoBehaviour
+{
+    static readonly int RightId = Shader.PropertyToID(&quot;_CamRight&quot;);
+    static readonly int UpId = Shader.PropertyToID(&quot;_CamUp&quot;);
+    static readonly int FwdId = Shader.PropertyToID(&quot;_CamForward&quot;);
+    static readonly int LensId = Shader.PropertyToID(&quot;_CamLens&quot;);      // x = tan(fov/2), y = aspect
+    static readonly int PosId = Shader.PropertyToID(&quot;_CamPosAWS&quot;);     // absolute world position
+
+    void LateUpdate()
+    {
+        var cam = GetComponent&lt;Camera&gt;();
+        Transform t = cam.transform;
+        Shader.SetGlobalVector(RightId, t.right);
+        Shader.SetGlobalVector(UpId, t.up);
+        Shader.SetGlobalVector(FwdId, t.forward);
+        Shader.SetGlobalVector(LensId, new Vector4(Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), cam.aspect, 0, 0));
+        Shader.SetGlobalVector(PosId, t.position);
+    }
+}</pre></div></div>
+<div class="prose"><p>HDRP renders with reversed Z on every modern platform, so the far plane reads as 0 and the near plane as 1; the check above accepts either end so it also works where Z is not reversed. With the interval working, <a class="x" href="../cloud-march/index.html#implement">Marching a Cloud Layer</a> replaces the debug colour with real clouds.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Create a <em>Fullscreen Shader Graph</em> (URP) and add the <em>Full Screen Pass Renderer Feature</em> to the URP Renderer, with the material and an injection point of <em>Before Rendering Post Processing</em>. Replace <code>SampleCameraDepth</code> with <code>SampleSceneDepth</code> from <code>DeclareDepthTexture.hlsl</code> (enable <em>Depth Texture</em> on the URP asset).</p></div><div class="eng" data-engine="unreal"><p>Use a <em>Post Process Material</em> (Material Domain: Post Process, Blendable Location: Before Tonemapping) on a Post Process Volume. The camera ray is <em>-CameraVector</em> in a post-process material, scene depth comes from <em>SceneDepth</em>, and parameters come from a <em>Material Parameter Collection</em>.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

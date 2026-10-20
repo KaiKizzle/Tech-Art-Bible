@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 5 chapters</div>
+  <div class="eyebrow">Foundations · 6 chapters</div>
   <h1>Textures and Sampling</h1>
   <p class="lede">A texture is a lookup table the GPU can read anywhere, fast. This unit covers how a shader asks for a value and what the hardware does between the texels.</p>
   <p class="meta">Builds on How a GPU Draws a Frame and the functions in Reading a Shader.</p>
@@ -89,6 +89,37 @@
   <div class="prose"><p>The GPU measures "texels per pixel" itself from how fast the UV changes between neighbouring pixels. How that measurement works, what mips cost in memory and how distance and texel density decide the level are all in <a class="x" href="../texture-memory/index.html#mips">Texels on a Budget: Mipmaps</a>.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["A 1024-texel-wide texture covers 256 pixels on screen. Which mip level is used?", ["0", "1", "2", "4"], 2, "4 texels per pixel; log₂ 4 = 2: the 256-texel level."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="textures-sampling#filter textures-sampling#wrap" data-summary="Wrap, filter and mip settings on the asset, Sampler State overrides, and bilinear filtering rebuilt with LOAD_TEXTURE2D.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Most of this unit is set on the texture asset and the sampler, not in code. The exercise rebuilds bilinear filtering by hand to show it matches the hardware. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Texture import: Wrap Mode, Filter Mode, Generate Mipmaps, Aniso Level.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Sample Texture 2D with a Sampler State node.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>ManualBilinear.hlsl: four texel loads and three lerps.</span></div></div>
+<ol class="impl-steps"><li><div>Select a texture in the Project window. In the Inspector: <em>Wrap Mode</em> (Repeat, Clamp, Mirror, Mirror Once), <em>Filter Mode</em> (Point, Bilinear, Trilinear), <em>Generate Mipmaps</em> (under Advanced) and <em>Aniso Level</em>. These are the defaults the sampler uses.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>Sample Texture 2D</em> node and a <em>Sampler State</em> node connected to its <em>Sampler</em> input. The Sampler State overrides filter and wrap in the shader: set it to <code>Point</code> and <code>Clamp</code> and compare.</div></li><li><div>Use <em>Tiling And Offset</em> on the UV to repeat the texture: UV × 4 shows the wrap mode at work.</div></li><li><div>Save <code>ManualBilinear.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>ManualBilinear.hlsl</code> and <em>Name</em> to <code>ManualBilinear</code> (without the <code>_float</code> suffix). Add the inputs <b>Tex (Texture2D), UV (Vector 2)</b> and the outputs <b>Out (Vector 4)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Lerp between the node result and the manual result with a slider: they match on a texture without mipmaps (the manual version always reads mip 0).</div></li></ol>
+<div class="files"><div class="file" data-name="ManualBilinear.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_MANUAL_BILINEAR_INCLUDED
+#define ATLAS_MANUAL_BILINEAR_INCLUDED
+
+// Bilinear filtering by hand: find the four nearest texel centres and lerp across, across, then up.
+// Shader Graph passes textures as UnityTexture2D; .tex is the texture, .texelSize = (1/w, 1/h, w, h).
+void ManualBilinear_float(UnityTexture2D Tex, float2 UV, out float4 Out)
+{
+    float2 size = Tex.texelSize.zw;
+    float2 p    = UV * size - 0.5;            // texel centres sit at half-texel positions
+    float2 f    = frac(p);
+    int2   i0   = (int2)floor(p);
+    int2   s    = (int2)size;
+    int2   a    = ((i0 % s) + s) % s;         // repeat wrap mode, safe for negative values
+    int2   b    = ((i0 + 1) % s + s) % s;
+
+    float4 t00 = LOAD_TEXTURE2D(Tex.tex, int2(a.x, a.y));
+    float4 t10 = LOAD_TEXTURE2D(Tex.tex, int2(b.x, a.y));
+    float4 t01 = LOAD_TEXTURE2D(Tex.tex, int2(a.x, b.y));
+    float4 t11 = LOAD_TEXTURE2D(Tex.tex, int2(b.x, b.y));
+    Out = lerp(lerp(t00, t10, f.x), lerp(t01, t11, f.x), f.y);
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>In code, the hardware path is one line: <code>SAMPLE_TEXTURE2D(Tex.tex, Tex.samplerstate, UV)</code>, or <code>Tex.Sample(Tex.samplerstate, UV)</code>. Use <code>SAMPLE_TEXTURE2D_LOD</code> wherever there are no screen derivatives (vertex stage, loops with varying UVs, compute shaders). For how big a texture should be and how it is compressed, see <a class="x" href="../texture-settings/index.html#implement">Texture Packing and Import Settings</a>.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical nodes and macros. On mobile, prefer Bilinear over Trilinear and keep Aniso Level low; both cost texture bandwidth.</p></div><div class="eng" data-engine="unreal"><p>Texture asset: <em>X/Y-axis Tiling Method</em>, <em>Filter</em> and <em>Mip Gen Settings</em>. In the material, the <em>TextureSample</em> node's <em>Sampler Source</em> can override wrap and filter; <em>Shared: Wrap/Clamp</em> samplers avoid the 16-sampler limit.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

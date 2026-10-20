@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · 9 chapters</div>
+  <div class="eyebrow">Shaders & rendering · 10 chapters</div>
   <h1>Marching a Cloud Layer</h1>
   <p class="lede">The second half of a volumetric cloud shader: from where the ray crosses the layer to the colour of the pixel. Steps, density, noise, absorption, light and cost, each as a formula you can move.</p>
   <p class="meta">Continues Rays, Spheres and Shaders. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -147,6 +147,228 @@
   <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP ships <em>Volumetric Clouds</em> as a Volume override (Simple, Advanced and Manual modes), with the cloud layer heights, density and erosion noise, and a temporal accumulation factor. Its settings map directly onto the chapters here.</p></div><div class="eng" data-engine="urp"><p>URP has no built-in volumetric clouds. Build them as a <em>Full Screen Pass Renderer Feature</em> or a custom ScriptableRenderPass: render the march at half or quarter resolution into a render texture, reproject with the previous frame, then composite (<a class="x" href="../ray-sphere/index.html#cpu-gpu">setting up the pass</a>).</p></div><div class="eng" data-engine="unreal"><p>The <em>Volumetric Cloud</em> component renders a layer around the planet defined by the <em>Sky Atmosphere</em>, with a material that returns extinction and albedo per sample. Sample counts and tracing distances are in the component; quality scales with <code>r.VolumetricCloud.*</code> settings.</p></div></div>
   <details class="check"><summary></summary><script type="application/json">[["Rendering the clouds at quarter resolution (half width, half height) divides the samples by…", ["2", "4", "8", "16"], 1, "(1/2)² = 1/4 of the pixels."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="cloud-march#together cloud-march#cost" data-summary="3D noise baked by compute, a Fullscreen graph with Premultiply blending, the full march in HLSL, drawn in a Custom Pass.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>A complete cloud layer: a compute shader bakes a tiling 3D noise texture once, a Fullscreen Shader Graph marches the layer per pixel with the loop from <a href="#together">one ray, all steps together</a>, and a Custom Pass Volume draws it over the sky. It reuses the camera ray and layer interval from <a class="x" href="../ray-sphere/index.html#implement">Rays, Spheres and Shaders</a>. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="compute"><b>Compute shader</b><span>CloudNoise.compute: a tiling 3D fbm texture, 4 × 4 × 4 threads per group.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>CloudSetup.cs: bakes the noise, sends sun and camera settings.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Fullscreen graph with Premultiply blending.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>CloudLayer.hlsl: interval, density, light march, phase, powder.</span></div><div class="rt" data-k="pass"><b>Custom Pass</b><span>A FullScreen Custom Pass at Before Post Process.</span></div></div>
+<ol class="impl-steps"><li><div>Create the compute shader <code>CloudNoise</code> from the file below. Add <code>CloudSetup.cs</code> (with <code>CameraRayParams</code> from the ray-sphere unit) to the camera and assign the compute shader and your sun light.</div></li><li><div>Create a Fullscreen Shader Graph. Graph Settings: <em>Blend Mode</em> <code>Premultiply</code>, so the output is clouds + background × T: Base Color = clouds, Alpha = 1 − T.</div></li><li><div>Save <code>CloudLayer.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>CloudLayer.hlsl</code> and <em>Name</em> to <code>CloudLayer</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), Coverage (Float), Density (Float), Steps (Float), SunIntensity (Float), Exposure (Float)</b> and the outputs <b>Color (Vector 3), Alpha (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Inputs: <em>Screen Position</em> (Default).xy for UV; Coverage 0.5, Density 0.04 (per metre), Steps 48, SunIntensity in lux (for example 100 000); Exposure from HDRP's <em>Exposure</em> node (Mode <code>Current Multiplier</code>). HDRP's colour buffer is pre-exposed, so the clouds must be too.</div></li><li><div>Material from the graph; a <em>Custom Pass Volume</em> (Global, <code>Before Post Process</code>) with a <em>FullScreen Custom Pass</em> using it.</div></li><li><div>Cost: the march runs per pixel. Start at 32–48 steps with 4–6 light steps; for production, render at half or quarter resolution in a C# custom pass and reproject over frames (<a href="#cost">what it costs</a>). HDRP also ships its own <em>Volumetric Clouds</em> override, which is the practical choice when you do not need a custom look.</div></li></ol>
+<div class="files"><div class="file" data-name="CloudLayer.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_CAMERA_RAY_DECLARED
+#define ATLAS_CAMERA_RAY_DECLARED
+float3 _CamRight, _CamUp, _CamForward, _CamPosAWS;
+float4 _CamLens;                 // x = tan(fov/2), y = aspect
+
+// Screen UV (0..1, origin bottom-left) to a normalized world-space ray direction.
+float3 CameraRay(float2 uv)
+{
+    float2 ndc = uv * 2.0 - 1.0;
+    float3 dView = float3(ndc.x * _CamLens.x * _CamLens.y, ndc.y * _CamLens.x, 1.0);
+    return normalize(dView.x * _CamRight + dView.y * _CamUp + dView.z * _CamForward);
+}
+
+// Ray from a point at height h above a planet of radius R against the sphere of radius r.
+// Planet centre is at (0, -(R + h), 0) in camera-relative space.
+float2 RaySphereFromHeight(float3 dir, float R, float h, float r)
+{
+    float b = (R + h) * dir.y;
+    float c = (R + h) * (R + h) - r * r;
+    float d = b * b - c;
+    if (d &lt; 0) return float2(-1, -1);
+    d = sqrt(d);
+    return float2(-b - d, -b + d);
+}
+
+// Where a ray enters and leaves the layer between R + bottom and R + top (camera below, inside or above).
+float2 LayerInterval(float3 dir, float R, float h, float bottom, float top)
+{
+    float2 lo = RaySphereFromHeight(dir, R, h, R + bottom);
+    float2 hi = RaySphereFromHeight(dir, R, h, R + top);
+    float t0, t1;
+    if (h &lt; bottom)      { t0 = lo.y; t1 = hi.y; }                                   // below the layer
+    else if (h &lt; top)    { t0 = 0; t1 = (lo.x &gt; 0) ? lo.x : hi.y; }                  // inside
+    else                 { if (hi.x &lt; 0) return float2(-1, -1); t0 = hi.x; t1 = (lo.x &gt; 0) ? lo.x : hi.y; }  // above
+    return float2(max(t0, 0), t1);
+}
+#endif
+
+#ifndef ATLAS_CLOUD_LAYER_INCLUDED
+#define ATLAS_CLOUD_LAYER_INCLUDED
+
+TEXTURE3D(_CloudNoise);  SAMPLER(sampler_CloudNoise);
+float3 _SunDirection;                          // toward the sun, set by CloudSetup.cs
+float4 _CloudParams;                           // x planet radius, y bottom, z top, w noise scale (1/m)
+float4 _CloudWind;                             // xyz wind offset in metres (grows with time)
+
+float CloudDensity(float3 pAWS, float altitude, float coverage)
+{
+    float h = saturate((altitude - _CloudParams.y) / (_CloudParams.z - _CloudParams.y));
+    float profile = smoothstep(0.0, 0.15, h) * (1.0 - smoothstep(0.45, 1.0, h));
+    float n = SAMPLE_TEXTURE3D_LOD(_CloudNoise, sampler_CloudNoise, (pAWS + _CloudWind.xyz) * _CloudParams.w, 0).r;
+    return saturate((n * profile - (1.0 - coverage)) / max(coverage, 1e-3));
+}
+
+float PhaseHG(float cosT, float g)
+{
+    float g2 = g * g;
+    return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * cosT, 1.5));
+}
+
+void CloudLayer_float(float2 UV, float Coverage, float Density, float Steps, float SunIntensity, float Exposure,
+                      out float3 Color, out float Alpha)
+{
+    Color = 0; Alpha = 0;
+    float R = _CloudParams.x, h = _CamPosAWS.y;
+    float3 dir = CameraRay(UV);
+    float2 seg = LayerInterval(dir, R, h, _CloudParams.y, _CloudParams.z);
+    if (seg.y &lt;= seg.x) return;
+
+#ifdef SHADERGRAPH_PREVIEW
+    float rawDepth = 0;
+#else
+    float rawDepth = SampleCameraDepth(UV);                    // stop at geometry
+#endif
+    if (rawDepth &gt; 1e-6 &amp;&amp; rawDepth &lt; 1.0 - 1e-6)
+        seg.y = min(seg.y, LinearEyeDepth(rawDepth, _ZBufferParams) / max(dot(dir, _CamForward), 1e-3));
+    seg.y = min(seg.y, seg.x + 30000.0);                       // do not march to the horizon forever
+    if (seg.y &lt;= seg.x) return;
+
+    int   n  = (int)clamp(Steps, 4, 128);
+    float dt = (seg.y - seg.x) / n;
+    float jitter = frac(sin(dot(UV, float2(12.9898, 78.233))) * 43758.5453);
+    float T = 1.0;
+    float3 L = 0;
+    float3 sun = normalize(_SunDirection);
+    float phase = lerp(PhaseHG(dot(dir, sun), 0.6), PhaseHG(dot(dir, sun), -0.2), 0.3);
+
+    [loop] for (int i = 0; i &lt; n; i++)
+    {
+        float t = seg.x + (i + jitter) * dt;
+        float3 pRel = dir * t;                                  // camera-relative
+        float altitude = length(pRel + float3(0, R + h, 0)) - R;
+        float d = CloudDensity(pRel + _CamPosAWS, altitude, Coverage);
+        if (d &lt;= 0.001) continue;
+
+        // light march toward the sun
+        float od = 0;
+        [unroll] for (int j = 1; j &lt;= 5; j++)
+        {
+            float3 q = pRel + sun * (j * 120.0);
+            float aq = length(q + float3(0, R + h, 0)) - R;
+            od += CloudDensity(q + _CamPosAWS, aq, Coverage) * 120.0;
+        }
+        float Tsun   = exp(-od * Density);
+        float powder = 1.0 - exp(-2.0 * d * Density * dt);
+        float sigma  = d * Density;
+        float3 lit = SunIntensity * (Tsun * phase * 2.0 * powder + 0.04);   // + a little sky light
+        L += T * sigma * dt * lit;
+        T *= exp(-sigma * dt);
+        if (T &lt; 0.02) break;
+    }
+    Color = L * Exposure;                                       // HDRP colour is pre-exposed
+    Alpha = 1.0 - T;
+}
+
+#endif</pre></div><div class="file" data-name="CloudNoise.compute" data-lang="hlsl"><pre>#pragma kernel Bake
+
+RWTexture3D&lt;float&gt; _Noise;
+uint _Size;          // texels per side, e.g. 128
+uint _Period;        // noise cells per side at the lowest octave; makes it tile
+
+float Hash3(uint3 c)
+{
+    c = c * uint3(1597334673u, 3812015801u, 2798796415u);
+    uint n = (c.x ^ c.y ^ c.z) * 1597334673u;
+    return (n &gt;&gt; 8) * (1.0 / 16777216.0);
+}
+
+float ValueNoise(float3 p, uint period)
+{
+    uint3 i = (uint3)floor(p);
+    float3 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float r = 0;
+    [unroll] for (uint k = 0; k &lt; 8; k++)
+    {
+        uint3 o = uint3(k &amp; 1, (k &gt;&gt; 1) &amp; 1, k &gt;&gt; 2);
+        float3 w = lerp(1.0 - f, f, (float3)o);
+        r += Hash3((i + o) % period) * w.x * w.y * w.z;      // modulo the period: tiles seamlessly
+    }
+    return r;
+}
+
+[numthreads(4, 4, 4)]
+void Bake(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id &gt;= _Size)) return;
+    float3 p = (id + 0.5) / _Size;
+    float n = 0, amp = 0.5, norm = 0;
+    uint period = _Period;
+    for (int o = 0; o &lt; 5; o++)
+    {
+        n += amp * ValueNoise(p * period, period);
+        norm += amp; amp *= 0.5; period *= 2;
+    }
+    _Noise[id] = n / norm;
+}</pre></div><div class="file" data-name="CloudSetup.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering;
+
+// Bakes the 3D cloud noise once and sends the cloud and sun settings to all shaders.
+[ExecuteAlways]
+public class CloudSetup : MonoBehaviour
+{
+    public ComputeShader noiseShader;
+    public Light sun;
+    public int noiseSize = 128;
+    public float planetRadius = 6371000f;
+    public float bottom = 1500f, top = 2500f;
+    public float noiseTileMetres = 12000f;     // one tile of noise covers this many metres
+    public Vector3 windMetresPerSecond = new Vector3(15f, 0f, 5f);
+
+    RenderTexture noise;
+    static readonly int NoiseId = Shader.PropertyToID(&quot;_CloudNoise&quot;);
+    static readonly int ParamsId = Shader.PropertyToID(&quot;_CloudParams&quot;);
+    static readonly int WindId = Shader.PropertyToID(&quot;_CloudWind&quot;);
+    static readonly int SunId = Shader.PropertyToID(&quot;_SunDirection&quot;);
+
+    void OnEnable() =&gt; Bake();
+
+    void Bake()
+    {
+        if (noiseShader == null || !SystemInfo.supportsComputeShaders) return;
+        noise = new RenderTexture(noiseSize, noiseSize, 0, RenderTextureFormat.RHalf)
+        {
+            dimension = TextureDimension.Tex3D,
+            volumeDepth = noiseSize,
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = &quot;CloudNoise3D&quot;
+        };
+        noise.Create();
+        int k = noiseShader.FindKernel(&quot;Bake&quot;);
+        noiseShader.SetTexture(k, &quot;_Noise&quot;, noise);
+        noiseShader.SetInt(&quot;_Size&quot;, noiseSize);
+        noiseShader.SetInt(&quot;_Period&quot;, 4);
+        int g = Mathf.CeilToInt(noiseSize / 4f);
+        noiseShader.Dispatch(k, g, g, g);
+        Shader.SetGlobalTexture(NoiseId, noise);
+    }
+
+    void Update()
+    {
+        Shader.SetGlobalVector(ParamsId, new Vector4(planetRadius, bottom, top, 1f / noiseTileMetres));
+        float time = Application.isPlaying ? Time.time : 0f;
+        Shader.SetGlobalVector(WindId, windMetresPerSecond * time);
+        if (sun != null) Shader.SetGlobalVector(SunId, -sun.transform.forward);
+    }
+
+    void OnDisable()
+    {
+        if (noise != null) { noise.Release(); DestroyImmediate(noise); noise = null; }
+    }
+}</pre></div></div>
+<div class="prose"><p>The shader uses <code>_CamPosAWS.y</code> as the camera's height above the planet surface, so put the ground at y = 0. Noise at one octave is soft; real productions add a second, detail noise that erodes the edges, and a weather map that sets coverage per region.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same HLSL with <code>SampleSceneDepth</code> instead of <code>SampleCameraDepth</code> (and <em>Depth Texture</em> enabled), drawn by the <em>Full Screen Pass Renderer Feature</em>. URP has no pre-exposed colour buffer, so pass 1 for Exposure and scale SunIntensity down to a value around 1–5.</p></div><div class="eng" data-engine="unreal"><p>Unreal's <em>Volumetric Cloud</em> component runs a material (Material Domain: Volume) per sample, so your density function goes into that material; the marching, lighting and reprojection are done by the engine. For a fully custom march, use a post-process material with a Custom node.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

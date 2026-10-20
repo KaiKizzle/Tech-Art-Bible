@@ -23,10 +23,11 @@
 
   /* Suggested orders for newcomers. Shown on the hub. */
   window.ATLAS_PATHS = [
-    { name: 'Shader basics from zero', units: ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'color-values', 'rays-math'] },
+    { name: 'Shader basics from zero', units: ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'compute-shaders', 'color-values', 'rays-math'] },
     { name: 'Ray-traced effects in shaders', units: ['vectors', 'spaces', 'rays-math', 'ray-sphere', 'cloud-march', 'parallax', 'interior-mapping'] },
     { name: 'Light for artists', units: ['color-values', 'exposure', 'light-types', 'pbr-brdf', 'shadow-maps', 'baked-gi'] },
     { name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] },
+    { name: 'Materials from scratch', units: ['color-values', 'pbr-basics', 'texturing', 'texture-settings', 'texture-memory', 'mapping', 'pbr-brdf'] },
     { name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] }
   ];
 
@@ -54,6 +55,9 @@
     { slug: 'buffers', cat: 'found', title: 'Buffers and Render Targets', topic: 'GPU memory you read and write', minutes: 45, level: 'Foundations', engines: ALL,
       summary: 'Vertex and index buffers, constant buffers and packing, structured and append buffers, and render targets.',
       tags: ['buffer', 'constant buffer', 'cbuffer', 'structured buffer', 'append buffer', 'compute', 'render target', 'depth buffer', 'gbuffer'] },
+    { slug: 'compute-shaders', cat: 'found', title: 'Compute Shaders', topic: 'GPU code without triangles', minutes: 50, level: 'Foundations', engines: ALL,
+      summary: 'Threads, groups and dispatches, the ID semantics, waves, group shared memory, atomics, dispatching from C# and reading results back.',
+      tags: ['compute shader', 'compute', 'dispatch', 'numthreads', 'thread group', 'groupshared', 'uav', 'rwtexture', 'atomics', 'asyncgpureadback', 'kernel'] },
     { slug: 'color-values', cat: 'found', title: 'Colour as Numbers', topic: 'RGB, linear and sRGB, HDR', minutes: 25, level: 'Foundations', engines: ALL,
       summary: 'Colours as three numbers, why maths happens in linear values, values above 1, and luminance.',
       tags: ['color', 'colour', 'rgb', 'linear', 'srgb', 'gamma', 'hdr', 'luminance'] },
@@ -102,6 +106,15 @@
     { slug: 'texture-memory', cat: 'tex', title: 'Texels on a Budget', topic: 'Texture memory and compression', minutes: 70, level: 'Beginner', engines: ALL,
       summary: 'What a texture costs, mipmaps and texel density, BC1 to BC7 and ASTC, sRGB versus data, channel packing per engine, and normal maps.',
       tags: ['texture', 'compression', 'bc1', 'bc7', 'bc5', 'astc', 'mipmap', 'texel density', 'srgb', 'mask map', 'orm', 'channel packing', 'normal map'] },
+    { slug: 'pbr-basics', cat: 'tex', title: 'PBR Materials: the Basics', topic: 'What each map means', minutes: 45, level: 'Beginner', engines: ALL,
+      summary: 'The metal/roughness workflow from the artist side: base colour ranges, metallic as a switch, roughness, normal, AO and height, and how to check values.',
+      tags: ['pbr', 'albedo', 'base color', 'metallic', 'roughness', 'smoothness', 'specular gloss', 'ambient occlusion', 'height', 'material validation'] },
+    { slug: 'texturing', cat: 'tex', title: 'Texturing a Game Asset', topic: 'UVs, baking, tiling and trims', minutes: 55, level: 'Beginner', engines: ALL,
+      summary: 'UV seams and islands, padding and mip bleeding, texel density targets, baking mesh maps from a high-poly model, unique versus tiling textures and trim sheets.',
+      tags: ['texturing', 'uv unwrap', 'seams', 'padding', 'dilation', 'texel density', 'baking', 'cage', 'trim sheet', 'tiling', 'substance painter'] },
+    { slug: 'texture-settings', cat: 'tex', title: 'Texture Packing and Import Settings', topic: 'Formats, flags and automation', minutes: 50, level: 'Intermediate', engines: ALL,
+      summary: 'Import settings per map type in Unity and Unreal, BC and ASTC formats, packed mask maps, an AssetPostprocessor that sets everything from file names, and a channel packer.',
+      tags: ['import settings', 'texture importer', 'compression', 'bc7', 'bc5', 'bc4', 'astc', 'mask map', 'orm', 'channel packing', 'assetpostprocessor', 'max size'] },
     { slug: 'mapping', cat: 'tex', title: 'Simple Mapping Techniques', topic: 'Planar, triplanar, detail, flow, matcap', minutes: 55, level: 'Beginner', engines: ALL,
       summary: 'Texturing without (or beyond) UVs: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals.',
       tags: ['triplanar', 'planar mapping', 'world space uv', 'detail map', 'overlay', 'flow map', 'uv scrolling', 'matcap', 'equirectangular', 'decal'] },

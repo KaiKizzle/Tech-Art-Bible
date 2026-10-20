@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Lighting & GI · 8 chapters</div>
+  <div class="eyebrow">Lighting & GI · 9 chapters</div>
   <h1>Inside a PBR Shader</h1>
   <p class="lede">Every lit material in a modern engine runs the same few formulas: Lambert for diffuse, and GGX, Fresnel and a geometry term for specular. This unit builds them one at a time and shows what each slider in your material really changes.</p>
   <p class="meta">Builds on the dot product and light units. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -124,6 +124,53 @@
   <div class="fx" data-fx="ibl"></div>
   <div class="prose"><p>The second half of the "split sum" approximation is a small 2D lookup texture with the integral of F·G for every roughness and viewing angle: the result is <code>prefiltered · (F0 · A + B)</code>, with A and B read from that texture. Diffuse environment light uses an even blurrier version, usually stored as spherical harmonics (<a class="x" href="../baked-gi/index.html#sh">Baked Light</a>).</p></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="pbr-brdf#full pbr-brdf#ibl" data-summary="HDRP Lit&#x27;s inputs mapped to the BRDF terms, and the full BRDF rebuilt in an Unlit graph with a cubemap environment.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Lit shader already implements this BRDF, so for normal materials you only fill in its inputs. To see each term working, this exercise rebuilds the whole BRDF in an Unlit graph, lit by a light direction from C#, with a cubemap for the environment. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit graph that does its own PBR lighting.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>BRDF.hlsl: GGX, Schlick Fresnel, Smith geometry, cubemap IBL.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>SunToShader.cs from Dot and Cross Product.</span></div></div>
+<ol class="impl-steps"><li><div>How HDRP's inputs map to this unit: <em>Smoothness</em> s gives perceptual roughness 1 − s and α = (1 − s)²; <em>Metallic</em> blends F0 from 0.04 to the base colour; <em>Specular Color</em> mode sets F0 directly. For more lobes (clear coat, dual specular, iridescence) use the <em>StackLit</em> graph.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add <code>SunToShader.cs</code> to the Directional Light (from <a class="x" href="../dot-cross/index.html#implement">Dot and Cross Product</a>) and global Vector 3 / Color properties <code>_SunDirection</code> and <code>_SunColor</code> (Exposed unticked).</div></li><li><div>Save <code>BRDF.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>BRDF.hlsl</code> and <em>Name</em> to <code>PBRLight</code> (without the <code>_float</code> suffix). Add the inputs <b>BaseColor (Vector 3), Metallic (Float), Roughness (Float), Normal (Vector 3), ViewDir (Vector 3), LightDir (Vector 3), LightColor (Vector 3), Env (Cubemap), SS (SamplerState), EnvMips (Float), EnvIntensity (Float)</b> and the outputs <b>Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Normal: <em>Normal Vector</em> (World); ViewDir: <em>View Direction</em> (World, normalized). Env: a Cubemap property (any HDRI imported as a cube with mipmaps); EnvMips: its mip count (log₂ of its size + 1).</div></li><li><div>Connect Color to Base Color. Put two spheres side by side, one with HDRP/Lit and one with this graph, and compare: they should match closely for the direct light.</div></li></ol>
+<div class="files"><div class="file" data-name="BRDF.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_BRDF_INCLUDED
+#define ATLAS_BRDF_INCLUDED
+
+// Cook-Torrance with GGX, Schlick Fresnel and Smith-Schlick geometry, plus a cubemap for the environment.
+// Roughness is perceptual roughness (1 - smoothness). All vectors in world space.
+void PBRLight_float(float3 BaseColor, float Metallic, float Roughness,
+                    float3 Normal, float3 ViewDir, float3 LightDir, float3 LightColor,
+                    UnityTextureCube Env, UnitySamplerState SS, float EnvMips, float EnvIntensity,
+                    out float3 Color)
+{
+    float3 N = normalize(Normal), V = normalize(ViewDir), L = normalize(LightDir);
+    float3 H = normalize(L + V);                                   // the half vector
+    float NoL = saturate(dot(N, L)), NoV = saturate(dot(N, V)) + 1e-4;
+    float NoH = saturate(dot(N, H)), VoH = saturate(dot(V, H));
+
+    float a  = max(Roughness * Roughness, 0.002), a2 = a * a;
+    float dn = NoH * NoH * (a2 - 1.0) + 1.0;
+    float D  = a2 / (PI * dn * dn);                                 // GGX: how many facets face H
+
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), BaseColor, Metallic);
+    float3 F  = F0 + (1.0 - F0) * pow(1.0 - VoH, 5.0);              // Schlick Fresnel
+
+    float k = (Roughness + 1.0) * (Roughness + 1.0) / 8.0;
+    float G = (NoL / (NoL * (1.0 - k) + k)) * (NoV / (NoV * (1.0 - k) + k));   // Smith-Schlick
+
+    float3 spec = D * F * G / (4.0 * NoL * NoV + 1e-4);
+    float3 kd   = (1.0 - F) * (1.0 - Metallic);
+    Color = (kd * BaseColor / PI + spec) * LightColor * NoL;
+
+    // environment: rougher surfaces read blurrier mips
+    float3 R   = reflect(-V, N);
+    float  mip = Roughness * (EnvMips - 1.0);
+    float3 env = SAMPLE_TEXTURECUBE_LOD(Env.tex, SS.samplerstate, R, mip).rgb;
+    float3 Fe  = F0 + (max(1.0 - Roughness, F0) - F0) * pow(1.0 - NoV, 5.0);
+    Color += env * Fe * EnvIntensity;
+    Color += kd * BaseColor * SAMPLE_TEXTURECUBE_LOD(Env.tex, SS.samplerstate, N, EnvMips - 1.0).rgb * EnvIntensity;  // rough diffuse ambient
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>An Unlit graph's output is not scaled by HDRP's exposure, so use a light colour around 1–5 rather than physical lux here. The last line, the blurriest mip sampled along the normal, is a cheap stand-in for proper irradiance (<a class="x" href="../baked-gi/index.html#sh">spherical harmonics</a>). Amplify Shader Editor: paste the function body into a <em>Custom Expression</em> node (mode <em>Call</em> with the file included, or <em>Create</em> with the code inline); inputs and outputs map the same way.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP Lit uses the same terms with a combined visibility approximation for mobile. In a custom URP graph, get the light from <code>GetMainLight()</code> and the environment from <code>GlossyEnvironmentReflection(R, roughness, 1)</code> instead of a cubemap input.</p></div><div class="eng" data-engine="unreal"><p>The default lit shading model is this BRDF; <em>Specular</em> 0.5 is F0 = 0.04. To write your own, use an Unlit material with a Custom node, or the <em>Substrate</em> framework in Unreal 5 for layered materials built from slabs.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

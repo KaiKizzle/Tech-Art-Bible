@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Materials & texture pipeline · 9 chapters</div>
+  <div class="eyebrow">Materials & texture pipeline · 10 chapters</div>
   <h1>Texels on a Budget</h1>
   <p class="lede">Textures are usually the biggest item in a game's memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.</p>
   <p class="meta">From bytes per texel down to the bits in a 4×4 block, with notes for Unity HDRP, Unity URP and Unreal.</p>
@@ -307,6 +307,49 @@
   </div>
   <div class="key" style="margin-top:18px"><b>The cheapest optimization</b>Before tuning formats, check resolution against density. A prop with a 4K map that never fills more than a quarter of the screen is the single most common waste in texture budgets.</div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="texture-memory#streaming texture-memory#mips" data-summary="Where Unity reports texture memory, mip streaming with a budget, a mip-level debug view and a streaming HUD.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Texture memory is measured, not guessed. These steps show where Unity reports it, how to turn on mip streaming with a budget, and a debug view that colours the screen by the mip level each pixel uses. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Quality settings: mip streaming and its memory budget.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit debug graph showing mip levels.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>MipLevel.hlsl: the mip the hardware would pick.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>TextureMemoryHUD.cs: streaming memory on screen.</span></div></div>
+<ol class="impl-steps"><li><div>Per texture, the importer preview shows the size in memory for the selected platform and format; set formats with <a class="x" href="../texture-settings/index.html#implement">the import script</a>.</div></li><li><div>Enable streaming: <em>Project Settings &gt; Quality &gt; Texture Mipmap Streaming</em> (Unity 6: <em>Mipmap Streaming</em>), set a <em>Memory Budget</em> in MB, and tick <em>Mip Streaming</em> on large textures in the importer (the postprocessor already does).</div></li><li><div>Measure: <em>Window &gt; Analysis &gt; Profiler</em> &gt; Memory module for totals; the <em>Memory Profiler</em> package for a list of every texture with its size.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Save <code>MipLevel.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>MipLevel.hlsl</code> and <em>Name</em> to <code>MipLevel</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), TextureSize (Float)</b> and the outputs <b>Mip (Float), Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Connect <em>Color</em> to Base Color and put the material on objects to see which mips the camera really needs.</div></li><li><div>Add <code>TextureMemoryHUD.cs</code> to any GameObject to see streaming memory in Play mode: current, desired (what the camera needs) and the budget.</div></li></ol>
+<div class="files"><div class="file" data-name="MipLevel.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_MIP_LEVEL_INCLUDED
+#define ATLAS_MIP_LEVEL_INCLUDED
+
+// The mip level the hardware picks: log2 of the texels covered by one screen pixel.
+void MipLevel_float(float2 UV, float TextureSize, out float Mip, out float3 Color)
+{
+    float2 dx = ddx(UV * TextureSize), dy = ddy(UV * TextureSize);
+    float  d2 = max(dot(dx, dx), dot(dy, dy));
+    Mip = max(0.5 * log2(max(d2, 1e-8)), 0.0);
+
+    // mip 0 white, 1 blue, 2 green, 3 yellow, 4 orange, 5+ red
+    float3 c[6] = { float3(1, 1, 1), float3(0.2, 0.45, 1), float3(0.25, 0.85, 0.35),
+                    float3(1, 0.9, 0.2), float3(1, 0.55, 0.1), float3(1, 0.15, 0.1) };
+    int i = min((int)Mip, 4);
+    Color = lerp(c[i], c[i + 1], saturate(Mip - i));
+}
+
+#endif</pre></div><div class="file" data-name="TextureMemoryHUD.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Shows texture streaming memory in Play mode.
+public class TextureMemoryHUD : MonoBehaviour
+{
+    static string MB(ulong bytes) =&gt; (bytes / 1048576.0).ToString(&quot;0.0&quot;) + &quot; MB&quot;;
+
+    void OnGUI()
+    {
+        GUILayout.BeginArea(new Rect(10, 40, 420, 120), GUI.skin.box);
+        GUILayout.Label($&quot;Textures total:        {MB(Texture.totalTextureMemory)}&quot;);
+        GUILayout.Label($&quot;Streaming, current:    {MB(Texture.currentTextureMemory)}&quot;);
+        GUILayout.Label($&quot;Streaming, desired:    {MB(Texture.desiredTextureMemory)}&quot;);
+        GUILayout.Label($&quot;Streaming, target:     {MB(Texture.targetTextureMemory)}  (budget-limited)&quot;);
+        GUILayout.Label($&quot;Not streamed:          {MB(Texture.nonStreamingTextureMemory)}&quot;);
+        GUILayout.EndArea();
+    }
+}</pre></div></div>
+<div class="prose"><p>If <em>desired</em> stays above the budget, textures are being shown at lower mips than the camera wants: raise the budget, lower Max Size on large textures, or check for objects whose UVs give an unexpectedly high texel density.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same settings and tools. On mobile, the Memory Profiler is the reliable number; the Profiler's estimate can differ from what the driver allocates.</p></div><div class="eng" data-engine="unreal"><p><code>stat streaming</code> and <code>ListTextures</code> in the console, the <em>Texture Streaming Accuracy</em> view modes, and the <em>Size Map</em> tool. Streaming is on by default (<em>Never Stream</em> disables it per texture); <code>r.Streaming.PoolSize</code> sets the budget.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

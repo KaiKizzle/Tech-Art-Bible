@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 4 chapters</div>
+  <div class="eyebrow">Foundations · 5 chapters</div>
   <h1>Colour as Numbers</h1>
   <p class="lede">Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.</p>
   <p class="meta">Swatches below show the colours as your screen displays them.</p>
@@ -82,6 +82,52 @@
   <div class="prose"><p>The weights 0.2126, 0.7152 and 0.0722 are those of the Rec. 709 / sRGB primaries and only make sense on linear values. In HLSL: <code>dot(c, float3(0.2126, 0.7152, 0.0722))</code>, a <a class="x" href="../dot-cross/index.html#dot">dot product</a>; Unity's <code>Luminance()</code> function does the same.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["Which looks brightest at the same value: pure red, pure green or pure blue?", ["Red", "Green", "Blue", "All equal"], 1, "Green carries 71.5% of the luminance weight."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="color-values#linear-srgb color-values#luminance" data-summary="Linear colour space, sRGB flags, HDR colour properties, a luminance and false-colour debug function, SetColor versus SetVector.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Colour handling is mostly settings, and the bugs come from mixing them up: a colour converted twice, or a data texture treated as colour. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Linear colour space, sRGB flags on textures, HDR colour properties.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A debug graph that shows luminance and values above 1.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>ColorDebug.hlsl: luminance and a false-colour HDR view.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ColorFromScript.cs: SetColor versus SetVector.</span></div></div>
+<ol class="impl-steps"><li><div><em>Project Settings &gt; Player &gt; Other Settings &gt; Color Space</em> must be <code>Linear</code>; HDRP requires it and warns otherwise.</div></li><li><div>For each texture, tick <em>sRGB (Color Texture)</em> for colour (albedo, emissive) and untick it for data (masks, roughness, normal maps, heights). See <a class="x" href="../texture-memory/index.html#color-data">colour data and other data</a>.</div></li><li><div>In Shader Graph, a Color property has a <em>Mode</em>: <code>Default</code> (0 to 1) or <code>HDR</code> (any brightness, with an intensity slider). Use HDR for emissive colours.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Save <code>ColorDebug.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>ColorDebug.hlsl</code> and <em>Name</em> to <code>ColorDebug</code> (without the <code>_float</code> suffix). Add the inputs <b>Color (Vector 3), Mode (Float)</b> and the outputs <b>Out (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Mode 0 shows luminance, mode 1 shows a false-colour view where values above 1 turn yellow, then red.</div></li><li><div>Read <code>ColorFromScript.cs</code>: <code>material.SetColor</code> takes an sRGB colour and Unity converts it to linear in a linear project; <code>SetVector</code> passes numbers unchanged. Mixing them up makes colours too dark or too light.</div></li></ol>
+<div class="files"><div class="file" data-name="ColorDebug.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_COLOR_DEBUG_INCLUDED
+#define ATLAS_COLOR_DEBUG_INCLUDED
+
+float LuminanceRec709(float3 c) { return dot(c, float3(0.2126, 0.7152, 0.0722)); }   // linear values only
+
+void ColorDebug_float(float3 Color, float Mode, out float3 Out)
+{
+    float y = LuminanceRec709(Color);
+    if (Mode &lt; 0.5)
+    {
+        Out = y.xxx;                                  // grey by luminance
+    }
+    else
+    {
+        // false colour: blue (dark) -&gt; green -&gt; white at 1 -&gt; yellow -&gt; red at 4 and above
+        float3 low  = lerp(float3(0.05, 0.1, 0.6), float3(0.1, 0.8, 0.3), saturate(y));
+        float3 high = lerp(float3(1.0, 0.9, 0.1), float3(1.0, 0.1, 0.05), saturate((y - 1.0) / 3.0));
+        Out = y &lt;= 1.0 ? lerp(low, float3(1, 1, 1), smoothstep(0.85, 1.0, y)) : high;
+    }
+}
+
+#endif</pre></div><div class="file" data-name="ColorFromScript.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Two ways to send a colour, and why they differ in a Linear project.
+public class ColorFromScript : MonoBehaviour
+{
+    public Color tint = new Color(0.5f, 0.5f, 0.5f);   // as picked in the Inspector: sRGB
+
+    void Start()
+    {
+        var m = GetComponent&lt;Renderer&gt;().material;
+        m.SetColor(&quot;_Tint&quot;, tint);           // converted sRGB -&gt; linear: the shader gets ~0.214 for 0.5
+
+        Color lin = tint.linear;             // do the conversion yourself...
+        m.SetVector(&quot;_TintVector&quot;, lin);     // ...because SetVector passes the numbers unchanged
+        // m.SetVector(&quot;_TintVector&quot;, tint) would be too bright: 0.5 used as linear is sRGB ~0.735
+    }
+}</pre></div></div>
+<div class="prose"><p>HDRP has the same tools built in: the <em>Rendering Debugger</em> (<em>Window &gt; Analysis &gt; Rendering Debugger</em>) can show luminance, false colour and HDR values over the whole frame, which is the first thing to check when exposure looks wrong.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same settings; URP also supports Gamma colour space for old mobile targets, where none of the linear maths in this unit holds. Prefer Linear.</p></div><div class="eng" data-engine="unreal"><p>Textures have an <em>sRGB</em> checkbox (and the <em>Masks</em> compression setting turns it off). Linear colour parameters in materials are linear; colours picked in the editor show both linear and sRGB hex values. The <em>Buffer Visualization</em> view modes show HDR scene colour.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

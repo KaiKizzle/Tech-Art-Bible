@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Characters · 6 chapters</div>
+  <div class="eyebrow">Characters · 7 chapters</div>
   <h1>Fabric and Folds in Real Time</h1>
   <p class="lede">Where folds come from, and the three ways games make them: baked into normal maps, faded in by stretch or joint angles, and simulated with particles and constraints. Includes a live cloth simulation.</p>
   <p class="meta">Builds on Vectors and Textures. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -130,6 +130,389 @@
   <div class="engines"><div class="eng" data-engine="hdrp"><p>The <em>Cloth</em> component works with a Skinned Mesh Renderer in every pipeline. Paint <em>Max Distance</em> per vertex, set <em>Stretching</em> and <em>Bending Stiffness</em>, and add sphere and capsule colliders for the body. It runs on the CPU, so keep the simulated mesh coarse.</p></div><div class="eng" data-engine="urp"><p>Same <em>Cloth</em> component as in HDRP. On mobile, prefer joint-driven wrinkles and a few bones driven by spring scripts for capes and hair over full simulation.</p></div><div class="eng" data-engine="unreal"><p><em>Chaos Cloth</em>: create clothing data on a section of a Skeletal Mesh, paint <em>Max Distance</em> and backstop weights, and tune the cloth config (stiffness, iterations, substeps). Unreal 5 also has a <em>Panel Cloth</em> editor built on Dataflow for more control.</p></div></div>
   <details class="check"><summary></summary><script type="application/json">[["Your cape stretches like rubber when the character runs. Which change helps most?", ["Lower the stiffness", "More iterations or substeps", "A higher resolution normal map", "Less damping"], 1, "More passes (or smaller steps) let the corrections travel through the whole cape."], ["Why is a shirt's shoulder area usually given a max distance of zero?", ["To save memory", "It is sewn tight to the body, so skinning alone is correct and simulation would only cost time", "Shoulders cannot be painted", "Zero means maximum movement"], 1, "Zero max distance pins the cloth to the skinned position."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="fabric-folds#tension fabric-folds#sim" data-summary="Reoriented normal blending, joint angles to mask weights in C#, per-vertex tension from a compute shader on the skinned mesh, and GPU Verlet cloth writing into a mesh.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Four techniques, four setups: blended fold normals in Shader Graph, joint-driven wrinkles from a C# script, tension wrinkles measured per vertex by a compute shader on the skinned mesh, and a GPU cloth simulation that writes straight into a mesh. The last two are the compute-shader route this unit's lab simulates on the CPU. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Normal Blend (Reoriented), wrinkle masks, a custom interpolator.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>JointWrinkles.cs, TensionWrinkles.cs, GpuCloth.cs.</span></div><div class="rt" data-k="compute"><b>Compute shader</b><span>Tension.compute (stretch per vertex), ClothSim.compute (Verlet + Jacobi).</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Wrinkles.hlsl: buffer lookup and RNM blend.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Unity's Cloth component for CPU simulation.</span></div></div>
+<ol class="impl-steps"><li><div><b>Baked folds:</b> sample the fold normal map and the weave (Sample Texture 2D, Type Normal), combine with <em>Normal Blend</em>, Mode <code>Reoriented</code>, into <em>Normal (Tangent Space)</em>.</div></li><li><div><b>Joint-driven wrinkles:</b> add an exposed Vector 4 property <code>_WrinkleWeights</code> and a wrinkle mask texture (one joint per channel). squash = <em>Dot Product</em>(mask, _WrinkleWeights); fade the wrinkle normal in with <code>WrinkleNormal</code> from <code>Wrinkles.hlsl</code>. Add <code>JointWrinkles.cs</code>, assign the renderer and, per joint, the three transforms (for an elbow: shoulder, elbow, wrist) and the start and full angles.</div></li><li><div><b>Tension wrinkles:</b> create <code>Tension.compute</code>, add <code>TensionWrinkles.cs</code> to the object with the Skinned Mesh Renderer (GPU skinning on, the default in HDRP). In the graph's vertex context add a <em>Custom Interpolator</em> (Vector 2, named <code>Tension</code>). In the vertex context, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Wrinkles.hlsl</code> and <em>Name</em> to <code>TensionFromBuffer</code> (without the <code>_float</code> suffix). Add the inputs <b>VertexID (Float)</b> and the outputs <b>Tension (Vector 2)</b>, in that order and with those types: they must match the function's parameters. Feed VertexID from a <em>Vertex ID</em> node and connect the output to the interpolator. In the fragment stage, its x is squash and y is stretch.</div></li><li><div><b>GPU cloth:</b> create <code>ClothSim.compute</code>, add <code>GpuCloth.cs</code> to an empty GameObject with a MeshFilter and MeshRenderer and a double-sided Lit (or Fabric) material. Press Play: the curtain hangs from pleated pins; lower <em>Pin Spacing</em> for deeper folds.</div></li><li><div><b>CPU alternative:</b> Unity's <em>Cloth</em> component on a Skinned Mesh Renderer, with painted <em>Max Distance</em> per vertex (<em>Edit cloth constraints</em>), stretching and bending stiffness and capsule colliders.</div></li></ol>
+<div class="files"><div class="file" data-name="Wrinkles.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_WRINKLES_INCLUDED
+#define ATLAS_WRINKLES_INCLUDED
+
+StructuredBuffer&lt;float2&gt; _Tension;   // per vertex: x squash, y stretch (set by TensionWrinkles.cs)
+
+void TensionFromBuffer_float(float VertexID, out float2 Tension)
+{
+#ifdef SHADERGRAPH_PREVIEW
+    Tension = 0;
+#else
+    Tension = _Tension[(uint)VertexID];
+#endif
+}
+
+// Fade the wrinkle normal in by Squash, then reoriented-normal-map it over the base normal.
+// Both normals unpacked, in tangent space.
+void WrinkleNormal_float(float3 BaseNormalTS, float3 WrinkleNormalTS, float Squash, out float3 Out)
+{
+    float3 folds = normalize(lerp(float3(0, 0, 1), WrinkleNormalTS, saturate(Squash)));
+    float3 t = BaseNormalTS + float3(0, 0, 1);
+    float3 u = folds * float3(-1, -1, 1);
+    Out = normalize(t * dot(t, u) / t.z - u);
+}
+
+#endif</pre></div><div class="file" data-name="JointWrinkles.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Turns up to four joint angles into wrinkle weights (one per mask channel).
+[ExecuteAlways]
+public class JointWrinkles : MonoBehaviour
+{
+    [System.Serializable]
+    public struct Joint
+    {
+        public Transform a, joint, b;            // e.g. shoulder, elbow, wrist
+        public float startAngle, fullAngle;      // degrees of bend: wrinkles start, wrinkles complete
+    }
+
+    public Renderer target;
+    public Joint[] joints = new Joint[4];         // R, G, B, A of the wrinkle mask
+    MaterialPropertyBlock block;
+    static readonly int WeightsId = Shader.PropertyToID(&quot;_WrinkleWeights&quot;);
+
+    void LateUpdate()
+    {
+        if (target == null) return;
+        Vector4 w = Vector4.zero;
+        for (int i = 0; i &lt; Mathf.Min(4, joints.Length); i++)
+        {
+            Joint j = joints[i];
+            if (j.a == null || j.joint == null || j.b == null) continue;
+            // bend = 180 - the angle at the joint: 0 when straight
+            float bend = 180f - Vector3.Angle(j.a.position - j.joint.position, j.b.position - j.joint.position);
+            float x = Mathf.Clamp01((bend - j.startAngle) / Mathf.Max(j.fullAngle - j.startAngle, 0.001f));
+            w[i] = x * x * (3f - 2f * x);         // smoothstep
+        }
+        block ??= new MaterialPropertyBlock();
+        target.GetPropertyBlock(block);
+        block.SetVector(WeightsId, w);
+        target.SetPropertyBlock(block);
+    }
+}</pre></div><div class="file" data-name="TensionWrinkles.cs" data-lang="cs"><pre>using System.Collections.Generic;
+using UnityEngine;
+
+// Measures squash and stretch per vertex of a skinned mesh on the GPU, every frame.
+// Rest lengths come from the bind pose; keep the rig at scale 1 or adjust the sensitivity.
+[RequireComponent(typeof(SkinnedMeshRenderer))]
+public class TensionWrinkles : MonoBehaviour
+{
+    public ComputeShader shader;
+    public float sensitivity = 4f;
+
+    SkinnedMeshRenderer smr;
+    GraphicsBuffer edgeStart, edgeOther, edgeRest, tension;
+    MaterialPropertyBlock block;
+    int kernel = -1, vertexCount;
+    static readonly int TensionId = Shader.PropertyToID(&quot;_Tension&quot;);
+
+    void OnEnable()
+    {
+        smr = GetComponent&lt;SkinnedMeshRenderer&gt;();
+        smr.vertexBufferTarget |= GraphicsBuffer.Target.Raw;     // lets compute read the skinned vertices
+        Mesh mesh = smr.sharedMesh;
+        Vector3[] v = mesh.vertices;
+        int[] t = mesh.triangles;
+        vertexCount = v.Length;
+
+        // neighbours of every vertex, stored as one flat list plus a start index per vertex
+        var nb = new List&lt;int&gt;[vertexCount];
+        for (int i = 0; i &lt; vertexCount; i++) nb[i] = new List&lt;int&gt;(8);
+        void Link(int a, int b) { if (!nb[a].Contains(b)) nb[a].Add(b); if (!nb[b].Contains(a)) nb[b].Add(a); }
+        for (int i = 0; i &lt; t.Length; i += 3) { Link(t[i], t[i + 1]); Link(t[i + 1], t[i + 2]); Link(t[i + 2], t[i]); }
+
+        var start = new int[vertexCount + 1];
+        var other = new List&lt;int&gt;();
+        var rest = new List&lt;float&gt;();
+        for (int i = 0; i &lt; vertexCount; i++)
+        {
+            start[i] = other.Count;
+            foreach (int j in nb[i]) { other.Add(j); rest.Add(Vector3.Distance(v[i], v[j])); }
+        }
+        start[vertexCount] = other.Count;
+
+        edgeStart = new GraphicsBuffer(GraphicsBuffer.Target.Structured, start.Length, sizeof(int));
+        edgeOther = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Mathf.Max(other.Count, 1), sizeof(int));
+        edgeRest = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Mathf.Max(rest.Count, 1), sizeof(float));
+        tension = new GraphicsBuffer(GraphicsBuffer.Target.Structured, vertexCount, sizeof(float) * 2);
+        edgeStart.SetData(start);
+        edgeOther.SetData(other);
+        edgeRest.SetData(rest);
+        block = new MaterialPropertyBlock();
+    }
+
+    void LateUpdate()
+    {
+        if (shader == null) return;
+        if (kernel &lt; 0) kernel = shader.FindKernel(&quot;Tension&quot;);
+        using (GraphicsBuffer vb = smr.GetVertexBuffer())    // this frame&#x27;s skinned vertices; must be disposed
+        {
+            if (vb == null) return;                          // not skinned yet (first frame, or off screen)
+            shader.SetBuffer(kernel, &quot;_Vertices&quot;, vb);
+            shader.SetInt(&quot;_Stride&quot;, vb.stride);
+            shader.SetInt(&quot;_VertexCount&quot;, vertexCount);
+            shader.SetFloat(&quot;_Sensitivity&quot;, sensitivity);
+            shader.SetBuffer(kernel, &quot;_EdgeStart&quot;, edgeStart);
+            shader.SetBuffer(kernel, &quot;_EdgeOther&quot;, edgeOther);
+            shader.SetBuffer(kernel, &quot;_EdgeRest&quot;, edgeRest);
+            shader.SetBuffer(kernel, &quot;_Tension&quot;, tension);
+            shader.Dispatch(kernel, Mathf.CeilToInt(vertexCount / 64f), 1, 1);
+        }
+        smr.GetPropertyBlock(block);
+        block.SetBuffer(TensionId, tension);
+        smr.SetPropertyBlock(block);
+    }
+
+    void OnDisable()
+    {
+        edgeStart?.Release(); edgeOther?.Release(); edgeRest?.Release(); tension?.Release();
+        edgeStart = edgeOther = edgeRest = tension = null;
+    }
+}</pre></div><div class="file" data-name="Tension.compute" data-lang="hlsl"><pre>#pragma kernel Tension
+
+ByteAddressBuffer _Vertices;          // skinned vertices; the position is the first 12 bytes of each
+uint _Stride, _VertexCount;
+StructuredBuffer&lt;int&gt;   _EdgeStart;   // neighbours of vertex v: _EdgeOther[_EdgeStart[v] .. _EdgeStart[v + 1]]
+StructuredBuffer&lt;int&gt;   _EdgeOther;
+StructuredBuffer&lt;float&gt; _EdgeRest;    // rest length of each of those edges
+RWStructuredBuffer&lt;float2&gt; _Tension;  // x squash, y stretch
+float _Sensitivity;
+
+float3 Position(uint i) { return asfloat(_Vertices.Load3(i * _Stride)); }
+
+[numthreads(64, 1, 1)]
+void Tension(uint3 id : SV_DispatchThreadID)
+{
+    uint v = id.x;
+    if (v &gt;= _VertexCount) return;
+    float3 p = Position(v);
+    int s = _EdgeStart[v], e = _EdgeStart[v + 1];
+    float ratio = 0;
+    for (int k = s; k &lt; e; k++)
+        ratio += length(Position((uint)_EdgeOther[k]) - p) / max(_EdgeRest[k], 1e-6);
+    ratio = e &gt; s ? ratio / (e - s) : 1.0;                  // average current / rest length
+    _Tension[v] = float2(saturate((1.0 - ratio) * _Sensitivity),    // squash
+                         saturate((ratio - 1.0) * _Sensitivity));   // stretch
+}</pre></div><div class="file" data-name="GpuCloth.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering;
+
+// A curtain simulated on the GPU: Verlet integration, Jacobi constraint passes,
+// and a kernel that writes positions and normals straight into the mesh&#x27;s vertex buffer.
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+public class GpuCloth : MonoBehaviour
+{
+    public ComputeShader shader;
+    public int resX = 48, resY = 36;
+    public float width = 2f;
+    [Range(0.25f, 1f)] public float pinSpacing = 0.6f;
+    [Range(1, 80)] public int iterations = 30;
+    [Range(0f, 1f)] public float stiffness = 1f;
+    [Range(0f, 0.1f)] public float damping = 0.01f;
+    public Vector3 wind = new Vector3(0f, 0f, 1.5f);   // world space, m/s²
+
+    GraphicsBuffer posA, posB, prev, vertexBuffer;
+    Mesh mesh;
+    int kIntegrate, kSolve, kWrite;
+    float spacing;
+
+    void OnEnable()
+    {
+        if (shader == null || !SystemInfo.supportsComputeShaders) { enabled = false; return; }
+        spacing = width / (resX - 1);
+        BuildMesh();
+        int n = resX * resY;
+        var p = new Vector4[n];
+        for (int y = 0; y &lt; resY; y++)
+            for (int x = 0; x &lt; resX; x++)
+                p[y * resX + x] = new Vector4((x - (resX - 1) * 0.5f) * spacing, -y * spacing, 0f, y == 0 ? 1f : 0f); // w = pinned
+        posA = new GraphicsBuffer(GraphicsBuffer.Target.Structured, n, 16);
+        posB = new GraphicsBuffer(GraphicsBuffer.Target.Structured, n, 16);
+        prev = new GraphicsBuffer(GraphicsBuffer.Target.Structured, n, 16);
+        posA.SetData(p); posB.SetData(p); prev.SetData(p);
+        kIntegrate = shader.FindKernel(&quot;Integrate&quot;);
+        kSolve = shader.FindKernel(&quot;Solve&quot;);
+        kWrite = shader.FindKernel(&quot;WriteMesh&quot;);
+    }
+
+    void BuildMesh()
+    {
+        int n = resX * resY;
+        mesh = new Mesh { name = &quot;GpuCloth&quot; };
+        mesh.vertexBufferTarget |= GraphicsBuffer.Target.Raw;           // compute may write into it
+        mesh.SetVertexBufferParams(n,
+            new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2)); // 32 bytes
+        var data = new float[n * 8];
+        for (int y = 0; y &lt; resY; y++)
+            for (int x = 0; x &lt; resX; x++)
+            {
+                int i = (y * resX + x) * 8;
+                data[i + 5] = 1f;                                        // normal +z until the first frame
+                data[i + 6] = x / (resX - 1f);
+                data[i + 7] = 1f - y / (resY - 1f);
+            }
+        mesh.SetVertexBufferData(data, 0, 0, data.Length);
+
+        var idx = new int[(resX - 1) * (resY - 1) * 6];
+        int k = 0;
+        for (int y = 0; y &lt; resY - 1; y++)
+            for (int x = 0; x &lt; resX - 1; x++)
+            {
+                int a = y * resX + x, b = a + 1, c = a + resX, d = c + 1;
+                idx[k++] = a; idx[k++] = b; idx[k++] = c;
+                idx[k++] = b; idx[k++] = d; idx[k++] = c;
+            }
+        mesh.SetIndexBufferParams(idx.Length, IndexFormat.UInt32);
+        mesh.SetIndexBufferData(idx, 0, 0, idx.Length);
+        mesh.subMeshCount = 1;
+        mesh.SetSubMesh(0, new SubMeshDescriptor(0, idx.Length), MeshUpdateFlags.DontRecalculateBounds);
+        mesh.bounds = new Bounds(Vector3.down * width * 0.5f, Vector3.one * width * 3f);   // never culled while swinging
+        GetComponent&lt;MeshFilter&gt;().sharedMesh = mesh;
+        vertexBuffer = mesh.GetVertexBuffer(0);
+    }
+
+    void Update()
+    {
+        int n = resX * resY, groups = Mathf.CeilToInt(n / 64f);
+        const float dt = 1f / 60f;                                       // fixed step keeps damping consistent
+        Vector3 gust = wind * (0.6f + 0.4f * Mathf.Sin(Time.time * 1.7f));
+        Vector3 accel = transform.InverseTransformDirection(Physics.gravity + gust);   // simulate in object space
+
+        shader.SetInts(&quot;_Res&quot;, resX, resY);
+        shader.SetFloat(&quot;_Spacing&quot;, spacing);
+        shader.SetFloat(&quot;_PinSpacing&quot;, pinSpacing);
+        shader.SetFloat(&quot;_Damping&quot;, damping);
+        shader.SetFloat(&quot;_Stiffness&quot;, stiffness);
+        shader.SetFloat(&quot;_Dt&quot;, dt);
+        shader.SetVector(&quot;_Accel&quot;, accel);
+
+        shader.SetBuffer(kIntegrate, &quot;_Pos&quot;, posA);
+        shader.SetBuffer(kIntegrate, &quot;_Prev&quot;, prev);
+        shader.Dispatch(kIntegrate, groups, 1, 1);
+
+        for (int i = 0; i &lt; iterations; i++)
+        {
+            shader.SetBuffer(kSolve, &quot;_PosIn&quot;, posA);
+            shader.SetBuffer(kSolve, &quot;_PosOut&quot;, posB);
+            shader.Dispatch(kSolve, groups, 1, 1);
+            (posA, posB) = (posB, posA);                                 // ping-pong
+        }
+
+        shader.SetBuffer(kWrite, &quot;_PosIn&quot;, posA);
+        shader.SetBuffer(kWrite, &quot;_VertexOut&quot;, vertexBuffer);
+        shader.SetInt(&quot;_VertexStride&quot;, vertexBuffer.stride);
+        shader.Dispatch(kWrite, groups, 1, 1);
+    }
+
+    void OnDisable()
+    {
+        posA?.Release(); posB?.Release(); prev?.Release(); vertexBuffer?.Release();
+        posA = posB = prev = vertexBuffer = null;
+        if (mesh != null) Destroy(mesh);
+    }
+}</pre></div><div class="file" data-name="ClothSim.compute" data-lang="hlsl"><pre>#pragma kernel Integrate
+#pragma kernel Solve
+#pragma kernel WriteMesh
+
+RWStructuredBuffer&lt;float4&gt; _Pos;       // Integrate: xyz position (object space), w = 1 if pinned
+RWStructuredBuffer&lt;float4&gt; _Prev;
+StructuredBuffer&lt;float4&gt;   _PosIn;     // Solve and WriteMesh read the last pass...
+RWStructuredBuffer&lt;float4&gt; _PosOut;    // ...and Solve writes the next one
+RWByteAddressBuffer        _VertexOut; // the mesh: position (12 bytes), normal (12), uv (8)
+
+uint2  _Res;
+uint   _VertexStride;
+float  _Spacing, _PinSpacing, _Damping, _Stiffness, _Dt;
+float3 _Accel;
+
+uint Index(int2 c) { return (uint)c.y * _Res.x + (uint)c.x; }
+
+float3 PinPosition(uint x)
+{
+    float s = _PinSpacing;
+    float px = ((float)x - (_Res.x - 1) * 0.5) * _Spacing * s;
+    float pz = ((x &amp; 1) ? 0.5 : -0.5) * _Spacing * sqrt(saturate(1.0 - s * s));   // pleats keep neighbours at rest length
+    return float3(px, 0, pz);
+}
+
+[numthreads(64, 1, 1)]
+void Integrate(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+    if (i &gt;= _Res.x * _Res.y) return;
+    float4 p = _Pos[i];
+    if (p.w &gt; 0.5)
+    {
+        float3 pin = PinPosition(i % _Res.x);
+        _Pos[i] = float4(pin, 1); _Prev[i] = float4(pin, 1);
+        return;
+    }
+    float3 x = p.xyz, xp = _Prev[i].xyz;
+    _Prev[i] = float4(x, 0);
+    _Pos[i] = float4(x + (x - xp) * (1.0 - _Damping) + _Accel * _Dt * _Dt, 0);     // Verlet
+}
+
+void Constraint(inout float3 corr, inout float count, float3 p, int2 c, float rest, float k)
+{
+    if (c.x &lt; 0 || c.y &lt; 0 || c.x &gt;= (int)_Res.x || c.y &gt;= (int)_Res.y) return;
+    float3 d = _PosIn[Index(c)].xyz - p;
+    float len = length(d);
+    if (len &lt; 1e-6) return;
+    corr += d * (1.0 - rest / len) * 0.5 * k;    // half the error: the neighbour moves the other half
+    count += 1.0;
+}
+
+[numthreads(64, 1, 1)]
+void Solve(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+    if (i &gt;= _Res.x * _Res.y) return;
+    float4 p = _PosIn[i];
+    if (p.w &gt; 0.5) { _PosOut[i] = p; return; }
+    int2 c = int2(i % _Res.x, i / _Res.x);
+    float r = _Spacing, rd = _Spacing * 1.41421356, s = _Stiffness;
+    float3 corr = 0; float n = 0;
+    Constraint(corr, n, p.xyz, c + int2( 1,  0), r,  s);     // structural
+    Constraint(corr, n, p.xyz, c + int2(-1,  0), r,  s);
+    Constraint(corr, n, p.xyz, c + int2( 0,  1), r,  s);
+    Constraint(corr, n, p.xyz, c + int2( 0, -1), r,  s);
+    Constraint(corr, n, p.xyz, c + int2( 1,  1), rd, s);     // shear
+    Constraint(corr, n, p.xyz, c + int2(-1, -1), rd, s);
+    Constraint(corr, n, p.xyz, c + int2( 1, -1), rd, s);
+    Constraint(corr, n, p.xyz, c + int2(-1,  1), rd, s);
+    Constraint(corr, n, p.xyz, c + int2( 2,  0), 2 * r, 0.15);   // bending
+    Constraint(corr, n, p.xyz, c + int2(-2,  0), 2 * r, 0.15);
+    Constraint(corr, n, p.xyz, c + int2( 0,  2), 2 * r, 0.15);
+    Constraint(corr, n, p.xyz, c + int2( 0, -2), 2 * r, 0.15);
+    // Jacobi: every particle reads the previous pass only, so all of them run in parallel.
+    // Averaging with over-relaxation (1.5) keeps it stable; it needs more passes than Gauss-Seidel.
+    _PosOut[i] = float4(p.xyz + corr * (1.5 / max(n, 1.0)), 0);
+}
+
+[numthreads(64, 1, 1)]
+void WriteMesh(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+    if (i &gt;= _Res.x * _Res.y) return;
+    int2 c = int2(i % _Res.x, i / _Res.x), m = int2(_Res) - 1;
+    float3 p  = _PosIn[i].xyz;
+    float3 dx = _PosIn[Index(int2(min(c.x + 1, m.x), c.y))].xyz - _PosIn[Index(int2(max(c.x - 1, 0), c.y))].xyz;
+    float3 dy = _PosIn[Index(int2(c.x, min(c.y + 1, m.y)))].xyz - _PosIn[Index(int2(c.x, max(c.y - 1, 0)))].xyz;
+    float3 nrm = normalize(cross(dy, dx));
+    uint addr = i * _VertexStride;
+    _VertexOut.Store3(addr, asuint(p));
+    _VertexOut.Store3(addr + 12, asuint(nrm));
+}</pre></div></div>
+<div class="prose"><p>The lab on this page solves constraints one after another (Gauss–Seidel), which converges fast but cannot run in parallel. The compute version uses Jacobi passes, where every particle reads the previous pass; that is why it needs more iterations for the same stiffness, and why GPU solvers often colour the constraint graph into independent batches instead. See <a class="x" href="../compute-shaders/index.html#implement">Compute Shaders</a> for the dispatch basics.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>All of it works in URP: Normal Blend and custom interpolators exist in URP graphs, and the compute and C# files are pipeline-independent.</p></div><div class="eng" data-engine="unreal"><p>Folds: <em>BlendAngleCorrectedNormals</em>. Joint wrinkles: drive scalar parameters from <em>Anim Curves</em> or the <em>Control Rig</em> into a dynamic material instance, the method MetaHuman uses for its wrinkle maps. Simulation: <em>Chaos Cloth</em> (clothing data on the skeletal mesh, painted Max Distance) or a Niagara-based solver for custom GPU cloth.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · 8 chapters</div>
+  <div class="eyebrow">Shaders & rendering · 9 chapters</div>
   <h1>Parallax and POM</h1>
   <p class="lede">Bricks that hide their mortar, cobbles that cover each other: depth on a flat surface, computed per pixel from a height map. From a one-sample guess to parallax occlusion mapping with shadows.</p>
   <p class="meta">Builds on tangent space and the raymarching idea from the cloud unit. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -134,6 +134,66 @@ uv = lerp(uv, prevUV, w);</pre>
   </tbody></table></div>
   <details class="check"><summary></summary><script type="application/json">[["A cobblestone road is seen at a grazing angle across 100 m. Which is the most sensible setup?", ["64-layer POM everywhere", "POM near the camera, faded to a normal map with distance", "Offset parallax with V.z division", "No height at all"], 1, "Parallax is invisible far away but costs the same per pixel."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="parallax#pom parallax#shadow" data-summary="HDRP Pixel displacement, the Parallax Occlusion Mapping node, and a Custom Function with adaptive layers and self-shadow.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP has parallax built in twice: on the Lit material and as a Shader Graph node. The Custom Function version is there for adaptive steps and self-shadowing, which the node does not do. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>HDRP/Lit: Displacement Mode Pixel displacement.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>The Parallax Occlusion Mapping node, or a Custom Function.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>POM.hlsl: adaptive layers, interpolation, self-shadow.</span></div></div>
+<ol class="impl-steps"><li><div><b>Stock material:</b> HDRP/Lit, <em>Displacement Mode</em> <code>Pixel displacement</code>, assign the <em>Height Map</em> (sRGB off) and set <em>Amplitude</em> in centimetres and <em>Steps</em>. <em>Depth Offset</em> makes silhouettes against other objects correct.</div></li><li><div><b>Shader Graph node:</b> in a Lit graph add <em>Parallax Occlusion Mapping</em>: inputs Heightmap, Amplitude, Steps, UVs; outputs <em>Parallax UVs</em> (use for every texture sample) and <em>Pixel Depth Offset</em> (connect to the <em>Depth Offset</em> block after enabling it in Graph Settings).</div></li><li><div><b>Custom version:</b> save <code>POM.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>POM.hlsl</code> and <em>Name</em> to <code>POM</code> (without the <code>_float</code> suffix). Add the inputs <b>HeightTex (Texture2D), SS (SamplerState), UV (Vector 2), ViewDirTS (Vector 3), Scale (Float), MinLayers (Float), MaxLayers (Float)</b> and the outputs <b>UVOut (Vector 2), Depth (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>ViewDirTS: a <em>View Direction</em> node in <code>Tangent</code> space (from the surface toward the camera, normalized). Scale is the depth as a fraction of the texture's size in UV units (0.02–0.08).</div></li><li><div>Self-shadow: <code>POMShadow</code> from the same file (inputs HeightTex, SS, UV = UVOut, Depth, LightDirTS, Scale; output Shadow). Get LightDirTS by transforming <code>_SunDirection</code> (see <a class="x" href="../dot-cross/index.html#implement">SunToShader</a>) with a Transform node from World to Tangent, Type Direction.</div></li></ol>
+<div class="files"><div class="file" data-name="POM.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_POM_INCLUDED
+#define ATLAS_POM_INCLUDED
+// Height map convention: 1 = top surface, 0 = deepest. depth = 1 - height.
+
+void POM_float(UnityTexture2D HeightTex, UnitySamplerState SS, float2 UV, float3 ViewDirTS,
+               float Scale, float MinLayers, float MaxLayers, out float2 UVOut, out float Depth)
+{
+    float3 V = normalize(ViewDirTS);
+    float layers = lerp(MaxLayers, MinLayers, saturate(V.z));      // fewer layers when looking straight on
+    float layerStep = 1.0 / layers;
+    float2 duv = -V.xy / max(V.z, 0.05) * Scale * layerStep;        // sightline shift per layer
+
+    float2 dx = ddx(UV), dy = ddy(UV);                               // gradients of the original UV
+    float2 uv = UV;
+    float  layerDepth = 0;
+    float  mapDepth = 1.0 - SAMPLE_TEXTURE2D_GRAD(HeightTex.tex, SS.samplerstate, uv, dx, dy).r;
+    float2 prevUV = uv; float prevDiff = -mapDepth;
+
+    [loop] for (int i = 0; i &lt; 64 &amp;&amp; layerDepth &lt; mapDepth; i++)
+    {
+        prevUV = uv; prevDiff = layerDepth - mapDepth;
+        uv += duv;
+        layerDepth += layerStep;
+        mapDepth = 1.0 - SAMPLE_TEXTURE2D_GRAD(HeightTex.tex, SS.samplerstate, uv, dx, dy).r;
+    }
+    // interpolate between the last two layers (parallax occlusion mapping)
+    float after = layerDepth - mapDepth, before = prevDiff;
+    float w = after / max(after - before, 1e-5);
+    UVOut = lerp(uv, prevUV, w);
+    Depth = lerp(layerDepth, layerDepth - layerStep, w);
+}
+
+void POMShadow_float(UnityTexture2D HeightTex, UnitySamplerState SS, float2 UV, float Depth,
+                     float3 LightDirTS, float Scale, out float Shadow)
+{
+    float3 L = normalize(LightDirTS);
+    Shadow = 1;
+    if (L.z &lt;= 0) { Shadow = 0; return; }
+    float2 dx = ddx(UV), dy = ddy(UV);
+    const int steps = 16;
+    float2 duv = L.xy / L.z * Scale * Depth / steps;
+    float  d = Depth, blocked = 0;
+    [loop] for (int i = 1; i &lt;= steps; i++)
+    {
+        d -= Depth / steps;                                           // the ray rises toward the light
+        float h = 1.0 - SAMPLE_TEXTURE2D_GRAD(HeightTex.tex, SS.samplerstate, UV + duv * i, dx, dy).r;
+        blocked = max(blocked, (d - h) * (1.0 - (float)i / steps));   // how far the surface rises above the ray
+    }
+    Shadow = 1.0 - saturate(blocked * 8.0);
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>Every texture of the material must be sampled with UVOut, including the normal map. Pixel depth offset for the custom version: offset = Depth × Scale × tile size in metres / ViewDirTS.z, written to the Depth Offset block.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP/Lit has <em>Height Map</em> with simple offset parallax only. The <em>Parallax Occlusion Mapping</em> node and the Custom Function work in URP graphs as well.</p></div><div class="eng" data-engine="unreal"><p>The <em>ParallaxOcclusionMapping</em> material function (Heightmap Texture, Height Ratio, Min/Max Steps, Light Vector for shadows) returns Parallax UVs and a Pixel Depth Offset output; enable <em>Pixel Depth Offset</em> on the material.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

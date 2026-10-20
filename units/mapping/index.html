@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Materials & texture pipeline · 7 chapters</div>
+  <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
   <h1>Simple Mapping Techniques</h1>
   <p class="lede">Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.</p>
   <p class="meta">Builds on Textures and Spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -128,6 +128,85 @@ clip(<span class="n">0.5</span> - abs(local));                                  
   <div class="engines"><div class="eng" data-engine="hdrp"><p>Add a <em>Decal Projector</em> with a material using the <em>HDRP/Decal</em> shader or a Decal Shader Graph. <em>Angle Fade</em> is the cos limit above. Decal layers keep a character's decals off the floor and the reverse.</p></div><div class="eng" data-engine="urp"><p>Enable the <em>Decal</em> Renderer Feature (DBuffer or screen space) in the URP Renderer, then use a <em>URP Decal Projector</em>. Rendering layers limit which objects receive it.</p></div><div class="eng" data-engine="unreal"><p>Use a material with the <em>Deferred Decal</em> material domain on a <em>Decal Actor</em> or a <em>Decal Component</em> attached to the character. <em>Receives Decals</em> on a mesh turns them off for it.</p></div></div>
   <details class="check"><summary></summary><script type="application/json">[["A blood decal smears into long streaks on the side of a character's arm. Why?", ["The texture is too small", "The arm turns away from the decal's projection axis, so the planar projection stretches there", "Decals do not work on skinned meshes", "The depth buffer is wrong"], 1, "Planar projection stretches by 1 / cos of the angle: fade by angle, or project from a better direction."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="mapping#triplanar mapping#decals" data-summary="Planar and triplanar nodes, a triplanar-normal / flow / matcap HLSL file, and HDRP decals spawned from C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Most mappings are a node or two in Shader Graph; the ones that need care are triplanar normals, flow maps and matcaps, which are given as Custom Function files. Decals are a component. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Triplanar node, Tiling And Offset, Position and Normal nodes.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Mapping.hlsl: triplanar normals, flow map, matcap UV.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>HDRP Decal Projector and Decal Shader Graph.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>DecalOnClick.cs: places a decal where you click.</span></div></div>
+<ol class="impl-steps"><li><div><b>Planar:</b> <em>Position</em> (Absolute World, or Object for things that move) → Split → combine X and Z → <em>Tiling And Offset</em> → Sample Texture 2D. Absolute World keeps HDRP's camera-relative position from making the texture swim.</div></li><li><div><b>Triplanar colour:</b> the <em>Triplanar</em> node does it in one step (Position and Normal inputs, <em>Tile</em>, <em>Blend</em> = the sharpness k). Feed it Absolute World position and world normal.</div></li><li><div><b>Triplanar normals:</b> the Triplanar node with Type <code>Normal</code>, or <code>Mapping.hlsl</code> for full control. In the Lit graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Mapping.hlsl</code> and <em>Name</em> to <code>TriplanarNormal</code> (without the <code>_float</code> suffix). Add the inputs <b>Tex (Texture2D), SS (SamplerState), PositionAWS (Vector 3), NormalWS (Vector 3), Scale (Float), Sharpness (Float)</b> and the outputs <b>NormalOut (Vector 3)</b>, in that order and with those types: they must match the function's parameters. The output is a world-space normal: set <em>Graph Settings &gt; Fragment Normal Space</em> to <code>World</code>.</div></li><li><div><b>Detail map:</b> sample the detail texture with UV × tiling, combine colours with <em>Blend</em> (Mode Overlay) and normals with <em>Normal Blend</em> (Reoriented), fade with a Smoothstep of the distance between the <em>Camera</em> node's Position and the pixel's World position.</div></li><li><div><b>Flow map:</b> Custom Function <code>FlowMap</code> from the same file (inputs Tex, FlowTex, SS, UV, Time, Speed, Strength; output Color).</div></li><li><div><b>Matcap:</b> Custom Function <code>MatcapUV</code> (input world normal) gives the UV to sample the matcap texture in an Unlit graph.</div></li><li><div><b>Decals:</b> <em>GameObject &gt; Rendering &gt; HDRP Decal Projector</em> (or add the <em>Decal Projector</em> component). Its material uses the <em>HDRP/Decal</em> shader or a graph from <em>Create &gt; Shader Graph &gt; HDRP &gt; Decal Shader Graph</em>. Decals must be enabled in the HDRP asset and the Frame Settings (on by default). <code>DecalOnClick.cs</code> spawns one at a raycast hit.</div></li></ol>
+<div class="files"><div class="file" data-name="Mapping.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_MAPPING_INCLUDED
+#define ATLAS_MAPPING_INCLUDED
+
+// ---- Triplanar normal mapping, whiteout blend (after Ben Golus). Output: world-space normal.
+void TriplanarNormal_float(UnityTexture2D Tex, UnitySamplerState SS, float3 PositionAWS, float3 NormalWS,
+                           float Scale, float Sharpness, out float3 NormalOut)
+{
+    float3 N = normalize(NormalWS);
+    float3 w = pow(abs(N), Sharpness);
+    w /= (w.x + w.y + w.z);
+
+    float2 uvX = PositionAWS.zy * Scale, uvY = PositionAWS.xz * Scale, uvZ = PositionAWS.xy * Scale;
+    float3 s = sign(N);
+    uvX.x *= s.x;  uvY.x *= s.y;  uvZ.x *= -s.z;          // un-mirror the back sides
+
+    float3 tX = UnpackNormalmapRGorAG(SAMPLE_TEXTURE2D(Tex.tex, SS.samplerstate, uvX), 1.0);
+    float3 tY = UnpackNormalmapRGorAG(SAMPLE_TEXTURE2D(Tex.tex, SS.samplerstate, uvY), 1.0);
+    float3 tZ = UnpackNormalmapRGorAG(SAMPLE_TEXTURE2D(Tex.tex, SS.samplerstate, uvZ), 1.0);
+    tX.x *= s.x;  tY.x *= s.y;  tZ.x *= -s.z;
+
+    tX = float3(tX.xy + N.zy, abs(tX.z) * N.x);           // whiteout blend with the surface normal
+    tY = float3(tY.xy + N.xz, abs(tY.z) * N.y);
+    tZ = float3(tZ.xy + N.xy, abs(tZ.z) * N.z);
+    NormalOut = normalize(tX.zyx * w.x + tY.xzy * w.y + tZ.xyz * w.z);
+}
+
+// ---- Flow map: two copies half a period apart, blended so each reset is invisible.
+void FlowMap_float(UnityTexture2D Tex, UnityTexture2D FlowTex, UnitySamplerState SS, float2 UV,
+                   float Time, float Speed, float Strength, out float4 Color)
+{
+    float2 flow = SAMPLE_TEXTURE2D(FlowTex.tex, SS.samplerstate, UV).rg * 2.0 - 1.0;
+    float  t0 = frac(Time * Speed), t1 = frac(Time * Speed + 0.5);
+    float4 a = SAMPLE_TEXTURE2D(Tex.tex, SS.samplerstate, UV - flow * t0 * Strength);
+    float4 b = SAMPLE_TEXTURE2D(Tex.tex, SS.samplerstate, UV - flow * t1 * Strength + 0.5);
+    Color = lerp(a, b, abs(1.0 - 2.0 * t0));
+}
+
+// ---- Matcap: view-space normal x and y become the UV.
+void MatcapUV_float(float3 NormalWS, out float2 UV)
+{
+    float3 nV = normalize(TransformWorldToViewDir(NormalWS));
+    UV = nV.xy * 0.5 + 0.5;
+}
+
+#endif</pre></div><div class="file" data-name="DecalOnClick.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
+
+// Left click in Play mode: places a decal facing the surface that was hit.
+public class DecalOnClick : MonoBehaviour
+{
+    public Material decalMaterial;          // HDRP/Decal or a Decal Shader Graph
+    public Vector2 size = new Vector2(0.5f, 0.5f);
+    public float depth = 0.3f;              // projection depth of the box
+    public float lifetime = 20f;
+
+    void Update()
+    {
+        if (!Input.GetMouseButtonDown(0) || Camera.main == null) return;
+        if (!Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit)) return;
+
+        var go = new GameObject(&quot;Decal&quot;);
+        // the projector looks along its forward axis: point it into the surface
+        go.transform.SetPositionAndRotation(hit.point, Quaternion.LookRotation(-hit.normal, Vector3.up));
+        go.transform.Rotate(0f, 0f, Random.Range(0f, 360f), Space.Self);
+        var d = go.AddComponent&lt;DecalProjector&gt;();
+        d.material = decalMaterial;
+        d.size = new Vector3(size.x, size.y, depth);
+        d.pivot = Vector3.zero;             // centre the box on the hit point
+        Destroy(go, lifetime);
+    }
+}</pre></div></div>
+<div class="prose"><p><code>DecalOnClick</code> uses the classic Input class; with the Input System package only, read <code>Mouse.current.leftButton.wasPressedThisFrame</code> instead. If the surface normal is parallel to <code>Vector3.up</code>, <code>LookRotation</code> picks an arbitrary roll, which the random rotation hides anyway.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same nodes; use <code>World</code> position (no camera-relative offset). Decals need the <em>Decal</em> Renderer Feature on the URP Renderer and the <em>URP Decal Projector</em> (<code>UnityEngine.Rendering.Universal.DecalProjector</code>). In the HLSL file, <code>UnpackNormalmapRGorAG</code> and <code>TransformWorldToViewDir</code> exist in URP too.</p></div><div class="eng" data-engine="unreal"><p><em>WorldAlignedTexture</em> and <em>WorldAlignedNormal</em> for triplanar, <em>DetailTexturing</em> for detail maps, <em>FlowMaps</em> functions or a <em>Custom</em> node for flow, <em>Transform (World → View)</em> on the normal for matcaps. Decals: a material with <em>Material Domain: Deferred Decal</em> on a Decal Actor, or <code>SpawnDecalAtLocation</code> from Blueprint.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

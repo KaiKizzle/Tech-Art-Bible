@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Vectors</h1>
   <p class="lede">Positions, directions, light, normals and rays are all vectors. Five operations cover almost everything shaders do with them.</p>
   <p class="meta">Every drawing below can be dragged. The numbers update as you move.</p>
@@ -121,6 +121,40 @@
   </div>
   <details class="check"><summary></summary><script type="application/json">[["A Unity shader uses float3(0, 1, 0) as 'up'. What is up in Unreal?", ["float3(0, 1, 0)", "float3(0, 0, 1)", "float3(1, 0, 0)", "float3(0, −1, 0)"], 1, "Unreal is Z-up."], ["A 2 m tall door in Unreal is how many units?", ["2", "20", "200", "2000"], 2, "1 Unreal unit is 1 cm."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="vectors#length vectors#normalize" data-summary="Distance and direction in Shader Graph, and HDRP&#x27;s camera-relative world space versus Absolute World.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>A distance mask around a point uses everything in this unit: subtracting positions, a length, and a normalized direction. It also shows the one HDRP detail that trips everyone up: <em>world space in HDRP shaders is camera-relative</em>. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph with a mask around a point.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>SphereMask.hlsl: distance, falloff and direction.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>MaskCenter.cs: sends a transform's position to all shaders.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>Position</em> node and set <em>Space</em> to <code>Absolute World</code>. HDRP renders relative to the camera for precision, so <code>World</code> means "world position minus camera position". Positions you send from C# are absolute, so compare them with Absolute World.</div></li><li><div>Save <code>SphereMask.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>SphereMask.hlsl</code> and <em>Name</em> to <code>SphereMask</code> (without the <code>_float</code> suffix). Add the inputs <b>Position (Vector 3), Center (Vector 3), Radius (Float), Softness (Float)</b> and the outputs <b>Mask (Float), Direction (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Add a Vector 3 property with Reference <code>_MaskCenter</code> and untick <em>Exposed</em> so the global value reaches it. Connect it to <em>Center</em>; add Floats for Radius and Softness.</div></li><li><div>Use <em>Mask</em> to lerp between two colours into <em>Base Color</em>, and <em>Direction</em> (remapped from −1..1 to 0..1) as a debug colour to see the normalized vector.</div></li><li><div>Add <code>MaskCenter.cs</code> to an empty GameObject and move it around: the mask follows in edit mode too. Shader Graph also has a ready-made <em>Sphere Mask</em> node that does the same maths.</div></li></ol>
+<div class="files"><div class="file" data-name="SphereMask.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SPHERE_MASK_INCLUDED
+#define ATLAS_SPHERE_MASK_INCLUDED
+
+// 1 inside Radius, fading to 0 over Softness metres. Direction points from the centre to the pixel.
+void SphereMask_float(float3 Position, float3 Center, float Radius, float Softness,
+                      out float Mask, out float3 Direction)
+{
+    float3 toPixel = Position - Center;            // B - A: the arrow from the centre to the pixel
+    float  d = length(toPixel);                    // sqrt(x*x + y*y + z*z)
+    Mask = 1.0 - smoothstep(Radius, Radius + max(Softness, 1e-4), d);
+    Direction = d &gt; 1e-5 ? toPixel / d : float3(0, 1, 0);   // normalize, guarding against zero length
+}
+
+#endif</pre></div><div class="file" data-name="MaskCenter.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Sends this object&#x27;s world position to every shader as _MaskCenter.
+[ExecuteAlways]
+public class MaskCenter : MonoBehaviour
+{
+    static readonly int CenterId = Shader.PropertyToID(&quot;_MaskCenter&quot;);
+
+    void Update()
+    {
+        Shader.SetGlobalVector(CenterId, transform.position);   // absolute world position, w = 0
+    }
+}</pre></div></div>
+<div class="prose"><p>Inside a hand-written HDRP shader the same conversion is <code>GetAbsolutePositionWS(positionRWS)</code>, and back with <code>GetCameraRelativePositionWS(positionWS)</code>.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP does not render camera-relative: <em>World</em> and <em>Absolute World</em> are the same position. Everything else is identical.</p></div><div class="eng" data-engine="unreal"><p><em>Absolute World Position</em> is the default output of the WorldPosition node; Unreal 5 uses large world coordinates (LWC) internally, so prefer the provided nodes over doing the maths with raw floats. Send the centre with a <em>Material Parameter Collection</em> vector parameter. Remember Unreal is Z-up and in centimetres.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

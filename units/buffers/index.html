@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Buffers and Render Targets</h1>
   <p class="lede">Shaders only see what is already in GPU memory. This unit covers every kind of memory a shader reads and writes: meshes, per-draw values, lists of your own data, lists built on the GPU, and the images frames are drawn into.</p>
   <p class="meta">Builds on How a GPU Draws a Frame. Code is HLSL; engine notes show the C# and C++ side.</p>
@@ -162,6 +162,71 @@
   </div>
   <details class="check"><summary></summary><script type="application/json">[["A 1920 × 1080 RGBA16F render target needs about…", ["8 MiB", "16 MiB", "32 MiB", "2 MiB"], 1, "1920 × 1080 × 8 bytes ≈ 15.8 MiB."], ["How can a post-processing effect read the colour of neighbouring pixels?", ["Ask the neighbour's pixel shader", "Read the previous pass's render target as a texture", "Use a constant buffer", "It cannot"], 1, "Once a pass has finished writing a render target, the next pass can sample it anywhere."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="buffers#structured buffers#memory" data-summary="GraphicsBuffer from C#, SetGlobalBuffer, and a StructuredBuffer loop in a Custom Function.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Here a C# script fills a structured buffer with marker positions every frame, and a shader loops over them: the same pattern used for per-object data, wind zones, footprints in snow or interaction points on foliage. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="cs"><b>C# script</b><span>MarkerBuffer.cs: creates a GraphicsBuffer and binds it globally.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Markers.hlsl: reads the buffer in a Custom Function.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph that highlights the surface near any marker.</span></div></div>
+<ol class="impl-steps"><li><div>Add <code>MarkerBuffer.cs</code> to an empty GameObject and drag a few objects into <em>Markers</em>. The script creates a <code>GraphicsBuffer</code> of <code>float4</code> (count × 16 bytes), fills it with positions and radii, and binds it with <code>Shader.SetGlobalBuffer</code>.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>Position</em> node in <code>Absolute World</code> space (the buffer holds absolute positions).</div></li><li><div>Save <code>Markers.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Markers.hlsl</code> and <em>Name</em> to <code>Markers</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionAWS (Vector 3)</b> and the outputs <b>Mask (Float)</b>, in that order and with those types: they must match the function's parameters. The buffer and count are declared in the file itself, so they need no node inputs.</div></li><li><div>Use <em>Mask</em> to blend in an emissive colour. Move the marker objects: every material using the graph reacts.</div></li><li><div>Release buffers when you are done (<code>OnDisable</code>): GPU memory is not garbage-collected.</div></li></ol>
+<div class="files"><div class="file" data-name="MarkerBuffer.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Uploads marker positions to the GPU every frame as a structured buffer of float4.
+[ExecuteAlways]
+public class MarkerBuffer : MonoBehaviour
+{
+    public Transform[] markers;
+    public float radius = 1f;
+
+    GraphicsBuffer buffer;
+    Vector4[] data = new Vector4[1];
+    static readonly int MarkersId = Shader.PropertyToID(&quot;_Markers&quot;);
+    static readonly int CountId = Shader.PropertyToID(&quot;_MarkerCount&quot;);
+
+    void Update()
+    {
+        int n = markers == null ? 0 : markers.Length;
+        int capacity = Mathf.Max(n, 1);                       // a buffer cannot be empty
+        if (buffer == null || buffer.count != capacity)
+        {
+            buffer?.Release();
+            buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, capacity, sizeof(float) * 4); // stride 16
+            data = new Vector4[capacity];
+        }
+        for (int i = 0; i &lt; n; i++)
+        {
+            Vector3 p = markers[i] != null ? markers[i].position : Vector3.zero;
+            data[i] = new Vector4(p.x, p.y, p.z, radius);
+        }
+        buffer.SetData(data);
+        Shader.SetGlobalBuffer(MarkersId, buffer);
+        Shader.SetGlobalInt(CountId, n);
+    }
+
+    void OnDisable()
+    {
+        buffer?.Release();
+        buffer = null;
+    }
+}</pre></div><div class="file" data-name="Markers.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_MARKERS_INCLUDED
+#define ATLAS_MARKERS_INCLUDED
+
+StructuredBuffer&lt;float4&gt; _Markers;   // xyz = absolute world position, w = radius
+int _MarkerCount;
+
+void Markers_float(float3 PositionAWS, out float Mask)
+{
+    Mask = 0;
+    for (int i = 0; i &lt; _MarkerCount; i++)
+    {
+        float4 m = _Markers[i];
+        float  d = distance(PositionAWS, m.xyz);
+        Mask = max(Mask, 1.0 - smoothstep(m.w * 0.7, m.w, d));
+    }
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>The buffer's C# struct and the HLSL type must match byte for byte: the stride you pass (16 here) is the size of one element. For data the GPU writes itself, see <a class="x" href="../compute-shaders/index.html#implement">Compute Shaders</a>; for an append buffer, create it with <code>GraphicsBuffer.Target.Append</code>, call <code>SetCounterValue(0)</code> each frame, and use <code>GraphicsBuffer.CopyCount</code> to get the count into an arguments buffer for indirect drawing.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical; use <em>Position</em> in <code>World</code> space (URP is not camera-relative). Structured buffers need compute-capable hardware (not WebGL, not some older Android GPUs).</p></div><div class="eng" data-engine="unreal"><p>Materials cannot bind arbitrary structured buffers. Use a small data texture (one texel per marker, written from Blueprint with a Render Target or a texture created in C++), a <em>Material Parameter Collection</em> for a handful of values, or Niagara Data Interfaces for large GPU lists.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

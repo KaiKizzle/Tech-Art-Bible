@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Characters · 6 chapters</div>
+  <div class="eyebrow">Characters · 7 chapters</div>
   <h1>Hair: Strands and Cards</h1>
   <p class="lede">Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.</p>
   <p class="meta">Builds on PBR shading and Transparency. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -104,6 +104,90 @@
   <div class="fx" data-fx="roottip"></div>
   <div class="prose"><p>For direct light, hair needs soft self-shadowing: a single shadow-map depth would make the outer layer shadow everything below completely. Engines estimate how much hair lies between a point and the light (deep opacity maps, or a thickness value from the shadow map) and attenuate exponentially, like <a class="x" href="../skin/index.html#transmission">light through skin</a>.</p></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="hair#shift hair#sorting" data-summary="The HDRP Hair graph&#x27;s inputs mapped to the unit, the two-pass alpha recipe, Kajiya–Kay for custom graphs, and an inside-out triangle sorter.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Hair graph implements the shading of this unit, including both shifted highlights. Most of the setup is the alpha recipe from <a href="#sorting">Alpha, sorting and depth</a>, plus sorting the cards inside the mesh, which the editor script does. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Hair Shader Graph: strand direction, two specular lobes, transmission.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Alpha clipping, transparent depth prepass and postpass.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>KajiyaKay.hlsl: the model for custom and URP graphs.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>HairCardSorter.cs: orders card triangles from the inside out.</span></div></div>
+<ol class="impl-steps"><li><div><em>Create &gt; Shader Graph &gt; HDRP &gt; Hair Shader Graph</em>. Material type <code>Approximate</code> is the Kajiya–Kay model of this unit; <code>Physical</code> (Marschner, in recent versions) is more accurate and more expensive.</div></li><li><div>Inputs: <em>Base Color</em> (root-to-tip gradient from the <a href="#variation">variation chapter</a>), <em>Hair Strand Direction</em> (tangent space, default (0, −1, 0): down the card's V axis; feed a flow map decoded as (r·2 − 1, g·2 − 1, 0) for curls), <em>Specular Tint</em> and <em>Specular Shift</em> (R), <em>Secondary Specular Tint</em> and <em>Secondary Specular Shift</em> (TRT), <em>Smoothness</em> and <em>Secondary Smoothness</em>, <em>Transmittance</em> and <em>Rim Transmission Intensity</em> (TT).</div></li><li><div>Alpha: tick <em>Alpha Clipping</em> for the opaque core. For soft ends, set <em>Surface Type</em> to <code>Transparent</code> with <em>Transparent Depth Prepass</em> and <em>Postpass</em>, which add the <em>Alpha Clip Threshold Depth Prepass/Postpass</em> blocks (0.8 and 0.2 are good starts). With TAA, dithered alpha is a cheaper alternative (<a class="x" href="../transparency/index.html#implement">Dither.hlsl</a>).</div></li><li><div>Put <code>HairCardSorter.cs</code> in an Editor folder, select the hair object and run <em>Tools &gt; Atlas &gt; Sort Hair Cards Inside Out</em>. GPUs draw the triangles of one draw call in index order, so inner cards now blend under outer ones.</div></li><li><div>For URP or a custom look, use <code>KajiyaKay.hlsl</code>. In an Unlit graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>KajiyaKay.hlsl</code> and <em>Name</em> to <code>KajiyaKay</code> (without the <code>_float</code> suffix). Add the inputs <b>TangentWS (Vector 3), NormalWS (Vector 3), ViewDir (Vector 3), LightDir (Vector 3), Shift1 (Float), Shift2 (Float), Exp1 (Float), Exp2 (Float), Noise (Float)</b> and the outputs <b>Diffuse (Float), Spec1 (Float), Spec2 (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li></ol>
+<div class="files"><div class="file" data-name="KajiyaKay.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_KAJIYA_KAY_INCLUDED
+#define ATLAS_KAJIYA_KAY_INCLUDED
+
+float StrandSpecular(float3 T, float3 H, float exponent)
+{
+    float TdotH = dot(T, H);
+    float sinTH = sqrt(saturate(1.0 - TdotH * TdotH));
+    return smoothstep(-1.0, 0.0, TdotH) * pow(sinTH, exponent);
+}
+
+// T: strand direction in world space. Noise (0..1, per strand) varies the shift.
+void KajiyaKay_float(float3 TangentWS, float3 NormalWS, float3 ViewDir, float3 LightDir,
+                     float Shift1, float Shift2, float Exp1, float Exp2, float Noise,
+                     out float Diffuse, out float Spec1, out float Spec2)
+{
+    float3 T = normalize(TangentWS), N = normalize(NormalWS), L = normalize(LightDir);
+    float3 H = normalize(L + normalize(ViewDir));
+    float TdotL = dot(T, L);
+    Diffuse = sqrt(saturate(1.0 - TdotL * TdotL)) * saturate(dot(N, L) * 0.5 + 0.5);   // sin(T, L), softened
+
+    float n = Noise - 0.5;
+    float3 T1 = normalize(T + N * (Shift1 + n * 0.3));      // primary (R): white, sharp
+    float3 T2 = normalize(T + N * (Shift2 + n * 0.3));      // secondary (TRT): tinted, wider
+    Spec1 = StrandSpecular(T1, H, Exp1);
+    Spec2 = StrandSpecular(T2, H, Exp2);
+}
+
+#endif</pre></div><div class="file" data-name="HairCardSorter.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+// Reorders the triangles of the selected hair mesh from the centre outward, so inner cards draw first.
+// Uses the mesh&#x27;s bounds centre as the head centre; move it with &quot;pivotOffset&quot; if the head is offset.
+public static class HairCardSorter
+{
+    static readonly Vector3 pivotOffset = Vector3.zero;
+
+    [MenuItem(&quot;Tools/Atlas/Sort Hair Cards Inside Out&quot;)]
+    static void Sort()
+    {
+        GameObject go = Selection.activeGameObject;
+        if (go == null) return;
+        var smr = go.GetComponent&lt;SkinnedMeshRenderer&gt;();
+        var mf = go.GetComponent&lt;MeshFilter&gt;();
+        Mesh src = smr != null ? smr.sharedMesh : mf != null ? mf.sharedMesh : null;
+        if (src == null) { Debug.LogWarning(&quot;Select an object with a mesh&quot;); return; }
+
+        Mesh m = Object.Instantiate(src);
+        m.name = src.name + &quot;_Sorted&quot;;
+        Vector3[] v = m.vertices;
+        Vector3 pivot = m.bounds.center + pivotOffset;
+
+        for (int s = 0; s &lt; m.subMeshCount; s++)
+        {
+            int[] t = m.GetTriangles(s);
+            int[] order = Enumerable.Range(0, t.Length / 3)
+                .OrderBy(i =&gt; ((v[t[3 * i]] + v[t[3 * i + 1]] + v[t[3 * i + 2]]) / 3f - pivot).sqrMagnitude)
+                .ToArray();
+            var sorted = new int[t.Length];
+            for (int k = 0; k &lt; order.Length; k++)
+            {
+                sorted[3 * k] = t[3 * order[k]];
+                sorted[3 * k + 1] = t[3 * order[k] + 1];
+                sorted[3 * k + 2] = t[3 * order[k] + 2];
+            }
+            m.SetTriangles(sorted, s);
+        }
+
+        string path = AssetDatabase.GenerateUniqueAssetPath(&quot;Assets/&quot; + m.name + &quot;.asset&quot;);
+        AssetDatabase.CreateAsset(m, path);
+        if (smr != null) smr.sharedMesh = m; else mf.sharedMesh = m;
+        Debug.Log(&quot;Saved &quot; + path);
+    }
+}
+#endif</pre></div></div>
+<div class="prose"><p>Combine the KajiyaKay outputs as Base × Diffuse × light + Spec1 × light colour + Spec2 × base colour × light, with T from the card's tangent (Transform node: Tangent → World of (0, 1, 0)) or a flow map. Amplify Shader Editor: paste the function body into a <em>Custom Expression</em> node (mode <em>Call</em> with the file included, or <em>Create</em> with the code inline); inputs and outputs map the same way.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP has no hair shader: use the KajiyaKay function with <code>GetMainLight()</code>, Alpha Clipping for the core, and optionally a second, transparent material on a duplicate of the mesh for the soft ends.</p></div><div class="eng" data-engine="unreal"><p>Cards: a material with <em>Shading Model: Hair</em> and <em>Blend Mode: Masked</em> (with <em>Dither Opacity Mask</em> for soft ends). Strands: the <em>Groom</em> system (Alembic import), rendered with its own rasterizer and deep shadows.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

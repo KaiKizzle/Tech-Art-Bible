@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <div class="eyebrow">Lighting & GI · 8 chapters</div>
   <h1>Light Types and Falloff</h1>
   <p class="lede">Point, spot, sun and area lights each follow a few lines of maths: how light fades with distance, fills a cone, softens shadows and adds up across a scene.</p>
   <p class="meta">Builds on Sun to Screen. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -102,6 +102,89 @@
   <div class="prose"><p>Small ranges are the cheapest optimisation: halve every light's range and each covers a quarter of the screen. Shadowed lights cost far more again (<a class="x" href="../shadow-maps/index.html#cost">shadow passes</a>).</p></div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP uses tiled and clustered light lists for all lights; the <em>Light Loop</em> debug views show how many lights touch each tile. Max lights per screen are set in the HDRP asset.</p></div><div class="eng" data-engine="urp"><p>URP <em>Forward+</em> removes the per-object light limit by using clustered lists; the older <em>Forward</em> path allows a few additional lights per object. <em>Deferred</em> renders each light's volume.</p></div><div class="eng" data-engine="unreal"><p>Deferred shading with tiled culling by default. The <em>Light Complexity</em> view mode shows how many lights affect each pixel; <em>Attenuation Radius</em> is the range.</p></div></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="light-types#point light-types#spot" data-summary="Light types, units, ranges, angles and IES profiles on the Light component, and a C# + HLSL route for custom lighting with the unit&#x27;s formulas.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Every light type of this unit is a setting on HDRP's Light component. For custom lighting in Unlit graphs (stylised characters, VFX), the files send a few lights to your shader and evaluate the unit's falloff and cone formulas there. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Light type, shape, units, range, angles, IES profiles.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>CustomLightsToShader.cs: up to 8 lights as global arrays.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>PunctualLights.hlsl: windowed falloff and spot cone.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit graph that adds the lights.</span></div></div>
+<ol class="impl-steps"><li><div><b>Light component</b>: <em>Type</em> Point, Spot (Shape Cone, Pyramid or Box), Directional or Area (Rectangle, Tube, Disc). Units per type: Lumen, Candela, Lux, Nits or EV100. <em>Range</em> is the r of the windowed falloff.</div></li><li><div>Spot lights: <em>Outer Angle</em> and <em>Inner Angle (%)</em> give the cone of <a href="#spot">spot lights</a>. Tick <em>Reflector</em> to keep the lumens constant when you change the angle (the formula in <a href="#spot-units">lumens to candela</a>).</div></li><li><div>IES: drag an <code>.ies</code> file into the project; it imports as an IES profile. Assign it in the light's <em>Emission &gt; IES Profile</em> slot.</div></li><li><div>Area lights are real-time for Rectangle and Tube; Disc is baked only. Check light counts with the Rendering Debugger (<em>Lighting &gt; Tile/Cluster Debug</em>), which colours tiles by how many lights touch them.</div></li><li><div><b>Custom lighting</b>: add <code>CustomLightsToShader.cs</code> to any object and list point or spot lights. In an Unlit graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>PunctualLights.hlsl</code> and <em>Name</em> to <code>PunctualLights</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionAWS (Vector 3), NormalWS (Vector 3), Albedo (Vector 3)</b> and the outputs <b>Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Position: <em>Position</em> node in <code>Absolute World</code>.</div></li></ol>
+<div class="files"><div class="file" data-name="PunctualLights.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_PUNCTUAL_LIGHTS_INCLUDED
+#define ATLAS_PUNCTUAL_LIGHTS_INCLUDED
+
+#define ATLAS_MAX_LIGHTS 8
+float4 _AtlasLightPos[ATLAS_MAX_LIGHTS];    // xyz absolute world position, w range
+float4 _AtlasLightColor[ATLAS_MAX_LIGHTS];  // rgb colour x brightness
+float4 _AtlasLightDir[ATLAS_MAX_LIGHTS];    // xyz direction the spot points, w = 1 for spot lights
+float4 _AtlasLightCone[ATLAS_MAX_LIGHTS];   // x cos(outer / 2), y cos(inner / 2)
+int    _AtlasLightCount;
+
+void PunctualLights_float(float3 PositionAWS, float3 NormalWS, float3 Albedo, out float3 Color)
+{
+    float3 N = normalize(NormalWS);
+    Color = 0;
+    for (int i = 0; i &lt; min(_AtlasLightCount, ATLAS_MAX_LIGHTS); i++)
+    {
+        float3 toLight = _AtlasLightPos[i].xyz - PositionAWS;
+        float  d = length(toLight);
+        float3 L = toLight / max(d, 1e-4);
+        float  r = max(_AtlasLightPos[i].w, 1e-3);
+
+        float window = saturate(1.0 - pow(d / r, 4.0));
+        float falloff = window * window / (d * d + 1.0);          // physical near, exactly 0 at the range
+
+        float cone = 1.0;
+        if (_AtlasLightDir[i].w &gt; 0.5)
+        {
+            float c = dot(-L, _AtlasLightDir[i].xyz);
+            cone = saturate((c - _AtlasLightCone[i].x) / max(_AtlasLightCone[i].y - _AtlasLightCone[i].x, 1e-4));
+            cone *= cone;
+        }
+        Color += Albedo * _AtlasLightColor[i].rgb * saturate(dot(N, L)) * falloff * cone;
+    }
+}
+
+#endif</pre></div><div class="file" data-name="CustomLightsToShader.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Sends up to 8 point or spot lights to shaders as global arrays, for custom lighting in Unlit graphs.
+[ExecuteAlways]
+public class CustomLightsToShader : MonoBehaviour
+{
+    public Light[] lights;
+    public float brightness = 4f;            // unitless: Unlit output is not exposed by HDRP
+    const int Max = 8;
+
+    readonly Vector4[] pos = new Vector4[Max], color = new Vector4[Max], dir = new Vector4[Max], cone = new Vector4[Max];
+    static readonly int PosId = Shader.PropertyToID(&quot;_AtlasLightPos&quot;), ColorId = Shader.PropertyToID(&quot;_AtlasLightColor&quot;),
+                        DirId = Shader.PropertyToID(&quot;_AtlasLightDir&quot;), ConeId = Shader.PropertyToID(&quot;_AtlasLightCone&quot;),
+                        CountId = Shader.PropertyToID(&quot;_AtlasLightCount&quot;);
+
+    void Update()
+    {
+        int n = 0;
+        if (lights != null)
+            foreach (Light l in lights)
+            {
+                if (l == null || !l.isActiveAndEnabled || n == Max) continue;
+                if (l.type != LightType.Point &amp;&amp; l.type != LightType.Spot) continue;
+                Vector3 p = l.transform.position;
+                pos[n] = new Vector4(p.x, p.y, p.z, l.range);
+                Color c = l.color.linear * brightness;
+                color[n] = new Vector4(c.r, c.g, c.b, 1f);
+                bool spot = l.type == LightType.Spot;
+                Vector3 f = l.transform.forward;
+                dir[n] = new Vector4(f.x, f.y, f.z, spot ? 1f : 0f);
+                cone[n] = new Vector4(Mathf.Cos(l.spotAngle * 0.5f * Mathf.Deg2Rad), Mathf.Cos(l.innerSpotAngle * 0.5f * Mathf.Deg2Rad), 0, 0);
+                n++;
+            }
+        Shader.SetGlobalVectorArray(PosId, pos);
+        Shader.SetGlobalVectorArray(ColorId, color);
+        Shader.SetGlobalVectorArray(DirId, dir);
+        Shader.SetGlobalVectorArray(ConeId, cone);
+        Shader.SetGlobalInt(CountId, n);
+    }
+}</pre></div></div>
+<div class="prose"><p>The arrays always have 8 entries, because the size of a global array is fixed the first time it is set. HDRP's own lights are clustered on the GPU and have no such limit; use this only where you need full control of the response.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP lights use Unity's classic intensity (unitless) and range; Forward+ in Unity 6 removes the per-object light limit. In custom URP graphs, loop over <code>GetAdditionalLightsCount()</code> and <code>GetAdditionalLight(i, positionWS)</code> instead of the C# script.</p></div><div class="eng" data-engine="unreal"><p>Point, Spot, Rect and Directional lights with units of candela, lumens or lux and an <em>Attenuation Radius</em>; <em>Use Inverse Squared Falloff</em> off gives a softer artistic falloff. IES files import as <em>Texture Light Profiles</em> and go into the light's <em>IES Texture</em>.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

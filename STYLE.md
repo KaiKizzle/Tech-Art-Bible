@@ -31,7 +31,7 @@ for example the interior-mapped facade, or a split view of the lit image and its
 
 - Display: Archivo, 700–800. Body: Source Sans 3 at 18 px. Code and numbers in labs: JetBrains Mono.
 - All fonts are self-hosted in `assets/fonts/` (SIL Open Font License). Do not link Google Fonts or any other font CDN.
-- Colors are tokens in `assets/atlas.css`. Category colors: blue shaders, amber lighting, green textures, pink performance.
+- Colors are tokens in `assets/atlas.css`. Category colors: blue shaders, amber lighting, green textures, orange characters, pink performance.
 - Dark is the default theme; light is an explicit choice of the reader. Draw lab canvases with `Atlas.col('token')`
   so they follow both.
 
@@ -44,4 +44,11 @@ Plain, direct sentences. Name things by what readers know from their engine. No 
 - Every formula is a live `Atlas.fx` widget: each symbol a slider, with a picture of what it computes and a graph.
   Show the substituted numbers, and intermediate steps when there are several.
 - Checks are optional panels between lessons, a few questions each, with an explanation for every answer.
+- Every unit has a final **"Build it in Unity HDRP"** chapter (`id="implement"`, class `chapter impl`), placed before the sources:
+  which tools it needs (Shader Graph, HLSL Custom Function file, C# script, compute shader, Custom Pass, settings),
+  numbered steps that name the exact menus and node settings, and complete, copyable files in a `.files` tab box
+  (`<div class="file" data-name="Name.hlsl" data-lang="hlsl"><pre>…</pre></div>`; languages `hlsl`, `cs`, `py`).
+  Add URP and Unreal notes in an `.engines` box labelled "Other pipelines". Prefer compute when the work is a simulation,
+  a reduction or data generation, and say so. Code must compile as written: guard HDRP-only calls with
+  `#ifdef SHADERGRAPH_PREVIEW` for node previews, release GPU buffers in `OnDisable`.
 - Every unit ends with sources and a glossary.

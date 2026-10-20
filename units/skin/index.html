@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Characters · 7 chapters</div>
+  <div class="eyebrow">Characters · 8 chapters</div>
   <h1>Skin: Light Under the Surface</h1>
   <p class="lede">Skin glows because light travels under it before it comes back out. This unit builds the techniques games use for that, from a one-line wrap to diffusion profiles, pre-integration and light through ears, plus the two-lobe specular on top.</p>
   <p class="meta">Builds on Inside a PBR Shader. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -102,6 +102,116 @@
   <div class="fx" data-fx="dualspec"></div>
   <div class="prose"><p>Pore detail lives in a tiling micro-normal map blended over the main normal map (<a class="x" href="../fabric-folds/index.html#baked">blending normals</a>), faded with distance like any <a class="x" href="../mapping/index.html#detail">detail map</a>.</p></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="skin#screen-space skin#preintegrated" data-summary="Diffusion Profile + Subsurface Scattering material type, StackLit dual specular, and a compute-baked pre-integrated LUT with its lookup function.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP has screen-space subsurface scattering built in: a Diffusion Profile asset and a material type. The files add what HDRP does not ship: a compute shader that bakes the pre-integrated skin lookup texture from this unit's profile, and the function that uses it, for URP, mobile or stylised characters. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="asset"><b>Asset</b><span>A Diffusion Profile, registered in the HDRP Global Settings.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Lit graph with Material Type Subsurface Scattering (StackLit for two specular lobes).</span></div><div class="rt" data-k="compute"><b>Compute shader</b><span>SkinLUT.compute: integrates the profile around a circle.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>SkinLUTBaker.cs: dispatches it and saves the LUT.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>PreintegratedSkin.hlsl: curvature and LUT lookup.</span></div></div>
+<ol class="impl-steps"><li><div><b>Profile:</b> <em>Create &gt; Rendering &gt; HDRP Diffusion Profile</em>. <em>Scattering Distance</em> is the per-colour reach of <a href="#profile">the diffusion profile</a> (reddish, around 1–2 mm × the multiplier); <em>World Scale</em> is metres per unit; the <em>Transmission</em> section sets the tint and thickness remap for ears.</div></li><li><div>Register it: <em>Project Settings &gt; Graphics &gt; HDRP Global Settings &gt; Diffusion Profile List</em> (or a <em>Diffusion Profile List</em> override in a Volume). A profile that is not listed renders as plain Lit.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em> and set <em>Material Type</em> to <code>Subsurface Scattering</code>, with <em>Transmission</em> ticked.</div></li><li><div>Blocks: <em>Diffusion Profile</em> (a Diffusion Profile property), <em>Subsurface Mask</em> (1 for skin, 0 for lips, nails or eyebrows), <em>Thickness</em> (the <a href="#transmission">thickness map</a>, sRGB off). The screen-space blur of <a href="#screen-space">this chapter</a> then runs automatically.</div></li><li><div><b>Two specular lobes:</b> use a <em>StackLit</em> graph (<em>Create &gt; Shader Graph &gt; HDRP &gt; StackLit Shader Graph</em>), enable <em>Dual Specular Lobe</em> and set the two smoothness values and the lobe mix. A cavity map goes into <em>Specular Occlusion</em> (Lit: Specular Occlusion Mode <code>Custom</code>).</div></li><li><div><b>Pre-integrated alternative:</b> create the compute shader <code>SkinLUT</code>, put <code>SkinLUTBaker.cs</code> in an Editor folder and run <em>Tools &gt; Atlas &gt; Bake Skin LUT</em>. It saves <code>Assets/SkinLUT.png</code> (sRGB off, clamp). In an Unlit (or URP) graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>PreintegratedSkin.hlsl</code> and <em>Name</em> to <code>PreintegratedSkin</code> (without the <code>_float</code> suffix). Add the inputs <b>LUT (Texture2D), SS (SamplerState), NormalWS (Vector 3), PositionWS (Vector 3), LightDir (Vector 3), CurvatureScale (Float)</b> and the outputs <b>Diffuse (Vector 3), Curvature (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li></ol>
+<div class="files"><div class="file" data-name="SkinLUT.compute" data-lang="hlsl"><pre>#pragma kernel Bake
+#define PI_ 3.14159265
+
+// x: N.L from -1 to 1. y: curvature 1/r from 0 to _MaxCurvature (1/mm).
+// Each texel integrates the diffusion profile around a circle of radius r.
+RWTexture2D&lt;float4&gt; _LUT;
+uint2 _Size;
+float _MaxCurvature;      // 1/mm at the top row, e.g. 0.5 (r = 2 mm)
+float _ProfileScale;      // widens the measured profile (1 = as measured)
+
+static const float  VAR[6] = { 0.0064, 0.0484, 0.187, 0.567, 1.99, 7.41 };   // mm^2 (d&#x27;Eon and Luebke)
+static const float3 W[6]   = { float3(0.233, 0.455, 0.649), float3(0.100, 0.336, 0.344), float3(0.118, 0.198, 0.0),
+                               float3(0.113, 0.007, 0.007), float3(0.358, 0.004, 0.0),   float3(0.078, 0.0, 0.0) };
+
+float3 Profile(float d)   // d in mm
+{
+    float3 r = 0;
+    [unroll] for (int i = 0; i &lt; 6; i++) { float v = VAR[i] * _ProfileScale * _ProfileScale; r += W[i] * exp(-d * d / (2 * v)) / (2 * PI_ * v); }
+    return r;
+}
+
+[numthreads(8, 8, 1)]
+void Bake(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy &gt;= _Size)) return;
+    float2 uv = (id.xy + 0.5) / _Size;
+    float NdotL = uv.x * 2 - 1;
+    float theta = acos(NdotL);
+    float curv = max(uv.y * _MaxCurvature, 1e-4);
+    float radius = 1.0 / curv;                       // mm
+
+    float3 num = 0, den = 0;
+    const int N = 256;
+    for (int i = 0; i &lt; N; i++)
+    {
+        float x = -PI_ + (i + 0.5) * (2 * PI_ / N);  // angle around the circle
+        float3 p = Profile(abs(2 * radius * sin(x * 0.5)));
+        num += saturate(cos(theta + x)) * p;
+        den += p;
+    }
+    _LUT[id.xy] = float4(num / den, 1);
+}</pre></div><div class="file" data-name="SkinLUTBaker.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+// Bakes the pre-integrated skin LUT with SkinLUT.compute and saves it as Assets/SkinLUT.png.
+public static class SkinLUTBaker
+{
+    [MenuItem(&quot;Tools/Atlas/Bake Skin LUT&quot;)]
+    static void Bake()
+    {
+        string[] g = AssetDatabase.FindAssets(&quot;SkinLUT t:ComputeShader&quot;);
+        if (g.Length == 0) { Debug.LogError(&quot;SkinLUT.compute not found&quot;); return; }
+        var cs = AssetDatabase.LoadAssetAtPath&lt;ComputeShader&gt;(AssetDatabase.GUIDToAssetPath(g[0]));
+
+        const int size = 256;
+        var rt = new RenderTexture(size, size, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear) { enableRandomWrite = true };
+        rt.Create();
+        int k = cs.FindKernel(&quot;Bake&quot;);
+        cs.SetTexture(k, &quot;_LUT&quot;, rt);
+        cs.SetInts(&quot;_Size&quot;, size, size);
+        cs.SetFloat(&quot;_MaxCurvature&quot;, 0.5f);    // 1/mm: the top row is a 2 mm radius
+        cs.SetFloat(&quot;_ProfileScale&quot;, 3f);      // wider than measured, as most productions use
+        cs.Dispatch(k, size / 8, size / 8, 1);
+
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false, true);
+        tex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+        rt.Release();
+
+        const string path = &quot;Assets/SkinLUT.png&quot;;
+        File.WriteAllBytes(path, tex.EncodeToPNG());
+        Object.DestroyImmediate(tex);
+        AssetDatabase.ImportAsset(path);
+        var ti = (TextureImporter)AssetImporter.GetAtPath(path);
+        ti.sRGBTexture = false;
+        ti.wrapMode = TextureWrapMode.Clamp;
+        ti.mipmapEnabled = false;
+        ti.SaveAndReimport();
+        Debug.Log(&quot;Saved &quot; + path);
+    }
+}
+#endif</pre></div><div class="file" data-name="PreintegratedSkin.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_PREINTEGRATED_SKIN_INCLUDED
+#define ATLAS_PREINTEGRATED_SKIN_INCLUDED
+
+// Curvature from screen derivatives: how fast the normal turns per metre (1/m).
+// A baked curvature map is steadier; this is the no-extra-texture version.
+// CurvatureScale converts 1/m to the LUT&#x27;s 0..1 range: 0.001 / _MaxCurvature (0.5 /mm) = 0.002.
+void PreintegratedSkin_float(UnityTexture2D LUT, UnitySamplerState SS, float3 NormalWS, float3 PositionWS,
+                             float3 LightDir, float CurvatureScale, out float3 Diffuse, out float Curvature)
+{
+    float3 N = normalize(NormalWS);
+    Curvature = saturate(length(fwidth(N)) / max(length(fwidth(PositionWS)), 1e-6) * CurvatureScale);
+    float NdotL = dot(N, normalize(LightDir));
+    Diffuse = SAMPLE_TEXTURE2D_LOD(LUT.tex, SS.samplerstate, float2(NdotL * 0.5 + 0.5, Curvature), 0).rgb;
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>Multiply <em>Diffuse</em> by the albedo and the light colour, and add specular separately: the LUT replaces only the diffuse N·L.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP has no screen-space SSS. Use the pre-integrated LUT above, or wrap lighting with a per-channel wrap (<a href="#wrap">the cheapest trick</a>), plus the thickness-based transmission term, in a Custom Function with <code>GetMainLight()</code>.</p></div><div class="eng" data-engine="unreal"><p><em>Shading Model: Subsurface Profile</em> with a <em>Subsurface Profile</em> asset (scatter radius, falloff colour, transmission, dual specular roughness and mix). <em>Preintegrated Skin</em> is a separate, cheaper shading model for lower-end targets.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

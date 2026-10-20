@@ -42,7 +42,7 @@ figure.lab{margin-left:0;margin-right:0}
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · Unity HDRP · 14 chapters</div>
+  <div class="eyebrow">Shaders & rendering · Unity HDRP · 15 chapters</div>
   <h1>Rooms Behind Glass</h1>
   <p class="lede">Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.</p>
   <p class="meta">Built for Unity HDRP; the maths transfers to URP and Unreal unchanged. Builds on the Foundations units for vectors, spaces, rays and textures.</p>
@@ -526,6 +526,144 @@ figure.lab{margin-left:0;margin-right:0}
 <section class="chapter" id="numbers" data-title="Every number, explained" data-ref>
   <div class="head"><div class="num"></div><h2>Every number, explained</h2></div>
   <div class="tablewrap"><table class="vals"><thead><tr><th>Value</th><th>Default</th><th>Why</th></tr></thead><tbody><tr><td class="k">backWallFrac b</td><td class="m">0.5</td><td>Back wall gets 25 % of the cell and side walls a 4:1 sharpness falloff. Lower starves the back wall, higher crushes the side walls into slivers. Must match the renders exactly.</td></tr><tr><td class="k">k</td><td class="m">1</td><td>Follows from b: 1/b − 1. The render camera stood one room depth in front of the glass.</td></tr><tr><td class="k">Render FOV</td><td class="m">53° for 4 × 4 m</td><td>2·atan((W/2)/c) with c = 4 m. The opening must exactly fill the frame.</td></tr><tr><td class="k">Render lens</td><td class="m">36 mm on 36 mm sensor</td><td>36·c/W with c = W = 4 m. Other room shapes give other lenses; b stays the same.</td></tr><tr><td class="k">Epsilon</td><td class="m">1e-5</td><td>1/1e-5 = 100 000 is finite in 32-bit float and far larger than any real t, yet too small to bend a real direction.</td></tr><tr><td class="k">DepthJitter</td><td class="m">0.2</td><td>Corners stay fixed whatever the depth, side-wall content stretches. Past about ±20 % the stretch shows on furniture.</td></tr><tr><td class="k">Room sizes</td><td class="m">3–6 m × 3–4.2 m × 3–6.5 m</td><td>Real meters, because the view direction is divided by them. Ground floors and shops are taller and deeper.</td></tr><tr><td class="k">Storey heights</td><td class="m">4.2 m ground, 3.2 m upper</td><td>Typical floor-to-floor heights including the slab. Use what the building has.</td></tr><tr><td class="k">Curtain depth z_c</td><td class="m">0.05–0.1</td><td>20 to 40 cm in a 4 m room: enough parallax against the frame without looking detached.</td></tr><tr><td class="k">Midground card</td><td class="m">z ≈ 0.4</td><td>Far enough from the back wall for strong parallax, in front of most wall furniture.</td></tr><tr><td class="k">Depth darkening</td><td class="m">lerp(1, 0.6, z)</td><td>A cheap falloff of window light. 0.6 keeps the back wall readable.</td></tr><tr><td class="k">F0</td><td class="m">0.04</td><td>((1 − 1.5)/(1 + 1.5))² for air to glass.</td></tr><tr><td class="k">Schlick exponent</td><td class="m">5</td><td>Schlick's fit to the exact Fresnel equations. Invisible difference for glass, far cheaper.</td></tr><tr><td class="k">Glass base color</td><td class="m">≈ 0.02</td><td>Glass has almost no diffuse reflection. The interior lives in Emission.</td></tr><tr><td class="k">Glass smoothness</td><td class="m">0.9–0.95</td><td>Clean glass reflects sharply. The dirt map on UV0 lowers it locally.</td></tr><tr><td class="k">Daylight interior</td><td class="m">100–300 nits</td><td>Starting point. At noon (EV ≈ 14) this sits far below a sunlit facade, like real windows do.</td></tr><tr><td class="k">Lamp-lit room</td><td class="m">+20–80 nits</td><td>Starting point so lit rooms glow at night (EV ≈ 5–6) without clipping.</td></tr><tr><td class="k">Exposure weight</td><td class="m">1</td><td>Emission is exposed like every other light, so day and night need no retuning.</td></tr><tr><td class="k">Hash constants</td><td class="m">12.9898, 78.233, 43758.5453</td><td>Folklore from early shader code. Any large irregular numbers work. Keep the sine argument moderate for float precision.</td></tr><tr><td class="k">Hash multipliers</td><td class="m">17, 31, 47, 59, 71, 83, 97</td><td>Different primes per property decorrelate everything derived from one seed.</td></tr><tr><td class="k">LitChance</td><td class="m">0 → ~0.6 at dusk</td><td>Rooms with hLit below it are lit. Animating it switches rooms on in a fixed order.</td></tr><tr><td class="k">CurtainChance</td><td class="m">≈ 0.55</td><td>Share of rooms with a curtain. Each then picks one of four states from hState.</td></tr><tr><td class="k">Half-texel inset</td><td class="m">0.5 / cell size</td><td>Bilinear filtering reads one texel past the sample. The inset keeps it inside the cell.</td></tr><tr><td class="k">Atlas grid</td><td class="m">4 × 3 here</td><td>Columns are variants picked by hCell, rows are room types picked by vertex color.</td></tr><tr><td class="k">Room type encoding</td><td class="m">type / 15</td><td>Sixteen types fit an 8-bit vertex color with an exact round trip. Decode with round(r · 15).</td></tr><tr><td class="k">Window frame</td><td class="m">6 cm</td><td>Visual only. Frames hide the hard edge where the interior starts.</td></tr><tr><td class="k">LOD distance</td><td class="m">50–100 m</td><td>Past that, side walls are a few pixels wide and LOD1 looks the same.</td></tr><tr><td class="k">PLANE_TOL</td><td class="m">0.6 m</td><td>Blender script: glass may sit this far from its room plane, for recessed windows.</td></tr><tr><td class="k">EDGE_TOL</td><td class="m">0.01 m</td><td>Blender script: slack for glass that touches a room edge.</td></tr></tbody></table></div>
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="interior-mapping#picture interior-mapping#mips" data-summary="InteriorMapping.hlsl as one Custom Function, wired to UV1–UV3 and vertex colour, with an editor baker for room data.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The complete shader as one Custom Function file, a Lit graph that wires it to the mesh data, and an editor helper that writes room data into the UV channels of a simple facade. Names follow the unit: RoomUV in UV1, RoomWH in UV2, RoomDS in UV3, room type in vertex colour red. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="hlsl"><b>HLSL file</b><span>InteriorMapping.hlsl: room space, unit box, wall, picture, variation, gradients.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph: interior into Emission, glass as an opaque, glossy surface.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>FacadeRooms.cs: bakes room data into UV1–UV3 and colours.</span></div><div class="rt" data-k="asset"><b>Asset</b><span>A room atlas: columns are variants, rows are room types, rendered at one b.</span></div></div>
+<ol class="impl-steps"><li><div>Render or paint the atlas: cells in a grid (for example 4 columns × 4 rows), each a one-point-perspective room rendered with the back wall filling the fraction <code>b</code> of the cell (0.5). Import it as a colour texture with mipmaps.</div></li><li><div>Prepare the facade mesh: every glass quad needs RoomUV, RoomWH, RoomDS and the room type, as in <a href="#rooms">Rooms, not windows</a>. Author them in your DCC, or add <code>FacadeRooms.cs</code> to the facade object and use <em>Bake room data</em> from its context menu (it assumes separate glass quads on a flat, axis-aligned facade).</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add <em>UV</em> nodes for channels <code>UV1</code>, <code>UV2</code> and <code>UV3</code>, a <em>Vertex Color</em> node, <em>Position</em> (World), <em>Normal Vector</em> (World) and <em>View Direction</em> (World).</div></li><li><div>Save <code>InteriorMapping.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>InteriorMapping.hlsl</code> and <em>Name</em> to <code>InteriorMapping</code> (without the <code>_float</code> suffix). Add the inputs <b>Atlas (Texture2D), SS (SamplerState), PositionWS (Vector 3), NormalWS (Vector 3), ViewDirWS (Vector 3), RoomUV (Vector 2), RoomWH (Vector 2), RoomDS (Vector 2), RoomType (Float), AtlasGrid (Vector 2), BackWallFrac (Float), LitChance (Float)</b> and the outputs <b>Interior (Vector 3), Lit (Float), Transmission (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect RoomUV = UV1.xy, RoomWH = UV2.xy, RoomDS = UV3.xy, RoomType = Vertex Color R × 15 (rounded). Interior × lerp(darkness, 1, Lit) × Transmission goes into an <em>Emission</em> node (Intensity Unit <code>Nits</code>, about 150; Exposure Weight 1), then into <em>Emission</em>.</div></li><li><div>Glass: Base Color near black (0.02), Smoothness 0.95, Metallic 0. Reflections come from HDRP's reflection probes and SSR, so the material stays <em>opaque</em>.</div></li></ol>
+<div class="files"><div class="file" data-name="InteriorMapping.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_INTERIOR_MAPPING_INCLUDED
+#define ATLAS_INTERIOR_MAPPING_INCLUDED
+
+float AtlasHash(float n) { return frac(sin(n * 12.9898 + 78.233) * 43758.5453); }
+
+// RoomUV: position inside the room rectangle (0..1). RoomWH: width, height in metres.
+// RoomDS: depth in metres, random seed. RoomType: atlas row. AtlasGrid: (columns, rows).
+// BackWallFrac: b, the size of the back wall in every atlas cell.
+void InteriorMapping_float(UnityTexture2D Atlas, UnitySamplerState SS,
+    float3 PositionWS, float3 NormalWS, float3 ViewDirWS,
+    float2 RoomUV, float2 RoomWH, float2 RoomDS, float RoomType,
+    float2 AtlasGrid, float BackWallFrac, float LitChance,
+    out float3 Interior, out float Lit, out float Transmission)
+{
+    // room space: T across the facade, B up, N out to the street
+    float3 N = normalize(NormalWS);
+    float3 T = normalize(cross(N, float3(0, 1, 0)));
+    float3 B = cross(T, N);
+    float3 V = -normalize(ViewDirWS);                        // camera to glass
+    float3 vTS = float3(dot(V, T), dot(V, B), dot(V, N));    // z &lt; 0 for visible glass
+
+    // the unit box: x, y in -1..1, z from 0 (glass) to 1 (back wall)
+    float W = max(RoomWH.x, 0.01), H = max(RoomWH.y, 0.01), D = max(RoomDS.x, 0.01);
+    float3 o = float3(RoomUV * 2.0 - 1.0, 0.0);
+    float3 d = float3(vTS.x / (W * 0.5), vTS.y / (H * 0.5), -vTS.z / D);
+    d = (abs(d) &lt; 1e-5) ? 1e-5 : d;                          // avoid 0 * infinity
+
+    // the wall: smallest t of the three planes the ray moves toward
+    float3 inv = 1.0 / d;
+    float tx = abs(inv.x) - o.x * inv.x;
+    float ty = abs(inv.y) - o.y * inv.y;
+    float tz = inv.z;
+    float t = min(min(tx, ty), tz);
+    float3 hit = o + t * d;
+
+    // into the picture: perspective of the render camera, set by b
+    float b = clamp(BackWallFrac, 0.05, 0.95);
+    float k = 1.0 / b - 1.0;
+    float s = 1.0 / (1.0 + hit.z * k);
+    float2 cellUV = hit.xy * s * 0.5 + 0.5;
+
+    // variation from one seed
+    float seed = RoomDS.y;
+    float hCell = AtlasHash(seed * 17.0 + 1.0);
+    float hFlip = AtlasHash(seed * 31.0 + 2.0);
+    float hLit  = AtlasHash(seed * 47.0 + 3.0);
+    float flip = hFlip &gt; 0.5 ? -1.0 : 1.0;
+    if (flip &lt; 0) cellUV.x = 1.0 - cellUV.x;
+    Lit = hLit &lt; LitChance ? 1.0 : 0.0;
+
+    // atlas cell (row 0 at the bottom), clamped half a texel inside the cell
+    float2 cell = 1.0 / AtlasGrid;
+    float2 halfTexel = 0.5 * Atlas.texelSize.xy * AtlasGrid;
+    cellUV = clamp(cellUV, halfTexel, 1.0 - halfTexel);
+    float2 index = float2(floor(hCell * AtlasGrid.x), clamp(RoomType, 0, AtlasGrid.y - 1));
+    float2 uv = (index + cellUV) * cell;
+
+    // gradients from the continuous world position, so seams between rooms keep their mip
+    float3 dpx = ddx(PositionWS), dpy = ddy(PositionWS);
+    float2 gx = float2(dot(dpx, T) / W * flip, dot(dpx, B) / H) * s * cell;
+    float2 gy = float2(dot(dpy, T) / W * flip, dot(dpy, B) / H) * s * cell;
+    Interior = SAMPLE_TEXTURE2D_GRAD(Atlas.tex, SS.samplerstate, uv, gx, gy).rgb;
+
+    // glass: what Fresnel does not reflect passes through
+    float cosV = saturate(dot(N, normalize(ViewDirWS)));
+    Transmission = 1.0 - (0.04 + 0.96 * pow(1.0 - cosV, 5.0));
+}
+
+#endif</pre></div><div class="file" data-name="FacadeRooms.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Writes room data for interior mapping into a copy of this object&#x27;s mesh.
+// Assumes every window is a separate quad and the facade is flat and vertical.
+[RequireComponent(typeof(MeshFilter))]
+public class FacadeRooms : MonoBehaviour
+{
+    public float roomWidth = 4f;          // party wall to party wall, metres
+    public float floorHeight = 3f;        // slab to slab
+    public float roomDepth = 5f;
+    public int groundFloorType = 2;       // atlas row for the ground floor (shops)
+    public int upperFloorType = 0;        // atlas row for the floors above (offices)
+
+    [ContextMenu(&quot;Bake room data&quot;)]
+    void Bake()
+    {
+        var mf = GetComponent&lt;MeshFilter&gt;();
+        Mesh src = mf.sharedMesh;
+        Mesh m = Instantiate(src);
+        m.name = src.name + &quot;_Rooms&quot;;
+
+        Vector3[] v = m.vertices;
+        Vector3[] n = m.normals;
+        int[] tri = m.triangles;
+        var roomUV = new Vector2[v.Length];
+        var roomWH = new Vector2[v.Length];
+        var roomDS = new Vector2[v.Length];
+        var color = new Color[v.Length];
+
+        for (int i = 0; i &lt; tri.Length; i += 3)
+        {
+            // decide the room from the triangle&#x27;s centre, so a window never straddles two rooms
+            Vector3 c = (v[tri[i]] + v[tri[i + 1]] + v[tri[i + 2]]) / 3f;
+            Vector3 N = n[tri[i]].normalized;
+            Vector3 T = Vector3.Cross(N, Vector3.up).normalized;      // same frame as the shader
+            float cx = Vector3.Dot(c, T), cy = c.y;
+            int rx = Mathf.FloorToInt(cx / roomWidth), ry = Mathf.FloorToInt(cy / floorHeight);
+            float seed = Mathf.Repeat(Mathf.Sin(rx * 12.9898f + ry * 78.233f) * 43758.5453f, 1f);
+            int type = ry == 0 ? groundFloorType : upperFloorType;
+
+            for (int k = 0; k &lt; 3; k++)
+            {
+                int vi = tri[i + k];
+                float px = Vector3.Dot(v[vi], T), py = v[vi].y;
+                roomUV[vi] = new Vector2(px / roomWidth - rx, py / floorHeight - ry);
+                roomWH[vi] = new Vector2(roomWidth, floorHeight);
+                roomDS[vi] = new Vector2(roomDepth, seed);
+                color[vi] = new Color(type / 15f, 0, 0, 1);
+            }
+        }
+        m.SetUVs(1, roomUV);
+        m.SetUVs(2, roomWH);
+        m.SetUVs(3, roomDS);
+        m.colors = color;
+        mf.sharedMesh = m;
+#if UNITY_EDITOR
+        string path = UnityEditor.AssetDatabase.GenerateUniqueAssetPath(&quot;Assets/&quot; + m.name + &quot;.asset&quot;);
+        UnityEditor.AssetDatabase.CreateAsset(m, path);
+        Debug.Log(&quot;Saved &quot; + path);
+#endif
+    }
+}</pre></div></div>
+<div class="prose"><p>The baker works in the mesh's own space, so keep the object unrotated or bake before rotating it. For real buildings, room data is usually authored per window in Houdini or Blender, where room rectangles can follow the actual floor plan. Amplify Shader Editor: paste the function body into a <em>Custom Expression</em> node (mode <em>Call</em> with the file included, or <em>Create</em> with the code inline); inputs and outputs map the same way.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same file and graph (Lit, URP). URP has no Emission node with nits: multiply the interior by an intensity and connect it to Emission directly; URP uses no physical exposure by default, so a value around 1–2 reads well.</p></div><div class="eng" data-engine="unreal"><p>Put the function body in a <em>Custom</em> node; RoomUV etc. come from <em>TexCoord[1..3]</em> and <em>VertexColor</em>, the view vector from <em>-CameraVector</em>, the gradients from <em>DDX/DDY</em> of <em>Absolute World Position</em> and <em>TextureSampleGrad</em> (or the Custom node's <code>Texture2DSampleGrad</code>). Unreal also ships an <em>InteriorCubemap</em> material function for the cubemap variant.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

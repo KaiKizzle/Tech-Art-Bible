@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Dot and Cross Product</h1>
   <p class="lede">Two ways to combine vectors. The dot product measures how much two directions agree; the cross product builds a direction perpendicular to two others. Lighting, facing tests, reflections and normals all come from them.</p>
   <p class="meta">Drag the arrows in each drawing; the formula above it updates with the numbers you set.</p>
@@ -109,6 +109,54 @@
   </div>
   <details class="check"><summary></summary><script type="application/json">[["What is the angle between a × b and a?", ["0°", "45°", "90°", "It depends"], 2, "The cross product is perpendicular to both inputs."], ["a and b point the same way. What is a × b?", ["A unit vector", "The zero vector", "a + b", "Twice a"], 1, "The parallelogram has no area, so the result has length 0."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="dot-cross#lambert dot-cross#reflect" data-summary="Custom lighting in an Unlit graph: N·L, wrap, reflect and rim from a light direction set by C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Writing your own lighting is the classic use of the dot product: toon shading, stylised characters and debugging all start here. In HDRP, an <em>Unlit</em> graph does no lighting of its own, so you can compute it yourself from a light direction sent by C#. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit graph with custom lighting.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>SimpleLighting.hlsl: Lambert, wrap, rim and banded toon steps.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>SunToShader.cs: sends the sun's direction and colour.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add <em>Normal Vector</em> (Space: World) and <em>View Direction</em> (Space: World, normalized) nodes.</div></li><li><div>Add Vector 3 and Color properties with References <code>_SunDirection</code> and <code>_SunColor</code>, both with <em>Exposed</em> unticked (global).</div></li><li><div>Save <code>SimpleLighting.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>SimpleLighting.hlsl</code> and <em>Name</em> to <code>SimpleLighting</code> (without the <code>_float</code> suffix). Add the inputs <b>Normal (Vector 3), ViewDir (Vector 3), LightDir (Vector 3), LightColor (Vector 3), Albedo (Vector 3), Wrap (Float), Bands (Float)</b> and the outputs <b>Color (Vector 3), NdotL (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect <em>Color</em> to <em>Base Color</em> (Unlit outputs it unlit). Set <em>Bands</em> to 0 for smooth shading or 3 for a toon look.</div></li><li><div>Add <code>SunToShader.cs</code> to your Directional Light. Rotate the light: the object follows, in edit mode as well.</div></li></ol>
+<div class="files"><div class="file" data-name="SimpleLighting.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SIMPLE_LIGHTING_INCLUDED
+#define ATLAS_SIMPLE_LIGHTING_INCLUDED
+
+// LightDir points from the surface toward the light. All vectors in world space, normalized.
+void SimpleLighting_float(float3 Normal, float3 ViewDir, float3 LightDir, float3 LightColor,
+                          float3 Albedo, float Wrap, float Bands,
+                          out float3 Color, out float NdotL)
+{
+    float3 N = normalize(Normal);
+    float3 L = normalize(LightDir);
+    NdotL = dot(N, L);                                       // the cosine of the angle
+
+    float diffuse = saturate((NdotL + Wrap) / (1.0 + Wrap)); // Wrap = 0: plain Lambert
+    if (Bands &gt; 0.5) diffuse = floor(diffuse * Bands + 0.5) / Bands;   // toon steps
+
+    float3 R    = reflect(-L, N);                            // mirror the light around the normal
+    float  spec = pow(saturate(dot(R, normalize(ViewDir))), 48.0);
+    float  rim  = pow(1.0 - saturate(dot(N, normalize(ViewDir))), 4.0);
+
+    float3 ambient = Albedo * 0.08;
+    Color = Albedo * LightColor * diffuse + LightColor * spec * 0.25 + rim * 0.15 + ambient;
+}
+
+#endif</pre></div><div class="file" data-name="SunToShader.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Put on a Directional Light: sends the direction toward the light and its colour to all shaders.
+[ExecuteAlways, RequireComponent(typeof(Light))]
+public class SunToShader : MonoBehaviour
+{
+    static readonly int DirId = Shader.PropertyToID(&quot;_SunDirection&quot;);
+    static readonly int ColorId = Shader.PropertyToID(&quot;_SunColor&quot;);
+
+    void Update()
+    {
+        var light = GetComponent&lt;Light&gt;();
+        Shader.SetGlobalVector(DirId, -transform.forward);    // the light travels along forward; we want toward it
+        Color c = light.color.linear;                          // colours in shaders are linear
+        Shader.SetGlobalVector(ColorId, new Vector4(c.r, c.g, c.b, 1f));
+    }
+}</pre></div></div>
+<div class="prose"><p>HDRP lights are in physical units (lux), far brighter than 1, which is why this script sends only the colour. To light an Unlit graph with HDRP's own lights and shadows, use a Lit graph instead; Unlit is for stylised shading where you want full control. Shader Graph also offers <em>Dot Product</em>, <em>Cross Product</em>, <em>Reflection</em> and <em>Fresnel Effect</em> nodes for the same operations.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP can read its main light directly: in the Custom Function call <code>GetMainLight()</code> inside <code>#ifndef SHADERGRAPH_PREVIEW</code> (it returns <code>direction</code>, <code>color</code> and <code>shadowAttenuation</code>), so the C# script is optional.</p></div><div class="eng" data-engine="unreal"><p>Use an Unlit material with a <em>Custom</em> node, or the <em>SkyAtmosphereLightDirection</em> node for the sun direction. For real lights with a custom response, Unreal's usual route is a post-process or a custom shading model in the engine source.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Rays and Solving for t</h1>
   <p class="lede">Sky shaders, interior mapping, volumetric clouds and ray tracers all ask one question: where does this ray hit that shape? This unit answers it for planes, spheres and boxes, one step at a time.</p>
   <p class="meta">Builds on Vectors and the dot product. Every formula is shown with the ray and the shape it describes.</p>
@@ -129,6 +129,49 @@
   <div class="prose"><p>The slab test is the heart of <a class="x" href="../interior-mapping/index.html#wall">interior mapping</a>, of bounding-volume tests in ray tracers, and of ray-marched volumes that first clip the ray to their bounding box.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["Slab x gives [1, 5], slab y gives [3, 8]. Does the ray hit, and where does it enter?", ["No", "Yes, enters at t = 1", "Yes, enters at t = 3", "Yes, enters at t = 5"], 2, "Entry = max(1, 3) = 3, exit = min(5, 8) = 5; 3 < 5, so it hits."], ["Slab x gives [1, 2], slab y gives [3, 8]. Hit?", ["Yes", "No: it leaves the x slab before entering the y slab", "Only at t = 2", "Only at t = 3"], 1, "max of entries = 3 is after min of exits = 2."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="rays-math#quadratic rays-math#box" data-summary="A ray-traced sphere on a cube: ray from Absolute World position and view direction, sphere and slab tests in a Custom Function.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>A sphere traced inside a cube is the smallest useful ray tracer: the cube gives the pixels, the shader decides whether the ray through each pixel hits a perfect sphere. The same functions are used later for clouds and interior mapping. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit graph on a cube, with alpha clipping.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>RayShapes.hlsl: ray against sphere and box.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>, and tick <em>Alpha Clipping</em>.</div></li><li><div>Ray origin: a <em>Position</em> node in <code>Absolute World</code> space (the point on the cube). Ray direction: a <em>View Direction</em> node (World, normalized), negated, because it points from the surface toward the camera.</div></li><li><div>Sphere centre: a <em>Transform</em> node converting the Vector 3 (0, 0, 0) from <code>Object</code> to <code>Absolute World</code> (Type <code>Position</code>). Radius: a Float property (0.5 fits a default cube).</div></li><li><div>Save <code>RayShapes.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>RayShapes.hlsl</code> and <em>Name</em> to <code>SphereHit</code> (without the <code>_float</code> suffix). Add the inputs <b>Origin (Vector 3), Dir (Vector 3), Center (Vector 3), Radius (Float)</b> and the outputs <b>Hit (Float), T (Float), Normal (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect <em>Hit</em> to <em>Alpha</em> with an <em>Alpha Clip Threshold</em> of 0.5, and shade with the normal: <code>Normal × 0.5 + 0.5</code> as a colour, or the lighting function from <a class="x" href="../dot-cross/index.html#implement">Dot and Cross Product</a>.</div></li><li><div>For the box, use <code>BoxHit</code> from the same file with the ray in the object's space (Transform node <code>Absolute World → Object</code> for origin and direction).</div></li></ol>
+<div class="files"><div class="file" data-name="RayShapes.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_RAY_SHAPES_INCLUDED
+#define ATLAS_RAY_SHAPES_INCLUDED
+
+// Ray P(t) = Origin + t * Dir against a sphere. Dir must be normalized.
+void SphereHit_float(float3 Origin, float3 Dir, float3 Center, float Radius,
+                     out float Hit, out float T, out float3 Normal)
+{
+    float3 L = Origin - Center;
+    float  b = dot(L, Dir);
+    float  c = dot(L, L) - Radius * Radius;
+    float  h = b * b - c;                    // the discriminant
+    Hit = 0; T = -1; Normal = float3(0, 1, 0);
+    if (h &lt; 0) return;                       // the ray misses
+    h = sqrt(h);
+    float t0 = -b - h, t1 = -b + h;
+    T = t0 &gt; 0 ? t0 : t1;                    // outside: t0; inside: t1
+    if (T &lt; 0) return;                       // the sphere is behind the ray
+    Hit = 1;
+    Normal = normalize(Origin + T * Dir - Center);
+}
+
+// Slab test against an axis-aligned box of half-size Extents centred at the origin (object space).
+void BoxHit_float(float3 Origin, float3 Dir, float3 Extents,
+                  out float Hit, out float TNear, out float TFar)
+{
+    float3 inv = 1.0 / Dir;
+    float3 t1 = (-Extents - Origin) * inv;
+    float3 t2 = ( Extents - Origin) * inv;
+    float3 tmin = min(t1, t2), tmax = max(t1, t2);
+    TNear = max(max(tmin.x, tmin.y), tmin.z);
+    TFar  = min(min(tmax.x, tmax.y), tmax.z);
+    Hit = (TNear &lt; TFar &amp;&amp; TFar &gt; 0) ? 1 : 0;
+}
+
+#endif</pre></div></div>
+<div class="prose"><p>The cube still writes its own depth, not the sphere's, so other objects intersect it as a cube. Writing the traced depth needs a <em>Depth Offset</em> output (HDRP Lit graphs have one under <em>Graph Settings &gt; Depth Offset</em>), the same tool <a class="x" href="../parallax/index.html#details">pixel depth offset</a> uses.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical, with <em>Position</em> in <code>World</code> space.</p></div><div class="eng" data-engine="unreal"><p>Same maths in a <em>Custom</em> node; origin from <em>Absolute World Position</em>, direction from <em>-Camera Vector</em>, centre from <em>Object Position</em>. Use the <em>Masked</em> blend mode with Opacity Mask = Hit.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Texture Packing and Import Settings · Tech Art Atlas</title>
+<meta name="description" content="The import settings that decide how every texture looks and what it costs: sRGB or data, the right compression per map type, packing layouts for HDRP, URP and Unreal, mobile formats, mipmaps and anisotropy, and tools that set it all automatically.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+<style>
+.tbl-wrap{overflow-x:auto;max-width:100%}
+.tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:600}
+.tbl td:first-child{font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body data-unit="texture-settings">
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="hub" href="../../index.html">← All units</a>
+  <a class="brand" href="#top">Texture Packing and Import Settings</a>
+  <ol id="rail-list"></ol>
+  <div class="tools"><button type="button" class="btn" data-theme-toggle>Light theme</button></div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 9 chapters</div>
+  <h1>Texture Packing and Import Settings</h1>
+  <p class="lede">The import settings that decide how every texture looks and what it costs: sRGB or data, the right compression per map type, packing layouts for HDRP, URP and Unreal, mobile formats, mipmaps and anisotropy, and tools that set it all automatically.</p>
+  <p class="meta">Builds on Texels on a Budget. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="texture-settings" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one mask texture taken apart into its four channels.</figcaption></figure>
+<div class="needs" data-needs="texture-memory#blocks texture-memory#packing"></div>
+
+<section class="chapter" id="maptypes" data-title="One setting per kind of map" data-builds="texture-memory#cost texture-memory#blocks" data-summary="Per map type: sRGB on or off, a format, a maximum size. BC7 1 byte per texel, BC1 and BC4 half that.">
+  <div class="head"><div class="num"></div><h2>One setting per kind of map</h2></div>
+
+  <div class="prose">
+    <p>Every texture you import needs three decisions: is it <em>colour</em> or <em>data</em> (the sRGB flag), which compression format, and how large it may be. They depend on the kind of map, not on the asset, so a studio writes them down once:</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Map</th><th>sRGB</th><th>PC / console</th><th>Mobile</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Base colour</td><td>on</td><td>BC7 (or BC1)</td><td>ASTC 6×6</td><td>BC1 is half the size but bands smooth gradients.</td></tr>
+      <tr><td>Base colour + alpha</td><td>on</td><td>BC7 (or BC3)</td><td>ASTC 4×4–6×6</td><td>Alpha-tested: enable <em>Mip Maps Preserve Coverage</em>.</td></tr>
+      <tr><td>Normal map</td><td>off</td><td>BC5</td><td>ASTC 4×4–5×5</td><td>Unity: Texture Type <em>Normal map</em>. Two channels; Z rebuilt in the shader.</td></tr>
+      <tr><td>Packed mask (MS, ORM)</td><td>off</td><td>BC7</td><td>ASTC 5×5–6×6</td><td>Uncorrelated channels: avoid BC1/BC3.</td></tr>
+      <tr><td>Single mask, roughness, height</td><td>off</td><td>BC4</td><td>ASTC 6×6 (or R8)</td><td>Displacement height: R16 uncompressed.</td></tr>
+      <tr><td>Emissive</td><td>on</td><td>BC7, BC6H if HDR</td><td>ASTC 6×6 / ASTC HDR</td><td>Intensity usually comes from the material, so 8 bit is fine.</td></tr>
+      <tr><td>HDRI, lightmap</td><td>off (HDR)</td><td>BC6H</td><td>ASTC HDR, RGB9E5</td><td>Set by the engine for lightmaps.</td></tr>
+      <tr><td>UI, pixel art</td><td>on</td><td>uncompressed or BC7</td><td>ASTC 4×4</td><td>No mipmaps for screen-space UI; Point filter for pixel art.</td></tr>
+    </tbody></table></div>
+
+  <div class="prose"><p>The format decides the memory. With mipmaps, a texture costs a third more than its top level (<a class="x" href="../texture-memory/index.html#cost">what a texture costs</a>):</p></div>
+  <div class="fx" data-fx="fmtmem"></div>
+
+</section>
+<section class="chapter" id="srgb" data-title="The sRGB checkbox" data-builds="texture-memory#color-data color-values#linear-srgb" data-summary="sRGB on decodes 0.5 to 0.214: correct for colour, wrong for data.">
+  <div class="head"><div class="num"></div><h2>The sRGB checkbox</h2></div>
+
+  <div class="prose">
+    <p>Colour textures are stored <a class="x" href="../color-values/index.html#linear-srgb">sRGB-encoded</a>, and the GPU decodes them for free when it samples, if the texture is flagged as sRGB. Data textures hold numbers that must arrive unchanged. Flag a roughness map as sRGB and every value is pushed toward 0 when the shader reads it:</p>
+  </div>
+  <div class="fx" data-fx="srgbbug"></div>
+  <div class="prose"><p>In Unity the checkbox is <em>sRGB (Color Texture)</em> in the importer; Texture Type <em>Normal map</em> turns it off by itself. In Unreal it is <em>sRGB</em> on the texture, and the <em>Masks (no sRGB)</em> compression setting forces it off. The mistake is invisible in the texture preview, so check it in the material: a rough surface that looks glossy is the usual sign.</p></div>
+
+</section>
+<section class="chapter" id="packing" data-title="Packing layouts per engine" data-builds="texture-memory#packing pbr-basics#roughness" data-summary="HDRP mask: (metallic, AO, detail mask, smoothness). URP: metallic R, smoothness A. Unreal ORM: (AO, roughness, metallic).">
+  <div class="head"><div class="num"></div><h2>Packing layouts per engine</h2></div>
+
+  <div class="prose">
+    <p>Greyscale maps are packed four to a texture to save samples and memory (<a class="x" href="../texture-memory/index.html#packing">channel packing</a>). Each engine's standard shader expects its own layout, and smoothness versus roughness flips between them:</p>
+  </div>
+  <div class="fx" data-fx="layout"></div>
+  <div class="prose"><p>HDRP also has a <em>detail map</em> with its own layout: desaturated albedo in R, the detail normal's Y in G, smoothness in B and the normal's X in A. For your own Shader Graphs you may pack however you like, but stick to one convention per project and name the texture after it (<code>_MS</code>, <code>_ORM</code>).</p></div>
+
+</section>
+<section class="chapter" id="compression" data-title="Why packed masks need BC7" data-builds="texture-memory#blocks" data-summary="BC1 puts the palette on one line through colour space: uncorrelated channels lose most. BC4/BC5/BC7 keep them apart.">
+  <div class="head"><div class="num"></div><h2>Why packed masks need BC7</h2></div>
+
+  <div class="prose">
+    <p>Block compression stores each 4 × 4 block of texels as a few endpoint colours and short indices (<a class="x" href="../texture-memory/index.html#blocks">block compression</a>). BC1 and the colour part of BC3 put all four palette colours on one straight line through RGB space. That suits a photo, where red, green and blue rise and fall together. It does not suit a mask map, where metallic, AO and roughness have nothing to do with each other. Compare one block of two channels:</p>
+  </div>
+  <div class="fx" data-fx="bcerror"></div>
+  <div class="prose"><p>BC4 and BC5 compress each channel on its own, which is why they suit single masks and normal maps. BC7 chooses per block between several modes, including separate partitions and an independently coded channel, so it keeps uncorrelated channels apart at the same 1 byte per texel as BC3. On mobile, ASTC works the same way at any block size.</p></div>
+
+</section>
+<section class="chapter" id="mobile" data-title="Mobile formats and platform overrides" data-builds="texture-memory#blocks texture-settings#maptypes" data-summary="ASTC: 128 bits per block → bits per texel = 128 / (w · h).">
+  <div class="head"><div class="num"></div><h2>Mobile formats and platform overrides</h2></div>
+
+  <div class="prose">
+    <p>Phones use <button type="button" class="term" data-term="astc">ASTC</button> (and ETC2 on old devices). ASTC always stores a block in 128 bits, but the block size is a choice, so its bitrate is a slider:</p>
+  </div>
+  <div class="fx" data-fx="astc"></div>
+  <div class="prose"><p>In Unity, each platform has its own tab in the importer (<em>Override for Android</em>, <em>iOS</em>), and the Android player settings choose the fallback format. Pick per map type, as in the table: normal maps 4 × 4 or 5 × 5, colour and masks 6 × 6, large distant textures 8 × 8.</p></div>
+
+</section>
+<section class="chapter" id="filtering" data-title="Max size, mipmaps and anisotropy" data-builds="texture-memory#mips textures-sampling#filter" data-summary="Footprint ratio 1/cos θ; aniso level n removes blur up to that ratio, beyond it blur grows by (1/cos θ) / n.">
+  <div class="head"><div class="num"></div><h2>Max size, mipmaps and anisotropy</h2></div>
+
+  <div class="prose">
+    <p>Three more importer settings change how a texture looks at runtime. <em>Max Size</em> scales the texture down on import; keep sources large and set the shipping size here, per platform. <em>Mipmaps</em> belong on every texture used in the 3D scene; turn on <em>Mip Streaming</em> for large ones, so only the mips the camera needs are loaded (<a class="x" href="../texture-memory/index.html#streaming">streaming</a>). For alpha-tested textures enable <em>Mip Maps Preserve Coverage</em> so foliage keeps its density (<a class="x" href="../transparency/index.html#alpha-test">alpha test</a>).</p>
+    <p><em>Aniso Level</em> fixes blur at grazing angles. A pixel looking at a floor at an angle covers a long, thin footprint on the texture; plain trilinear filtering picks the mip for the long side and blurs the short one. Anisotropic filtering takes several samples along the long side instead:</p>
+  </div>
+  <div class="fx" data-fx="aniso"></div>
+  <div class="prose"><p>Use 4 to 8 for floors, roads and terrain, 1 for objects mostly seen face-on and for UI. HDRP and URP can force a minimum in <em>Project Settings &gt; Quality &gt; Anisotropic Textures</em>.</p></div>
+
+</section>
+<section class="chapter" id="automation" data-title="Setting it once, for every texture" data-builds="texture-settings#maptypes" data-summary="Suffixes in file names plus an import script apply the per-map-type table automatically.">
+  <div class="head"><div class="num"></div><h2>Setting it once, for every texture</h2></div>
+
+  <div class="prose">
+    <p>Clicking through import settings for every texture is slow and error-prone. Two tools make the rules automatic:</p>
+    <ul>
+      <li><strong>Naming suffixes.</strong> A short, fixed suffix per map type: <code>_BC</code> base colour, <code>_N</code> normal, <code>_MS</code> HDRP mask, <code>_ORM</code> Unreal mask, <code>_R</code> roughness, <code>_H</code> height, <code>_E</code> emissive. The painting tool's export preset writes them.</li>
+      <li><strong>An import script.</strong> Unity runs an <em>AssetPostprocessor</em> before every texture import; Unreal runs import scripts or <em>Interchange</em> pipelines. The script reads the suffix and applies the table above. The implementation chapter has a complete one.</li>
+    </ul>
+    <p>Unity's <em>Preset Manager</em> (with filters on the file name) is the no-code alternative for simple rules. Whatever you use, apply it only to <em>new</em> textures, so artists can still override a setting by hand later.</p>
+  </div>
+
+</section>
+<section class="chapter" id="packer" data-title="A channel packer in the engine" data-builds="compute-shaders#cpu texture-settings#packing" data-summary="One thread per texel: read four sources, pick a channel each, invert where needed, write RGBA.">
+  <div class="head"><div class="num"></div><h2>A channel packer in the engine</h2></div>
+
+  <div class="prose">
+    <p>Packing usually happens on export from the painting tool. An in-engine packer is still useful: for scanned materials that arrive as separate maps, for converting between engine layouts, or for inverting roughness into smoothness without a round trip. On the GPU it is a few lines of compute shader, one thread per texel, reading four sources and writing four channels:</p>
+  </div>
+  <pre class="code" data-lang="hlsl">[numthreads(8, 8, 1)]
+void Pack(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy &gt;= _Size)) return;
+    float2 uv = (id.xy + 0.5) / _Size;
+    float4 o;
+    o.r = Pick(_SrcR.SampleLevel(sampler_linear_clamp, uv, 0), _Channel.r);   // e.g. metallic.r
+    o.g = Pick(_SrcG.SampleLevel(sampler_linear_clamp, uv, 0), _Channel.g);   // AO.r
+    o.b = Pick(_SrcB.SampleLevel(sampler_linear_clamp, uv, 0), _Channel.b);   // detail mask
+    o.a = Pick(_SrcA.SampleLevel(sampler_linear_clamp, uv, 0), _Channel.a);   // roughness.r
+    _Out[id.xy] = lerp(o, 1.0 - o, _Invert);                                   // invert A: smoothness
+}</pre>
+  <div class="prose"><p>The full tool (an editor window that picks the sources, dispatches this shader, saves a PNG and imports it with the right settings) is in the next chapter. It uses everything from <a class="x" href="../compute-shaders/index.html#cpu">Compute Shaders</a>: a RenderTexture with random write, a dispatch of ⌈size / 8⌉ groups, and a readback, here once rather than every frame.</p></div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="texture-settings#automation texture-settings#packer" data-summary="An AssetPostprocessor that sets sRGB, formats per platform and mip options from suffixes, and a compute-based channel packer window.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Two editor tools: an <em>AssetPostprocessor</em> that applies the per-map-type table to every new texture from its file name, and a channel packer that runs the compute shader from the previous chapter. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>AtlasTexturePostprocessor.cs: import settings from suffixes.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>ChannelPacker.cs: an editor window that packs four maps.</span></div><div class="rt" data-k="compute"><b>Compute shader</b><span>ChannelPack.compute: one thread per texel.</span></div></div>
+<ol class="impl-steps"><li><div>Create an <code>Editor</code> folder (any <code>Assets/…/Editor/</code>) and put both C# files in it. Editor scripts are not included in builds.</div></li><li><div>Change <code>Folder</code> in the postprocessor to where your art lives. It only acts on the <em>first</em> import of a texture (<code>importSettingsMissing</code>), so later manual changes are kept. To apply it to existing textures, delete their <code>.meta</code> files or reimport after removing that check.</div></li><li><div>Import a texture named <code>Crate_N.png</code>: it arrives as a normal map with BC5 on PC and ASTC 5×5 on mobile. <code>Crate_MS.png</code> arrives with sRGB off and BC7.</div></li><li><div>Create the compute shader <code>ChannelPack</code> (<em>Create &gt; Shader &gt; Compute Shader</em>) with the code below. Open <em>Tools &gt; Atlas &gt; Channel Packer</em>; the window finds the compute shader by name.</div></li><li><div>Assign up to four source textures, choose which channel to take from each, tick <em>Invert</em> for roughness into smoothness, and set a fallback value for empty slots (AO 1, detail mask 1). Click <em>Pack</em> and choose where to save the PNG; it is imported with sRGB off.</div></li><li><div>Source masks must themselves be imported with sRGB off, or the packer receives decoded, darker values.</div></li></ol>
+<div class="files"><div class="file" data-name="AtlasTexturePostprocessor.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+// Applies import settings from the file-name suffix the first time a texture is imported.
+public class AtlasTexturePostprocessor : AssetPostprocessor
+{
+    const string Folder = &quot;Assets/Art/&quot;;   // only textures under this folder
+
+    void OnPreprocessTexture()
+    {
+        if (!assetPath.StartsWith(Folder)) return;
+        if (!assetImporter.importSettingsMissing) return;   // first import only: manual edits survive
+
+        var ti = (TextureImporter)assetImporter;
+        string n = Path.GetFileNameWithoutExtension(assetPath).ToUpperInvariant();
+
+        ti.mipmapEnabled = true;
+        ti.streamingMipmaps = true;
+        ti.anisoLevel = 4;
+
+        if (n.EndsWith(&quot;_N&quot;))                                   // normal map
+        {
+            ti.textureType = TextureImporterType.NormalMap;     // also turns sRGB off
+            Set(ti, TextureImporterFormat.BC5, TextureImporterFormat.ASTC_5x5);
+        }
+        else if (n.EndsWith(&quot;_MS&quot;) || n.EndsWith(&quot;_ORM&quot;) || n.EndsWith(&quot;_MASK&quot;))   // packed masks
+        {
+            ti.sRGBTexture = false;
+            Set(ti, TextureImporterFormat.BC7, TextureImporterFormat.ASTC_6x6);
+        }
+        else if (n.EndsWith(&quot;_R&quot;) || n.EndsWith(&quot;_AO&quot;) || n.EndsWith(&quot;_H&quot;))      // single channel data
+        {
+            ti.sRGBTexture = false;
+            Set(ti, TextureImporterFormat.BC4, TextureImporterFormat.ASTC_6x6);
+        }
+        else if (n.EndsWith(&quot;_BC&quot;) || n.EndsWith(&quot;_E&quot;) || n.EndsWith(&quot;_D&quot;))      // colour
+        {
+            ti.sRGBTexture = true;
+            Set(ti, TextureImporterFormat.BC7, TextureImporterFormat.ASTC_6x6);
+        }
+
+        if (n.Contains(&quot;_CUTOUT&quot;))                              // alpha-tested foliage, fences
+        {
+            ti.mipMapsPreserveCoverage = true;
+            ti.alphaTestReferenceValue = 0.5f;
+        }
+    }
+
+    static void Set(TextureImporter ti, TextureImporterFormat pc, TextureImporterFormat mobile)
+    {
+        Override(ti, &quot;Standalone&quot;, pc);
+        Override(ti, &quot;Android&quot;, mobile);
+        Override(ti, &quot;iPhone&quot;, mobile);
+    }
+
+    static void Override(TextureImporter ti, string platform, TextureImporterFormat format)
+    {
+        TextureImporterPlatformSettings s = ti.GetPlatformTextureSettings(platform);
+        s.overridden = true;
+        s.format = format;
+        ti.SetPlatformTextureSettings(s);
+    }
+}
+#endif</pre></div><div class="file" data-name="ChannelPacker.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+// Packs up to four greyscale maps into one RGBA texture with ChannelPack.compute.
+public class ChannelPacker : EditorWindow
+{
+    static readonly string[] OutNames = { &quot;R&quot;, &quot;G&quot;, &quot;B&quot;, &quot;A&quot; };
+    static readonly string[] SrcIds = { &quot;_SrcR&quot;, &quot;_SrcG&quot;, &quot;_SrcB&quot;, &quot;_SrcA&quot; };
+
+    Texture2D[] src = new Texture2D[4];
+    int[] channel = new int[4];
+    bool[] invert = new bool[4];
+    float[] fallback = { 0f, 1f, 1f, 0.5f };
+    ComputeShader shader;
+    int size = 2048;
+
+    [MenuItem(&quot;Tools/Atlas/Channel Packer&quot;)]
+    static void Open() =&gt; GetWindow&lt;ChannelPacker&gt;(&quot;Channel Packer&quot;);
+
+    void OnEnable()
+    {
+        if (shader == null)
+        {
+            string[] guids = AssetDatabase.FindAssets(&quot;ChannelPack t:ComputeShader&quot;);
+            if (guids.Length &gt; 0) shader = AssetDatabase.LoadAssetAtPath&lt;ComputeShader&gt;(AssetDatabase.GUIDToAssetPath(guids[0]));
+        }
+    }
+
+    void OnGUI()
+    {
+        shader = (ComputeShader)EditorGUILayout.ObjectField(&quot;Compute shader&quot;, shader, typeof(ComputeShader), false);
+        size = EditorGUILayout.IntPopup(&quot;Size&quot;, size, new[] { &quot;512&quot;, &quot;1024&quot;, &quot;2048&quot;, &quot;4096&quot; }, new[] { 512, 1024, 2048, 4096 });
+        EditorGUILayout.Space();
+        for (int i = 0; i &lt; 4; i++)
+        {
+            EditorGUILayout.LabelField(&quot;Output &quot; + OutNames[i], EditorStyles.boldLabel);
+            src[i] = (Texture2D)EditorGUILayout.ObjectField(&quot;Source&quot;, src[i], typeof(Texture2D), false);
+            using (new EditorGUI.DisabledScope(src[i] == null))
+                channel[i] = EditorGUILayout.Popup(&quot;Take channel&quot;, channel[i], OutNames);
+            using (new EditorGUI.DisabledScope(src[i] != null))
+                fallback[i] = EditorGUILayout.Slider(&quot;Value if empty&quot;, fallback[i], 0f, 1f);
+            invert[i] = EditorGUILayout.Toggle(&quot;Invert (1 - x)&quot;, invert[i]);
+        }
+        EditorGUILayout.Space();
+        using (new EditorGUI.DisabledScope(shader == null))
+            if (GUILayout.Button(&quot;Pack&quot;, GUILayout.Height(28))) Pack();
+    }
+
+    void Pack()
+    {
+        int k = shader.FindKernel(&quot;Pack&quot;);
+        var rt = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear) { enableRandomWrite = true };
+        rt.Create();
+
+        Vector4 ch = Vector4.zero, inv = Vector4.zero, use = Vector4.zero, def = Vector4.zero;
+        for (int i = 0; i &lt; 4; i++)
+        {
+            shader.SetTexture(k, SrcIds[i], src[i] != null ? (Texture)src[i] : Texture2D.blackTexture);
+            ch[i] = channel[i];
+            inv[i] = invert[i] ? 1f : 0f;
+            use[i] = src[i] != null ? 1f : 0f;
+            def[i] = fallback[i];
+        }
+        shader.SetVector(&quot;_Channel&quot;, ch);
+        shader.SetVector(&quot;_Invert&quot;, inv);
+        shader.SetVector(&quot;_Use&quot;, use);
+        shader.SetVector(&quot;_Default&quot;, def);
+        shader.SetInts(&quot;_Size&quot;, size, size);
+        shader.SetTexture(k, &quot;_Out&quot;, rt);
+        shader.Dispatch(k, Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f), 1);
+
+        // one readback, then save as PNG
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false, true);
+        tex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+        rt.Release();
+
+        string path = EditorUtility.SaveFilePanelInProject(&quot;Save packed texture&quot;, &quot;Packed_MS&quot;, &quot;png&quot;, &quot;Choose where to save the packed texture&quot;);
+        if (!string.IsNullOrEmpty(path))
+        {
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            AssetDatabase.ImportAsset(path);
+            var ti = (TextureImporter)AssetImporter.GetAtPath(path);
+            ti.sRGBTexture = false;
+            ti.SaveAndReimport();
+        }
+        DestroyImmediate(tex);
+    }
+}
+#endif</pre></div><div class="file" data-name="ChannelPack.compute" data-lang="hlsl"><pre>#pragma kernel Pack
+
+Texture2D&lt;float4&gt; _SrcR, _SrcG, _SrcB, _SrcA;
+SamplerState sampler_linear_clamp;   // inline sampler: the name sets bilinear filtering and clamp
+float4 _Channel;                     // per output channel: which source channel (0 R, 1 G, 2 B, 3 A)
+float4 _Invert;                      // 1 = write 1 - value (roughness to smoothness)
+float4 _Use;                         // 0 = no source texture: write _Default instead
+float4 _Default;
+uint2  _Size;
+RWTexture2D&lt;float4&gt; _Out;
+
+float Pick(float4 c, float i) { return i &lt; 0.5 ? c.r : (i &lt; 1.5 ? c.g : (i &lt; 2.5 ? c.b : c.a)); }
+
+float Source(Texture2D&lt;float4&gt; t, float2 uv, float ch, float use, float fallback)
+{
+    return use &gt; 0.5 ? Pick(t.SampleLevel(sampler_linear_clamp, uv, 0), ch) : fallback;
+}
+
+[numthreads(8, 8, 1)]
+void Pack(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy &gt;= _Size)) return;
+    float2 uv = (id.xy + 0.5) / _Size;      // sources of any size are resampled
+    float4 o = float4(Source(_SrcR, uv, _Channel.r, _Use.r, _Default.r),
+                      Source(_SrcG, uv, _Channel.g, _Use.g, _Default.g),
+                      Source(_SrcB, uv, _Channel.b, _Use.b, _Default.b),
+                      Source(_SrcA, uv, _Channel.a, _Use.a, _Default.a));
+    _Out[id.xy] = lerp(o, 1.0 - o, _Invert);
+}</pre></div></div>
+<div class="prose"><p>For an HDRP mask from separate maps: R ← metallic (R), G ← AO (R), B empty with fallback 1 (or a detail mask), A ← roughness (R) with Invert ticked. For Unreal ORM: R ← AO, G ← roughness (no invert), B ← metallic.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical tools. Change the mask suffix rule to URP's layout (metallic R, smoothness A) and give the occlusion map its own suffix.</p></div><div class="eng" data-engine="unreal"><p>Set texture properties from the editor's Python console or an <em>Editor Utility</em>; for automatic rules on import, use an <em>Interchange</em> pipeline or the <em>Import</em> hook of a Python script:</p><pre class="code" data-lang="py">import unreal
+for t in unreal.EditorUtilityLibrary.get_selected_assets():
+    if isinstance(t, unreal.Texture2D) and t.get_name().upper().endswith(&#x27;_ORM&#x27;):
+        t.set_editor_property(&#x27;srgb&#x27;, False)
+        t.set_editor_property(&#x27;compression_settings&#x27;, unreal.TextureCompressionSettings.TC_MASKS)</pre></div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/class-TextureImporter.html" rel="noopener">Texture Import Settings</a></span><span class="by">Unity</span><span class="why">Every importer option, per texture type and platform.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/class-TextureImporterOverride.html" rel="noopener">Recommended, default and supported texture formats, by platform</a></span><span class="by">Unity</span><span class="why">Which formats each platform supports and what Unity picks by default.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/AssetPostprocessor.html" rel="noopener">AssetPostprocessor</a></span><span class="by">Unity</span><span class="why">Hooks that run before and after assets are imported.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/texture-format-support-and-settings-in-unreal-engine" rel="noopener">Texture Format and Compression Settings</a></span><span class="by">Epic Games</span><span class="why">Unreal's compression settings and what they map to per platform.</span></li><li><span><span class="kind">Article</span><a href="https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/" rel="noopener">Understanding BCn Texture Compression Formats</a></span><span class="by">Nathan Reed</span><span class="why">BC1 to BC7 explained: endpoints, palettes and modes.</span></li></ul>
+</section>
+
+<div class="next" data-next="texturing pbr-basics compute-shaders"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"astc": [
+"ASTC",
+"Adaptive Scalable Texture Compression: 128-bit blocks of 4 × 4 up to 12 × 12 texels, used on mobile.",
+"#mobile"
+],
+"srgbflag": [
+"sRGB flag",
+"Marks a texture as colour, so the GPU decodes sRGB to linear when sampling.",
+"#srgb"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="texsettings.js"></script>
+</body>
+</html>

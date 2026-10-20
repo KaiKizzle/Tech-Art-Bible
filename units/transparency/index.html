@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · 8 chapters</div>
+  <div class="eyebrow">Shaders & rendering · 9 chapters</div>
   <h1>Transparency and Alpha</h1>
   <p class="lede">Glass, smoke, foliage and fades all need something to show through. This unit explains what the GPU does with alpha, why order matters, and the four ways around sorting.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
@@ -126,6 +126,48 @@ Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span><
   <div class="fx" data-fx="oit"></div>
   <div class="prose"><p>The result is an approximation: with two strongly coloured, nearly opaque layers it cannot tell which is in front, which the depth-based weight only partly fixes. For glass, smoke and particles with moderate alpha it is very close, and it never pops when objects cross.</p></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="transparency#order transparency#dither" data-summary="Surface Type and blend modes, sorting priority, depth prepass/postpass, alpha clipping, a Bayer dither function and a fixed draw order from C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Transparency in HDRP is mostly material settings; the code is for dithering and for forcing an order. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Surface Type, Blending Mode, sorting, depth prepass and postpass.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Lit or Unlit graphs with alpha, alpha clipping or dithering.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Dither.hlsl: a 4 × 4 Bayer threshold from the pixel position.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>TransparentOrder.cs: fixes the draw order of a group of objects.</span></div></div>
+<ol class="impl-steps"><li><div>In the graph (or the HDRP/Lit material): <em>Surface Type</em> <code>Transparent</code>, <em>Blending Mode</em> <code>Alpha</code>, <code>Additive</code> or <code>Premultiply</code> (<a href="#modes">blend modes</a>). Premultiply expects colour already multiplied by alpha.</div></li><li><div><em>Sorting Priority</em> on the material (−50 to 50) and <em>Priority</em> on the Mesh Renderer change the order between transparent objects, overriding the distance sort.</div></li><li><div><em>Transparent Depth Prepass</em> writes depth before the transparent pass, so a transparent object hides its own back parts; <em>Transparent Depth Postpass</em> writes depth afterwards, so depth of field and motion blur see it. <em>Back Then Front Rendering</em> draws back faces first for convex shapes.</div></li><li><div><b>Cutouts:</b> stay opaque and tick <em>Alpha Clipping</em> with a threshold (<a href="#alpha-test">alpha test</a>); in the importer tick <em>Mip Maps Preserve Coverage</em>. <em>Alpha To Mask</em> enables alpha to coverage when MSAA is on.</div></li><li><div><b>Dithered fade:</b> keep the material opaque with Alpha Clipping and save <code>Dither.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Dither.hlsl</code> and <em>Name</em> to <code>Dither</code> (without the <code>_float</code> suffix). Add the inputs <b>PixelPos (Vector 2), Alpha (Float)</b> and the outputs <b>ClipAlpha (Float)</b>, in that order and with those types: they must match the function's parameters. Feed PixelPos from a <em>Screen Position</em> node in <code>Pixel</code> mode. Connect ClipAlpha to Alpha with a threshold of 0.5. TAA smooths the pattern.</div></li><li><div>For a group of objects that must always draw in a fixed order (a glass case with objects inside, layered UI in 3D), add <code>TransparentOrder.cs</code> to the parent and list them from back to front.</div></li></ol>
+<div class="files"><div class="file" data-name="Dither.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_DITHER_INCLUDED
+#define ATLAS_DITHER_INCLUDED
+
+// 4x4 Bayer matrix: each pixel gets a threshold; a pixel is kept where alpha is above it.
+void Dither_float(float2 PixelPos, float Alpha, out float ClipAlpha)
+{
+    const float bayer[16] = { 0,  8,  2, 10,
+                             12,  4, 14,  6,
+                              3, 11,  1,  9,
+                             15,  7, 13,  5 };
+    uint2 p = (uint2)PixelPos % 4;
+    float threshold = (bayer[p.y * 4 + p.x] + 0.5) / 16.0;
+    ClipAlpha = Alpha &gt; threshold ? 1.0 : 0.0;
+}
+
+#endif</pre></div><div class="file" data-name="TransparentOrder.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Draws the listed renderers in this order (first = farthest), whatever their distance.
+// Uses Renderer.rendererPriority, which HDRP sorts by before distance within the same queue.
+[ExecuteAlways]
+public class TransparentOrder : MonoBehaviour
+{
+    public Renderer[] backToFront;
+
+    void OnValidate() =&gt; Apply();
+    void OnEnable() =&gt; Apply();
+
+    void Apply()
+    {
+        if (backToFront == null) return;
+        for (int i = 0; i &lt; backToFront.Length; i++)
+            if (backToFront[i] != null) backToFront[i].rendererPriority = i;   // higher draws later
+    }
+}</pre></div></div>
+<div class="prose"><p>HDRP has no built-in order-independent transparency; for many overlapping layers prefer dithering with TAA, or reduce overdraw (<a class="x" href="../reading-a-frame/index.html#overdraw">overdraw</a>). The Rendering Debugger's <em>Transparency Overdraw</em> view shows how many transparent layers each pixel pays for.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Surface Type Transparent with <em>Blending Mode</em> Alpha, Premultiply, Additive or Multiply; <em>Sorting Priority</em> on the material. URP has no depth prepass/postpass options; write depth with a second opaque, alpha-clipped pass if needed.</p></div><div class="eng" data-engine="unreal"><p><em>Blend Mode</em> Translucent, Additive, Modulate or <em>Masked</em> (alpha test); <em>Translucency Sort Priority</em> on the primitive; <em>DitherTemporalAA</em> for dithered fades; <em>Output Velocity</em> and <em>Translucency Pass</em> options. Unreal 5 offers per-pixel <em>OIT</em> as a project setting on some platforms.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

@@ -381,3 +381,29 @@ details.check>summary span{font-size:.9rem;color:var(--muted)}
 .prose .hlsl{max-width:var(--measure)}
 .side-note{border-left:3px solid var(--line);padding:2px 0 2px 14px;color:var(--muted);max-width:var(--measure)}
 .side-note b{color:var(--ink)}
+
+/* ---------- implementation chapter ---------- */
+.route{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;max-width:var(--measure)}
+.route .rt{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;display:grid;gap:3px;align-content:start}
+.route .rt b{font-size:.92rem;display:flex;align-items:center;gap:8px}
+.route .rt b::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--rt,var(--accent));flex:none}
+.route .rt span{font-size:.88rem;color:var(--muted);line-height:1.4}
+.route .rt[data-k="sg"]{--rt:var(--ray)} .route .rt[data-k="hlsl"]{--rt:var(--accent)} .route .rt[data-k="cs"]{--rt:var(--good)} .route .rt[data-k="compute"]{--rt:var(--bad)} .route .rt[data-k="pass"]{--rt:var(--ax-y)} .route .rt[data-k="settings"],.route .rt[data-k="editor"]{--rt:var(--muted)}
+.impl-steps{counter-reset:st;display:grid;gap:10px;list-style:none;padding:0;margin:0;max-width:var(--measure)}
+.impl-steps>li{counter-increment:st;display:grid;grid-template-columns:2.1em minmax(0,1fr);gap:4px 8px;line-height:1.55}
+.impl-steps>li::before{content:counter(st);font-family:var(--font-mono);font-weight:700;color:var(--accent-ink);font-size:.95rem;padding-top:.05em}
+.impl-steps code,.prose code{font-family:var(--font-mono);font-size:.86em;background:var(--surface-2);border-radius:4px;padding:.05em .35em}
+.files{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;max-width:100%}
+.files-bar{display:flex;align-items:stretch;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--bg)}
+.files-tabs{display:flex;flex-wrap:wrap;min-width:0}
+.files-tabs button{font-family:var(--font-mono);font-size:.82rem;padding:9px 12px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.files-tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.files-copy{font-family:var(--font-body);font-weight:600;font-size:.85rem;padding:0 14px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;flex:none}
+.files-copy:hover{background:var(--surface-2)}
+.files .file pre,pre.code{font-family:var(--font-mono);font-size:.84rem;line-height:1.6;margin:0;padding:14px 16px;overflow:auto;max-height:560px;white-space:pre;tab-size:4;background:var(--surface-2)}
+pre.code{border-radius:10px;max-width:100%}
+.files .k,pre.code .k{color:var(--ray)} .files .c,pre.code .c{color:var(--muted);font-style:italic} .files .t,pre.code .t{color:var(--accent-ink)} .files .n,pre.code .n{color:var(--ax-y)} .files .s,pre.code .s{color:var(--warn)}
+.impl .note{border-left:3px solid var(--accent);padding:4px 0 4px 14px;max-width:var(--measure);font-size:.97rem}
+.impl > :not(.head) + :not(.head){margin-top:20px}
+.files pre,pre.code,.hlsl{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.prose code,.impl-steps code,.engines code,.note code{overflow-wrap:anywhere;word-break:break-word}

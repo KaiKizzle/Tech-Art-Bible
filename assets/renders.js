@@ -789,6 +789,90 @@ vec3 render(vec2 frag){ vec3 ro = vec3(0.0, 1.9, 4.6); vec2 uv = screenUV(frag);
   if (h.y > 2.5){ vec3 n = calcN(ro + rd*h.x); return matcap(vec2(dot(n, cam[0]), dot(n, cam[1]))); }
   return shadeHit(ro, rd, h); }`
   });
+  /* ---------- fourth wave: compute, PBR basics, texturing, texture settings ---------- */
+  Object.assign(SCENES, {
+    /* Threads as columns in 8 x 8 groups; heights are the values the dispatch computed; overhanging groups in red. */
+    'compute-shaders': '#define KEYDIR vec3(-.35, .92, -.2)\n' + SDF + `
+const float PITCH = .085, GP = 8.0, GAP = .07;
+vec2 cellOf(vec2 xz){ float gs = GP * PITCH + GAP; vec2 g = floor(xz / gs); vec2 l = xz - g * gs; vec2 t = floor(l / PITCH); return g * GP + min(t, vec2(GP - 1.0)); }
+float hOf(vec2 c){ return .05 + .35 * fbm(vec3(c * .09, 1.3)); }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  float gs = GP * PITCH + GAP; vec3 q = p - vec3(-2.6, 0.0, -1.5);
+  float dB = sdBox(q - vec3(3.5 * gs, .22, 2.5 * gs), vec3(3.5 * gs + .05, .23, 2.5 * gs + .05));
+  if (dB > .02) r = U(r, dB, 1.0);
+  else {
+    vec2 g = floor(q.xz / gs); vec2 l = q.xz - g * gs; vec2 t = clamp(floor(l / PITCH), 0.0, GP - 1.0);
+    vec2 c = g * GP + t; vec2 ctr = g * gs + (t + .5) * PITCH;
+    float h = hOf(c); float d = sdBox(vec3(q.x - ctr.x, q.y - h * .5, q.z - ctr.y), vec3(PITCH * .4, h * .5, PITCH * .4));
+    d = max(d, -1.0) * .9; r = U(r, min(d, PITCH * .45), (g.x > 5.5 || g.y > 3.5) ? 2.0 : 1.0); }
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5 || id > 2.5) return FLOOR; float gs = GP * PITCH + GAP; vec3 q = p - vec3(-2.6, 0.0, -1.5); vec2 g = floor(q.xz / gs);
+  vec3 c = mix(BLUE, vec3(.15, .7, .9), fract((g.x * 3.0 + g.y * 5.0) * .37) * .6); return id > 1.5 ? RED * .7 : c * .8; }
+vec3 emit(float id, vec3 p, vec3 n){ return (id > .5 && id < 1.5) ? vec3(.02, .05, .09) * step(.5, n.y) : vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.3, 4.0, 5.0), vec3(.05, .0, .35), 2.3, frag); }`,
+
+    /* Four spheres: rough plastic, polished plastic, rough metal, polished gold. */
+    'pbr-basics': `
+vec3 K = normalize(vec3(-.6, .7, .5));
+float Dg(float noh, float a){ float a2 = a*a; float d = noh*noh*(a2 - 1.0) + 1.0; return a2/(PI*d*d); }
+vec3 env(vec3 r, float rough){ vec3 c = studio(r)*3.0 + vec3(.6, .65, .75)*smoothstep(.2, 1.0, r.y)*(1.0 - rough*.6); c += vec3(3.0)*smoothstep(.97 - rough*.4, 1.0, dot(r, normalize(vec3(.5, .55, .7))))*(1.0 - rough*.7); return c; }
+vec3 shadeBall(vec3 rd, vec3 n, float rough, float metal, vec3 base){
+  vec3 v = -rd, l = K, h = normalize(l + v); float nol = max(dot(n, l), 0.0), nov = max(dot(n, v), 1e-3), noh = max(dot(n, h), 0.0), voh = max(dot(v, h), 0.0);
+  float a = max(rough*rough, .002); vec3 f0 = mix(vec3(.04), base, metal); vec3 F = f0 + (1.0 - f0)*pow(1.0 - voh, 5.0);
+  float k = (rough + 1.0)*(rough + 1.0)/8.0; float G = (nol/(nol*(1.0 - k) + k))*(nov/(nov*(1.0 - k) + k));
+  vec3 spec = Dg(noh, a)*F*G/(4.0*nol*nov + 1e-3); vec3 kd = (1.0 - F)*(1.0 - metal);
+  vec3 c = (kd*base/PI + spec)*vec3(3.2, 3.0, 2.8)*nol;
+  vec3 Fe = f0 + (max(vec3(1.0 - rough), f0) - f0)*pow(1.0 - nov, 5.0);
+  return c + env(reflect(rd, n), rough)*Fe*.35 + kd*base*mix(vec3(.04), vec3(.12, .14, .18), n.y*.5 + .5); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.0, 5.6); mat3 cam = lookAt(ro, vec3(0.0, .55, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.6));
+  float tb = 1e9; vec3 col = vec3(0.0); bool hit = false;
+  for (int i = 0; i < 4; i++){ vec4 s = vec4(-1.8 + float(i)*1.2, .52, 0.0, .5); vec2 q = sphIntersect(ro, rd, s);
+    if (q.x > 0.0 && q.x < tb){ tb = q.x; hit = true; vec3 n = normalize(ro + rd*q.x - s.xyz);
+      col = i == 0 ? shadeBall(rd, n, .75, 0.0, vec3(.5, .06, .04)) : i == 1 ? shadeBall(rd, n, .12, 0.0, vec3(.5, .06, .04)) : i == 2 ? shadeBall(rd, n, .6, 1.0, vec3(.9, .9, .92)) : shadeBall(rd, n, .15, 1.0, vec3(1.0, .78, .38)); } }
+  if (hit) return col;
+  if (rd.y < 0.0){ float t = -ro.y/rd.y; vec3 p = ro + rd*t; float sh = 1.0;
+    for (int i = 0; i < 4; i++){ vec4 s = vec4(-1.8 + float(i)*1.2, .52, 0.0, .5); sh = min(sh, sphSoftShadow(p, K, s, 4.0)); }
+    vec3 c = vec3(.035)*(vec3(2.6)*max(K.y, 0.0)*sh + vec3(.12)); return mix(c, studio(rd), smoothstep(3.5, 9.0, length(p.xz))); }
+  return studio(rd); }`,
+
+    /* Two crates: UV checker on the left, the finished material on the right. */
+    texturing: SDF + `
+vec3 C1 = vec3(-1.0, .5, 0.0), C2 = vec3(1.0, .5, 0.0);
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); mat3 m = rY(.55);
+  r = U(r, sdBox((p - C1)*m, vec3(.48)) - .02, 1.0); r = U(r, sdBox((p - C2)*rY(-.45), vec3(.48)) - .02, 2.0); return r; }
+vec2 faceUV(vec3 q, vec3 n){ vec3 a = abs(n); return a.x > .5 ? q.zy : a.y > .5 ? q.xz : q.xy; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR;
+  if (id < 1.5){ mat3 m = rY(.55); vec3 q = (p - C1)*m, nq = n*m; vec2 uv = faceUV(q, nq)*4.0 + 2.0; vec2 g = floor(uv); float ch = mod(g.x + g.y, 2.0);
+    vec3 tint = mix(vec3(.9, .3, .2), vec3(.2, .5, .95), fract((g.x + g.y * 4.0) * .13)); vec2 f = abs(fract(uv) - .5); float line = step(.46, max(f.x, f.y));
+    return mix(mix(vec3(.08), tint * .8, ch), vec3(.02), line); }
+  mat3 m = rY(-.45); vec3 q = (p - C2)*m, nq = n*m; vec2 uv = faceUV(q, nq); float plank = floor(uv.y * 5.0 + 2.5); float grain = fbm(vec3(uv.x * 3.0, uv.y * 40.0, plank));
+  vec3 wood = mix(vec3(.32, .17, .07), vec3(.5, .3, .14), grain) * (.8 + .2 * fract(plank * .37));
+  vec3 aq = abs(q); float edge = step(.4, max(min(aq.x, aq.y), max(min(aq.y, aq.z), min(aq.x, aq.z))));
+  float gap = smoothstep(.03, .0, abs(fract(uv.y * 5.0 + 2.5) - .5) - .45);
+  return mix(wood * (1.0 - .6 * gap), vec3(.25, .26, .28), edge); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.0, 1.7, 4.4), vec3(0.0, .45, 0.0), 2.5, frag); }`,
+
+    /* One packed mask and its four channels as tiles. */
+    'texture-settings': '#define KEYDIR vec3(-.4, .85, .45)\n' + SDF + `
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox(p - vec3(-1.75, .06, .1), vec3(.62, .06, .62)) - .01, 1.0);
+  for (int i = 0; i < 4; i++){ float fi = float(i); r = U(r, sdBox(p - vec3(-.4 + fi * .78, .05, .1), vec3(.33, .05, .33)) - .01, 2.0 + fi); }
+  return r; }
+float chan(int i, vec2 uv){
+  if (i == 0) return step(.55, fbm(vec3(uv * 2.5, 1.0)));                                  /* metallic: patches */
+  if (i == 1) return .35 + .65 * smoothstep(.2, .65, fbm(vec3(uv * 6.0, 4.0)));           /* AO */
+  if (i == 2) return step(.0, sin(uv.x * 9.0) * sin(uv.y * 9.0));                          /* detail mask */
+  return .25 + .6 * fbm(vec3(uv * 4.0, 7.0)); }                                            /* smoothness */
+vec3 albedo(float id, vec3 p, vec3 n){ return id < .5 ? FLOOR : vec3(.03); }
+vec3 emit(float id, vec3 p, vec3 n){ if (id < .5 || n.y < .5) return vec3(0.0);
+  if (id < 1.5){ vec2 uv = (p.xz - vec2(-1.75, .1)) / 1.24 + .5; return vec3(chan(0, uv), chan(1, uv), chan(2, uv)) * .55; }
+  int k = int(id - 1.5); vec2 uv = (p.xz - vec2(-.4 + float(k) * .78, .1)) / .66 + .5; float v = chan(k, uv);
+  vec3 tint = k == 0 ? vec3(1.0, .25, .2) : k == 1 ? vec3(.3, 1.0, .35) : k == 2 ? vec3(.3, .5, 1.0) : vec3(.85);
+  return v * tint * .5; }
+vec3 render(vec2 frag){ return scene(vec3(-.15, 2.5, 2.9), vec3(-.15, .0, .1), 2.25, frag); }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

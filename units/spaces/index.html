@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Coordinate Spaces</h1>
   <p class="lede">Every position in a shader is measured from somewhere. This unit follows one vertex from its mesh file to a pixel on screen, and shows the maths at each step.</p>
   <p class="meta">Builds on Vectors. Drag the sliders; the matrix values update live.</p>
@@ -147,6 +147,61 @@
   <div class="prose"><p>Written as a matrix, T, B and N are its three columns: the <button type="button" class="term" data-term="tbn">TBN matrix</button>. Mesh importers compute T per vertex from the UVs, which is why normal maps break when UVs are mirrored or tangents are missing.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["A normal map texel decodes to (0, 0, 1). What does it do to the surface normal?", ["Tilts it towards u", "Nothing: it equals N", "Flips it", "Makes it zero"], 1, "z along N only, so the world normal is the surface normal itself."]]</script></details>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="spaces#chain spaces#tangent" data-summary="Transform node types, tangent-space normals, HDRP space functions, and the matrix chain checked from C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Shader Graph does most space conversions with the <em>Transform</em> node, and C# has the same matrices. This exercise checks the chain from object space to pixels on the CPU, and uses the tangent frame in a graph. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Transform node conversions and a tangent-space normal.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Spaces.hlsl: the same conversions in code.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>SpaceChain.cs: one point through every space, logged.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Add a <em>Position</em> node in <code>Object</code> space and use its Y to drive a gradient: it sticks to the mesh. Switch to <code>Absolute World</code>: the gradient now stays put while the object moves.</div></li><li><div>Normal maps: <em>Sample Texture 2D</em> with <em>Type</em> set to <code>Normal</code> outputs a tangent-space normal. Connect it to the <em>Normal (Tangent Space)</em> block, or convert it with a <em>Transform</em> node (<code>Tangent → World</code>, Type <code>Direction</code>) when you need it in world space for your own maths.</div></li><li><div>The <em>Transform</em> node's <em>Type</em> matters: <code>Position</code> uses w = 1 (moves), <code>Direction</code> and <code>Normal</code> use w = 0 (only rotate and scale; normals use the inverse transpose).</div></li><li><div>Save <code>Spaces.hlsl</code> to call the HDRP conversion functions yourself in a Custom Function.</div></li><li><div>Add <code>SpaceChain.cs</code> to an object, assign the camera, and use <em>Log chain</em> from the component's context menu. Compare the pixel it prints with the unit's widgets and with <code>Camera.WorldToScreenPoint</code>.</div></li></ol>
+<div class="files"><div class="file" data-name="Spaces.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SPACES_INCLUDED
+#define ATLAS_SPACES_INCLUDED
+// HDRP/Core space functions (SpaceTransforms.hlsl). In HDRP &quot;WS&quot; means camera-relative world space.
+
+void ObjectToClip_float(float3 PositionOS, out float4 PositionCS, out float3 PositionAWS)
+{
+    float3 positionRWS = TransformObjectToWorld(PositionOS);   // camera-relative world
+#ifdef SHADERGRAPH_PREVIEW
+    PositionAWS = positionRWS;
+#else
+    PositionAWS = GetAbsolutePositionWS(positionRWS);          // add the camera position back
+#endif
+    PositionCS  = TransformWorldToHClip(positionRWS);          // view and projection in one step
+}
+
+void TangentToWorld_float(float3 NormalTS, float3 TangentWS, float3 BitangentWS, float3 NormalWS,
+                          out float3 Out)
+{
+    // world = x * T + y * B + z * N
+    Out = normalize(NormalTS.x * TangentWS + NormalTS.y * BitangentWS + NormalTS.z * NormalWS);
+}
+
+#endif</pre></div><div class="file" data-name="SpaceChain.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Logs one point through object, world, view, clip, NDC and pixel coordinates.
+public class SpaceChain : MonoBehaviour
+{
+    public Camera cam;
+    public Vector3 pointOS = Vector3.up;     // a point in this object&#x27;s space
+
+    [ContextMenu(&quot;Log chain&quot;)]
+    void LogChain()
+    {
+        if (cam == null) cam = Camera.main;
+        Vector4 os = new Vector4(pointOS.x, pointOS.y, pointOS.z, 1f);     // w = 1: a point
+        Vector4 ws = transform.localToWorldMatrix * os;                     // model matrix
+        Vector4 vs = cam.worldToCameraMatrix * ws;                          // view matrix (looks down -z)
+        Vector4 cs = cam.projectionMatrix * vs;                             // projection (OpenGL convention)
+        Vector3 ndc = new Vector3(cs.x, cs.y, cs.z) / cs.w;                 // the perspective divide
+        Vector2 px = new Vector2((ndc.x * 0.5f + 0.5f) * cam.pixelWidth,
+                                 (ndc.y * 0.5f + 0.5f) * cam.pixelHeight);  // pixels, origin bottom-left
+        Debug.Log($&quot;object {os}\nworld {ws}\nview {vs}\nclip {cs}\nndc {ndc}\npixel {px}\n&quot; +
+                  $&quot;Unity says {cam.WorldToScreenPoint(ws)}&quot;);
+        // On the GPU, GL.GetGPUProjectionMatrix(cam.projectionMatrix, true) adds the platform&#x27;s
+        // reversed depth and y flip; the x and y in pixels end up the same.
+    }
+}</pre></div></div>
+<div class="prose"><p>Everything in <code>Spaces.hlsl</code> is also available as nodes; the file is there for when you write longer functions that need several spaces at once.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same nodes and functions (<code>TransformObjectToWorld</code>, <code>TransformWorldToHClip</code>); URP's world space is absolute, so there is no <code>GetAbsolutePositionWS</code>.</p></div><div class="eng" data-engine="unreal"><p>The <em>TransformPosition</em> and <em>TransformVector</em> nodes convert between Local, World, View, Camera and Tangent space. Remember Unreal is Z-up in centimetres, and normal maps use the opposite green channel (DirectX style).</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

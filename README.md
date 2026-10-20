@@ -11,6 +11,8 @@ regenerates the link index after you add or change chapters; the site runs witho
 
 ## Units
 
+Every unit ends with a **Build it in Unity HDRP** chapter: the tools it needs, numbered steps, and complete `.hlsl`, `.cs` and `.compute` files to copy, plus URP and Unreal notes.
+
 | Category | Unit | Folder |
 |---|---|---|
 | Foundations | How a GPU Draws a Frame | `units/gpu-basics/` |
@@ -20,6 +22,7 @@ regenerates the link index after you add or change chapters; the site runs witho
 | Foundations | Coordinate Spaces (matrices, projection, tangent space) | `units/spaces/` |
 | Foundations | Textures and Sampling | `units/textures-sampling/` |
 | Foundations | Buffers and Render Targets (incl. append buffers) | `units/buffers/` |
+| Foundations | Compute Shaders (threads, groups, dispatch, shared memory, readback) | `units/compute-shaders/` |
 | Foundations | Colour as Numbers (linear, sRGB, HDR) | `units/color-values/` |
 | Foundations | Rays and Solving for t | `units/rays-math/` |
 | Shaders & rendering | Rooms Behind Glass (interior mapping) | `units/interior-mapping/` |
@@ -33,7 +36,10 @@ regenerates the link index after you add or change chapters; the site runs witho
 | Lighting & GI | Shadow Maps (bias, PCF, cascades) | `units/shadow-maps/` |
 | Lighting & GI | Baked Light: Lightmaps and Probes (SH, leaking, box projection) | `units/baked-gi/` |
 | Lighting & GI | Light Types and Falloff (point, spot, sun, area, IES) | `units/light-types/` |
+| Materials & texture pipeline | PBR Materials: the Basics (base colour, metallic, roughness, AO) | `units/pbr-basics/` |
+| Materials & texture pipeline | Texturing a Game Asset (UVs, padding, density, baking, trims) | `units/texturing/` |
 | Materials & texture pipeline | Texels on a Budget (memory, mips, compression, packing) | `units/texture-memory/` |
+| Materials & texture pipeline | Texture Packing and Import Settings (formats, layouts, import script, packer) | `units/texture-settings/` |
 | Materials & texture pipeline | Simple Mapping Techniques (planar, triplanar, detail, flow, matcap, decals) | `units/mapping/` |
 | Characters | Skin: Light Under the Surface (wrap, diffusion profiles, pre-integrated, transmission) | `units/skin/` |
 | Characters | Hair: Strands and Cards (Kajiya–Kay, shifted highlights, sorting) | `units/hair/` |

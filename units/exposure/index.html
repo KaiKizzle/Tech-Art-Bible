@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Lighting & GI · 9 chapters</div>
+  <div class="eyebrow">Lighting & GI · 10 chapters</div>
   <h1>Sun to Screen</h1>
   <p class="lede">A sunlit wall is ten thousand times brighter than the same wall at night, and your monitor shows about a thousand to one. Exposure and tonemapping squeeze one into the other. Every formula on the way is live.</p>
   <p class="meta">Units of light, EV100 and the physical camera, auto exposure, tonemapping curves and display encoding, with notes for Unity HDRP, Unity URP and Unreal.</p>
@@ -338,6 +338,43 @@
   </table>
   </div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="exposure#workflow exposure#auto" data-summary="Physical light units, the Exposure and Tonemapping overrides, the Emission node&#x27;s exposure weight, and an EV100 blend from C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>In HDRP, exposure and tonemapping are Volume overrides and lights already use physical units, so this unit maps almost one to one onto settings. The script blends exposure between two values, for example when the player walks indoors. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Volume overrides: Exposure and Tonemapping; light units on every light.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>The Exposure and Emission nodes for emissive surfaces.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ExposureBlend.cs: blends a fixed EV100 from C#.</span></div></div>
+<ol class="impl-steps"><li><div>Lights in physical units: Directional Light in <em>Lux</em> (sun 100 000, overcast 10 000), point and spot lights in <em>Lumen</em> or <em>Candela</em>, emissive materials in <em>Nits</em>. Use the <em>Physically Based Sky</em> or an HDRI with a calibrated <em>Exposure</em> value.</div></li><li><div>Add a <em>Global Volume</em> with a profile and <em>Add Override &gt; Exposure</em>. While lighting, set <em>Mode</em> to <code>Fixed</code> and <em>Fixed Exposure</em> to the EV100 of the scene (sunny day 14–15, interior 7–9): that is <a href="#workflow">lock exposure</a> from the workflow.</div></li><li><div>For gameplay switch to <code>Automatic Histogram</code>: <em>Limit Min/Max</em> are the EV range, <em>Compensation</em> shifts the target, <em>Adaptation Speed Dark to Light / Light to Dark</em> are the k of <a href="#auto">auto exposure</a>. The histogram ignores the brightest and darkest percent of pixels.</div></li><li><div><em>Add Override &gt; Tonemapping</em>: <code>ACES</code> for a filmic look, <code>Neutral</code> for minimal hue shifts, <code>Custom</code> for your own curve parameters.</div></li><li><div>Emissive surfaces in Shader Graph: an <em>Emission</em> node with <em>Intensity Unit</em> <code>Nits</code> and <em>Exposure Weight</em> 1 behaves like a real light source; 0 keeps a constant brightness on screen (UI-like). The <em>Exposure</em> node gives the current multiplier for your own maths.</div></li><li><div>Add <code>ExposureBlend.cs</code>, assign the Volume, and drive <em>Interior</em> from a trigger or a script.</div></li></ol>
+<div class="files"><div class="file" data-name="ExposureBlend.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
+
+// Blends a fixed exposure between an outdoor and an indoor EV100 (0 = outdoors, 1 = indoors).
+[ExecuteAlways]
+public class ExposureBlend : MonoBehaviour
+{
+    public Volume volume;
+    [Range(0f, 1f)] public float interior;
+    public float outdoorEV100 = 14.5f;
+    public float indoorEV100 = 8f;
+
+    void Update()
+    {
+        if (volume == null) return;
+        // In Play mode, .profile is a runtime copy; in edit mode, change the asset itself.
+        VolumeProfile profile = Application.isPlaying ? volume.profile : volume.sharedProfile;
+        if (profile == null || !profile.TryGet(out Exposure exposure)) return;
+
+        exposure.mode.overrideState = true;
+        exposure.mode.value = ExposureMode.Fixed;
+        exposure.fixedExposure.overrideState = true;
+        exposure.fixedExposure.value = Mathf.Lerp(outdoorEV100, indoorEV100, interior);
+    }
+
+    // Screen value multiplier for an EV100, the formula from the unit.
+    public static float Multiplier(float ev100) =&gt; 1f / (1.2f * Mathf.Pow(2f, ev100));
+}</pre></div></div>
+<div class="prose"><p>Blending EV100 linearly is right: EV is already logarithmic, so equal steps look like equal changes in brightness. The Rendering Debugger's <em>Lighting &gt; Exposure</em> modes show the metering histogram and the current EV over the frame.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP has no physical exposure: lights are unitless and there is no auto exposure override. Tonemapping (<em>ACES</em>, <em>Neutral</em>) is a Volume override under Post-processing. For eye adaptation, a custom renderer feature that computes the average luminance with a compute shader (a reduction, see <a class="x" href="../compute-shaders/index.html#writes">Compute Shaders</a>) is the usual route.</p></div><div class="eng" data-engine="unreal"><p>Post Process Volume &gt; <em>Exposure</em>: Metering Mode <em>Auto Exposure Histogram</em> or <em>Manual</em> (with <em>Apply Physical Camera Exposure</em>), Min/Max EV100, Exposure Compensation, Speed Up/Down. Lights in lux, candela or lumens; <em>Extend default luminance range</em> in the project settings enables the EV100 scale.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

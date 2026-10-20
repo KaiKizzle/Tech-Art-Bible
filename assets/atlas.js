@@ -263,6 +263,56 @@
     });
   }
 
+
+  /* ---------- implementation files: tabs, highlighting, copy ----------
+     <div class="files"><div class="file" data-name="X.hlsl" data-lang="hlsl"><pre class="code">…escaped code…</pre></div>…</div> */
+  const KW = {
+    hlsl: 'return if else for while do break continue struct cbuffer in out inout const static uniform groupshared discard clip true false register numthreads unroll loop branch flatten',
+    cs: 'using namespace class struct enum interface public private protected internal static readonly const void return if else for foreach while do break continue new var override virtual abstract sealed partial this base null true false in out ref is as get set typeof switch case default try catch finally throw yield',
+    cpp: 'return if else for while struct const static void auto true false',
+    py: 'import from for in if elif else def return and or not True False None isinstance with as class pass'
+  };
+  const TY = {
+    hlsl: /^(?:float|half|int|uint|bool|min16float|double)(?:[1-4](?:x[1-4])?)?$|^(?:void|Texture2D|Texture3D|Texture2DArray|TextureCube|RWTexture2D|RWTexture3D|RWTexture2DArray|StructuredBuffer|RWStructuredBuffer|AppendStructuredBuffer|ConsumeStructuredBuffer|ByteAddressBuffer|RWByteAddressBuffer|SamplerState|SamplerComparisonState|TEXTURE2D|SAMPLER|UnityTexture2D|UnitySamplerState)$/,
+    cs: /^(?:float|int|uint|bool|byte|string|double|long|object)$|^[A-Z][A-Za-z0-9]*$/
+  };
+  function highlight(code, lang) {
+    const kw = new Set((KW[lang] || KW.hlsl).split(' ')), ty = TY[lang] || TY.hlsl;
+    const re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(#\s*[a-z]+)|(\b\d+(?:\.\d+)?(?:[eE][-+]?\d+)?[fFuU]?\b|\.\d+[fF]?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+    let out = '', last = 0, m;
+    while ((m = re.exec(code))) {
+      out += esc(code.slice(last, m.index)); last = re.lastIndex;
+      const [t, c, st, pp, n, id] = m;
+      if (c) out += `<span class="c">${esc(c)}</span>`;
+      else if (st) out += `<span class="s">${esc(st)}</span>`;
+      else if (pp) out += `<span class="k">${esc(pp)}</span>`;
+      else if (n) out += `<span class="n">${esc(n)}</span>`;
+      else if (kw.has(id)) out += `<span class="k">${id}</span>`;
+      else if (ty.test(id) && !(lang === 'cs' && /^[A-Z]/.test(id) && code[re.lastIndex] === '(')) out += `<span class="t">${id}</span>`;
+      else out += esc(id);
+    }
+    return out + esc(code.slice(last));
+  }
+  function files() {
+    $$('.files').forEach(box => {
+      const fs = $$('.file', box); if (!fs.length) return;
+      fs.forEach(f => { const pre = $('pre', f); const raw = pre.textContent; f._raw = raw; pre.innerHTML = highlight(raw, f.dataset.lang); });
+      const bar = document.createElement('div'); bar.className = 'files-bar';
+      bar.innerHTML = '<div class="files-tabs" role="tablist">' + fs.map((f, i) => `<button type="button" role="tab" data-i="${i}">${esc(f.dataset.name)}</button>`).join('') + '</div><button type="button" class="files-copy">Copy</button>';
+      box.prepend(bar);
+      let cur = 0;
+      const show = i => { cur = i; fs.forEach((f, k) => { f.hidden = k !== i; }); $$('.files-tabs button', bar).forEach((b, k) => b.setAttribute('aria-selected', k === i ? 'true' : 'false')); };
+      bar.addEventListener('click', e => {
+        const t = e.target.closest('.files-tabs button'); if (t) { show(+t.dataset.i); return; }
+        const c = e.target.closest('.files-copy'); if (!c) return;
+        const txt = fs[cur]._raw, done = () => { c.textContent = 'Copied'; setTimeout(() => { c.textContent = 'Copy'; }, 1400); };
+        try { navigator.clipboard.writeText(txt).then(done, () => { fallbackCopy(txt); done(); }); } catch (_) { fallbackCopy(txt); done(); }
+      });
+      show(0);
+    });
+    $$('pre.code[data-lang]').forEach(pre => { if (!pre.closest('.files')) pre.innerHTML = highlight(pre.textContent, pre.dataset.lang); });
+  }
+  function fallbackCopy(t) { const a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (_) {} a.remove(); }
   /* ---------- engine notes ---------- */
   const ENGINES = { hdrp: 'Unity HDRP', urp: 'Unity URP', unreal: 'Unreal Engine', any: 'Any engine' };
   function engines() {
@@ -480,7 +530,7 @@
   window.Atlas = { $, $$, fig, pointer, range, seg, col, alpha, clamp, lerp, fmt, num, pn, short, esc, store, redraw: redrawAll, onRedraw: f => redrawers.add(f), fx: fxDefine, href: hrefFor, reduceMotion, grid2d, arrow: arrowG, text };
 
   function boot() {
-    crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines();
+    crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines(); files();
     $$('.fx[data-fx]').forEach(el => { const s = FX[el.dataset.fx]; if (s && !el.dataset.ready) fxBuild(el, s); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

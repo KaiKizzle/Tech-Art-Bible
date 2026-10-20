@@ -68,6 +68,27 @@
   <div class="prose"><p>Each chapter should be followable by someone who only read the chapters before it and the lessons in "Before this unit".</p></div>
 
 </section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="One line: the tools and the result.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Every unit ends with this chapter: how to build the technique in Unity HDRP, with the tools it needs, numbered steps and complete files to copy. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Which graph type and material settings.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Name.hlsl: the Custom Function file.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>Name.cs: what the script sets up or drives.</span></div><div class="rt" data-k="compute"><b>Compute shader</b><span>Name.compute: only if the work suits compute.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Save <code>Example.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Example.hlsl</code> and <em>Name</em> to <code>Example</code> (without the <code>_float</code> suffix). Add the inputs <b>In (Float)</b> and the outputs <b>Out (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Describe each further step as one action with its result.</div></li></ol>
+<div class="files"><div class="file" data-name="Example.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_EXAMPLE_INCLUDED
+#define ATLAS_EXAMPLE_INCLUDED
+
+void Example_float(float In, out float Out)
+{
+    Out = saturate(In);
+}
+
+#endif</pre></div><div class="file" data-name="Example.cs" data-lang="cs"><pre>using UnityEngine;
+
+public class Example : MonoBehaviour
+{
+    void Update() { }
+}</pre></div></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>What changes in URP.</p></div><div class="eng" data-engine="unreal"><p>The equivalent in Unreal.</p></div></div>
+</section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
   <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>

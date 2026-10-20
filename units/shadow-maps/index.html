@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <div class="eyebrow">Lighting & GI · 8 chapters</div>
   <h1>Shadow Maps</h1>
   <p class="lede">Real-time shadows are a second camera at the light and one depth comparison per pixel. This unit builds that comparison, then fixes everything that goes wrong with it: acne, blocky edges, wasted resolution and cost.</p>
   <p class="meta">Builds on the depth buffer and coordinate spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -102,6 +102,47 @@
   <div class="fx" data-fx="shadowcost"></div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p>Per light: <em>Shadows → Resolution</em>, <em>Update Mode</em> (Every Frame, On Enable, On Demand) to cache shadows of static lights, and slope/normal bias. Cascades are set in the <em>Shadows</em> Volume override (count, splits, border blend). Shadow maps of all lights share one atlas whose size is set in the HDRP asset.</p></div><div class="eng" data-engine="urp"><p>The URP asset sets the main light shadow resolution, the cascade count (1 to 4) and split distances, and the depth and normal bias. Additional lights share one atlas. <em>Soft Shadows</em> toggles PCF filtering.</p></div><div class="eng" data-engine="unreal"><p>With <em>Virtual Shadow Maps</em> (UE5 default) the sun gets very large, paged shadow maps cached between frames; only pages that change are re-rendered. Without them, the directional light uses cascades (<em>Dynamic Shadow Distance</em>, <em>Num Dynamic Shadow Cascades</em>, <em>Cascade Distribution Exponent</em>).</p></div></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="shadow-maps#cascades shadow-maps#cost" data-summary="Atlas tiers, the Shadows override and cascades, per-light resolution and bias, contact and micro shadows, and on-demand updates from C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP renders shadow maps for you; your job is choosing resolutions, biases, cascades and update rates that fit the budget. The script switches static lights to on-demand shadows, the biggest single saving. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>HDRP asset shadow atlas, the Shadows override, per-light resolution and bias.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ShadowOnDemand.cs: renders a light's shadow only when asked.</span></div></div>
+<ol class="impl-steps"><li><div><b>HDRP asset &gt; Lighting &gt; Shadows</b>: shadow atlas sizes, the resolution tiers (Low/Medium/High/Ultra) lights can pick from, and <em>Filtering Quality</em> (PCF kernel size, or PCSS for contact-hardening shadows).</div></li><li><div><b>Volume &gt; Add Override &gt; Shadowing &gt; Shadows</b>: <em>Max Distance</em>, <em>Cascade Count</em> and the <em>Split</em> distances (the λ blend of <a href="#cascades">cascades</a>), and the border fade. Shorter max distance sharpens every cascade.</div></li><li><div><b>Per light, Shadows section</b>: <em>Resolution</em> (tier or custom), <em>Slope-Scale Depth Bias</em> and <em>Normal Bias</em> (the bias of <a href="#acne">shadow acne</a>), <em>Near Plane</em> for point and spot lights, <em>Update Mode</em>.</div></li><li><div><b>Small-scale shadows</b>: <em>Contact Shadows</em> (a screen-space ray march, enable on the light and in a Contact Shadows override) and <em>Micro Shadows</em> (from the normal map and AO) fill in detail the shadow map is too coarse for.</div></li><li><div>Add <code>ShadowOnDemand.cs</code> to lights that do not move and only light static objects: their shadow map is rendered once and kept, and you call <code>Refresh()</code> when something under them changes.</div></li><li><div>Check the cost in the Rendering Debugger (<em>Lighting &gt; Shadows</em> shows the atlas) and in the Profiler's GPU module (shadow passes).</div></li></ol>
+<div class="files"><div class="file" data-name="ShadowOnDemand.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
+
+// Renders this light&#x27;s shadow map only when requested, instead of every frame.
+[RequireComponent(typeof(HDAdditionalLightData))]
+public class ShadowOnDemand : MonoBehaviour
+{
+    public bool refreshEverySecond;      // optional slow refresh for lights over slowly changing scenes
+    float timer;
+    HDAdditionalLightData data;
+
+    void OnEnable()
+    {
+        data = GetComponent&lt;HDAdditionalLightData&gt;();
+        data.shadowUpdateMode = ShadowUpdateMode.OnDemand;
+        data.RequestShadowMapRendering();               // render once now
+    }
+
+    void Update()
+    {
+        if (!refreshEverySecond) return;
+        timer += Time.deltaTime;
+        if (timer &gt;= 1f) { timer = 0f; Refresh(); }
+    }
+
+    // Call this when an object under the light moves, a door opens, and so on.
+    public void Refresh() =&gt; data.RequestShadowMapRendering();
+
+    void OnDisable()
+    {
+        if (data != null) data.shadowUpdateMode = ShadowUpdateMode.EveryFrame;
+    }
+}</pre></div></div>
+<div class="prose"><p>Shadows in custom shaders: HDRP Lit graphs receive shadows automatically; Unlit graphs do not, and HDRP does not expose its shadow sampling as a node. For toon looks that need shadows, keep a Lit graph and restyle its lighting (for example a ramp on the diffuse in a Custom Pass), rather than sampling shadow atlases by hand.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>URP Asset &gt; <em>Shadows</em>: Max Distance, Cascade Count and splits, resolution, Depth Bias and Normal Bias, Soft Shadows. Per light: shadow strength, resolution tier and biases. Custom URP graphs can sample the main light shadow with <code>MainLightRealtimeShadow(TransformWorldToShadowCoord(positionWS))</code>.</p></div><div class="eng" data-engine="unreal"><p>Unreal 5 uses <em>Virtual Shadow Maps</em> by default: very high resolution pages allocated where the screen needs them, cached for static geometry. Biases are <em>Shadow Bias</em> and <em>Shadow Slope Bias</em> on the light; cascaded shadow maps remain available for lower-end targets (<em>Dynamic Shadow Distance</em>, <em>Num Dynamic Shadow Cascades</em>).</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

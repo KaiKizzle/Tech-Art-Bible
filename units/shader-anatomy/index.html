@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Foundations · 6 chapters</div>
+  <div class="eyebrow">Foundations · 7 chapters</div>
   <h1>Reading a Shader</h1>
   <p class="lede">Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.</p>
   <p class="meta">Builds on How a GPU Draws a Frame. Every function is shown as a live graph.</p>
@@ -195,6 +195,63 @@
     <p>Note the argument order of <code>step</code>: in HLSL the edge comes first, <code>step(edge, x)</code>, which returns 1 when x is at least edge. Shader Graph's Step node follows HLSL. The vector functions at the bottom of the table are explained in <a class="x" href="../vectors/index.html#normalize">Vectors</a> and <a class="x" href="../dot-cross/index.html#dot">Dot and Cross Product</a>.</p>
   </div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="shader-anatomy#properties shader-anatomy#functions" data-summary="Custom Function files with _float and _half variants, property references, MaterialPropertyBlock and global properties.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>In HDRP you rarely write a whole shader by hand: Shader Graph generates the passes the pipeline needs, and your own code goes into <em>Custom Function</em> nodes. This exercise builds a small function file, exposes properties and drives them from C#. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph with exposed properties.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Remap.hlsl: inverse lerp, remap and a smooth pulse.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>PulseDriver.cs: sets properties per object and globally.</span></div></div>
+<ol class="impl-steps"><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>In the <em>Blackboard</em>, add a Float property <code>Pulse Speed</code>. In the <em>Graph Inspector</em> its <em>Reference</em> is something like <code>_Pulse_Speed</code>: rename it to <code>_PulseSpeed</code>. The reference is the name C# uses.</div></li><li><div>Save <code>Remap.hlsl</code> under <code>Assets</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Remap.hlsl</code> and <em>Name</em> to <code>Pulse</code> (without the <code>_float</code> suffix). Add the inputs <b>Time (Float), Speed (Float), Sharpness (Float)</b> and the outputs <b>Out (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect the <em>Time</em> node, the <code>_PulseSpeed</code> property and a Float for sharpness. Multiply a Color property by <em>Out</em> and connect it to <em>Emission</em>.</div></li><li><div>To see what Shader Graph generated, right-click the master stack or select the graph asset and use <em>View Generated Shader</em>: your function appears inside the forward pass, called with the node's inputs.</div></li><li><div>Add <code>PulseDriver.cs</code> to the object. It sets <code>_PulseSpeed</code> for this object only through a <em>MaterialPropertyBlock</em>, and a global value <code>_AtlasIntensity</code> that every shader can read.</div></li><li><div>To read the global value in the graph, add a Float property with Reference <code>_AtlasIntensity</code> and untick <em>Exposed</em> (in newer versions: set <em>Scope</em> to <em>Global</em>). Unexposed properties are not stored in the material, so the global value reaches them.</div></li></ol>
+<div class="files"><div class="file" data-name="Remap.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_REMAP_INCLUDED
+#define ATLAS_REMAP_INCLUDED
+
+// The building blocks from this unit, as reusable functions.
+float InverseLerp(float a, float b, float x) { return saturate((x - a) / (b - a)); }
+float Remap(float x, float inMin, float inMax, float outMin, float outMax)
+{
+    return lerp(outMin, outMax, InverseLerp(inMin, inMax, x));
+}
+
+// A smooth 0..1 pulse: frac makes a sawtooth, sin a wave, pow sharpens the peak.
+void Pulse_float(float Time, float Speed, float Sharpness, out float Out)
+{
+    float wave = 0.5 + 0.5 * sin(Time * Speed * 6.2831853);
+    Out = pow(saturate(wave), max(Sharpness, 0.01));
+}
+
+// Shader Graph can call the same function at half precision when asked to.
+void Pulse_half(half Time, half Speed, half Sharpness, out half Out)
+{
+    half wave = 0.5 + 0.5 * sin(Time * Speed * 6.2831853);
+    Out = pow(saturate(wave), max(Sharpness, 0.01));
+}
+
+#endif</pre></div><div class="file" data-name="PulseDriver.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Sets a material property on this object only, and one global property for all shaders.
+[ExecuteAlways]
+public class PulseDriver : MonoBehaviour
+{
+    public float speed = 1f;
+    [Range(0, 4)] public float globalIntensity = 1f;
+
+    static readonly int SpeedId = Shader.PropertyToID(&quot;_PulseSpeed&quot;);
+    static readonly int IntensityId = Shader.PropertyToID(&quot;_AtlasIntensity&quot;);
+    MaterialPropertyBlock block;
+
+    void Update()
+    {
+        var r = GetComponent&lt;Renderer&gt;();
+        if (r == null) return;
+        block ??= new MaterialPropertyBlock();
+        r.GetPropertyBlock(block);
+        block.SetFloat(SpeedId, speed);      // per object; leaves the shared material untouched
+        r.SetPropertyBlock(block);
+
+        Shader.SetGlobalFloat(IntensityId, globalIntensity);   // every shader with an unexposed _AtlasIntensity
+    }
+}</pre></div></div>
+<div class="prose"><p>A MaterialPropertyBlock keeps one material for many objects, but objects using one are drawn outside the SRP Batcher. For a few objects that does not matter; for thousands, give each its own material variant or store per-object values in a buffer (<a class="x" href="../buffers/index.html#implement">Buffers</a>). Amplify Shader Editor: paste the function body into a <em>Custom Expression</em> node (mode <em>Call</em> with the file included, or <em>Create</em> with the code inline); inputs and outputs map the same way.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Identical: <em>Shader Graph &gt; URP &gt; Lit Shader Graph</em>, the same Custom Function node and C#.</p></div><div class="eng" data-engine="unreal"><p>Material <em>Parameters</em> (Scalar, Vector) are set from Blueprint or C++ with a <em>Dynamic Material Instance</em> (<code>SetScalarParameterValue</code>); global values live in a <em>Material Parameter Collection</em>. HLSL goes into a <em>Custom</em> node, or a <code>.ush</code> file included through the node's <em>Include File Paths</em>.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

@@ -38,6 +38,11 @@ window.ATLAS_INDEX = {
      "id": "modern",
      "title": "Baked, probe-based and real-time GI",
      "summary": "Lightmaps, probes, reflection probes and real-time GI trade quality, memory and flexibility."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Static flags, lightmap settings, light modes, Adaptive Probe Volumes, box-projected reflection probes, and an SH probe visualizer in C#."
     }
    ],
    "stats": {
@@ -78,6 +83,11 @@ window.ATLAS_INDEX = {
      "id": "render-targets",
      "title": "Render targets: images you draw into",
      "summary": "Render targets are textures the GPU draws into; later passes read them. Depth buffers and G-buffers are render targets."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "GraphicsBuffer from C#, SetGlobalBuffer, and a StructuredBuffer loop in a Custom Function."
     }
    ],
    "stats": {
@@ -118,6 +128,11 @@ window.ATLAS_INDEX = {
      "id": "fuzz",
      "title": "Fuzz and weave",
      "summary": "fuzz = fuzzColor · (1 − N·V)ᵖ; fade the weave once threads get smaller than a pixel."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "HDRP Fabric graph (Cotton Wool and Silk), weave fading and fuzz in the graph, and the sheen and silk terms in HLSL."
     }
    ],
    "stats": {
@@ -173,6 +188,11 @@ window.ATLAS_INDEX = {
      "id": "cost",
      "title": "What it costs",
      "summary": "samples = (W/s)·(H/s)·N·(1 + M) / frames."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "3D noise baked by compute, a Fullscreen graph with Premultiply blending, the full march in HLSL, drawn in a Custom Pass."
     }
    ],
    "stats": {
@@ -203,12 +223,72 @@ window.ATLAS_INDEX = {
      "id": "luminance",
      "title": "How bright a colour looks",
      "summary": "Luminance Y = 0.2126 R + 0.7152 G + 0.0722 B on linear values."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Linear colour space, sRGB flags, HDR colour properties, a luminance and false-colour debug function, SetColor versus SetVector."
     }
    ],
    "stats": {
     "fx": 5,
     "labs": 0,
     "checks": 5
+   }
+  },
+  "compute-shaders": {
+   "title": "Compute Shaders",
+   "chapters": [
+    {
+     "id": "what",
+     "title": "A shader without triangles",
+     "summary": "threads = (groups X · Y · Z) · (numthreads X · Y · Z); you choose both, there are no triangles."
+    },
+    {
+     "id": "groups",
+     "title": "Covering an image with groups",
+     "summary": "groups = ⌈size / numthreads⌉ per axis; threads past the edge must return early."
+    },
+    {
+     "id": "ids",
+     "title": "Which thread am I?",
+     "summary": "DispatchThreadID = GroupID · numthreads + GroupThreadID; GroupIndex = y · nx + x."
+    },
+    {
+     "id": "waves",
+     "title": "Group size and waves",
+     "summary": "waves per group = ⌈threads / wave width⌉; use multiples of 64."
+    },
+    {
+     "id": "shared",
+     "title": "Group shared memory",
+     "summary": "Shared reads per output ≈ (g + 2r) / g instead of 2r + 1; a barrier separates loading from reading."
+    },
+    {
+     "id": "writes",
+     "title": "Many threads, one address",
+     "summary": "Same address, many threads: use Interlocked*; time grows with the threads per address, so reduce in shared memory first."
+    },
+    {
+     "id": "cpu",
+     "title": "Starting it from C# and getting results back",
+     "summary": "FindKernel, Set*, Dispatch(⌈size / numthreads⌉); read back with AsyncGPUReadback, frames later."
+    },
+    {
+     "id": "when",
+     "title": "When to use compute",
+     "summary": "Compute for simulation, reductions, generation and culling; pixel shaders for shading geometry."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "NoiseField.compute + ComputeNoise.cs: RenderTexture with enableRandomWrite, Dispatch with ⌈size / numthreads⌉, result used by a material."
+    }
+   ],
+   "stats": {
+    "fx": 7,
+    "labs": 0,
+    "checks": 3
    }
   },
   "depth-effects": {
@@ -253,6 +333,11 @@ window.ATLAS_INDEX = {
      "id": "edges",
      "title": "Outlines from depth",
      "summary": "edge if |z − z_neighbour| / z &gt; threshold."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Scene Depth and Raw screen position for soft fades and water, depth-edge outlines in a Fullscreen graph, position reconstruction, and the AO override."
     }
    ],
    "stats": {
@@ -293,6 +378,11 @@ window.ATLAS_INDEX = {
      "id": "cross",
      "title": "The cross product: a perpendicular vector",
      "summary": "a × b is perpendicular to a and b, with length equal to their parallelogram&#x27;s area."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Custom lighting in an Unlit graph: N·L, wrap, reflect and rim from a light direction set by C#."
     }
    ],
    "stats": {
@@ -348,6 +438,11 @@ window.ATLAS_INDEX = {
      "id": "workflow",
      "title": "A lighting workflow",
      "summary": "Fix scale, lock exposure, light the dominant source in physical units, then auto exposure with limits, grade last."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Physical light units, the Exposure and Tonemapping overrides, the Emission node&#x27;s exposure weight, and an EV100 blend from C#."
     }
    ],
    "stats": {
@@ -388,6 +483,11 @@ window.ATLAS_INDEX = {
      "id": "solver",
      "title": "Stiffness, iterations and cost",
      "summary": "After n passes: 1 − (1 − s)ⁿ of the error is fixed; cost = particles · constraints · iterations · substeps."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Reoriented normal blending, joint angles to mask weights in C#, per-vertex tension from a compute shader on the skinned mesh, and GPU Verlet cloth writing into a mesh."
     }
    ],
    "stats": {
@@ -423,6 +523,11 @@ window.ATLAS_INDEX = {
      "id": "frame",
      "title": "A frame and its time budget",
      "summary": "Frame budget in milliseconds = 1000 / fps. Budgets add up in milliseconds, not in fps."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "An Unlit Shader Graph with a per-pixel Custom Function, and a frame-time readout with FrameTimingManager."
     }
    ],
    "stats": {
@@ -463,6 +568,11 @@ window.ATLAS_INDEX = {
      "id": "variation",
      "title": "Root to tip, and self-shadowing",
      "summary": "colour = lerp(root, tip, v^g) · lerp(AO, 1, v); self-shadow by the amount of hair in front."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "The HDRP Hair graph&#x27;s inputs mapped to the unit, the two-pass alpha recipe, Kajiya–Kay for custom graphs, and an inside-out triangle sorter."
     }
    ],
    "stats": {
@@ -543,6 +653,11 @@ window.ATLAS_INDEX = {
      "id": "bugs",
      "title": "Bug lab",
      "summary": "Per-window UVs, flipped tangents, un-negated view vectors, mismatched b and ignored room sizes each have a signature."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "InteriorMapping.hlsl as one Custom Function, wired to UV1–UV3 and vertex colour, with an editor baker for room data."
     }
    ],
    "stats": {
@@ -588,6 +703,11 @@ window.ATLAS_INDEX = {
      "id": "many",
      "title": "Many lights: what they cost",
      "summary": "lights per pixel ≈ N · π · (r / (d · tan(fov/2)))² / (4 · aspect)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Light types, units, ranges, angles and IES profiles on the Light component, and a C# + HLSL route for custom lighting with the unit&#x27;s formulas."
     }
    ],
    "stats": {
@@ -633,6 +753,11 @@ window.ATLAS_INDEX = {
      "id": "decals",
      "title": "Projected decals",
      "summary": "local = worldToDecal · worldPos; uv = local.xy + ½; fade by the angle to the projection axis."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Planar and triplanar nodes, a triplanar-normal / flow / matcap HLSL file, and HDRP decals spawned from C#."
     }
    ],
    "stats": {
@@ -683,10 +808,65 @@ window.ATLAS_INDEX = {
      "id": "alternatives",
      "title": "When to use something else",
      "summary": "Normal map, offset, POM, cone stepping, tessellation, real geometry: silhouette against cost."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "HDRP Pixel displacement, the Parallax Occlusion Mapping node, and a Custom Function with adaptive layers and self-shadow."
     }
    ],
    "stats": {
     "fx": 7,
+    "labs": 0,
+    "checks": 3
+   }
+  },
+  "pbr-basics": {
+   "title": "PBR Materials: the Basics",
+   "chapters": [
+    {
+     "id": "idea",
+     "title": "What PBR asks of you",
+     "summary": "Author what the surface is; light does the rest. Reflected ≈ F0 + (1 − F0) · albedo, always below 1."
+    },
+    {
+     "id": "basecolor",
+     "title": "Base colour: colour without light",
+     "summary": "No baked lighting; non-metals roughly 30–240 sRGB; 128 sRGB is only about 22 % reflectance."
+    },
+    {
+     "id": "metallic",
+     "title": "Metallic is a switch",
+     "summary": "Metallic 0 or 1: F0 = lerp(0.04, base, m), diffuse = base · (1 − m). Metals: bright base colour."
+    },
+    {
+     "id": "roughness",
+     "title": "Roughness: how blurry reflections are",
+     "summary": "Rough = blurry, dim, wide highlight; same total energy. Smoothness = 1 − roughness."
+    },
+    {
+     "id": "maps",
+     "title": "Normal, occlusion and height",
+     "summary": "Normal and height add small shapes; AO darkens only ambient light, so keep it out of the base colour."
+    },
+    {
+     "id": "workflows",
+     "title": "Specular/gloss and other conventions",
+     "summary": "specular = lerp(0.04, base, m), diffuse = base · (1 − m), gloss = 1 − roughness."
+    },
+    {
+     "id": "validate",
+     "title": "Checking your values",
+     "summary": "Neutral light, fixed exposure; the Material Validator and single-input views catch most errors."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "HDRP/Lit inputs and remapping, the same inputs in Shader Graph, the Material Validator, and a base-colour range check."
+    }
+   ],
+   "stats": {
+    "fx": 6,
     "labs": 0,
     "checks": 3
    }
@@ -733,6 +913,11 @@ window.ATLAS_INDEX = {
      "id": "ibl",
      "title": "Light from the environment",
      "summary": "Rough surfaces read blurrier, pre-filtered mips: mip ≈ roughness · (mip count − 1)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "HDRP Lit&#x27;s inputs mapped to the BRDF terms, and the full BRDF rebuilt in an Unlit graph with a cubemap environment."
     }
    ],
    "stats": {
@@ -788,6 +973,11 @@ window.ATLAS_INDEX = {
      "id": "output",
      "title": "Writing the result into the frame",
      "summary": "Debug the distance through the layer first; later, blend clouds with result = clouds + background · T, T = e^(−σd)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "A Fullscreen Shader Graph in a Custom Pass Volume, with camera basis and lens sent from C# and the layer interval in HLSL."
     }
    ],
    "stats": {
@@ -828,6 +1018,11 @@ window.ATLAS_INDEX = {
      "id": "box",
      "title": "Hitting a box: the slab test",
      "summary": "Per axis, compute entry and exit t; the box is hit if max(entries) &lt; min(exits)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "A ray-traced sphere on a cube: ray from Absolute World position and view direction, sphere and slab tests in a Custom Function."
     }
    ],
    "stats": {
@@ -878,6 +1073,11 @@ window.ATLAS_INDEX = {
      "id": "routine",
      "title": "A profiling routine",
      "summary": "Reproduce, find the stage, find the biggest item, test by removal, measure again."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Profiler, Frame Debugger, Rendering Debugger and RenderDoc for each question of the routine, a ProfilerRecorder HUD and ProfilerMarker blocks."
     }
    ],
    "stats": {
@@ -918,6 +1118,11 @@ window.ATLAS_INDEX = {
      "id": "nodes",
      "title": "The same functions as nodes",
      "summary": "HLSL functions mapped to Shader Graph and Unreal material nodes."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Custom Function files with _float and _half variants, property references, MaterialPropertyBlock and global properties."
     }
    ],
    "stats": {
@@ -963,6 +1168,11 @@ window.ATLAS_INDEX = {
      "id": "cost",
      "title": "What shadows cost",
      "summary": "draws ≈ casters × (cascades + spot lights + 6 · point lights)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Atlas tiers, the Shadows override and cascades, per-light resolution and bias, contact and micro shadows, and on-demand updates from C#."
     }
    ],
    "stats": {
@@ -1008,6 +1218,11 @@ window.ATLAS_INDEX = {
      "id": "specular",
      "title": "Skin specular: two lobes",
      "summary": "spec = lerp(D(r₁), D(r₂), mix) · F(F0 = 0.028) · cavity."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Diffusion Profile + Subsurface Scattering material type, StackLit dual specular, and a compute-baked pre-integrated LUT with its lookup function."
     }
    ],
    "stats": {
@@ -1048,6 +1263,11 @@ window.ATLAS_INDEX = {
      "id": "tangent",
      "title": "Tangent space: a frame on every surface",
      "summary": "T, B and N form a frame on the surface; world = x·T + y·B + z·N."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Transform node types, tangent-space normals, HDRP space functions, and the matrix chain checked from C#."
     }
    ],
    "stats": {
@@ -1103,12 +1323,72 @@ window.ATLAS_INDEX = {
      "id": "checklist",
      "title": "An import checklist",
      "summary": "sRGB, format and mobile format per map type."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Where Unity reports texture memory, mip streaming with a budget, a mip-level debug view and a streaming HUD."
     }
    ],
    "stats": {
     "fx": 9,
     "labs": 6,
     "checks": 12
+   }
+  },
+  "texture-settings": {
+   "title": "Texture Packing and Import Settings",
+   "chapters": [
+    {
+     "id": "maptypes",
+     "title": "One setting per kind of map",
+     "summary": "Per map type: sRGB on or off, a format, a maximum size. BC7 1 byte per texel, BC1 and BC4 half that."
+    },
+    {
+     "id": "srgb",
+     "title": "The sRGB checkbox",
+     "summary": "sRGB on decodes 0.5 to 0.214: correct for colour, wrong for data."
+    },
+    {
+     "id": "packing",
+     "title": "Packing layouts per engine",
+     "summary": "HDRP mask: (metallic, AO, detail mask, smoothness). URP: metallic R, smoothness A. Unreal ORM: (AO, roughness, metallic)."
+    },
+    {
+     "id": "compression",
+     "title": "Why packed masks need BC7",
+     "summary": "BC1 puts the palette on one line through colour space: uncorrelated channels lose most. BC4/BC5/BC7 keep them apart."
+    },
+    {
+     "id": "mobile",
+     "title": "Mobile formats and platform overrides",
+     "summary": "ASTC: 128 bits per block → bits per texel = 128 / (w · h)."
+    },
+    {
+     "id": "filtering",
+     "title": "Max size, mipmaps and anisotropy",
+     "summary": "Footprint ratio 1/cos θ; aniso level n removes blur up to that ratio, beyond it blur grows by (1/cos θ) / n."
+    },
+    {
+     "id": "automation",
+     "title": "Setting it once, for every texture",
+     "summary": "Suffixes in file names plus an import script apply the per-map-type table automatically."
+    },
+    {
+     "id": "packer",
+     "title": "A channel packer in the engine",
+     "summary": "One thread per texel: read four sources, pick a channel each, invert where needed, write RGBA."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "An AssetPostprocessor that sets sRGB, formats per platform and mip options from suffixes, and a compute-based channel packer window."
+    }
+   ],
+   "stats": {
+    "fx": 6,
+    "labs": 0,
+    "checks": 0
    }
   },
   "textures-sampling": {
@@ -1138,12 +1418,67 @@ window.ATLAS_INDEX = {
      "id": "mips",
      "title": "Smaller copies: mipmaps",
      "summary": "Mipmaps are pre-shrunk copies; level ≈ log₂(texels per pixel)."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Wrap, filter and mip settings on the asset, Sampler State overrides, and bilinear filtering rebuilt with LOAD_TEXTURE2D."
     }
    ],
    "stats": {
     "fx": 5,
     "labs": 0,
     "checks": 7
+   }
+  },
+  "texturing": {
+   "title": "Texturing a Game Asset",
+   "chapters": [
+    {
+     "id": "uvs",
+     "title": "UVs: flattening the surface",
+     "summary": "Cut seams where they hide; keep islands unstretched (aspect 1) and at even density."
+    },
+    {
+     "id": "padding",
+     "title": "Padding and mip bleeding",
+     "summary": "At mip k a texel covers 2ᵏ texels: padding p keeps seams clean down to mip ⌊log₂ p⌋."
+    },
+    {
+     "id": "density",
+     "title": "Texel density targets",
+     "summary": "density = T · √(u / A) texels per metre; match the team target."
+    },
+    {
+     "id": "baking",
+     "title": "Baking a high-poly model",
+     "summary": "Rays from the low-poly mesh must reach the detail (d ≥ h) but stop before other surfaces (d &lt; g). Bake in MikkTSpace."
+    },
+    {
+     "id": "splits",
+     "title": "Hard edges, seams and vertex count",
+     "summary": "GPU vertices ≈ positions · (1 + seam share + hard-edge share); put hard edges on UV seams."
+    },
+    {
+     "id": "reuse",
+     "title": "Unique, tiling and trim sheets",
+     "summary": "Unique memory grows with asset count; tiling and trim sheets are shared."
+    },
+    {
+     "id": "export",
+     "title": "From the painting tool to the engine",
+     "summary": "Engine export preset, the right green channel, padding on, suffixes in names, 8 bit except displacement heights."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Mikktspace import, the HDRP export preset, a texel density debug view from screen derivatives, and a px/m report per mesh."
+    }
+   ],
+   "stats": {
+    "fx": 6,
+    "labs": 0,
+    "checks": 2
    }
   },
   "transparency": {
@@ -1188,6 +1523,11 @@ window.ATLAS_INDEX = {
      "id": "oit",
      "title": "Order-independent transparency",
      "summary": "C = Σ cᵢaᵢwᵢ / Σ aᵢwᵢ, revealage = Π(1 − aᵢ), result = C·(1 − revealage) + dst·revealage."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Surface Type and blend modes, sorting priority, depth prepass/postpass, alpha clipping, a Bayer dither function and a fixed draw order from C#."
     }
    ],
    "stats": {
@@ -1228,6 +1568,11 @@ window.ATLAS_INDEX = {
      "id": "axes",
      "title": "Which way is up",
      "summary": "Unity is Y-up left-handed in metres, Unreal Z-up left-handed in centimetres, Blender Z-up right-handed."
+    },
+    {
+     "id": "implement",
+     "title": "Build it in Unity HDRP",
+     "summary": "Distance and direction in Shader Graph, and HDRP&#x27;s camera-relative world space versus Absolute World."
     }
    ],
    "stats": {
@@ -1342,6 +1687,11 @@ window.ATLAS_INDEX = {
     "skin",
     "screen-space",
     "Blurring in screen space"
+   ],
+   [
+    "texturing",
+    "density",
+    "Texel density targets"
    ]
   ],
   "textures-sampling#filter": [
@@ -1359,6 +1709,11 @@ window.ATLAS_INDEX = {
     "texture-memory",
     "mips",
     "Mipmaps and how the GPU picks one"
+   ],
+   [
+    "texture-settings",
+    "filtering",
+    "Max size, mipmaps and anisotropy"
    ],
    [
     "transparency",
@@ -1445,28 +1800,18 @@ window.ATLAS_INDEX = {
     "baked-gi",
     "reflection",
     "Reflection probes and box projection"
+   ],
+   [
+    "pbr-basics",
+    "roughness",
+    "Roughness: how blurry reflections are"
    ]
   ],
-  "gpu-basics#parallel": [
+  "texturing#implement": [
    [
-    "buffers",
-    "memory",
-    "A buffer is a list in GPU memory"
-   ],
-   [
-    "buffers",
-    "structured",
-    "Structured buffers: lists of your own data"
-   ],
-   [
-    "buffers",
-    "render-targets",
-    "Render targets: images you draw into"
-   ],
-   [
-    "reading-a-frame",
-    "shader-cost",
-    "What a shader costs"
+    "baked-gi",
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "textures-sampling#texture": [
@@ -1501,11 +1846,48 @@ window.ATLAS_INDEX = {
     "What a texture costs"
    ]
   ],
+  "gpu-basics#parallel": [
+   [
+    "buffers",
+    "memory",
+    "A buffer is a list in GPU memory"
+   ],
+   [
+    "buffers",
+    "structured",
+    "Structured buffers: lists of your own data"
+   ],
+   [
+    "buffers",
+    "render-targets",
+    "Render targets: images you draw into"
+   ],
+   [
+    "compute-shaders",
+    "what",
+    "A shader without triangles"
+   ],
+   [
+    "compute-shaders",
+    "waves",
+    "Group size and waves"
+   ],
+   [
+    "reading-a-frame",
+    "shader-cost",
+    "What a shader costs"
+   ]
+  ],
   "gpu-basics#pipeline": [
    [
     "buffers",
     "vertex-index",
     "Vertex and index buffers: the mesh"
+   ],
+   [
+    "compute-shaders",
+    "what",
+    "A shader without triangles"
    ],
    [
     "depth-effects",
@@ -1545,23 +1927,6 @@ window.ATLAS_INDEX = {
     "Getting the settings to the shader"
    ]
   ],
-  "reading-a-frame#overdraw": [
-   [
-    "buffers",
-    "render-targets",
-    "Render targets: images you draw into"
-   ],
-   [
-    "hair",
-    "cards",
-    "Strands or cards"
-   ],
-   [
-    "transparency",
-    "order",
-    "Why the order matters"
-   ]
-  ],
   "depth-effects#what-depth": [
    [
     "buffers",
@@ -1579,11 +1944,57 @@ window.ATLAS_INDEX = {
     "Seeing the scene from the light"
    ]
   ],
+  "reading-a-frame#overdraw": [
+   [
+    "buffers",
+    "render-targets",
+    "Render targets: images you draw into"
+   ],
+   [
+    "hair",
+    "cards",
+    "Strands or cards"
+   ],
+   [
+    "transparency",
+    "order",
+    "Why the order matters"
+   ],
+   [
+    "transparency",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
+  "compute-shaders#implement": [
+   [
+    "buffers",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "fabric-folds",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
   "pbr-brdf#full": [
    [
     "cloth",
     "why",
     "Why fabric needs its own model"
+   ]
+  ],
+  "pbr-brdf#half": [
+   [
+    "cloth",
+    "sheen",
+    "The sheen distribution"
+   ],
+   [
+    "hair",
+    "highlight",
+    "The highlight band"
    ]
   ],
   "pbr-brdf#ndf": [
@@ -1598,21 +2009,14 @@ window.ATLAS_INDEX = {
     "Silk and satin: anisotropic highlights"
    ],
    [
+    "pbr-basics",
+    "roughness",
+    "Roughness: how blurry reflections are"
+   ],
+   [
     "skin",
     "specular",
     "Skin specular: two lobes"
-   ]
-  ],
-  "pbr-brdf#half": [
-   [
-    "cloth",
-    "sheen",
-    "The sheen distribution"
-   ],
-   [
-    "hair",
-    "highlight",
-    "The highlight band"
    ]
   ],
   "pbr-brdf#geometry": [
@@ -1671,6 +2075,11 @@ window.ATLAS_INDEX = {
     "texture-memory",
     "normals",
     "Normal maps"
+   ],
+   [
+    "texturing",
+    "baking",
+    "Baking a high-poly model"
    ]
   ],
   "fabric-folds#baked": [
@@ -1700,11 +2109,26 @@ window.ATLAS_INDEX = {
     "Normal maps"
    ]
   ],
-  "ray-sphere#hit": [
+  "dot-cross#implement": [
    [
-    "cloud-march",
-    "interval",
-    "From an interval to samples"
+    "cloth",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "parallax",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "pbr-brdf",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "rays-math",
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "ray-sphere#cases": [
@@ -1717,6 +2141,13 @@ window.ATLAS_INDEX = {
     "rays-math",
     "which-t",
     "Which t do you want?"
+   ]
+  ],
+  "ray-sphere#hit": [
+   [
+    "cloud-march",
+    "interval",
+    "From an interval to samples"
    ]
   ],
   "ray-sphere#planet": [
@@ -1780,6 +2211,13 @@ window.ATLAS_INDEX = {
     "Normalizing: keeping only the direction"
    ]
   ],
+  "ray-sphere#cpu-gpu": [
+   [
+    "cloud-march",
+    "cost",
+    "What it costs"
+   ]
+  ],
   "reading-a-frame#budget": [
    [
     "cloud-march",
@@ -1797,11 +2235,11 @@ window.ATLAS_INDEX = {
     "A frame and its time budget"
    ]
   ],
-  "ray-sphere#cpu-gpu": [
+  "ray-sphere#implement": [
    [
     "cloud-march",
-    "cost",
-    "What it costs"
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "shader-anatomy#types": [
@@ -1863,6 +2301,16 @@ window.ATLAS_INDEX = {
     "color-values",
     "linear-srgb",
     "Linear values and sRGB encoding"
+   ],
+   [
+    "color-values",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "texture-settings",
+    "srgb",
+    "The sRGB checkbox"
    ]
   ],
   "exposure#display": [
@@ -1926,6 +2374,168 @@ window.ATLAS_INDEX = {
     "shader-anatomy",
     "nodes",
     "The same functions as nodes"
+   ]
+  ],
+  "buffers#structured": [
+   [
+    "compute-shaders",
+    "what",
+    "A shader without triangles"
+   ],
+   [
+    "reading-a-frame",
+    "drawcalls",
+    "Draw calls and state"
+   ]
+  ],
+  "textures-sampling#uv": [
+   [
+    "compute-shaders",
+    "groups",
+    "Covering an image with groups"
+   ],
+   [
+    "interior-mapping",
+    "rooms",
+    "Rooms, not windows"
+   ],
+   [
+    "interior-mapping",
+    "picture",
+    "Into the picture"
+   ],
+   [
+    "mapping",
+    "planar",
+    "Planar projection: world position as UV"
+   ],
+   [
+    "parallax",
+    "heightmap",
+    "What parallax fixes"
+   ],
+   [
+    "spaces",
+    "ndc-screen",
+    "From NDC to pixels and back"
+   ],
+   [
+    "texturing",
+    "uvs",
+    "UVs: flattening the surface"
+   ]
+  ],
+  "reading-a-frame#shader-cost": [
+   [
+    "compute-shaders",
+    "waves",
+    "Group size and waves"
+   ],
+   [
+    "gpu-basics",
+    "per-pixel",
+    "One small program per pixel"
+   ],
+   [
+    "gpu-basics",
+    "parallel",
+    "Thousands of pixels at the same time"
+   ],
+   [
+    "parallax",
+    "adaptive",
+    "How many layers?"
+   ]
+  ],
+  "buffers#append": [
+   [
+    "compute-shaders",
+    "writes",
+    "Many threads, one address"
+   ]
+  ],
+  "exposure#auto": [
+   [
+    "compute-shaders",
+    "writes",
+    "Many threads, one address"
+   ],
+   [
+    "compute-shaders",
+    "when",
+    "When to use compute"
+   ]
+  ],
+  "buffers#memory": [
+   [
+    "compute-shaders",
+    "cpu",
+    "Starting it from C# and getting results back"
+   ],
+   [
+    "gpu-basics",
+    "parallel",
+    "Thousands of pixels at the same time"
+   ]
+  ],
+  "texture-settings#packer": [
+   [
+    "compute-shaders",
+    "when",
+    "When to use compute"
+   ]
+  ],
+  "fabric-folds#sim": [
+   [
+    "compute-shaders",
+    "when",
+    "When to use compute"
+   ]
+  ],
+  "fabric-folds#implement": [
+   [
+    "compute-shaders",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
+  "cloud-march#implement": [
+   [
+    "compute-shaders",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "ray-sphere",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
+  "texture-settings#implement": [
+   [
+    "compute-shaders",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "pbr-basics",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "texture-memory",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "textures-sampling",
+    "implement",
+    "Build it in Unity HDRP"
+   ],
+   [
+    "texturing",
+    "export",
+    "From the painting tool to the engine"
    ]
   ],
   "spaces#perspective": [
@@ -1994,6 +2604,18 @@ window.ATLAS_INDEX = {
     "Values the same for every pixel: properties"
    ]
   ],
+  "ray-sphere#view-ray": [
+   [
+    "depth-effects",
+    "reconstruct",
+    "Rebuilding the position of a pixel"
+   ],
+   [
+    "spaces",
+    "perspective",
+    "Perspective: dividing by distance"
+   ]
+  ],
   "spaces#chain": [
    [
     "depth-effects",
@@ -2024,18 +2646,6 @@ window.ATLAS_INDEX = {
     "shadow-maps",
     "light-space",
     "Into light space"
-   ]
-  ],
-  "ray-sphere#view-ray": [
-   [
-    "depth-effects",
-    "reconstruct",
-    "Rebuilding the position of a pixel"
-   ],
-   [
-    "spaces",
-    "perspective",
-    "Perspective: dividing by distance"
    ]
   ],
   "vectors#normalize": [
@@ -2120,14 +2730,36 @@ window.ATLAS_INDEX = {
     "Encoding for the display"
    ],
    [
+    "pbr-basics",
+    "idea",
+    "What PBR asks of you"
+   ],
+   [
+    "pbr-basics",
+    "basecolor",
+    "Base colour: colour without light"
+   ],
+   [
     "texture-memory",
     "color-data",
     "Colour data and other data"
    ],
    [
+    "texture-settings",
+    "srgb",
+    "The sRGB checkbox"
+   ],
+   [
     "transparency",
     "alpha",
     "What alpha means"
+   ]
+  ],
+  "compute-shaders#writes": [
+   [
+    "exposure",
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "vectors#length": [
@@ -2171,9 +2803,19 @@ window.ATLAS_INDEX = {
     "Triplanar normal maps"
    ],
    [
+    "pbr-basics",
+    "maps",
+    "Normal, occlusion and height"
+   ],
+   [
     "spaces",
     "tangent",
     "Tangent space: a frame on every surface"
+   ],
+   [
+    "texturing",
+    "baking",
+    "Baking a high-poly model"
    ]
   ],
   "vectors#add-sub": [
@@ -2220,35 +2862,11 @@ window.ATLAS_INDEX = {
     "Blend modes are one formula"
    ]
   ],
-  "reading-a-frame#shader-cost": [
-   [
-    "gpu-basics",
-    "per-pixel",
-    "One small program per pixel"
-   ],
-   [
-    "gpu-basics",
-    "parallel",
-    "Thousands of pixels at the same time"
-   ],
-   [
-    "parallax",
-    "adaptive",
-    "How many layers?"
-   ]
-  ],
   "ray-sphere#pixel-uv": [
    [
     "gpu-basics",
     "per-pixel",
     "One small program per pixel"
-   ]
-  ],
-  "buffers#memory": [
-   [
-    "gpu-basics",
-    "parallel",
-    "Thousands of pixels at the same time"
    ]
   ],
   "reading-a-frame#quads": [
@@ -2285,11 +2903,37 @@ window.ATLAS_INDEX = {
     "Which way is up"
    ]
   ],
+  "reading-a-frame#implement": [
+   [
+    "gpu-basics",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
   "transparency#alpha": [
    [
     "hair",
     "cards",
     "Strands or cards"
+   ]
+  ],
+  "transparency#alpha-test": [
+   [
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ],
+   [
+    "texture-settings",
+    "filtering",
+    "Max size, mipmaps and anisotropy"
+   ]
+  ],
+  "transparency#a2c": [
+   [
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
    ]
   ],
   "transparency#dither": [
@@ -2306,25 +2950,30 @@ window.ATLAS_INDEX = {
     "Alpha, sorting and depth"
    ]
   ],
-  "transparency#a2c": [
-   [
-    "hair",
-    "sorting",
-    "Alpha, sorting and depth"
-   ]
-  ],
-  "transparency#alpha-test": [
-   [
-    "hair",
-    "sorting",
-    "Alpha, sorting and depth"
-   ]
-  ],
   "skin#transmission": [
    [
     "hair",
     "variation",
     "Root to tip, and self-shadowing"
+   ]
+  ],
+  "transparency#implement": [
+   [
+    "hair",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
+  "rays-math#ray": [
+   [
+    "interior-mapping",
+    "trick",
+    "The trick"
+   ],
+   [
+    "interior-mapping",
+    "rays",
+    "Rays from the camera"
    ]
   ],
   "gpu-basics#per-pixel": [
@@ -2349,45 +2998,6 @@ window.ATLAS_INDEX = {
     "UV coordinates: where to read"
    ]
   ],
-  "rays-math#ray": [
-   [
-    "interior-mapping",
-    "trick",
-    "The trick"
-   ],
-   [
-    "interior-mapping",
-    "rays",
-    "Rays from the camera"
-   ]
-  ],
-  "textures-sampling#uv": [
-   [
-    "interior-mapping",
-    "rooms",
-    "Rooms, not windows"
-   ],
-   [
-    "interior-mapping",
-    "picture",
-    "Into the picture"
-   ],
-   [
-    "mapping",
-    "planar",
-    "Planar projection: world position as UV"
-   ],
-   [
-    "parallax",
-    "heightmap",
-    "What parallax fixes"
-   ],
-   [
-    "spaces",
-    "ndc-screen",
-    "From NDC to pixels and back"
-   ]
-  ],
   "buffers#vertex-index": [
    [
     "interior-mapping",
@@ -2398,6 +3008,11 @@ window.ATLAS_INDEX = {
     "shader-anatomy",
     "stages",
     "Two programs: vertex and pixel"
+   ],
+   [
+    "texturing",
+    "splits",
+    "Hard edges, seams and vertex count"
    ]
   ],
   "dot-cross#projection": [
@@ -2448,6 +3063,11 @@ window.ATLAS_INDEX = {
     "Glass and light"
    ],
    [
+    "pbr-basics",
+    "metallic",
+    "Metallic is a switch"
+   ],
+   [
     "skin",
     "specular",
     "Skin specular: two lobes"
@@ -2482,6 +3102,11 @@ window.ATLAS_INDEX = {
     "Quads and tiny triangles"
    ],
    [
+    "texture-settings",
+    "filtering",
+    "Max size, mipmaps and anisotropy"
+   ],
+   [
     "textures-sampling",
     "filter",
     "Between texels: filtering"
@@ -2490,6 +3115,11 @@ window.ATLAS_INDEX = {
     "textures-sampling",
     "mips",
     "Smaller copies: mipmaps"
+   ],
+   [
+    "texturing",
+    "padding",
+    "Padding and mip bleeding"
    ],
    [
     "transparency",
@@ -2538,7 +3168,7 @@ window.ATLAS_INDEX = {
     "Arrows made of numbers"
    ]
   ],
-  "cloth#silk": [
+  "textures-sampling#wrap": [
    [
     "mapping",
     "flow",
@@ -2557,7 +3187,7 @@ window.ATLAS_INDEX = {
     "Putting the BRDF together"
    ]
   ],
-  "textures-sampling#wrap": [
+  "cloth#silk": [
    [
     "mapping",
     "flow",
@@ -2597,6 +3227,44 @@ window.ATLAS_INDEX = {
     "Gradients, silhouettes and depth"
    ]
   ],
+  "pbr-brdf#split": [
+   [
+    "pbr-basics",
+    "idea",
+    "What PBR asks of you"
+   ]
+  ],
+  "parallax#heightmap": [
+   [
+    "pbr-basics",
+    "maps",
+    "Normal, occlusion and height"
+   ],
+   [
+    "texture-memory",
+    "normals",
+    "Normal maps"
+   ]
+  ],
+  "texture-settings#packing": [
+   [
+    "pbr-basics",
+    "workflows",
+    "Specular/gloss and other conventions"
+   ],
+   [
+    "texturing",
+    "export",
+    "From the painting tool to the engine"
+   ]
+  ],
+  "exposure#workflow": [
+   [
+    "pbr-basics",
+    "validate",
+    "Checking your values"
+   ]
+  ],
   "dot-cross#reflect": [
    [
     "pbr-brdf",
@@ -2611,6 +3279,13 @@ window.ATLAS_INDEX = {
     "How much bounces: Fresnel"
    ]
   ],
+  "skin#why": [
+   [
+    "pbr-brdf",
+    "full",
+    "Putting the BRDF together"
+   ]
+  ],
   "cloth#why": [
    [
     "pbr-brdf",
@@ -2618,11 +3293,16 @@ window.ATLAS_INDEX = {
     "Putting the BRDF together"
    ]
   ],
-  "skin#why": [
+  "baked-gi#sh": [
    [
     "pbr-brdf",
-    "full",
-    "Putting the BRDF together"
+    "ibl",
+    "Light from the environment"
+   ],
+   [
+    "pbr-brdf",
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "textures-sampling#mips": [
@@ -2642,30 +3322,11 @@ window.ATLAS_INDEX = {
     "Mipmaps and how the GPU picks one"
    ]
   ],
-  "baked-gi#sh": [
-   [
-    "pbr-brdf",
-    "ibl",
-    "Light from the environment"
-   ]
-  ],
   "spaces#ndc-screen": [
    [
     "ray-sphere",
     "pixel-uv",
     "From a pixel to UV and NDC"
-   ]
-  ],
-  "rays-math#quadratic": [
-   [
-    "ray-sphere",
-    "hit",
-    "Where the ray enters and leaves the layer"
-   ],
-   [
-    "ray-sphere",
-    "output",
-    "Writing the result into the frame"
    ]
   ],
   "rays-math#which-t": [
@@ -2678,6 +3339,18 @@ window.ATLAS_INDEX = {
     "ray-sphere",
     "cases",
     "When the camera is inside or above the layer"
+   ]
+  ],
+  "rays-math#quadratic": [
+   [
+    "ray-sphere",
+    "hit",
+    "Where the ray enters and leaves the layer"
+   ],
+   [
+    "ray-sphere",
+    "output",
+    "Writing the result into the frame"
    ]
   ],
   "transparency#modes": [
@@ -2694,18 +3367,18 @@ window.ATLAS_INDEX = {
     "Hitting a box: the slab test"
    ]
   ],
+  "parallax#details": [
+   [
+    "rays-math",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
   "gpu-basics#frame": [
    [
     "reading-a-frame",
     "budget",
     "The frame budget"
-   ]
-  ],
-  "buffers#structured": [
-   [
-    "reading-a-frame",
-    "drawcalls",
-    "Draw calls and state"
    ]
   ],
   "gpu-basics#screen": [
@@ -2730,6 +3403,13 @@ window.ATLAS_INDEX = {
     "shadow-maps",
     "cost",
     "What shadows cost"
+   ]
+  ],
+  "buffers#implement": [
+   [
+    "shader-anatomy",
+    "implement",
+    "Build it in Unity HDRP"
    ]
   ],
   "light-types#directional": [
@@ -2760,13 +3440,6 @@ window.ATLAS_INDEX = {
     "Skin specular: two lobes"
    ]
   ],
-  "parallax#heightmap": [
-   [
-    "texture-memory",
-    "normals",
-    "Normal maps"
-   ]
-  ],
   "mapping#normals": [
    [
     "texture-memory",
@@ -2776,9 +3449,64 @@ window.ATLAS_INDEX = {
   ],
   "texture-memory#cost": [
    [
+    "texture-settings",
+    "maptypes",
+    "One setting per kind of map"
+   ],
+   [
     "textures-sampling",
     "texture",
     "A texture is a grid of values"
+   ],
+   [
+    "texturing",
+    "reuse",
+    "Unique, tiling and trim sheets"
+   ]
+  ],
+  "texture-memory#blocks": [
+   [
+    "texture-settings",
+    "maptypes",
+    "One setting per kind of map"
+   ],
+   [
+    "texture-settings",
+    "compression",
+    "Why packed masks need BC7"
+   ],
+   [
+    "texture-settings",
+    "mobile",
+    "Mobile formats and platform overrides"
+   ]
+  ],
+  "texture-memory#packing": [
+   [
+    "texture-settings",
+    "packing",
+    "Packing layouts per engine"
+   ]
+  ],
+  "pbr-basics#roughness": [
+   [
+    "texture-settings",
+    "packing",
+    "Packing layouts per engine"
+   ]
+  ],
+  "texture-memory#streaming": [
+   [
+    "texture-settings",
+    "filtering",
+    "Max size, mipmaps and anisotropy"
+   ]
+  ],
+  "compute-shaders#cpu": [
+   [
+    "texture-settings",
+    "packer",
+    "A channel packer in the engine"
    ]
   ],
   "shader-anatomy#interpolation": [
@@ -2786,6 +3514,13 @@ window.ATLAS_INDEX = {
     "textures-sampling",
     "uv",
     "UV coordinates: where to read"
+   ]
+  ],
+  "mapping#triplanar": [
+   [
+    "texturing",
+    "reuse",
+    "Unique, tiling and trim sheets"
    ]
   ],
   "hair#cards": [

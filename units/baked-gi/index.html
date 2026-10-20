@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Lighting & GI · 7 chapters</div>
+  <div class="eyebrow">Lighting & GI · 8 chapters</div>
   <h1>Baked Light: Lightmaps and Probes</h1>
   <p class="lede">Most of the light indoors has bounced at least once. This unit explains indirect light, then the ways games store it: lightmaps, spherical harmonics probes and reflection probes, and where each one breaks.</p>
   <p class="meta">Builds on the light units and the slab test. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
@@ -108,6 +108,43 @@
   </tbody></table></div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p><em>Adaptive Probe Volumes</em> (APV) place probes automatically by geometry density, store validity to reduce leaking, and support blending between baked lighting scenarios (day, night). Lightmaps are baked with the GPU or CPU progressive lightmapper; <em>Screen Space Global Illumination</em> and ray-traced GI add real-time bounces.</p></div><div class="eng" data-engine="urp"><p>URP supports lightmaps, light probes (classic tetrahedral probe groups) and, in recent versions, Adaptive Probe Volumes as well. Reflection probes support box projection; blending between probes is optional per URP asset.</p></div><div class="eng" data-engine="unreal"><p><em>Lumen</em> is the default real-time GI and reflection system in UE5: it traces against simplified scene representations every frame, so no baking is needed. Baked lightmaps (Lightmass / GPU Lightmass) remain for platforms without Lumen. Sphere and box <em>Reflection Captures</em> are still used as a fallback.</p></div></div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="baked-gi#probes baked-gi#reflection" data-summary="Static flags, lightmap settings, light modes, Adaptive Probe Volumes, box-projected reflection probes, and an SH probe visualizer in C#.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Baked lighting is set up in the Lighting window and on each object; the script makes the probes visible by evaluating their spherical harmonics along a line, the same data shaders use for ambient light. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Lighting window, static flags, lightmap UVs, probe system, reflection probes.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ProbeSampler.cs: draws the irradiance light probes give along a line.</span></div></div>
+<ol class="impl-steps"><li><div>Mark scenery that does not move as <em>Static</em> (at least <em>Contribute GI</em>). On its Mesh Renderer, <em>Receive Global Illumination</em> chooses <code>Lightmaps</code> (unique UV2 required, see <a class="x" href="../texturing/index.html#implement">model import</a>) or <code>Light Probes</code> (small or detailed objects).</div></li><li><div><em>Window &gt; Rendering &gt; Lighting</em>: Lightmapper <code>Progressive GPU</code>, <em>Lightmap Resolution</em> in texels per unit (the density of <a href="#lightmaps">lightmaps</a>), <em>Lightmap Padding</em>, <em>Directional Mode</em>. Bake with <em>Generate Lighting</em>.</div></li><li><div>Lights: <em>Mode</em> <code>Baked</code> (only in lightmaps), <code>Mixed</code> (baked indirect, real-time direct) or <code>Realtime</code>.</div></li><li><div>Probes: in the HDRP asset set <em>Light Probe System</em> to <code>Adaptive Probe Volumes</code> and add an <em>Adaptive Probe Volume</em> covering the level; bake in the Lighting window's Adaptive Probe Volumes tab. Its <em>leak reduction</em> and <em>virtual offset</em> options handle <a href="#probes">probe leaking</a>. Classic <em>Light Probe Groups</em> work when Light Probe System is set to Light Probe Groups.</div></li><li><div>Reflections: <em>GameObject &gt; Light &gt; Reflection Probe</em> (HDRP version). Fit the <em>Influence Volume</em> box to the room; its box shape gives the box projection from <a href="#reflection">box projection</a>. Bake, or set it to real-time for moving scenes.</div></li><li><div>Add <code>ProbeSampler.cs</code> to an empty GameObject and walk it through a doorway: the gizmo spheres show the ambient colour light probes give at each point (Light Probe Groups only).</div></li></ol>
+<div class="files"><div class="file" data-name="ProbeSampler.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.Rendering;
+
+// Shows the irradiance the baked light probes give at points along this object&#x27;s forward axis.
+// Works with Light Probe Groups (not Adaptive Probe Volumes).
+public class ProbeSampler : MonoBehaviour
+{
+    public int samples = 12;
+    public float length = 6f;
+    public Vector3 normal = Vector3.up;      // direction of the surface being lit
+
+    readonly Vector3[] dirs = new Vector3[1];
+    readonly Color[] result = new Color[1];
+
+    void OnDrawGizmos()
+    {
+        dirs[0] = normal.normalized;
+        for (int i = 0; i &lt; samples; i++)
+        {
+            Vector3 p = transform.position + transform.forward * (length * i / Mathf.Max(samples - 1, 1));
+            LightProbes.GetInterpolatedProbe(p, null, out SphericalHarmonicsL2 sh);   // 9 coefficients per channel
+            sh.Evaluate(dirs, result);
+            Color c = result[0];
+            float m = Mathf.Max(c.maxColorComponent, 1e-4f);
+            Gizmos.color = m &gt; 1f ? c / m : c;                // keep the hue when it is brighter than 1
+            Gizmos.DrawSphere(p, 0.15f);
+        }
+    }
+}</pre></div></div>
+<div class="prose"><p>A sudden change in colour between two spheres at a wall is the leak the unit describes: the interpolation sees probes on both sides. Add probes along walls and doorways, or rely on APV's validity and leak reduction.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same Lighting window, static flags and lightmapper. URP supports Adaptive Probe Volumes in Unity 6 (URP asset &gt; Lighting &gt; Light Probe System) and box-projected reflection probes (<em>Box Projection</em> on the probe, enabled in the URP asset).</p></div><div class="eng" data-engine="unreal"><p>Baked lighting: <em>Lightmass</em> (or GPU Lightmass) with static lights and a lightmap UV channel; <em>Volumetric Lightmaps</em> act as probes for movable objects. Unreal 5's default is <em>Lumen</em> real-time GI; Sphere and Box <em>Reflection Captures</em> for baked reflections.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

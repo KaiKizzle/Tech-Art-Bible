@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Shaders & rendering · 8 chapters</div>
+  <div class="eyebrow">Shaders & rendering · 9 chapters</div>
   <h1>Reading the Depth Buffer</h1>
   <p class="lede">One number per pixel says how far away the scene is. Soft particles, water, fog, decals, outlines and ambient occlusion all start by reading it. This unit takes the number apart and builds the effects on top.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
@@ -143,6 +143,60 @@
     <p>Floors seen at a grazing angle also have large depth steps from pixel to pixel and produce false lines. Adding a normal comparison (from a normals buffer) and scaling the threshold with the viewing angle removes most of them.</p>
   </div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="depth-effects#linearize depth-effects#soft-particles" data-summary="Scene Depth and Raw screen position for soft fades and water, depth-edge outlines in a Fullscreen graph, position reconstruction, and the AO override.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP keeps a depth buffer for every camera, so depth effects need no setup: transparent materials read it with the <em>Scene Depth</em> node, and full-screen effects read it in a Custom Pass. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Transparent Lit/Unlit graphs for soft particles and water; a Fullscreen graph for outlines.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>DepthEffects.hlsl: soft fade, water transmittance, depth edges, position reconstruction.</span></div><div class="rt" data-k="pass"><b>Custom Pass</b><span>A FullScreen Custom Pass for the outline.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>The Ambient Occlusion volume override for SSAO.</span></div></div>
+<ol class="impl-steps"><li><div><b>Soft particles or depth fade:</b> in a graph with <em>Surface Type</em> <code>Transparent</code>, add <em>Scene Depth</em> (Sampling <code>Eye</code>) and the fragment's own eye depth: <em>Screen Position</em> (Mode <code>Raw</code>) .w. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>DepthEffects.hlsl</code> and <em>Name</em> to <code>SoftFade</code> (without the <code>_float</code> suffix). Add the inputs <b>SceneEyeDepth (Float), FragmentEyeDepth (Float), Distance (Float)</b> and the outputs <b>Fade (Float)</b>, in that order and with those types: they must match the function's parameters. Multiply Alpha by Fade.</div></li><li><div><b>Water:</b> the same two depths into <code>WaterColor</code> (inputs SceneEyeDepth, FragmentEyeDepth, Absorption (Vector 3), DeepColor (Vector 3); outputs Transmittance (Vector 3), Color (Vector 3)). Use a <em>Scene Color</em> node for the refracted background: Base Color = background × Transmittance + DeepColor × (1 − Transmittance) in an Unlit transparent graph, or let HDRP's <em>Water</em> system do it.</div></li><li><div><b>Outline:</b> a Fullscreen Shader Graph calling <code>DepthEdges</code> (input UV from Screen Position, Threshold; output Edge). Output black with Alpha = Edge, Blend Mode <code>Alpha</code>, in a <em>FullScreen Custom Pass</em> at <code>Before Post Process</code>.</div></li><li><div><b>Reconstructing a position:</b> <code>ReconstructPositionWS</code> in the file turns a screen UV and raw depth into a camera-relative world position, the basis of decals and screen-space effects.</div></li><li><div><b>SSAO:</b> nothing to write: add the <em>Ambient Occlusion</em> override to a Volume (Intensity, Radius, Direct Lighting Strength). Its radius is the range check from <a href="#ssao">the SSAO chapter</a>.</div></li></ol>
+<div class="files"><div class="file" data-name="DepthEffects.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_DEPTH_EFFECTS_INCLUDED
+#define ATLAS_DEPTH_EFFECTS_INCLUDED
+
+// 0 where the particle touches the scene, 1 at Distance metres in front of it.
+void SoftFade_float(float SceneEyeDepth, float FragmentEyeDepth, float Distance, out float Fade)
+{
+    Fade = saturate((SceneEyeDepth - FragmentEyeDepth) / max(Distance, 1e-4));
+}
+
+// Beer-Lambert through the water between the surface and the ground below it, per channel.
+void WaterColor_float(float SceneEyeDepth, float FragmentEyeDepth, float3 Absorption, float3 DeepColor,
+                      out float3 Transmittance, out float3 Color)
+{
+    float thickness = max(SceneEyeDepth - FragmentEyeDepth, 0.0);
+    Transmittance = exp(-Absorption * thickness);
+    Color = DeepColor * (1.0 - Transmittance);
+}
+
+// Outline where neighbouring pixels differ in depth by more than Threshold (relative).
+// HDRP: SampleCameraDepth reads the raw depth, LinearEyeDepth converts it to metres.
+void DepthEdges_float(float2 UV, float Threshold, out float Edge)
+{
+#ifdef SHADERGRAPH_PREVIEW
+    Edge = 0; return;                               // previews have no depth buffer
+#endif
+    float2 px = _ScreenSize.zw;                     // 1 / width, 1 / height
+    float z  = LinearEyeDepth(SampleCameraDepth(UV), _ZBufferParams);
+    float zl = LinearEyeDepth(SampleCameraDepth(UV - float2(px.x, 0)), _ZBufferParams);
+    float zr = LinearEyeDepth(SampleCameraDepth(UV + float2(px.x, 0)), _ZBufferParams);
+    float zd = LinearEyeDepth(SampleCameraDepth(UV - float2(0, px.y)), _ZBufferParams);
+    float zu = LinearEyeDepth(SampleCameraDepth(UV + float2(0, px.y)), _ZBufferParams);
+    float diff = max(max(abs(z - zl), abs(z - zr)), max(abs(z - zd), abs(z - zu)));
+    Edge = step(Threshold, diff / max(z, 1e-4));
+}
+
+// Screen UV + raw depth -&gt; camera-relative world position (add the camera position for absolute).
+void ReconstructPositionWS_float(float2 UV, float RawDepth, out float3 PositionWS)
+{
+#ifdef SHADERGRAPH_PREVIEW
+    PositionWS = 0;
+#else
+    PositionWS = ComputeWorldSpacePosition(UV, RawDepth, UNITY_MATRIX_I_VP);
+#endif
+}
+
+#endif</pre></div></div>
+<div class="prose"><p><code>SampleCameraDepth</code>, <code>_ScreenSize</code> and <code>_ZBufferParams</code> are HDRP's; in a Lit or Unlit graph prefer the <em>Scene Depth</em> node, which does the same. Opaque objects cannot read the depth buffer they are drawn into; effects that need the full scene go into a transparent material or a custom pass.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Enable <em>Depth Texture</em> on the URP Asset (and <em>Opaque Texture</em> for Scene Color). In HLSL include <code>Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl</code> and use <code>SampleSceneDepth(uv)</code>; full-screen passes use the <em>Full Screen Pass Renderer Feature</em>. SSAO is the <em>Screen Space Ambient Occlusion</em> renderer feature.</p></div><div class="eng" data-engine="unreal"><p><em>SceneDepth</em> and <em>PixelDepth</em> nodes, the <em>DepthFade</em> function for soft particles, <em>SceneTexture: SceneDepth</em> in post-process materials for outlines, and <em>Single Layer Water</em> for water. SSAO and GTAO are in the Post Process Volume.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>

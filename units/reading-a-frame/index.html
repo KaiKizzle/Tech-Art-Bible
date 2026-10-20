@@ -22,7 +22,7 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <nav class="crumbs" aria-label="Breadcrumb"></nav>
 <header class="unit-head">
-  <div class="eyebrow">Performance & tools · 8 chapters</div>
+  <div class="eyebrow">Performance & tools · 9 chapters</div>
   <h1>Reading a Frame</h1>
   <p class="lede">A frame is three workers in a relay: the game thread, the render thread and the GPU. The slowest sets your frame rate, and optimizing anything else changes nothing. Every cost model here is a formula you can move.</p>
   <p class="meta">Frame budgets, finding the bottleneck, draw calls, overdraw, tiny triangles, divergent shaders and LODs, with notes for Unity HDRP, Unity URP and Unreal.</p>
@@ -295,6 +295,74 @@
   </table>
   </div>
 
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="reading-a-frame#routine reading-a-frame#bound" data-summary="Profiler, Frame Debugger, Rendering Debugger and RenderDoc for each question of the routine, a ProfilerRecorder HUD and ProfilerMarker blocks.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The routine from <a href="#routine">a profiling routine</a> with Unity's tools: which window answers which question, plus a HUD that shows draw calls, batches and frame time in any development build, and markers that put your own code into the Profiler. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Profiler, Frame Debugger, Rendering Debugger, RenderDoc.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>RenderStatsHUD.cs: ProfilerRecorder counters on screen.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ProfilerMarker in your own scripts.</span></div></div>
+<ol class="impl-steps"><li><div><b>Which stage is slow?</b> <em>Window &gt; Analysis &gt; Profiler</em>, CPU Usage and GPU Usage modules (enable GPU in the module list). Look for <code>Gfx.WaitForPresent</code> or <code>WaitForGPU</code> markers on the main or render thread: those mean the GPU is behind (<a href="#bound">CPU-bound or GPU-bound</a>). Always profile a development build on the target hardware; the editor adds its own work.</div></li><li><div><b>What is drawn, in which order?</b> <em>Window &gt; Analysis &gt; Frame Debugger</em>: every draw and pass of one frame, with the reason two draws were not batched together.</div></li><li><div><b>Where do pixels cost?</b> HDRP's <em>Window &gt; Analysis &gt; Rendering Debugger</em>: <em>Rendering &gt; Fullscreen Debug Mode</em> has <code>Transparency Overdraw</code>, <code>Quad Overdraw</code> and <code>Vertex Density</code> (<a href="#overdraw">overdraw</a>, <a href="#quads">tiny triangles</a>); <em>Display Stats</em> shows per-pass GPU timings.</div></li><li><div><b>Deeper GPU captures:</b> install RenderDoc, then right-click the Game view tab &gt; <em>Load RenderDoc</em> and use the capture button; PIX (Windows), Xcode (Apple) and Android GPU Inspector work the same way.</div></li><li><div><b>Fewer draw calls:</b> keep the <em>SRP Batcher</em> on (HDRP asset), and in Unity 6 enable the <em>GPU Resident Drawer</em> (HDRP asset &gt; Rendering), which instances compatible renderers automatically. <em>LOD Group</em> components implement <a href="#lods">LODs and screen size</a>.</div></li><li><div>Add <code>RenderStatsHUD.cs</code> to any GameObject. Wrap expensive code in your own scripts with a <code>ProfilerMarker</code> (see <code>MarkerExample.cs</code>) so it appears by name in the Profiler timeline.</div></li></ol>
+<div class="files"><div class="file" data-name="RenderStatsHUD.cs" data-lang="cs"><pre>using Unity.Profiling;
+using UnityEngine;
+
+// On-screen counters: frame time, draw calls, batches, SetPass calls, triangles.
+// Render counters are available in the editor and in development builds.
+public class RenderStatsHUD : MonoBehaviour
+{
+    ProfilerRecorder mainThread, drawCalls, batches, setPass, triangles;
+
+    void OnEnable()
+    {
+        mainThread = ProfilerRecorder.StartNew(ProfilerCategory.Internal, &quot;Main Thread&quot;, 15);
+        drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, &quot;Draw Calls Count&quot;);
+        batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, &quot;Batches Count&quot;);
+        setPass = ProfilerRecorder.StartNew(ProfilerCategory.Render, &quot;SetPass Calls Count&quot;);
+        triangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, &quot;Triangles Count&quot;);
+    }
+
+    void OnDisable()
+    {
+        mainThread.Dispose(); drawCalls.Dispose(); batches.Dispose(); setPass.Dispose(); triangles.Dispose();
+    }
+
+    static double AverageMs(ProfilerRecorder r)
+    {
+        int n = r.Capacity;
+        if (n == 0) return 0;
+        double sum = 0;
+        var samples = new System.Collections.Generic.List&lt;ProfilerRecorderSample&gt;(n);
+        r.CopyTo(samples);
+        foreach (var s in samples) sum += s.Value;
+        return samples.Count &gt; 0 ? sum / samples.Count * 1e-6 : 0;   // nanoseconds to ms
+    }
+
+    void OnGUI()
+    {
+        GUILayout.BeginArea(new Rect(10, 170, 340, 130), GUI.skin.box);
+        GUILayout.Label($&quot;Main thread  {AverageMs(mainThread):0.0} ms&quot;);
+        GUILayout.Label($&quot;Draw calls   {drawCalls.LastValue}&quot;);
+        GUILayout.Label($&quot;Batches      {batches.LastValue}&quot;);
+        GUILayout.Label($&quot;SetPass      {setPass.LastValue}&quot;);
+        GUILayout.Label($&quot;Triangles    {triangles.LastValue:N0}&quot;);
+        GUILayout.EndArea();
+    }
+}</pre></div><div class="file" data-name="MarkerExample.cs" data-lang="cs"><pre>using Unity.Profiling;
+using UnityEngine;
+
+// Your own code as a named block in the Profiler&#x27;s CPU timeline.
+public class MarkerExample : MonoBehaviour
+{
+    static readonly ProfilerMarker UpdateCrowd = new ProfilerMarker(&quot;Atlas.UpdateCrowd&quot;);
+
+    void Update()
+    {
+        using (UpdateCrowd.Auto())
+        {
+            // ... the work you want to measure ...
+        }
+    }
+}</pre></div></div>
+<div class="prose"><p>Measure before and after every change, on the same view and the same build. Turning something off (shadows, a pass, a group of objects) and watching the frame time is the fastest way to find what matters, the "test by removal" step of the routine.</p></div>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Same Profiler, Frame Debugger and RenderDoc. URP's Rendering Debugger offers overdraw and wireframe modes; the SRP Batcher and the GPU Resident Drawer (Unity 6, Forward+) apply as well.</p></div><div class="eng" data-engine="unreal"><p><code>stat unit</code>, <code>stat gpu</code> and <code>ProfileGPU</code> (Ctrl+Shift+,) for a per-pass GPU breakdown; <em>Unreal Insights</em> for CPU and GPU timelines; the <em>Shader Complexity</em>, <em>Quad Overdraw</em> and <em>Light Complexity</em> view modes; RenderDoc via its plugin.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
