@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pixel Processor and FX-Maps · Tech Art Atlas</title>
+<meta name="description" content="The two programmable nodes of Substance Designer: function graphs, the Pixel Processor as a pixel shader, sampling neighbours, and FX-Maps that draw patterns through quadtrees and Iterate nodes, with random values per pattern.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="sd-pixel-fx">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Pixel Processor and FX-Maps</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 8 chapters</div>
+  <h1>Pixel Processor and FX-Maps</h1>
+  <p class="lede">The two programmable nodes of Substance Designer: function graphs, the Pixel Processor as a pixel shader, sampling neighbours, and FX-Maps that draw patterns through quadtrees and Iterate nodes, with random values per pattern.</p>
+  <p class="meta">Builds on How a GPU Draws a Frame and Blend Modes. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-pixel-fx" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: stones scattered by a seeded loop and merged with Max.</figcaption></figure>
+<div class="needs" data-needs="gpu-basics#per-pixel sd-blend#minmax"></div>
+
+<section class="chapter" id="functions" data-title="Function graphs: small programs for values" data-builds="shader-anatomy#functions shader-anatomy#types" data-summary="Function graphs compute values, not images: parameter functions, Value Processor, Pixel Processor, FX-Map.">
+  <div class="head"><div class="num"></div><h2>Function graphs: small programs for values</h2></div>
+
+  <div class="prose">
+    <p>Image nodes are not the only graphs in Designer. Almost any parameter can be driven by a <button type="button" class="term" data-term="fn">function graph</button>: a small graph whose nodes are maths on single values (floats, vectors, integers, booleans) instead of images. It ends in one output value and is evaluated whenever that value is needed.</p>
+    <p>Function graphs appear in four places:</p>
+    <ul>
+      <li><strong>Parameter functions</strong>: the value of one node parameter computed from exposed inputs, so one slider can drive many nodes (<a class="x" href="../sd-publish/index.html#drive">driving many nodes</a>).</li>
+      <li><strong>Value Processor</strong>: computes a single value, once, to pass on.</li>
+      <li><strong>Pixel Processor</strong>: computes one value per pixel of an image.</li>
+      <li><strong>FX-Map</strong>: computes values per drawn pattern, such as its position, size or rotation.</li>
+    </ul>
+    <p>Inside a function, <em>Get</em> nodes read values: exposed inputs of the graph, and built-in <button type="button" class="term" data-term="sysvar">system variables</button> such as <code>$size</code> (the node's size in pixels), <code>$pos</code> (the current pixel or pattern position), <code>$number</code> and <code>$depth</code> (inside FX-Maps). Arithmetic, comparisons, <em>If…Else</em>, swizzles and samplers do the rest. If you have read a shader, this is the same vocabulary as <a class="x" href="../shader-anatomy/index.html#functions">shader built-ins</a> drawn as nodes.</p>
+    <p>One technical difference matters later: Adobe notes that functions run on the CPU engine, except inside Pixel Processors, whose functions run on the GPU.</p>
+  </div>
+
+</section>
+<section class="chapter" id="pixel" data-title="The Pixel Processor: a pixel shader" data-builds="gpu-basics#per-pixel sd-pixel-fx#functions" data-summary="One function per output pixel, $pos in 0–1, no pixel sees another: a pixel shader.">
+  <div class="head"><div class="num"></div><h2>The Pixel Processor: a pixel shader</h2></div>
+
+  <div class="prose">
+    <p>A <em>Pixel Processor</em> runs its function once for every pixel of its output, with <code>$pos</code> set to that pixel's position from 0 to 1. Whatever the function returns becomes the pixel. It is the same model as a <a class="x" href="../gpu-basics/index.html#per-pixel">pixel shader</a>: one small program, run for every pixel in parallel, and no pixel can see what the others computed.</p>
+    <p>A soft dot pattern is four nodes: take <code>$pos</code>, repeat it with <code>frac($pos · n)</code>, measure the distance to the cell centre, and turn the distance into a soft edge:</p>
+  </div>
+  <div class="fx" data-fx="ppcircle"></div>
+  <div class="prose"><p>The <em>Color mode</em> setting switches between a greyscale output (the function returns a float) and colour (a float4). Its size and format follow the usual <a class="x" href="../sd-graphs/index.html#size">inheritance</a>; because the function works in 0–1 positions, the result is resolution independent.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A Pixel Processor at 1024 × 1024 contains a function with 20 nodes. Roughly how often is the function evaluated per render?", ["Once", "20 times", "1 048 576 times, once per pixel", "Once per input image"], 2, "Once per output pixel. That is why it runs on the GPU, and why every extra sample inside it is multiplied by the pixel count."]]</script></details>
+
+</section>
+<section class="chapter" id="sampling" data-title="Reading inputs and neighbours" data-builds="textures-sampling#filter sd-pixel-fx#pixel" data-summary="Sample input n at $pos + k / $size for neighbours; wrap with frac; no reading its own output.">
+  <div class="head"><div class="num"></div><h2>Reading inputs and neighbours</h2></div>
+
+  <div class="prose">
+    <p>A Pixel Processor can take input images. Inside the function, <em>Sample Grayscale</em> and <em>Sample Color</em> nodes read input number <em>n</em> at a position you compute, with nearest or bilinear filtering. Read at <code>$pos</code> and you get the input pixel under the current one; read at <code>$pos</code> plus an offset and you get a neighbour.</p>
+    <p>Offsets are in 0–1 units, so one pixel is <code>1 / $size</code>. That single conversion is behind every hand-made filter: edge detection, a slope or normal from a height, a custom blur, a dilation that fills the gaps between UV islands:</p>
+  </div>
+  <div class="fx" data-fx="neighbours"></div>
+  <div class="prose">
+    <p>Three rules. Wrap positions with <code>frac</code> when they may leave 0–1, or the result will not tile. Every sample is a texture read per pixel, so a 9-tap filter costs nine times a 1-tap one. And a Pixel Processor cannot read its own output: there is no feedback. Iterative effects (spreading, growing, a flood fill) need a chain of Pixel Processors, each reading the previous one.</p>
+  </div>
+
+</section>
+<section class="chapter" id="fxmap" data-title="FX-Maps: drawing patterns" data-builds="sd-pixel-fx#functions" data-summary="Quadrant splits cells (4^d patterns at level d), Iterate repeats a branch, Switch chooses one.">
+  <div class="head"><div class="num"></div><h2>FX-Maps: drawing patterns</h2></div>
+
+  <div class="prose">
+    <p>An <em>FX-Map</em> works the other way round. Instead of computing every pixel, it <em>draws</em> patterns into the image: squares, discs, gaussian spots, or an input image, each placed, scaled, rotated and coloured. Inside, it is a small graph of three node types:</p>
+    <ul>
+      <li><strong>Quadrant</strong> draws a pattern in its cell and splits the cell into four for the nodes below it. A chain of Quadrants builds a <button type="button" class="term" data-term="quadtree">quadtree</button>: level 0 is the whole image, level 1 four quarters, level 2 sixteen cells, and so on.</li>
+      <li><strong>Iterate</strong> repeats the branch below it a number of times, for scattering N copies.</li>
+      <li><strong>Switch</strong> chooses one of two branches, from a function.</li>
+    </ul>
+    <p>Designer walks the whole tree when it renders, top to bottom, drawing as it goes. Each Quadrant level multiplies the number of patterns by four:</p>
+  </div>
+  <div class="fx" data-fx="quadtree"></div>
+  <div class="prose"><p>This is how the classic Substance noises and tile patterns are built: one pattern per cell at some level, with a little randomness in position and size. Six levels already mean 4096 patterns in the deepest level, and every one is drawn separately.</p></div>
+
+</section>
+<section class="chapter" id="dynamic" data-title="Random values and blending per pattern" data-builds="sd-pixel-fx#fxmap sd-blend#minmax" data-summary="Per-pattern functions with $number, $depth, $pos and seeded Random; Max for heights, Add piles up and clips.">
+  <div class="head"><div class="num"></div><h2>Random values and blending per pattern</h2></div>
+
+  <div class="prose">
+    <p>An FX-Map that drew identical patterns would be a stamp. Its parameters (offset, size, rotation, colour) accept functions that are evaluated for every pattern drawn, with <code>$number</code> (which copy this is, from 0), <code>$depth</code> (the Quadrant level) and <code>$pos</code> (the pattern's birth position) available. A <em>Random</em> node returns a value between 0 and a maximum that is different for every pattern but the same every time the graph renders, because it is driven by a <em>random seed</em>. Change the seed and you get a new layout; keep it and the result is stable.</p>
+    <p>How overlapping patterns combine is the Quadrant's <em>Blending Mode</em>. For heights, Max is almost always right; Add makes overlaps pile up and clip:</p>
+  </div>
+  <div class="fx" data-fx="iterate"></div>
+  <div class="prose"><p>Expose the graph's random seed (every graph has one) and users of the material can reshuffle all random layouts with one value, which is how many variations of the same material are made.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["You render the same FX-Map twice without changing anything. The scattered stones are…", ["in new random positions each time", "in the same positions, because the random values come from the seed", "sorted by size", "missing"], 1, "Random nodes are deterministic for a given seed. Only a new seed changes the layout."]]</script></details>
+
+</section>
+<section class="chapter" id="tools" data-title="Ready-made scattering tools" data-summary="Tile Sampler, Tile Generator and Shape Splatter cover most scattering; open them to learn.">
+  <div class="head"><div class="num"></div><h2>Ready-made scattering tools</h2></div>
+
+  <div class="prose">
+    <p>Writing FX-Maps by hand is rarely necessary. The library has scattering nodes with dozens of exposed controls, and they are the first thing to reach for:</p>
+    <ul>
+      <li><strong>Tile Sampler</strong>: places a pattern or input images on a grid, with random offset, scale, rotation and luminance per tile, optional masks and scale maps. Bricks, scales, tiles, scattered leaves.</li>
+      <li><strong>Tile Generator</strong>: the older, simpler relative of Tile Sampler. Adobe notes it gets slower as you add patterns.</li>
+      <li><strong>Shape Splatter</strong> and the <strong>Splatter</strong> family: scatter shapes according to masks, with collision-like spacing, for pebbles and debris.</li>
+    </ul>
+    <p>Open them (they are graphs) to learn how they are built. Write your own FX-Map or Pixel Processor when none of them can express the layout, for example patterns that follow a spline or a rule that depends on a neighbour.</p>
+  </div>
+
+</section>
+<section class="chapter" id="which" data-title="Pixel Processor or FX-Map?" data-builds="sd-pixel-fx#pixel sd-pixel-fx#fxmap compute-shaders#when" data-summary="Pixel Processor: size² · reads. FX-Map: patterns · pattern area. Gather for per-position maths, scatter for many objects.">
+  <div class="head"><div class="num"></div><h2>Pixel Processor or FX-Map?</h2></div>
+
+  <div class="prose">
+    <p>The two nodes split the same job differently. A Pixel Processor <em>gathers</em>: every pixel asks "what am I?", so its cost is fixed by the number of pixels times the reads per pixel. An FX-Map <em>scatters</em>: every pattern paints the pixels it covers, so its cost depends on how many patterns there are and how large they are:</p>
+  </div>
+  <div class="fx" data-fx="gatherscatter"></div>
+  <div class="prose">
+    <p>Pixel Processors are the right tool for anything defined per position: gradients, distance fields, custom filters, remaps. FX-Maps are the right tool for many separate, overlapping things: scattered stones, splotches, particles. Two notes from Adobe's guidelines: FX-Maps are costly and not recommended for graphs that render on mobile, and their functions run on the CPU, so heavy image sampling inside an FX-Map is slow compared with the same sampling in a Pixel Processor.</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="A Designer Pixel Processor and FX-Map; ProceduralBake.compute gathers soft dots and a Max scatter, baked to PNG by an editor menu.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>First the two nodes in Designer: the soft-dot Pixel Processor and a scatter FX-Map with Iterate. Then the same two ideas in Unity as a compute shader, which is what a Pixel Processor is: one kernel gathers per pixel, the other turns a scatter into a gather by looping over a buffer of patterns. An editor menu bakes both to PNG. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>A Pixel Processor and an FX-Map with Iterate.</span></div><div class="rt" data-k="compute"><b>Compute shader</b><span>ProceduralBake.compute: SoftDots and ScatterMax kernels.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>ProceduralBaker.cs: dispatches the kernels and saves PNGs.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, add a <em>Pixel Processor</em> and double-click its <em>Per Pixel Function</em> to open the function graph. Add <em>Get Float2</em> set to <code>$pos</code>, multiply by a <em>Float</em> constant (the repeat count n), and feed it through <em>Fract</em>.</div></li><li><div>Subtract a <em>Float2</em> of (0.5, 0.5), take the <em>Length</em>, subtract it from the radius, divide by the softness, and finish with a <em>Clamp</em> from 0 to 1. Set the last node as the output (right-click, <em>Set as output node</em>). The 2D view shows the dots of the first widget.</div></li><li><div>Expose the radius: in the function, replace the constant with a <em>Get Float</em> reading a graph input you created in the graph's <em>Input Parameters</em>. The same value can now drive other nodes too.</div></li><li><div>Add an <em>FX-Map</em> node and open it. Connect a <em>Quadrant</em> under the <em>Iterate</em> node; set the Iterate count (say 60) and the Quadrant's Pattern to a soft disc (or Paraboloid) with <em>Blending Mode</em> <code>Max</code>.</div></li><li><div>On the Quadrant's <em>Pattern Offset</em>, open the parameter function and build a random position: two <em>Random</em> nodes with a maximum of 1, combined into a Float2. Do the same for <em>Pattern Size</em> with a range. Each copy now lands somewhere else; change the graph's Random Seed to reshuffle.</div></li><li><div>In Unity, create <code>Assets/Editor/</code> and put <code>ProceduralBake.compute</code> and <code>ProceduralBaker.cs</code> in it (the compute shader can live anywhere; the script finds it by name).</div></li><li><div>Use <em>Tools &gt; Atlas &gt; Bake Soft Dots</em> and <em>Bake Scatter</em>. Each dispatches a kernel into a RenderTexture, reads it back and writes a PNG into <code>Assets/Baked/</code>, imported with sRGB off since it is data.</div></li><li><div>Change the parameters at the top of <code>ProceduralBaker.cs</code> and bake again. The <code>ScatterMax</code> kernel loops over every pattern for every pixel; for thousands of patterns, bin them into a grid first, the same optimisation that makes the Quadrant tree fast.</div></li></ol>
+<div class="files"><div class="file" data-name="ProceduralBake.compute" data-lang="hlsl"><pre>// A Pixel Processor is a compute kernel: one thread per output pixel.
+#pragma kernel SoftDots
+#pragma kernel ScatterMax
+
+RWTexture2D&lt;float4&gt; _Out;
+uint  _Size;
+float _Repeat, _Radius, _Soft;
+
+[numthreads(8, 8, 1)]
+void SoftDots(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x &gt;= _Size || id.y &gt;= _Size) return;
+    float2 pos = (id.xy + 0.5) / _Size;                 // $pos
+    float2 q = frac(pos * _Repeat) - 0.5;               // repeat, centred cell
+    float v = saturate((_Radius - length(q)) / _Soft);  // soft dot
+    _Out[id.xy] = float4(v, v, v, 1);
+}
+
+// An FX-Map scatters patterns. Here every pixel gathers instead: it loops over all patterns
+// and keeps the tallest dome (Max blending). Positions wrap so the result tiles.
+struct Pattern { float2 pos; float radius; float height; };
+StructuredBuffer&lt;Pattern&gt; _Patterns;
+uint _Count;
+
+[numthreads(8, 8, 1)]
+void ScatterMax(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x &gt;= _Size || id.y &gt;= _Size) return;
+    float2 pos = (id.xy + 0.5) / _Size;
+    float h = 0;
+    for (uint i = 0; i &lt; _Count; i++)
+    {
+        Pattern p = _Patterns[i];
+        float2 d = abs(pos - p.pos);
+        d = min(d, 1.0 - d);                            // wrap around the tile border
+        float r = length(d) / p.radius;
+        if (r &lt; 1) h = max(h, sqrt(1 - r * r) * p.height);
+    }
+    _Out[id.xy] = float4(h, h, h, 1);
+}</pre></div><div class="file" data-name="ProceduralBaker.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using System.Runtime.InteropServices;
+using UnityEditor;
+using UnityEngine;
+
+// Bakes the two kernels of ProceduralBake.compute to PNG files in Assets/Baked.
+public static class ProceduralBaker
+{
+    const int Size = 1024;
+    const float Repeat = 3f, Radius = 0.3f, Soft = 0.05f;          // soft dots
+    const int Count = 60, Seed = 3;                                 // scatter
+    const float MinRadius = 0.04f, MaxRadius = 0.12f;
+
+    struct Pattern { public Vector2 pos; public float radius; public float height; }
+
+    [MenuItem(&quot;Tools/Atlas/Bake Soft Dots&quot;)]
+    static void BakeDots()
+    {
+        var cs = FindCompute();
+        int k = cs.FindKernel(&quot;SoftDots&quot;);
+        cs.SetFloat(&quot;_Repeat&quot;, Repeat); cs.SetFloat(&quot;_Radius&quot;, Radius); cs.SetFloat(&quot;_Soft&quot;, Soft);
+        Run(cs, k, &quot;SoftDots&quot;);
+    }
+
+    [MenuItem(&quot;Tools/Atlas/Bake Scatter&quot;)]
+    static void BakeScatter()
+    {
+        var cs = FindCompute();
+        int k = cs.FindKernel(&quot;ScatterMax&quot;);
+        var rnd = new System.Random(Seed);                          // same seed, same layout
+        var pats = new Pattern[Count];
+        for (int i = 0; i &lt; Count; i++)
+        {
+            float r = Mathf.Lerp(MinRadius, MaxRadius, (float)rnd.NextDouble());
+            pats[i] = new Pattern { pos = new Vector2((float)rnd.NextDouble(), (float)rnd.NextDouble()), radius = r, height = Mathf.Lerp(0.6f, 1f, r / MaxRadius) };
+        }
+        using (var buf = new ComputeBuffer(Count, Marshal.SizeOf&lt;Pattern&gt;()))
+        {
+            buf.SetData(pats);
+            cs.SetBuffer(k, &quot;_Patterns&quot;, buf);
+            cs.SetInt(&quot;_Count&quot;, Count);
+            Run(cs, k, &quot;Scatter&quot;);
+        }
+    }
+
+    static ComputeShader FindCompute()
+    {
+        string[] g = AssetDatabase.FindAssets(&quot;ProceduralBake t:ComputeShader&quot;);
+        if (g.Length == 0) throw new FileNotFoundException(&quot;ProceduralBake.compute not found in the project.&quot;);
+        return AssetDatabase.LoadAssetAtPath&lt;ComputeShader&gt;(AssetDatabase.GUIDToAssetPath(g[0]));
+    }
+
+    static void Run(ComputeShader cs, int kernel, string name)
+    {
+        var rt = new RenderTexture(Size, Size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear) { enableRandomWrite = true };
+        rt.Create();
+        cs.SetTexture(kernel, &quot;_Out&quot;, rt);
+        cs.SetInt(&quot;_Size&quot;, Size);
+        cs.Dispatch(kernel, (Size + 7) / 8, (Size + 7) / 8, 1);
+
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false, true);
+        tex.ReadPixels(new Rect(0, 0, Size, Size), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+        rt.Release();
+
+        Directory.CreateDirectory(&quot;Assets/Baked&quot;);
+        string path = $&quot;Assets/Baked/{name}.png&quot;;
+        File.WriteAllBytes(path, tex.EncodeToPNG());
+        Object.DestroyImmediate(tex);
+        AssetDatabase.ImportAsset(path);
+        var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+        imp.sRGBTexture = false;                                   // data, not colour
+        imp.SaveAndReimport();
+        Debug.Log($&quot;Baked {path}&quot;);
+    }
+}
+#endif</pre></div></div>
+<p class="note">The compute version renders in milliseconds on the GPU, but it is not a replacement for Designer: there is no node editor, no preview and no SBSAR. Use it when a game needs to generate or regenerate a texture itself, for example from level data; <a class="x" href="../compute-shaders/index.html#cpu">Compute Shaders</a> explains the dispatch and readback.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Compute shaders and the editor script are pipeline independent; the same files work in URP.</div><div class="eng" data-engine="unreal">Unreal's equivalent of a Pixel Processor is a material rendered into a Render Target with <em>Draw Material to Render Target</em> (from Blueprint or an Editor Utility Widget), or a Global Shader compute pass in C++. Export the render target to a texture asset to bake it.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/atomic-nodes/pixel-processor" rel="noopener">Pixel processor</a></span><span class="by">Adobe</span><span class="why">The per-pixel function, input images and colour mode.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-function-graphs/variables/system-variables" rel="noopener">Built-in variables</a></span><span class="by">Adobe</span><span class="why">$pos, $size, $number, $depth and the rest, per context.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-function-graphs/fx-maps/how-it-works" rel="noopener">FX-Maps: how it works</a></span><span class="by">Adobe</span><span class="why">Quadrant, Iterate and Switch, and how the tree is walked.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-function-graphs/fx-maps/the-quadrant-node" rel="noopener">The Quadrant node</a></span><span class="by">Adobe</span><span class="why">Pattern, offset, size, rotation, blending mode and random seed per pattern.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/best-practices/performance-optimization-guidelines" rel="noopener">Performance optimization guidelines</a></span><span class="by">Adobe</span><span class="why">Where functions run and why FX-Maps are costly.</span></li></ul>
+</section>
+
+<div class="next" data-next="sd-performance sd-publish compute-shaders"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"fn": [
+"Function graph",
+"A graph of maths on single values that drives a parameter, a Pixel Processor or an FX-Map.",
+"#functions"
+],
+"sysvar": [
+"System variable",
+"Built-in value read in functions: $pos, $size, $number, $depth, $time.",
+"#functions"
+],
+"quadtree": [
+"Quadtree",
+"Cells split into four at each level; Quadrant nodes draw one pattern per cell.",
+"#fxmap"
+],
+"seed": [
+"Random seed",
+"A number that makes Random nodes repeatable; change it for a new layout.",
+"#dynamic"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdpixfx.js"></script>
+</body>
+</html>

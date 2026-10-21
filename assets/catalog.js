@@ -18,7 +18,9 @@
     { id: 'light', name: 'Lighting & GI', color: 'cat-light', blurb: 'Physical light, exposure and the path from scene light to display pixels.' },
     { id: 'tex', name: 'Materials & texture pipeline', color: 'cat-tex', blurb: 'How textures are authored, packed, compressed and budgeted for the GPU.' },
     { id: 'char', name: 'Characters', color: 'cat-char', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
-    { id: 'perf', name: 'Performance & tools', color: 'cat-perf', blurb: 'Finding what is slow in a frame and the tools that show it.' }
+    { id: 'perf', name: 'Performance & tools', color: 'cat-perf', blurb: 'Finding what is slow in a frame and the tools that show it.' },
+    { id: 'sd', name: 'Substance Designer', color: 'cat-sd', blurb: 'Procedural materials in Substance 3D Designer: what the numbers in a graph mean, how the core nodes combine them, how to keep graphs fast, and how to ship the result.' },
+    { id: 'proj', name: 'Unity projects & assets', color: 'cat-proj', blurb: 'How a Unity project keeps track of its files: GUIDs and .meta files, prefabs and variants, scenes and Addressables, and why references break.' }
   ];
 
   /* Suggested orders for newcomers. Shown on the hub. */
@@ -28,7 +30,9 @@
     { name: 'Light for artists', units: ['color-values', 'exposure', 'light-types', 'pbr-brdf', 'shadow-maps', 'baked-gi'] },
     { name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] },
     { name: 'Materials from scratch', units: ['color-values', 'pbr-basics', 'texturing', 'texture-settings', 'texture-memory', 'mapping', 'pbr-brdf'] },
-    { name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] }
+    { name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] },
+    { name: 'Substance Designer from zero', units: ['color-values', 'sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'texture-settings'] },
+    { name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] }
   ];
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
@@ -136,7 +140,41 @@
     /* Performance */
     { slug: 'reading-a-frame', cat: 'perf', title: 'Reading a Frame', topic: 'Profiling and GPU cost', minutes: 70, level: 'Intermediate', engines: ALL,
       summary: 'Frame budgets, CPU- versus GPU-bound, draw calls and batching, overdraw, quad efficiency, shader divergence and LOD screen sizes.',
-      tags: ['profiling', 'performance', 'draw calls', 'batching', 'srp batcher', 'instancing', 'overdraw', 'quad overdraw', 'divergence', 'lod', 'frame budget'] }
+      tags: ['profiling', 'performance', 'draw calls', 'batching', 'srp batcher', 'instancing', 'overdraw', 'quad overdraw', 'divergence', 'lod', 'frame budget'] },
+
+    /* Substance Designer */
+    { slug: 'sd-graphs', cat: 'sd', title: 'Graphs, Bit Depth and Colour Space', topic: 'Resolution, 8/16 bit, float, sRGB and linear', minutes: 45, level: 'Beginner', engines: ALL,
+      summary: 'Output size and inheritance, what 8 and 16 bits mean, why heights band, float formats, and sRGB versus linear inside a graph and on export.',
+      tags: ['substance designer', 'substance', 'bit depth', '8 bit', '16 bit', 'float', 'half', 'banding', 'srgb', 'linear', 'ocio', 'aces', 'relative to parent', 'output size', 'inheritance'] },
+    { slug: 'sd-blend', cat: 'sd', title: 'Blend Modes', topic: 'Copy, add, multiply, max, overlay, masks', minutes: 45, level: 'Beginner', engines: ALL,
+      summary: 'The Blend node as formulas: copy, add, subtract, multiply, divide, max and min, add-sub, screen and overlay, with opacity, masks, clamping and height blending.',
+      tags: ['substance designer', 'blend', 'blend modes', 'multiply', 'add', 'subtract', 'overlay', 'screen', 'max', 'min', 'add sub', 'opacity', 'mask', 'height blend', 'histogram scan', 'levels'] },
+    { slug: 'sd-warps', cat: 'sd', title: 'Warps and Distortion', topic: 'Warp, directional, vector warp, slope blur', minutes: 45, level: 'Beginner', engines: ALL,
+      summary: 'How a warp reads its input at shifted positions: Directional Warp, Warp along a gradient, Vector Warp, Slope Blur, the artefacts they cause and what they cost.',
+      tags: ['substance designer', 'warp', 'directional warp', 'vector warp', 'slope blur', 'distortion', 'displacement', 'erosion', 'gradient'] },
+    { slug: 'sd-pixel-fx', cat: 'sd', title: 'Pixel Processor and FX-Maps', topic: 'Function graphs, per-pixel maths, pattern scattering', minutes: 55, level: 'Intermediate', engines: ALL,
+      summary: 'Function graphs, the Pixel Processor as a pixel shader, sampling neighbours, and FX-Maps: quadtrees, Iterate, random per pattern, blending, and when to use which.',
+      tags: ['substance designer', 'pixel processor', 'fx-map', 'fxmap', 'function graph', 'quadrant', 'iterate', 'tile sampler', '$pos', '$size', 'random seed', 'scatter'] },
+    { slug: 'sd-performance', cat: 'sd', title: 'Keeping Graphs Fast', topic: 'Resolution, formats, caching, heavy nodes', minutes: 40, level: 'Intermediate', engines: ALL,
+      summary: 'Measuring node times, cost per resolution step, greyscale and 8 bit, where exposed parameters belong, cheap blurs, and what runs at load time in an engine.',
+      tags: ['substance designer', 'performance', 'optimization', 'timing', 'cache', 'blur', 'warp', 'fx-map', 'resolution', 'gpu engine', 'cpu engine', 'sbsar'] },
+    { slug: 'sd-publish', cat: 'sd', title: 'Parameters, Publishing and Export', topic: 'Exposed inputs, SBSAR, texture export', minutes: 50, level: 'Beginner', engines: ALL,
+      summary: 'Exposing and grouping parameters, driving many nodes from one, Visible If, outputs and usages, exporting textures with the right format and colour space, normal formats, and SBSAR in Unity and Unreal.',
+      tags: ['substance designer', 'expose', 'parameters', 'visible if', 'presets', 'sbsar', 'publish', 'export', 'outputs', 'usage', 'png', 'exr', 'normal format', 'directx', 'opengl', 'substance plugin'] },
+
+    /* Unity projects & assets */
+    { slug: 'unity-guids', cat: 'proj', title: 'GUIDs and .meta Files', topic: 'How Unity references assets', minutes: 40, level: 'Beginner', engines: ['Unity HDRP', 'Unity URP'],
+      summary: 'What a .meta file holds, how a reference is a GUID plus a fileID, the ways references break, missing scripts and renamed fields, and version control settings.',
+      tags: ['unity', 'guid', 'meta', '.meta', 'fileid', 'missing reference', 'missing script', 'serialization', 'force text', 'yaml', 'version control', 'git', 'formerlyserializedas'] },
+    { slug: 'unity-prefabs', cat: 'proj', title: 'FBX, Prefabs, Variants and Nested Prefabs', topic: 'Model import and prefab workflows', minutes: 50, level: 'Beginner', engines: ['Unity HDRP', 'Unity URP'],
+      summary: 'What importing an FBX creates, prefabs and overrides, nested prefabs, prefab variants, where to make a change, wrapping models, and why reimports break overrides.',
+      tags: ['unity', 'fbx', 'model', 'prefab', 'prefab variant', 'nested prefab', 'overrides', 'apply', 'revert', 'unpack', 'model importer', 'scale factor', 'reimport'] },
+    { slug: 'unity-scenes', cat: 'proj', title: 'Scene Management', topic: 'Single and additive loading, bootstraps', minutes: 45, level: 'Beginner', engines: ['Unity HDRP', 'Unity URP'],
+      summary: 'Loading scenes single and additive, the active scene, async loading and activation hitches, peak memory when switching, bootstrap scenes, cross-scene references and lighting.',
+      tags: ['unity', 'scene', 'scenemanager', 'additive', 'loadsceneasync', 'allowsceneactivation', 'active scene', 'bootstrap', 'dontdestroyonload', 'multi-scene', 'lightmaps', 'light probes'] },
+    { slug: 'unity-addressables', cat: 'proj', title: 'Addressables', topic: 'Loading content by address', minutes: 60, level: 'Intermediate', engines: ['Unity HDRP', 'Unity URP'],
+      summary: 'Why direct references load everything, groups and labels, loading and releasing, reference counts, duplicated dependencies, catalogs and content builds, addressable scenes and why builds break.',
+      tags: ['unity', 'addressables', 'assetbundle', 'asset reference', 'loadassetasync', 'release', 'reference count', 'groups', 'labels', 'catalog', 'duplicate dependencies', 'analyze', 'content update', 'resources'] }
   ];
   window.ATLAS_UNITS.forEach(u => { u.path = 'units/' + u.slug + '/index.html'; });
 })();

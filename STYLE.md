@@ -1,7 +1,7 @@
 # Visual style
 
-The site looks like an asset store: a dark, neutral studio where rendered images carry all the color.
-The UI stays quiet so the renders and the diagrams read clearly.
+The site looks like an asset library (think Poly Haven): neutral greys, a top bar, a filter sidebar and a grid of rendered thumbnails.
+The renders and the diagrams carry the color; the UI itself is grey with one orange accent.
 
 ## Four image modes
 
@@ -29,9 +29,13 @@ for example the interior-mapped facade, or a split view of the lit image and its
 
 ## Type and color
 
-- Display: Archivo, 700–800. Body: Source Sans 3 at 18 px. Code and numbers in labs: JetBrains Mono.
+- Headings and body: Source Sans 3 (headings 700, body 17 px). Archivo only for the logo. Code and numbers: JetBrains Mono.
 - All fonts are self-hosted in `assets/fonts/` (SIL Open Font License). Do not link Google Fonts or any other font CDN.
-- Colors are tokens in `assets/atlas.css`. Category colors: blue shaders, amber lighting, green textures, orange characters, pink performance.
+- Colors are tokens in `assets/atlas.css`. Use color scarcely: the UI is neutral grey; the orange `--accent` marks only the current
+  item (active filter, current chapter), the logo and focus. Categories have no colors. Links are underlined text, not colored.
+  Inside live formulas and labs, colors carry meaning (one per variable, axis colors for X/Y/Z) and stay.
+- Layout: a sticky top bar (`.hubtop`) on every page; a left sidebar (hub filters or the unit's chapters); square-cornered
+  (6 px) panels with 1 px lines instead of shadows.
 - Dark is the default theme; light is an explicit choice of the reader. Draw lab canvases with `Atlas.col('token')`
   so they follow both.
 

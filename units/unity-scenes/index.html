@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scene Management · Tech Art Atlas</title>
+<meta name="description" content="How Unity loads scenes: Single and additive loading, the active scene, loading in the background and the activation hitch, peak memory when switching levels, the bootstrap pattern, references between scenes, and lighting with several scenes loaded.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="unity-scenes">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Scene Management</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Unity projects & assets · 8 chapters</div>
+  <h1>Scene Management</h1>
+  <p class="lede">How Unity loads scenes: Single and additive loading, the active scene, loading in the background and the activation hitch, peak memory when switching levels, the bootstrap pattern, references between scenes, and lighting with several scenes loaded.</p>
+  <p class="meta">Builds on GUIDs and .meta Files. Engine notes cover Unity HDRP and URP, with Unreal comparisons.</p>
+</header>
+<figure class="keyart"><canvas data-render="unity-scenes" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a level built from scene layers loaded on top of each other.</figcaption></figure>
+<div class="needs" data-needs="unity-guids#refs"></div>
+
+<section class="chapter" id="what" data-title="What a scene is" data-builds="unity-guids#refs" data-summary="A scene is a YAML file of GameObjects plus lighting and navigation data; build scenes come from the Build Profiles scene list.">
+  <div class="head"><div class="num"></div><h2>What a scene is</h2></div>
+
+  <div class="prose">
+    <p>A scene is a file (<code>.unity</code>) holding a hierarchy of GameObjects with their components, plus the scene's own settings: its lighting settings, its baked lightmaps and probes, its navigation data. Like prefabs, scenes are YAML and refer to assets by GUID (<a class="x" href="../unity-guids/index.html#refs">references</a>).</p>
+    <p>To be loadable by name or index in a build, a scene must be in the build's scene list: <em>File &gt; Build Profiles</em> in Unity 6 (<em>Build Settings</em> in older versions). The scene at index 0 is the one the player starts with. Scenes loaded through Addressables are the exception and must <em>not</em> be in that list (<a class="x" href="../unity-addressables/index.html#scenes">addressable scenes</a>).</p>
+    <p>All loading goes through <code>SceneManager</code>. A loaded scene is a <code>Scene</code> struct with a name, a path, a build index and its root GameObjects.</p>
+  </div>
+
+</section>
+<section class="chapter" id="modes" data-title="Single, additive and the active scene" data-builds="unity-scenes#what" data-summary="Single replaces all scenes, Additive adds one; the active scene receives new objects and, in URP/built-in, supplies lighting settings.">
+  <div class="head"><div class="num"></div><h2>Single, additive and the active scene</h2></div>
+
+  <div class="prose">
+    <p><code>SceneManager.LoadScene</code> has two modes. <strong>Single</strong> closes every loaded scene and opens the new one: the classic level change. <strong>Additive</strong> opens the new scene next to the ones already loaded, and the Hierarchy window shows one section per scene. Additive loading is how larger games are built: a bootstrap scene that never unloads, a UI scene, and level scenes or streaming chunks that come and go.</p>
+    <p>Exactly one loaded scene is the <button type="button" class="term" data-term="active">active scene</button>. New GameObjects (from <code>Instantiate</code> or <code>new GameObject</code>) are created in it, and in URP and the built-in pipeline its lighting settings (skybox, ambient light, fog) apply to all loaded scenes. Set it with <code>SceneManager.SetActiveScene</code> after loading:</p>
+  </div>
+  <div class="fx" data-fx="scenestack"></div>
+  <div class="prose"><p>Objects that must survive every load can be moved to the special <em>DontDestroyOnLoad</em> scene with <code>DontDestroyOnLoad(gameObject)</code>. It works, but every object there needs code that prevents duplicates when its original scene loads again; a bootstrap scene is usually cleaner (<a class="x" href="../unity-scenes/index.html#bootstrap">the bootstrap pattern</a>).</p></div>
+
+</section>
+<section class="chapter" id="async" data-title="Loading in the background" data-builds="unity-scenes#modes reading-a-frame#budget" data-summary="LoadSceneAsync: progress 0 → 0.9 while loading, then a single activation frame ≈ objects · Awake cost; allowSceneActivation holds at 0.9.">
+  <div class="head"><div class="num"></div><h2>Loading in the background</h2></div>
+
+  <div class="prose">
+    <p><code>LoadScene</code> blocks the game until the scene is loaded. <code>LoadSceneAsync</code> loads in the background and returns an <code>AsyncOperation</code> whose <code>progress</code> goes from 0 to 0.9 while data is read. The last step, <em>activation</em>, runs on the main thread: Unity integrates the objects and calls <code>Awake</code> and <code>OnEnable</code> on every one of them in a single frame. Setting <code>allowSceneActivation = false</code> holds the load at 0.9, so you can finish a fade or wait for the player:</p>
+  </div>
+  <pre class="code" data-lang="cs">using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class LevelLoader : MonoBehaviour
+{
+    public IEnumerator Load(string scene)
+    {
+        AsyncOperation op = SceneManager.LoadSceneAsync(scene, LoadSceneMode.Additive);
+        op.allowSceneActivation = false;              // stop at 0.9 until we are ready
+        while (op.progress &lt; 0.9f) yield return null; // update a loading bar with op.progress here
+        // ...fade to black, finish the loading screen...
+        op.allowSceneActivation = true;               // activation: Awake/OnEnable of every object
+        yield return op;                              // done when isDone is true
+        SceneManager.SetActiveScene(SceneManager.GetSceneByName(scene));
+    }
+}</pre>
+  <div class="fx" data-fx="asyncload"></div>
+  <div class="prose">
+    <p>Two details catch people. While an operation waits with <code>allowSceneActivation = false</code>, later scene operations queue behind it, including unloads, so do not leave it waiting forever. And the activation frame cannot be split: a scene with tens of thousands of objects or heavy <code>Awake</code> code hitches. Split large levels into several additive scenes, move expensive setup out of <code>Awake</code> into code that runs over several frames, and hide the rest behind a loading screen.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A loading bar driven by op.progress stops at 90 % and never moves. What is happening?", ["The scene file is corrupt", "allowSceneActivation is false, so the load waits before activation", "The scene is too large", "progress only works for Single mode"], 1, "Progress reaches 0.9 when the data is loaded; the rest happens only after allowSceneActivation is set to true."]]</script></details>
+
+</section>
+<section class="chapter" id="memory" data-title="Memory: unloading scenes and their assets" data-builds="unity-scenes#async" data-summary="Single: peak ≈ A + B. Transition scene: ≈ max(A, B). Additive unloads need Resources.UnloadUnusedAssets to free assets.">
+  <div class="head"><div class="num"></div><h2>Memory: unloading scenes and their assets</h2></div>
+
+  <div class="prose">
+    <p>Switching levels raises a memory question: is the old level gone before the new one arrives? With <code>LoadScene</code> in Single mode, Unity loads the new scene and then destroys the old one, so for a moment both are in memory. On a console or phone with a tight budget, that peak is what crashes. A tiny transition scene in between (load it, let the old level go, then load the next) keeps the peak at the larger of the two levels:</p>
+  </div>
+  <div class="fx" data-fx="peakmem"></div>
+  <div class="prose">
+    <p>With additive scenes you unload explicitly with <code>SceneManager.UnloadSceneAsync</code>. That destroys the scene's GameObjects but does not free the assets they used: textures, meshes and audio stay loaded until <code>Resources.UnloadUnusedAssets</code> runs, which Unity does by itself after a Single-mode load but not after an additive unload. Call it once after unloading a level, ideally behind the loading screen, since it scans all loaded objects and can take a noticeable moment.</p>
+  </div>
+
+</section>
+<section class="chapter" id="bootstrap" data-title="The bootstrap pattern" data-builds="unity-scenes#modes unity-scenes#memory" data-summary="Bootstrap scene with persistent systems, additive UI and levels, a loader that swaps levels; auto-load the bootstrap when playing any scene.">
+  <div class="head"><div class="num"></div><h2>The bootstrap pattern</h2></div>
+
+  <div class="prose">
+    <p>Most projects end up with the same structure:</p>
+    <ul>
+      <li>A <strong>Bootstrap</strong> scene at build index 0 holds the systems that live for the whole session: a scene loader, audio, input, save data, the camera rig. It loads first and never unloads.</li>
+      <li>The bootstrap loads a <strong>UI</strong> scene and the first <strong>level</strong> scene additively, and sets the level active.</li>
+      <li>Level changes go through the loader in the bootstrap: show the loading screen, unload the old level, free unused assets, load the new one, activate it, hide the loading screen.</li>
+    </ul>
+    <p>One snag: in the editor you usually press Play in a level scene, and then the bootstrap is missing. A static method marked <code>[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]</code> runs right after the first scene has loaded, in the editor and in builds; it can check whether the bootstrap is there and load it additively if not. Level code then must not need the bootstrap in <code>Awake</code>, which is a good rule anyway. The implementation chapter has one.</p>
+  </div>
+
+</section>
+<section class="chapter" id="crossscene" data-title="References between scenes" data-builds="unity-scenes#bootstrap" data-summary="No serialized cross-scene references: use ScriptableObject channels, runtime lookups or IDs; avoid scene names as plain strings.">
+  <div class="head"><div class="num"></div><h2>References between scenes</h2></div>
+
+  <div class="prose">
+    <p>A field in one scene cannot reference an object in another: Unity does not save <button type="button" class="term" data-term="crossref">cross-scene references</button>, and the Inspector refuses them. That is by design, since the other scene may not be loaded. Systems in different scenes talk in other ways:</p>
+    <ul>
+      <li>through <strong>ScriptableObject assets</strong> both scenes reference (a shared settings object, an event channel), since assets are not part of any scene;</li>
+      <li>by <strong>finding at runtime</strong> after a load (<code>FindAnyObjectByType</code>, a registry that objects join in <code>OnEnable</code>);</li>
+      <li>by <strong>ID</strong>: a spawn point stores an ID string, the player looks it up when the level is ready.</li>
+    </ul>
+    <p>Scene names are references too, and fragile ones: <code>LoadScene("Level_02")</code> breaks silently when someone renames the file. Store a reference to the scene asset in the editor and its path in builds, which is what the <code>SceneRef</code> type in the implementation chapter does.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A UI button in the UI scene must call a method on the player in the level scene. What works?", ["Drag the player into the button's OnClick in the Inspector", "Have both use a ScriptableObject event channel, or find the player at runtime", "Put the player in the UI scene", "Use DontDestroyOnLoad on the button"], 1, "Cross-scene references are not saved. Shared assets or runtime lookups connect scenes."]]</script></details>
+
+</section>
+<section class="chapter" id="lighting" data-title="Lighting with several scenes" data-builds="baked-gi#probes baked-gi#lightmaps" data-summary="Lightmaps per scene, retetrahedralize probes after additive loads, APV baking sets, Volumes by priority, environment from the active scene.">
+  <div class="head"><div class="num"></div><h2>Lighting with several scenes</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Lightmaps</strong> belong to the scene they were baked in and load with it. Bake scenes that are shown together while they are open together (multi-scene editing), so their bounce light and shadows agree.</li>
+      <li><strong>Light probes</strong> from additively loaded scenes have to be merged into one structure. Call <code>LightProbes.TetrahedralizeAsync()</code> after loading or unloading, or objects keep sampling the old probe set (<a class="x" href="../baked-gi/index.html#probes">probes</a>).</li>
+      <li><strong>Adaptive Probe Volumes</strong> (HDRP and URP in Unity 6) bake scenes as a <em>Baking Set</em>, designed for scenes that load together.</li>
+      <li><strong>Volumes</strong> (HDRP sky, exposure and post, URP post) blend across all loaded scenes by priority. Put the global profile in one place, a lighting or bootstrap scene, and give local overrides a higher priority.</li>
+      <li>In URP and the built-in pipeline the <strong>environment lighting</strong> (skybox, ambient, fog) comes from the active scene, so set the level active after loading it.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Unity" data-summary="SceneRef for rename-proof scene fields, a SceneLoader that unloads, frees assets, loads held at 0.9 and activates, and a Bootstrapper for Play in any scene.">
+  <div class="head"><div class="num"></div><h2>Set it up in Unity</h2></div>
+  <div class="prose"><p>A complete bootstrap setup: a scene reference type that survives renames, a loader that swaps levels with a loading screen, frees memory and fixes probes, and a hook that loads the bootstrap when you press Play in any level. Written for Unity 6; Unity 2022 LTS works the same apart from a few renamed menu entries (Build Profiles was Build Settings).</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Build Profiles scene list with Bootstrap at index 0.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>SceneRef.cs: a scene field that stores the path.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>SceneLoader.cs: unload, free, load, activate.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>Bootstrapper.cs: loads the bootstrap when missing.</span></div></div>
+<ol class="impl-steps"><li><div>Create three scenes: <code>Bootstrap</code> (empty apart from systems), <code>UI</code> and your levels. In <em>File &gt; Build Profiles</em>, add them to the scene list with <code>Bootstrap</code> at index 0.</div></li><li><div>Add <code>SceneRef.cs</code>, <code>SceneLoader.cs</code> and <code>Bootstrapper.cs</code> to the project (not an Editor folder; they run in builds). <code>SceneRef</code> shows a scene asset field in the Inspector and stores the scene's path for the build.</div></li><li><div>In the Bootstrap scene, create a GameObject <em>Systems</em> with <code>SceneLoader</code>. Assign the UI scene and the first level. Add a full-screen loading canvas as a child and assign it to <em>Loading Screen</em>.</div></li><li><div>Press Play in Bootstrap: it loads UI and the first level additively and makes the level active. Press Play in a level scene instead: <code>Bootstrapper</code> notices that build index 0 is not loaded and loads it additively, so the systems exist in either case. (The loader then sees the level already open and adopts it.)</div></li><li><div>Change levels from gameplay code with <code>SceneLoader.Instance.LoadLevel(nextLevel)</code>, where <code>nextLevel</code> is a <code>SceneRef</code> field. The loader shows the loading screen, unloads the current level, calls <code>Resources.UnloadUnusedAssets</code>, loads the next one held at 0.9 until it is ready, activates it, sets it active and rebuilds the light probe structure.</div></li><li><div>Watch the memory: open <em>Window &gt; Analysis &gt; Profiler</em>, Memory module, and switch levels. The total should fall between levels; if it climbs with each switch, something holds references to old assets (a static list, an event subscription).</div></li><li><div>For lighting, bake each level with the Bootstrap and UI scenes closed (they hold no static geometry). Keep the global Volume profile in the Bootstrap scene and level-specific Volumes, with higher priority, in the levels.</div></li></ol>
+<div class="files"><div class="file" data-name="SceneRef.cs" data-lang="cs"><pre>using UnityEngine;
+
+// A scene field that survives renames: the editor stores the SceneAsset (by GUID),
+// and its current path is copied into a string that builds can load.
+[System.Serializable]
+public class SceneRef : ISerializationCallbackReceiver
+{
+#if UNITY_EDITOR
+    [SerializeField] UnityEditor.SceneAsset scene;
+#endif
+    [SerializeField, HideInInspector] string path = &quot;&quot;;
+
+    public string Path =&gt; path;
+    public bool IsSet =&gt; !string.IsNullOrEmpty(path);
+
+    public void OnBeforeSerialize()
+    {
+#if UNITY_EDITOR
+        path = scene != null ? UnityEditor.AssetDatabase.GetAssetPath(scene) : &quot;&quot;;
+#endif
+    }
+    public void OnAfterDeserialize() { }
+}</pre></div><div class="file" data-name="SceneLoader.cs" data-lang="cs"><pre>using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+// Lives in the Bootstrap scene. Loads UI and levels additively and swaps levels behind a loading screen.
+public class SceneLoader : MonoBehaviour
+{
+    public static SceneLoader Instance { get; private set; }
+
+    public SceneRef uiScene;
+    public SceneRef firstLevel;
+    public GameObject loadingScreen;
+
+    Scene currentLevel;
+    bool busy;
+
+    void Awake()
+    {
+        if (Instance != null) { Destroy(gameObject); return; }
+        Instance = this;
+        if (loadingScreen) loadingScreen.SetActive(false);
+    }
+
+    IEnumerator Start()
+    {
+        if (uiScene.IsSet &amp;&amp; !SceneManager.GetSceneByPath(uiScene.Path).isLoaded)
+            yield return SceneManager.LoadSceneAsync(uiScene.Path, LoadSceneMode.Additive);
+
+        // Pressed Play in a level? Adopt it instead of loading the first level.
+        for (int i = 0; i &lt; SceneManager.sceneCount; i++)
+        {
+            var s = SceneManager.GetSceneAt(i);
+            if (s.buildIndex != 0 &amp;&amp; s.path != uiScene.Path) { currentLevel = s; SceneManager.SetActiveScene(s); yield break; }
+        }
+        if (firstLevel.IsSet) yield return LoadRoutine(firstLevel.Path);
+    }
+
+    public void LoadLevel(SceneRef level)
+    {
+        if (!busy &amp;&amp; level.IsSet) StartCoroutine(LoadRoutine(level.Path));
+    }
+
+    IEnumerator LoadRoutine(string path)
+    {
+        busy = true;
+        if (loadingScreen) loadingScreen.SetActive(true);
+        yield return null;                                             // let the loading screen draw
+
+        if (currentLevel.IsValid() &amp;&amp; currentLevel.isLoaded)
+        {
+            yield return SceneManager.UnloadSceneAsync(currentLevel);  // objects gone...
+            yield return Resources.UnloadUnusedAssets();               // ...and now their assets
+        }
+
+        var op = SceneManager.LoadSceneAsync(path, LoadSceneMode.Additive);
+        op.allowSceneActivation = false;
+        while (op.progress &lt; 0.9f) yield return null;                  // drive a progress bar with op.progress / 0.9
+        op.allowSceneActivation = true;                                // one frame of Awake/OnEnable for the whole scene
+        yield return op;
+
+        currentLevel = SceneManager.GetSceneByPath(path);
+        SceneManager.SetActiveScene(currentLevel);                     // new objects and environment lighting
+        LightProbes.TetrahedralizeAsync();                             // merge the new level&#x27;s probes
+
+        if (loadingScreen) loadingScreen.SetActive(false);
+        busy = false;
+    }
+}</pre></div><div class="file" data-name="Bootstrapper.cs" data-lang="cs"><pre>using UnityEngine;
+using UnityEngine.SceneManagement;
+
+// Makes &quot;press Play in any scene&quot; work: if the Bootstrap scene (build index 0) is not loaded, load it.
+public static class Bootstrapper
+{
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void EnsureBootstrap()
+    {
+        for (int i = 0; i &lt; SceneManager.sceneCount; i++)
+            if (SceneManager.GetSceneAt(i).buildIndex == 0) return;   // already there (normal build start)
+        SceneManager.LoadScene(0, LoadSceneMode.Additive);
+    }
+}</pre></div></div>
+<p class="note"><code>SceneRef</code> reads the asset path while serializing, which happens in the editor; in builds only the stored path is used. If you rename a scene, open and save one object that references it (or any scene) once so the stored path updates, and keep the scene in the Build Profiles list.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Identical in URP. In URP the active scene's environment lighting applies to all loaded scenes, which is why the loader sets the level active.</div><div class="eng" data-engine="unreal">Unreal's equivalent is level streaming: a persistent level (the bootstrap) with streaming sublevels loaded through <em>Load Stream Level</em>, or World Partition, which streams cells by distance automatically. <em>Open Level</em> corresponds to Single mode.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/SceneManagement.SceneManager.html" rel="noopener">SceneManager</a></span><span class="by">Unity</span><span class="why">Loading, unloading and the active scene.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/SceneManagement.SceneManager.LoadSceneAsync.html" rel="noopener">SceneManager.LoadSceneAsync</a></span><span class="by">Unity</span><span class="why">Asynchronous loading and its AsyncOperation.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/AsyncOperation-allowSceneActivation.html" rel="noopener">AsyncOperation.allowSceneActivation</a></span><span class="by">Unity</span><span class="why">Why progress stops at 0.9 and how activation is held.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/MultiSceneEditing.html" rel="noopener">Multi-Scene editing</a></span><span class="by">Unity</span><span class="why">Working with several scenes, baking them together, cross-scene references.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Resources.UnloadUnusedAssets.html" rel="noopener">Resources.UnloadUnusedAssets</a></span><span class="by">Unity</span><span class="why">Freeing assets no longer referenced by loaded objects.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/LightProbes.Tetrahedralize.html" rel="noopener">LightProbes.Tetrahedralize</a></span><span class="by">Unity</span><span class="why">Rebuilding the probe structure after additive loads.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html" rel="noopener">RuntimeInitializeOnLoadMethodAttribute</a></span><span class="by">Unity</span><span class="why">Running code before the first scene loads.</span></li></ul>
+</section>
+
+<div class="next" data-next="unity-addressables baked-gi reading-a-frame"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"active": [
+"Active scene",
+"The loaded scene that receives new objects and, in URP/built-in, supplies lighting settings.",
+"#modes"
+],
+"additive": [
+"Additive loading",
+"Loading a scene next to the ones already loaded.",
+"#modes"
+],
+"activation": [
+"Activation",
+"The last step of a scene load, on the main thread: objects are integrated and Awake/OnEnable run.",
+"#async"
+],
+"crossref": [
+"Cross-scene reference",
+"A reference from an object in one scene to an object in another; Unity does not save them.",
+"#crossscene"
+],
+"bootstrap": [
+"Bootstrap scene",
+"A scene loaded first and never unloaded, holding persistent systems.",
+"#bootstrap"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="scenes.js"></script>
+</body>
+</html>

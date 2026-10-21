@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Blend Modes · Tech Art Atlas</title>
+<meta name="description" content="What the Blend node computes: copy, add, subtract, multiply, divide, max and min, add-sub, screen and overlay as formulas, with opacity and masks, clamping, and how to blend whole materials by height.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="sd-blend">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Blend Modes</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 8 chapters</div>
+  <h1>Blend Modes</h1>
+  <p class="lede">What the Blend node computes: copy, add, subtract, multiply, divide, max and min, add-sub, screen and overlay as formulas, with opacity and masks, clamping, and how to blend whole materials by height.</p>
+  <p class="meta">Builds on Graphs, Bit Depth and Colour Space. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-blend" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: rounded stones merged with Max and sunk into sand with a height blend.</figcaption></figure>
+<div class="needs" data-needs="sd-graphs#bitdepth sd-graphs#float"></div>
+
+<section class="chapter" id="node" data-title="The Blend node" data-builds="shader-anatomy#functions" data-summary="result = lerp(B, mode(F, B), opacity · mask), per pixel and per channel.">
+  <div class="head"><div class="num"></div><h2>The Blend node</h2></div>
+
+  <div class="prose">
+    <p>Most of a Substance graph is images being combined, and most combining happens in one atomic node: <em>Blend</em>. It has three inputs. The <strong>Foreground</strong> (F) is laid on top of the <strong>Background</strong> (B), and the optional <strong>Opacity</strong> input is a greyscale mask that says where. The <em>Opacity</em> slider scales the mask, and the <em>Blending Mode</em> decides how F and B are combined.</p>
+    <p>Every mode works the same way, one pixel and one channel at a time: compute the mode's result from F and B, then mix it with the untouched background by opacity × mask. With opacity 0 you get B, with opacity 1 the full effect:</p>
+  </div>
+  <div class="fx" data-fx="blendmode"></div>
+  <div class="prose"><p>The square shows the mode for every pair of values at once: foreground left to right, background bottom to top. Learn to read it and the modes stop being names. Multiply is dark wherever either input is dark; Max is a corner of light; Copy ignores the background completely.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A Blend in Multiply mode has opacity 0.5. F = 0.2, B = 0.8. What comes out?", ["0.16", "0.48", "0.5", "0.8"], 1, "Multiply gives 0.8 × 0.2 = 0.16; half opacity mixes it with the background: 0.8 + (0.16 − 0.8) · 0.5 = 0.48."]]</script></details>
+
+</section>
+<section class="chapter" id="arith" data-title="Add, subtract, multiply, divide" data-builds="sd-blend#node sd-graphs#float" data-summary="Add B + F, Subtract B − F, Multiply B · F, Divide B / F; integer formats clamp; Subtract and Divide depend on order.">
+  <div class="head"><div class="num"></div><h2>Add, subtract, multiply, divide</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Add</strong> (linear dodge): B + F. Brightens. Two bright areas sum past 1.</li>
+      <li><strong>Subtract</strong>: B − F. Carves the foreground out of the background, for example cracks out of a height map. Below 0 becomes black.</li>
+      <li><strong>Multiply</strong>: B · F. Never brighter than either input. With a 0–1 mask as F, it keeps B where the mask is white and removes it where black: the standard way to apply a mask.</li>
+      <li><strong>Divide</strong>: B / F. Rarely needed; it brightens and explodes near F = 0.</li>
+    </ul>
+    <p>Two details catch everyone. First, in the integer formats every result is <em>clamped</em> to 0–1 before the next node sees it, so Add saturates and Subtract bottoms out (<a class="x" href="../sd-graphs/index.html#float">integer versus float</a>). Second, order matters: Add, Multiply, Max, Min and Screen give the same result with the inputs swapped, but Subtract, Divide, Copy and Overlay do not. If a subtraction does nothing, swap the inputs.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["You want to cut grooves (dark lines, white elsewhere in the groove mask: the grooves are white) into a height map. Which setup?", ["Groove mask as foreground, height as background, Subtract", "Height as foreground, grooves as background, Subtract", "Grooves as foreground, Add", "Grooves as background, Max"], 0, "B − F: the height minus the grooves. Swapped, you would subtract the height from the grooves."]]</script></details>
+
+</section>
+<section class="chapter" id="minmax" data-title="Max and Min: combining heights" data-builds="sd-blend#arith" data-summary="Max = union of height shapes (the higher wins), Min = intersection; Add stacks and can clip at 1.">
+  <div class="head"><div class="num"></div><h2>Max and Min: combining heights</h2></div>
+
+  <div class="prose">
+    <p>Height maps describe surfaces, and the question when combining two of them is usually "which one is on top here?". That is exactly what <strong>Max</strong> (Lighten) answers: at each pixel the higher surface wins. Two stones blended with Max overlap like real stones, with no seam and nothing above 1. <strong>Min</strong> (Darken) keeps the lower surface and is useful for cutting a shape down to another, an intersection.</p>
+  </div>
+  <div class="fx" data-fx="heightunion"></div>
+  <div class="prose"><p>The same idea is behind signed distance fields in shaders, where the union of two shapes is the minimum of their distances. In heights it is the maximum, because higher means more surface.</p></div>
+
+</section>
+<section class="chapter" id="addsub" data-title="Add Sub and Overlay: detail around 0.5" data-builds="sd-blend#node" data-summary="Add Sub: above 0.5 adds, below subtracts, 0.5 neutral. Overlay: multiply below 0.5, screen above, based on the background.">
+  <div class="head"><div class="num"></div><h2>Add Sub and Overlay: detail around 0.5</h2></div>
+
+  <div class="prose">
+    <p>Detail such as noise, scratches or pores usually comes as an image centred on mid grey: 0.5 means "no change", lighter raises, darker lowers. Add and Multiply cannot use such an image without shifting the whole surface, because they only ever raise or only ever lower. Two modes treat 0.5 as neutral:</p>
+    <ul>
+      <li><strong>Add Sub</strong>: foreground values above 0.5 are added to the background, values below 0.5 subtracted. The large shape keeps its average height.</li>
+      <li><strong>Overlay</strong>: multiplies where the background is below 0.5 and screens where it is above. The detail is strongest in the middle tones and fades towards black and white.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="detail"></div>
+  <p class="note">Adobe documents Add Sub in words only. The formula used here, B + (F − 0.5), follows community references; the test graph in the last chapter lets you compare it with your Designer version.</p>
+  <div class="prose"><p>Control the strength with the Blend's opacity, not by scaling the detail image: opacity keeps 0.5 neutral, while a Levels on the detail shifts its centre unless you remap around 0.5.</p></div>
+
+</section>
+<section class="chapter" id="screen" data-title="Screen, overlay and colour" data-builds="sd-graphs#srgb" data-summary="Screen = 1 − (1 − B)(1 − F). Colour blends run per channel on encoded values in Legacy mode. Switch skips the unused input.">
+  <div class="head"><div class="num"></div><h2>Screen, overlay and colour</h2></div>
+
+  <div class="prose">
+    <p><strong>Screen</strong> is multiply turned upside down: invert both inputs, multiply, invert the result, 1 − (1 − B)(1 − F). It brightens without ever passing 1, which makes it a gentle way to add highlights, dust or edge wear to a colour. <strong>Overlay</strong> combines the two: it multiplies the darks and screens the lights of the background, adding contrast.</p>
+    <p>On colour images every mode runs on each channel separately, R with R, G with G, B with B. In Designer's default Legacy colour mode those channels hold sRGB-encoded values, so a colour Blend at 50 % is darker in the middle than a physically correct mix would be (<a class="x" href="../sd-graphs/index.html#srgb">sRGB and linear in Designer</a>). For base colour work this usually looks fine and matches what painters expect from Photoshop; just do not expect a Multiply of two colours to behave like light.</p>
+    <p>Colour images also carry alpha. In Copy mode the foreground's alpha is multiplied into the opacity by default, and the Blend node's <em>Alpha Blending</em> setting changes how alpha is treated.</p>
+    <p>One mode is about speed rather than looks. <strong>Switch</strong> behaves like Copy, but at opacity exactly 0 Designer does not compute the foreground chain at all, and at exactly 1 it skips the background. Driven by an exposed on/off parameter, it makes optional features free when they are off (<a class="x" href="../sd-performance/index.html#structure">graph structure</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="masks" data-title="Masks: where a blend applies" data-builds="sd-blend#node" data-summary="mask = saturate((h − (p − w/2)) / w): Histogram Scan and Levels turn heights, curvature or AO into masks.">
+  <div class="head"><div class="num"></div><h2>Masks: where a blend applies</h2></div>
+
+  <div class="prose">
+    <p>The Opacity input is where most of the art direction happens. A mask is usually made from something already in the graph: the height (moss in the low parts), its slope (dust on flat tops), a curvature map (wear on edges) or an ambient occlusion map (dirt in crevices). The tool that turns any of them into a mask is a threshold with a soft edge: below a value, 0; above it, 1; a short ramp between. <em>Histogram Scan</em> does this with a <em>Position</em> and a <em>Contrast</em>, and <em>Levels</em> does it with its input range:</p>
+  </div>
+  <div class="fx" data-fx="mask"></div>
+  <div class="prose"><p>Two habits keep masks clean. Remap first and blur second: a small blur after the threshold softens stair-stepped edges without moving them. And keep masks greyscale and 8 bit; they rarely need more (<a class="x" href="../sd-graphs/index.html#choose">formats per map</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["You want moss only in the lowest parts of a stone wall. Which mask?", ["The height map, inverted, through a Histogram Scan", "The height map as it is", "The base colour", "A uniform colour of 0.5"], 0, "Low parts are dark in the height map; inverted, they become white. A Histogram Scan picks how much of the low part gets moss."]]</script></details>
+
+</section>
+<section class="chapter" id="heightblend" data-title="Blending materials by height" data-builds="sd-blend#masks sd-blend#minmax" data-summary="mask = saturate(0.5 + (h_top + offset − h_bottom) / contrast): the higher material shows.">
+  <div class="head"><div class="num"></div><h2>Blending materials by height</h2></div>
+
+  <div class="prose">
+    <p>When two materials meet (cobbles in sand, moss on stone), a mask painted from the top looks flat: the sand line ignores the stones. Real material sits in the low parts. A <em>height blend</em> compares the two height maps at every pixel and shows whichever material is higher there. A height offset moves one material up or down, which floods the other one from the low parts outward, and a contrast value controls how sharp the transition is:</p>
+  </div>
+  <div class="fx" data-fx="heightblend"></div>
+  <div class="prose">
+    <p>Designer's <em>Height Blend</em> library node does this and outputs both the combined height and the mask; the formula above shows the idea, the node's exact maths differs in detail. Use the mask to blend every other map of the two materials with Copy mode (colour, roughness, normals), or use the <em>Material Blend</em> node, which blends whole sets of PBR outputs at once.</p>
+    <p>The same comparison works in a shader at runtime, for puddles or snow that change with gameplay. The next chapter builds it in Shader Graph.</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="A Designer test graph for the modes, and SDBlend.hlsl with a height-blend mask driven at runtime in Shader Graph.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>Two halves. In Designer, a small test graph shows every mode on two gradients, the same square as the first chapter's widget, so you can check what a mode does in your version. In Unity HDRP, the same formulas as a Custom Function, used to height-blend two materials at runtime, for puddles, moss or snow that gameplay controls. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>A test graph: two gradients into one Blend.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>SDBlend.hlsl: the blend modes and a height blend.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit Shader Graph that height-blends two materials.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>BlendDriver.cs: drives the blend amount from gameplay.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, create a graph and add two <em>Gradient Linear 1</em> nodes. Rotate the second by 90° with its own rotation setting or a <em>Transformation 2D</em>. You now have F rising left to right and B rising bottom to top.</div></li><li><div>Add a <em>Blend</em> node: the first gradient into <em>Foreground</em>, the second into <em>Background</em>. Step through the <em>Blending Mode</em> list and compare the 2D view with the square in the first chapter. Set the graph format to 16F or 32F to see results beyond 0–1 that 8 bit would clamp.</div></li><li><div>To check Add Sub numerically, put a <em>Uniform Color</em> (greyscale) of 0.2 into Background and 1.0 into Foreground, and read the 2D view's value under the cursor: B + (F − 0.5) gives 0.7.</div></li><li><div>In Unity, save <code>SDBlend.hlsl</code> in the project. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Add two sets of material textures as properties (base colour, normal, mask map for each), a <em>Blend</em> float (0–1) and a <em>Contrast</em> float (0.01–0.5).</div></li><li><div>Sample both materials. The height of each comes from its mask map or a separate height texture; for HDRP mask maps without height, use the blue channel of a custom packed map, or a separate <code>_H</code> texture.</div></li><li><div>Add a Custom Function node with Source <code>SDBlend.hlsl</code> and Name <code>HeightBlendMask</code>. Inputs: <b>HTop (Float), HBottom (Float), Offset (Float), Contrast (Float)</b>; output <b>Mask (Float)</b>. Connect the Blend property through a <em>Remap</em> from (0, 1) to (−1, 1) into Offset.</div></li><li><div>Use the mask to <em>Lerp</em> base colour, smoothness, metallic and AO between the two materials. For normals use <em>Lerp</em> and then <em>Normalize</em> (or <em>Normal Blend</em> for detail layering). Connect to the master stack.</div></li><li><div>Optionally call <code>SDBlend</code> (inputs <b>F (Vector 3), B (Vector 3), Opacity (Float), Mode (Float)</b>, output <b>Result (Vector 3)</b>) to layer a dirt or wear texture in any mode from the unit, for example Overlay for colour variation.</div></li><li><div>Put <code>BlendDriver.cs</code> on the object to fade the blend in over time or from a gameplay value (wetness, snow level). It sets the <code>_Blend</code> float through a MaterialPropertyBlock, so instances keep one material.</div></li></ol>
+<div class="files"><div class="file" data-name="SDBlend.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SD_BLEND_INCLUDED
+#define ATLAS_SD_BLEND_INCLUDED
+
+// Substance-style blend modes, per channel. F = foreground, B = background.
+// Mode: 0 Copy, 1 Add, 2 Subtract, 3 Multiply, 4 Divide, 5 Max, 6 Min, 7 Add Sub, 8 Screen, 9 Overlay.
+// The result is clamped to 0..1 like Designer&#x27;s integer formats, then mixed by Opacity.
+float3 SDBlendMode(float3 F, float3 B, int mode)
+{
+    float3 r = F;
+    if      (mode == 1) r = B + F;
+    else if (mode == 2) r = B - F;
+    else if (mode == 3) r = B * F;
+    else if (mode == 4) r = B / max(F, 1e-4);
+    else if (mode == 5) r = max(B, F);
+    else if (mode == 6) r = min(B, F);
+    else if (mode == 7) r = B + (F - 0.5);
+    else if (mode == 8) r = 1.0 - (1.0 - B) * (1.0 - F);
+    else if (mode == 9) r = lerp(2.0 * B * F, 1.0 - 2.0 * (1.0 - B) * (1.0 - F), step(0.5, B));
+    return saturate(r);
+}
+
+void SDBlend_float(float3 F, float3 B, float Opacity, float Mode, out float3 Result)
+{
+    Result = lerp(B, SDBlendMode(F, B, (int)round(Mode)), saturate(Opacity));
+}
+
+// Height blend: 1 where the top material (raised by Offset) is higher than the bottom one.
+// Contrast is the width of the transition in height units.
+void HeightBlendMask_float(float HTop, float HBottom, float Offset, float Contrast, out float Mask)
+{
+    Mask = saturate(0.5 + (HTop + Offset - HBottom) / max(Contrast, 1e-3));
+}
+
+#endif</pre></div><div class="file" data-name="BlendDriver.cs" data-lang="cs"><pre>using UnityEngine;
+
+// Drives the _Blend property of a height-blended material, per renderer, without creating material copies.
+[RequireComponent(typeof(Renderer))]
+public class BlendDriver : MonoBehaviour
+{
+    [Range(0f, 1f)] public float blend = 0f;     // 0: bottom material only, 1: fully flooded with the top one
+    public float fadeSeconds = 0f;                // &gt; 0: animate from the current value towards &#x27;blend&#x27;
+
+    static readonly int BlendId = Shader.PropertyToID(&quot;_Blend&quot;);
+    MaterialPropertyBlock block;
+    Renderer rend;
+    float current;
+
+    void OnEnable()
+    {
+        rend = GetComponent&lt;Renderer&gt;();
+        block = new MaterialPropertyBlock();
+        current = blend;
+        Apply();
+    }
+
+    void Update()
+    {
+        if (Mathf.Approximately(current, blend)) return;
+        current = fadeSeconds &gt; 0f ? Mathf.MoveTowards(current, blend, Time.deltaTime / fadeSeconds) : blend;
+        Apply();
+    }
+
+    void Apply()
+    {
+        rend.GetPropertyBlock(block);
+        block.SetFloat(BlendId, current);
+        rend.SetPropertyBlock(block);
+    }
+}</pre></div></div>
+<p class="note">MaterialPropertyBlocks keep one material for many objects, but in HDRP and URP they take a renderer out of the SRP Batcher. For many objects, prefer a per-instance value from a texture or vertex colour, or accept separate materials (<a class="x" href="../reading-a-frame/index.html#drawcalls">draw calls and batching</a>).</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">The HLSL file is pipeline independent. Create a URP Lit Shader Graph instead of an HDRP one; the rest of the steps are the same. URP's metallic map holds smoothness in alpha, so lerp that channel.</div><div class="eng" data-engine="unreal">Unreal's <em>HeightLerp</em> material function does the same height comparison (Transition Phase plays the role of the offset). For layering many materials, use <em>Material Layers</em> or the landscape layer blend node with height blending.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/atomic-nodes/blend/blending-modes-description" rel="noopener">Blending modes description</a></span><span class="by">Adobe</span><span class="why">Every mode of the Blend node, including Switch and Add Sub.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/atomic-nodes/blend/blend" rel="noopener">Blend (atomic node)</a></span><span class="by">Adobe</span><span class="why">Inputs, opacity and alpha blending parameters.</span></li><li><span><span class="kind">Video series</span><a href="https://www.adobe.com/learn/substance-3d-designer/web/mastering-blending-modes" rel="noopener">Mastering blending modes</a></span><span class="by">Adobe</span><span class="why">Eight modes applied to masks and height maps.</span></li><li><span><span class="kind">Spec</span><a href="https://www.w3.org/TR/compositing-1/#blending" rel="noopener">Compositing and Blending Level 1: blend modes</a></span><span class="by">W3C</span><span class="why">Reference formulas for multiply, screen, overlay and soft light.</span></li></ul>
+</section>
+
+<div class="next" data-next="sd-warps sd-pixel-fx sd-publish"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"fg": [
+"Foreground (F)",
+"The Blend input laid on top.",
+"#node"
+],
+"bg": [
+"Background (B)",
+"The Blend input underneath; what you get at opacity 0.",
+"#node"
+],
+"addsub": [
+"Add Sub",
+"Blend mode that adds the foreground above 0.5 and subtracts below; 0.5 is neutral.",
+"#addsub"
+],
+"switch": [
+"Switch",
+"Copy-like blend mode that skips computing the hidden input at opacity 0 or 1.",
+"#screen"
+],
+"hblend": [
+"Height blend",
+"Shows whichever of two materials is higher at each pixel, with an offset and a contrast.",
+"#heightblend"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdblend.js"></script>
+</body>
+</html>

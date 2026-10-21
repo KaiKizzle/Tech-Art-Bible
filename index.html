@@ -4,62 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Tech Art Atlas</title>
-<meta name="description" content="Free, interactive learning units on real-time graphics workflows for game development: shaders, lighting, textures and performance, with notes for Unity HDRP, URP and Unreal.">
+<meta name="description" content="Free, interactive learning units on real-time graphics workflows for game development: shaders, lighting, textures, characters and performance, with notes for Unity HDRP, URP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="stylesheet" href="assets/fonts.css">
 <link rel="stylesheet" href="assets/atlas.css">
-<style>
-.mosaic{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;aspect-ratio:16/8.4}
-.mosaic a{position:relative;display:block;border-radius:14px;overflow:hidden;background:#08090b;min-height:0}
-.mosaic a:first-child{grid-row:1/3}
-.mosaic canvas{display:block;width:100%;height:100%;transition:transform .5s ease}
-.mosaic a:hover canvas{transform:scale(1.04)}
-.mosaic a::after{content:'';position:absolute;left:0;right:0;bottom:0;height:50%;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.62));pointer-events:none}
-.mosaic span{z-index:1;position:absolute;left:10px;bottom:10px;font-family:var(--font-display);font-weight:700;font-size:.92rem;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
-.mosaic a:first-child span{font-size:1.15rem;left:14px;bottom:12px}
-.paths-wrap{margin:34px 0 8px}
-.paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.path{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--surface)}
-.path h3{margin:0 0 8px;font-size:1rem}
-.path ol{margin:0;padding-left:1.4em;display:grid;gap:4px;font-size:.95rem}
-.path a{color:var(--ink);text-decoration:none;display:inline-flex;gap:7px;align-items:center}
-.path a:hover{color:var(--accent-ink)}
-.path a i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
-@media (max-width:560px){.mosaic{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;aspect-ratio:auto}.mosaic a{aspect-ratio:16/10}.mosaic a:first-child{grid-row:auto;grid-column:1/-1}}
-</style>
 </head>
 <body data-unit="hub">
-<div class="hubwrap">
-  <header class="hubtop">
-    <a class="logo" href="index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
-    <nav aria-label="Site"><a href="#catalogue">Units</a><a class="opt" href="#about">How it works</a><button type="button" class="btn" data-theme-toggle>Light theme</button></nav>
-  </header>
+<header class="hubtop">
+  <a class="logo" href="index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="index.html" aria-current="page">All units</a><a href="index.html?path=1">Learning paths</a><a class="opt" href="#about">About</a></nav>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
 
-  <section class="masthead" aria-label="Introduction">
-    <div>
-      <h1>Learn how real-time graphics actually work</h1>
-      <p class="lede">Free interactive units on the techniques behind games, from what a pixel shader is to ray-traced interiors. Every formula is live: move a value and watch the graph and the picture change. Every idea links to the lesson that explains it.</p>
-      <div class="counts" id="counts"></div>
+<div class="browse">
+  <aside class="side-nav" id="side" aria-label="Filters"></aside>
+
+  <main class="browse-main" id="top">
+    <div class="browse-head"><h1 id="b-title">All units</h1><span class="count" id="b-count"></span></div>
+    <p class="browse-desc" id="b-desc"></p>
+    <div class="toolbar" role="search">
+      <input type="search" class="search" id="q" placeholder="Search: dot product, mipmaps, blend modes, addressables…" aria-label="Search units">
+      <label class="sort" for="sort">Sort by <select class="sel" id="sort"></select></label>
     </div>
-    <div class="mosaic" id="mosaic" aria-label="Featured units"></div>
-  </section>
+    <div class="grid" id="grid"></div>
 
-  <section class="paths-wrap" id="paths" aria-label="Learning paths"></section>
-
-  <div class="filters" role="search">
-    <div class="chips" id="chips" role="group" aria-label="Category"></div>
-    <div class="engine-pick"><label for="engine">Engine notes for</label><select class="sel" id="engine"><option value="hdrp">Unity HDRP</option><option value="urp">Unity URP</option><option value="unreal">Unreal Engine</option></select></div>
-    <input type="search" class="search" id="q" placeholder="Search: dot product, buffer, mipmaps, EV100…" aria-label="Search units">
-  </div>
-
-  <main id="catalogue"></main>
-
-  <section class="about" id="about" aria-label="How it works">
-    <div><h3>Small steps, linked</h3><p>Chapters move one idea at a time. When a chapter uses something explained elsewhere, a link with an arrow leads there, with a preview on hover. "Builds on" and "Used in" chips connect every lesson.</p></div>
-    <div><h3>Every formula is live</h3><p>Coloured symbols in a formula are sliders. Click one to graph the result against it, or press Animate. The numbers are substituted step by step, so you see the arithmetic, not only the result.</p></div>
-    <div><h3>Optional checks, no scores</h3><p>Short questions sit between lessons, folded away until you open them. Nothing is scored or saved. The only things this site remembers, in your browser, are the theme and your engine choice.</p></div>
-  </section>
-  <footer class="foot" id="site-foot"></footer>
+    <section class="about" id="about" aria-label="How it works">
+      <div><h3>Small steps, linked</h3><p>Chapters move one idea at a time. When a chapter uses something explained elsewhere, a link leads there, with a preview on hover.</p></div>
+      <div><h3>Every formula is live</h3><p>Symbols in a formula are sliders. Click one to graph the result against it; the numbers are substituted step by step.</p></div>
+      <div><h3>Built in your tools</h3><p>Every unit ends with the setup in Unity HDRP, Substance Designer or the Unity editor: the tools it needs, the steps, and complete files to copy, plus URP and Unreal notes.</p></div>
+      <div><h3>Nothing to sign up for</h3><p>Optional checks between lessons, no scores. The site only remembers your theme and engine choice, in your browser.</p></div>
+    </section>
+    <footer class="foot" id="site-foot"></footer>
+  </main>
 </div>
 <script src="assets/catalog.js"></script>
 <script src="assets/index.js"></script>

@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GUIDs and .meta Files · Tech Art Atlas</title>
+<meta name="description" content="How a Unity project keeps track of its assets: what .meta files hold, how every reference is a GUID plus a fileID, the ways references break, missing scripts and renamed fields, and the version control settings that prevent it.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="unity-guids">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">GUIDs and .meta Files</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Unity projects & assets · 8 chapters</div>
+  <h1>GUIDs and .meta Files</h1>
+  <p class="lede">How a Unity project keeps track of its assets: what .meta files hold, how every reference is a GUID plus a fileID, the ways references break, missing scripts and renamed fields, and the version control settings that prevent it.</p>
+  <p class="meta">No prior knowledge needed. Applies to every Unity render pipeline.</p>
+</header>
+<figure class="keyart"><canvas data-render="unity-guids" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: assets held together by references, one link broken.</figcaption></figure>
+
+
+<section class="chapter" id="meta" data-title="Every asset has a .meta file" data-summary="Rock.png.meta holds the asset&#x27;s permanent GUID and its import settings.">
+  <div class="head"><div class="num"></div><h2>Every asset has a .meta file</h2></div>
+
+  <div class="prose">
+    <p>Next to every file and folder in a Unity project's <code>Assets</code> folder sits a second file with the same name plus <code>.meta</code>: <code>Rock.png</code> and <code>Rock.png.meta</code>. Unity hides them in the Project window, but they are the most important files you will never edit by hand. A .meta file holds two things:</p>
+    <ul>
+      <li>a <button type="button" class="term" data-term="guid">GUID</button>: a random 128-bit number written as 32 hexadecimal characters, created once when Unity first sees the file and never changed after;</li>
+      <li>the <strong>import settings</strong>: for a texture, sRGB, compression and max size; for a model, scale and materials. That is why import settings survive a re-export and travel to teammates through version control.</li>
+    </ul>
+  </div>
+  <pre class="code" data-lang="yaml">fileFormatVersion: 2
+guid: a3f19c2e7d5b4c1f8e0a6b9d2c4e7f10
+TextureImporter:
+  mipmaps:
+    enableMipMap: 1
+    sRGBTexture: 1
+  maxTextureSize: 2048
+  textureCompression: 1
+  ...</pre>
+  <div class="prose"><p>The GUID is the asset's real identity. Its path and name are only where it currently lives; Unity can move and rename it freely, because nothing in the project refers to it by path.</p></div>
+
+</section>
+<section class="chapter" id="refs" data-title="A reference is a GUID plus a fileID" data-builds="unity-guids#meta" data-summary="{fileID, guid, type}: guid → .meta → file, fileID → object inside it; same-file references store only the fileID.">
+  <div class="head"><div class="num"></div><h2>A reference is a GUID plus a fileID</h2></div>
+
+  <div class="prose">
+    <p>Scenes, prefabs and materials are text files in Unity's YAML format (with <em>Force Text</em> serialization, the default). Open one and every link to another asset looks the same: <code>{fileID, guid, type}</code>. The GUID picks the file, through its .meta; the <button type="button" class="term" data-term="fileid">fileID</button> picks the object inside that file, because one file can hold many objects (a model holds meshes, materials, animations); the type says where Unity reads the data from:</p>
+  </div>
+  <pre class="code" data-lang="yaml">--- !u!23 &amp;4410382217716409362
+MeshRenderer:
+  m_GameObject: {fileID: 7703127742196413985}
+  m_Materials:
+  - {fileID: 2100000, guid: 1d7c3a90e51f4b2c9a8d6e4f20b1c305, type: 2}
+--- !u!114 &amp;502911846
+MonoBehaviour:
+  m_GameObject: {fileID: 7703127742196413985}
+  m_Script: {fileID: 11500000, guid: 9e4a0b7c1d2e3f405a6b7c8d9e0f1a7f, type: 3}
+  speed: 4.5</pre>
+  <div class="fx" data-fx="reftriple"></div>
+  <div class="prose"><p>References inside the same file store only the fileID: the MeshRenderer above points at its GameObject that way. Everything that breaks in a Unity project breaks at one of these two numbers: the GUID no longer matches any .meta, or the fileID no longer matches any object inside the file.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A material shows its texture slot as \"Missing (Texture2D)\". What does the material file still contain?", ["Nothing, the reference was deleted", "The texture's old path", "A fileID and a GUID that no .meta file in the project has any more", "The texture's pixels"], 2, "Missing means a reference is stored but cannot be resolved. None means nothing is stored."]]</script></details>
+
+</section>
+<section class="chapter" id="fileid" data-title="fileIDs inside files" data-builds="unity-guids#refs" data-summary="Native: saved local IDs. Imported main objects: class ID · 100 000. FBX sub-objects: computed from names, so renames break references.">
+  <div class="head"><div class="num"></div><h2>fileIDs inside files</h2></div>
+
+  <div class="prose">
+    <p>fileIDs are stable for a different reason in each kind of file:</p>
+    <ul>
+      <li><strong>Native assets</strong> (scenes, prefabs, materials, .asset files) store each object with a local ID, created when the object was created and saved with it.</li>
+      <li><strong>Imported assets</strong> with one main object use a fixed number derived from its class: a texture's is 2800000 (Texture2D is class 28), a script's 11500000 (MonoScript is class 115).</li>
+      <li><strong>Sub-objects of imported models</strong> (meshes, materials, child transforms in an FBX) get fileIDs that Unity computes from their names and types in the file.</li>
+    </ul>
+    <p>The last rule is the one that bites artists. Rename a mesh in Blender or Maya, re-export, and Unity sees a new object with a new fileID; the old one is gone:</p>
+  </div>
+  <div class="fx" data-fx="fileid"></div>
+  <div class="prose"><p>Keep object names in exported models stable, treat a rename as a breaking change, and check prefabs that use the model after re-exporting (<a class="x" href="../unity-prefabs/index.html#breaks">why reimports break prefabs</a>).</p></div>
+
+</section>
+<section class="chapter" id="breaks" data-title="How references break" data-builds="unity-guids#refs" data-summary="Keep file and .meta together: Project window moves are safe; moving without the .meta, forgetting to commit it, or duplicating it breaks references.">
+  <div class="head"><div class="num"></div><h2>How references break</h2></div>
+
+  <div class="prose"><p>Since references use GUIDs, the rule is simple: anything that keeps a file together with its .meta is safe, anything that separates them is not. Try each action:</p></div>
+  <div class="fx" data-fx="guidlab"></div>
+  <div class="prose">
+    <p>Do file work inside Unity's Project window whenever you can. If you must use the file system (bulk moves, a merge tool), always move the .meta with its file, and let Unity refresh before touching anything else. When a reference is already broken, the fix is to restore the old .meta (from version control) rather than re-assigning every reference by hand.</p>
+  </div>
+
+</section>
+<section class="chapter" id="missing" data-title="Missing references, missing scripts, renamed fields" data-builds="unity-guids#refs" data-summary="None = empty, Missing = unresolved GUID/fileID. Missing scripts are lost script GUIDs. Field renames need [FormerlySerializedAs].">
+  <div class="head"><div class="num"></div><h2>Missing references, missing scripts, renamed fields</h2></div>
+
+  <div class="prose">
+    <p>The Inspector shows two different empty states. <strong>None</strong> means the field holds nothing. <strong>Missing</strong> means it holds a GUID and fileID that point to nothing; the data is still in the file, waiting for the asset to come back. Restoring the asset (with its original .meta) restores every Missing reference at once.</p>
+    <p>A <strong>missing script</strong> ("The referenced script on this Behaviour is missing") is the same problem for code: the component's <code>m_Script</code> GUID no longer matches a script's .meta. It happens when a script file is moved outside Unity without its .meta, deleted, or when its class no longer matches its file name. The component keeps its saved values until it is removed, so fix the script first.</p>
+    <p>Fields are referenced by <em>name</em>. A saved component stores <code>speed: 4.5</code>; rename the field to <code>moveSpeed</code> and Unity finds no saved value for it, so every instance silently returns to the default. Keep the old name with an attribute:</p>
+  </div>
+  <pre class="code" data-lang="cs">using UnityEngine;
+using UnityEngine.Serialization;
+
+public class Mover : MonoBehaviour
+{
+    // Was &quot;speed&quot;. Without the attribute, every saved value would reset to the default.
+    [FormerlySerializedAs(&quot;speed&quot;)]
+    public float moveSpeed = 2f;
+}</pre>
+  <div class="prose"><p>For classes stored with <code>[SerializeReference]</code>, the class name and namespace are saved too; <code>[MovedFrom]</code> (in <code>UnityEngine.Scripting.APIUpdating</code>) tells Unity the old name when you rename or move such a class.</p></div>
+
+</section>
+<section class="chapter" id="vcs" data-title="Version control settings" data-builds="unity-guids#breaks" data-summary="Visible Meta Files, Force Text, commit .meta with every file, ignore Library; GUID collisions are negligible.">
+  <div class="head"><div class="num"></div><h2>Version control settings</h2></div>
+
+  <div class="prose">
+    <p>A team project needs four settings, checked once:</p>
+    <ul>
+      <li><strong>Visible meta files</strong> (<em>Project Settings &gt; Version Control</em>, mode <em>Visible Meta Files</em>, the default): .meta files exist on disk and can be committed.</li>
+      <li><strong>Force Text</strong> serialization (<em>Project Settings &gt; Editor &gt; Asset Serialization</em>, the default): scenes and prefabs are readable YAML that diffs and merges.</li>
+      <li><strong>Commit every .meta with its file</strong>, and ignore the folders Unity regenerates: <code>Library</code>, <code>Temp</code>, <code>Obj</code>, <code>Logs</code>, <code>UserSettings</code>, <code>Build</code>.</li>
+      <li><strong>Large binaries</strong> (textures, models, audio) in Git LFS or a version control system built for them, and Unity's <em>Smart Merge</em> (UnityYAMLMerge) configured for scene and prefab conflicts.</li>
+    </ul>
+    <p>With those in place, the only remaining risk is human: a file committed without its .meta. The implementation chapter has a pre-commit check that refuses exactly that. Collisions are not a risk worth thinking about:</p>
+  </div>
+  <div class="fx" data-fx="collision"></div>
+
+</section>
+<section class="chapter" id="tools" data-title="Working with GUIDs in tools" data-builds="unity-guids#refs" data-summary="AssetPathToGUID, GUIDToAssetPath, TryGetGUIDAndLocalFileIdentifier; search text assets for a GUID; detect Missing via SerializedProperty.">
+  <div class="head"><div class="num"></div><h2>Working with GUIDs in tools</h2></div>
+
+  <div class="prose">
+    <p>Editor scripts work with GUIDs through <code>AssetDatabase</code>: <code>AssetPathToGUID</code> and <code>GUIDToAssetPath</code> convert between the two, and <code>TryGetGUIDAndLocalFileIdentifier</code> gives both numbers for any object. Two practical uses:</p>
+    <ul>
+      <li><strong>Who uses this asset?</strong> Because references are text, searching all <code>.unity</code>, <code>.prefab</code>, <code>.mat</code>, <code>.asset</code> and <code>.controller</code> files for an asset's GUID finds every user, including ones not loaded in any open scene.</li>
+      <li><strong>What is broken?</strong> A <code>SerializedProperty</code> of type ObjectReference whose value is null but whose stored instance ID is not zero is a Missing reference. Walking every component in scenes and prefabs finds them all.</li>
+    </ul>
+    <p>Both tools are in the next chapter. Addressables uses the same GUIDs underneath: an <code>AssetReference</code> stores the target's GUID, which is why it survives renames (<a class="x" href="../unity-addressables/index.html#loading">loading by reference</a>).</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Unity" data-summary="Visible Meta Files + Force Text, a pre-commit hook for .meta pairs, GuidTools.cs to find references and Missing.">
+  <div class="head"><div class="num"></div><h2>Set it up in Unity</h2></div>
+  <div class="prose"><p>Three layers of protection: the project settings that make references visible and mergeable, a pre-commit check that refuses a file without its .meta, and two editor tools that answer "who uses this?" and "what is broken?". Nothing here depends on the render pipeline. Written for Unity 6; Unity 2022 LTS works the same apart from a few renamed menu entries (Build Profiles was Build Settings).</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Version Control and Asset Serialization settings.</span></div><div class="rt" data-k="vcs"><b>Version control</b><span>.gitignore, .gitattributes and a pre-commit hook.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>GuidTools.cs: copy GUID, find references, find Missing.</span></div></div>
+<ol class="impl-steps"><li><div>Open <em>Edit &gt; Project Settings &gt; Version Control</em> and check that <em>Mode</em> is <code>Visible Meta Files</code>. Then <em>Editor &gt; Asset Serialization &gt; Mode</em>: <code>Force Text</code>. Both are the defaults in new projects; old projects may differ.</div></li><li><div>Add <code>.gitignore</code> and <code>.gitattributes</code> to the repository root (next to <code>Assets</code>). The attributes send binaries to Git LFS (run <code>git lfs install</code> once per machine) and mark scenes and prefabs for Unity's merge tool.</div></li><li><div>Configure Smart Merge: in your git config, add a merge driver named <code>unityyamlmerge</code> whose command runs <code>UnityYAMLMerge merge -p %O %B %A %A</code> from the Unity install's <code>Data/Tools</code> folder (Unity's Smart Merge page lists the exact path per platform).</div></li><li><div>Save <code>pre-commit</code> as <code>.git/hooks/pre-commit</code> and make it executable (<code>chmod +x</code>; on Windows, Git Bash runs it as is). From now on a commit that adds an asset without its .meta, or deletes one but keeps the .meta, is refused with the file name.</div></li><li><div>Put <code>GuidTools.cs</code> in an <code>Editor</code> folder. Right-click any asset: <em>Atlas &gt; Copy GUID</em> and <em>Atlas &gt; Find References In Project</em>. The second lists every scene, prefab, material and asset file that contains the GUID; click a line in the Console to ping the file.</div></li><li><div>Run <em>Tools &gt; Atlas &gt; Find Missing References</em> with your scenes open. It walks every component of the open scenes and of every prefab asset, logs missing scripts and Missing object references with the object path and field name, and pings the object when you click the log.</div></li><li><div>When something is Missing: look up the asset in version control history, restore its original .meta (or the whole file and .meta), and let Unity refresh. The references come back without reassigning anything.</div></li></ol>
+<div class="files"><div class="file" data-name="GuidTools.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+public static class GuidTools
+{
+    static readonly string[] TextAssets = { &quot;.unity&quot;, &quot;.prefab&quot;, &quot;.mat&quot;, &quot;.asset&quot;, &quot;.controller&quot;, &quot;.overrideController&quot;, &quot;.anim&quot;, &quot;.playable&quot;, &quot;.shadergraph&quot;, &quot;.shadersubgraph&quot;, &quot;.vfx&quot; };
+
+    [MenuItem(&quot;Assets/Atlas/Copy GUID&quot;)]
+    static void CopyGuid()
+    {
+        string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(Selection.activeObject));
+        EditorGUIUtility.systemCopyBuffer = guid;
+        Debug.Log($&quot;GUID {guid} copied&quot;);
+    }
+
+    [MenuItem(&quot;Assets/Atlas/Find References In Project&quot;)]
+    static void FindReferences()
+    {
+        string target = AssetDatabase.GetAssetPath(Selection.activeObject);
+        string guid = AssetDatabase.AssetPathToGUID(target);
+        if (string.IsNullOrEmpty(guid)) return;
+
+        var files = Directory.GetFiles(&quot;Assets&quot;, &quot;*.*&quot;, SearchOption.AllDirectories)
+                             .Where(f =&gt; TextAssets.Contains(Path.GetExtension(f))).ToArray();
+        int hits = 0;
+        try
+        {
+            for (int i = 0; i &lt; files.Length; i++)
+            {
+                if (EditorUtility.DisplayCancelableProgressBar(&quot;Find references&quot;, files[i], (float)i / files.Length)) break;
+                if (!File.ReadAllText(files[i]).Contains(guid)) continue;   // references are plain text: {fileID, guid, type}
+                string path = files[i].Replace(&#x27;\\&#x27;, &#x27;/&#x27;);
+                Debug.Log($&quot;{target} is used by {path}&quot;, AssetDatabase.LoadMainAssetAtPath(path));
+                hits++;
+            }
+        }
+        finally { EditorUtility.ClearProgressBar(); }
+        Debug.Log($&quot;{hits} file(s) reference {target}&quot;);
+    }
+
+    [MenuItem(&quot;Tools/Atlas/Find Missing References&quot;)]
+    static void FindMissing()
+    {
+        int count = 0;
+        for (int s = 0; s &lt; EditorSceneManager.sceneCount; s++)
+            foreach (var root in EditorSceneManager.GetSceneAt(s).GetRootGameObjects())
+                count += Check(root, EditorSceneManager.GetSceneAt(s).path);
+
+        foreach (string guid in AssetDatabase.FindAssets(&quot;t:Prefab&quot;))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var prefab = AssetDatabase.LoadAssetAtPath&lt;GameObject&gt;(path);
+            if (prefab != null) count += Check(prefab, path);
+        }
+        Debug.Log($&quot;{count} missing reference(s) found&quot;);
+    }
+
+    static int Check(GameObject root, string where)
+    {
+        int count = 0;
+        foreach (var t in root.GetComponentsInChildren&lt;Transform&gt;(true))
+        {
+            foreach (var c in t.GetComponents&lt;Component&gt;())
+            {
+                if (c == null) { Debug.LogWarning($&quot;Missing script on {PathOf(t)} in {where}&quot;, t.gameObject); count++; continue; }
+                var so = new SerializedObject(c);
+                var it = so.GetIterator();
+                while (it.NextVisible(true))
+                {
+                    // Missing: a reference is stored (non-zero instance ID) but resolves to nothing.
+                    if (it.propertyType == SerializedPropertyType.ObjectReference &amp;&amp;
+                        it.objectReferenceValue == null &amp;&amp; it.objectReferenceInstanceIDValue != 0)
+                    {
+                        Debug.LogWarning($&quot;Missing reference: {PathOf(t)} &gt; {c.GetType().Name}.{it.propertyPath} in {where}&quot;, t.gameObject);
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    static string PathOf(Transform t) =&gt; t.parent == null ? t.name : PathOf(t.parent) + &quot;/&quot; + t.name;
+}
+#endif</pre></div><div class="file" data-name="pre-commit" data-lang="sh"><pre>#!/bin/sh
+# .git/hooks/pre-commit: refuse commits that separate Unity assets from their .meta files.
+IFS=&#x27;
+&#x27;
+fail=0
+tracked() { git ls-files --error-unmatch -- &quot;$1&quot; &gt;/dev/null 2&gt;&amp;1; }   # in the index (staged or committed)
+
+# Added files and their folders need a .meta in the index.
+for f in $(git diff --cached --name-only --diff-filter=A -- Assets); do
+  case &quot;$f&quot; in *.meta) continue ;; esac
+  if ! tracked &quot;$f.meta&quot;; then echo &quot;no .meta for added file: $f&quot;; fail=1; fi
+  d=$(dirname &quot;$f&quot;)
+  while [ &quot;$d&quot; != &quot;Assets&quot; ] &amp;&amp; [ &quot;$d&quot; != &quot;.&quot; ]; do
+    if ! tracked &quot;$d.meta&quot;; then echo &quot;no .meta for folder: $d&quot;; fail=1; fi
+    d=$(dirname &quot;$d&quot;)
+  done
+done
+
+# Deleted files must take their .meta with them.
+for f in $(git diff --cached --name-only --diff-filter=D -- Assets); do
+  case &quot;$f&quot; in *.meta) continue ;; esac
+  if tracked &quot;$f.meta&quot;; then echo &quot;deleted $f but kept $f.meta&quot;; fail=1; fi
+done
+
+if [ $fail -ne 0 ]; then
+  echo &quot;Commit refused: stage the .meta files listed above (git add), or remove them.&quot;
+  exit 1
+fi
+exit 0</pre></div><div class="file" data-name=".gitignore" data-lang="sh"><pre># Unity regenerates these; never commit them.
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Bb]uild/
+/[Bb]uilds/
+*.csproj
+*.sln
+*.pidb
+*.userprefs
+.vs/
+.idea/
+# Do NOT ignore *.meta: they hold every asset&#x27;s GUID.</pre></div><div class="file" data-name=".gitattributes" data-lang="sh"><pre># Unity YAML: merge with Unity&#x27;s Smart Merge (configure the driver in git config)
+*.unity  merge=unityyamlmerge eol=lf
+*.prefab merge=unityyamlmerge eol=lf
+*.asset  merge=unityyamlmerge eol=lf
+*.meta   eol=lf
+# Large binaries in Git LFS
+*.png filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.sbsar filter=lfs diff=lfs merge=lfs -text</pre></div></div>
+<p class="note">Plastic SCM / Unity Version Control and Perforce handle .meta files through Unity's integration and their own ignore files; the same rules apply: commit every .meta with its asset, never commit <code>Library</code>.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Nothing pipeline specific: the same settings, hook and tools apply to URP and HDRP projects alike.</div><div class="eng" data-engine="unreal">Unreal has no .meta files: each .uasset stores its own identity, and references are by object path. Moving assets outside the editor breaks them; inside the editor a move leaves a <em>redirector</em> behind. Run <em>Fix Up Redirectors</em> on folders before deleting them.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/AssetMetadata.html" rel="noopener">Asset metadata</a></span><span class="by">Unity</span><span class="why">What .meta files are and why they must stay with their assets.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/FormatDescription.html" rel="noopener">Format of text serialized files</a></span><span class="by">Unity</span><span class="why">The YAML layout of scenes and prefabs and the fileID/guid references.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/ClassIDReference.html" rel="noopener">YAML class ID reference</a></span><span class="by">Unity</span><span class="why">Class numbers behind fileIDs such as 2800000 and 11500000.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/Versioncontrolintegration.html" rel="noopener">Version control integrations and settings</a></span><span class="by">Unity</span><span class="why">Visible meta files and the files to keep out of version control.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/AssetDatabase.TryGetGUIDAndLocalFileIdentifier.html" rel="noopener">AssetDatabase.TryGetGUIDAndLocalFileIdentifier</a></span><span class="by">Unity</span><span class="why">Reading both halves of a reference from script.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Serialization.FormerlySerializedAsAttribute.html" rel="noopener">FormerlySerializedAsAttribute</a></span><span class="by">Unity</span><span class="why">Keeping saved values when a field is renamed.</span></li><li><span><span class="kind">Forum</span><a href="https://discussions.unity.com/t/what-does-type-3-mean-in-unity-scenes-prefabs-yaml/888216" rel="noopener">What does type 3 mean in Unity scenes and prefabs YAML?</a></span><span class="by">Unity Discussions</span><span class="why">Type 2 versus type 3 references, quoting Unity.</span></li></ul>
+</section>
+
+<div class="next" data-next="unity-prefabs unity-addressables unity-scenes"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"guid": [
+"GUID",
+"Globally unique identifier: 128 random bits in a .meta file that identify an asset regardless of its path.",
+"#meta"
+],
+"meta": [
+".meta file",
+"File next to every asset holding its GUID and import settings.",
+"#meta"
+],
+"fileid": [
+"fileID",
+"Number that identifies one object inside a file.",
+"#refs"
+],
+"forcetext": [
+"Force Text",
+"Asset serialization mode that saves scenes and prefabs as readable YAML.",
+"#vcs"
+],
+"missing": [
+"Missing reference",
+"A stored GUID and fileID that no longer resolve to an object.",
+"#missing"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="guids.js"></script>
+</body>
+</html>

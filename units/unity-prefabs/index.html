@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FBX, Prefabs, Variants and Nested Prefabs · Tech Art Atlas</title>
+<meta name="description" content="What importing an FBX creates and which import settings matter, how prefabs store overrides, nested prefabs and prefab variants, where to make a change, how to wrap models, and why re-exporting a model can break the prefabs built on it.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+<style>
+.tbl-wrap{overflow-x:auto;max-width:100%}
+.tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:600}
+.tbl td:first-child{font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body data-unit="unity-prefabs">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">FBX, Prefabs, Variants and Nested Prefabs</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Unity projects & assets · 9 chapters</div>
+  <h1>FBX, Prefabs, Variants and Nested Prefabs</h1>
+  <p class="lede">What importing an FBX creates and which import settings matter, how prefabs store overrides, nested prefabs and prefab variants, where to make a change, how to wrap models, and why re-exporting a model can break the prefabs built on it.</p>
+  <p class="meta">Builds on GUIDs and .meta Files. Applies to every Unity render pipeline.</p>
+</header>
+<figure class="keyart"><canvas data-render="unity-prefabs" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one modular house prefab nested three times, one variant in red.</figcaption></figure>
+<div class="needs" data-needs="unity-guids#refs unity-guids#fileid"></div>
+
+<section class="chapter" id="fbx" data-title="What importing an FBX creates" data-builds="spaces#transform" data-summary="The Model Importer turns an FBX into meshes, a read-only model prefab, materials, clips and an avatar; Unity works in metres.">
+  <div class="head"><div class="num"></div><h2>What importing an FBX creates</h2></div>
+
+  <div class="prose">
+    <p>An FBX file is not used directly. Unity's <em>Model Importer</em> reads it and produces a set of assets inside it: the <strong>meshes</strong>, a hierarchy of <strong>GameObjects</strong>, <strong>materials</strong> (unless you supply your own), <strong>animation clips</strong> and, for characters, an <strong>avatar</strong>. Its importer has four tabs, Model, Rig, Animation and Materials, and every setting is stored in the FBX's .meta file (<a class="x" href="../unity-guids/index.html#meta">.meta files</a>).</p>
+    <p>The hierarchy appears as a <button type="button" class="term" data-term="modelprefab">model prefab</button>: you can drag it into a scene like any prefab, but you cannot add components to it or change it in Prefab Mode, because it is regenerated from the file on every import. Everything you add has to live somewhere else, which is what most of this unit is about.</p>
+    <p>The first thing to get right is scale. Unity works in metres; FBX files store their own unit, often centimetres:</p>
+  </div>
+  <div class="fx" data-fx="units"></div>
+  <div class="prose"><p><em>Convert Units</em> applies the file's unit, and <em>Scale Factor</em> multiplies on top. Export at real size in metres, or in centimetres with Convert Units on, and leave Scale Factor at 1; a model that needs a scale factor of 100 or 0.01 has a unit mismatch that will resurface in every tool that reads the file.</p></div>
+
+</section>
+<section class="chapter" id="importer" data-title="Import settings that matter" data-builds="unity-prefabs#fbx" data-summary="Bake Axis Conversion, Read/Write off, normals Import, lightmap UVs only for static meshes, remap materials by name.">
+  <div class="head"><div class="num"></div><h2>Import settings that matter</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Bake Axis Conversion</strong> (Model tab): DCC tools that use Z-up or a different handedness produce a root rotated by −90° on X. This option bakes the conversion into the mesh, so the root rotation stays clean.</li>
+      <li><strong>Read/Write</strong>: keeps a CPU copy of every mesh, doubling its memory. Leave it off unless a script reads or modifies vertices at runtime.</li>
+      <li><strong>Mesh Compression</strong> and <strong>Optimize Mesh</strong>: compression saves disk space with some precision loss; optimisation reorders vertices and indices for the GPU and should stay on.</li>
+      <li><strong>Normals and Tangents</strong>: <em>Import</em> keeps the artist's normals (needed for baked normal maps to match); <em>Calculate</em> recomputes them with a smoothing angle.</li>
+      <li><strong>Generate Lightmap UVs</strong>: only for static meshes that receive baked light and have no clean second UV set (<a class="x" href="../baked-gi/index.html#lightmaps">lightmaps</a>).</li>
+      <li><strong>Materials</strong>: <em>Material Creation Mode</em> decides whether Unity creates materials at all; <em>On Demand Remap</em> maps each material slot of the FBX to a project material by name. Remapping is the clean route: the FBX keeps pointing at shared, hand-made materials.</li>
+    </ul>
+    <p>Set these once with a <em>Preset</em> or an <code>AssetPostprocessor</code> instead of by hand per file; the implementation chapter has one.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A static rock mesh is imported with Read/Write enabled. What does it cost?", ["Nothing", "A second copy of the mesh in CPU memory", "Slower rendering", "It cannot be batched"], 1, "Read/Write keeps the mesh data accessible to scripts, which means a CPU-side copy next to the GPU one."]]</script></details>
+
+</section>
+<section class="chapter" id="prefab" data-title="Prefabs and overrides" data-builds="unity-guids#refs" data-summary="Instances store overrides as {target fileID, property path, value}; everything not overridden follows the asset.">
+  <div class="head"><div class="num"></div><h2>Prefabs and overrides</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="prefab">prefab</button> is a saved GameObject hierarchy with its components and values, stored as an asset. Placing it in a scene creates a <em>prefab instance</em>: it stays linked to the asset, so changing the asset in <em>Prefab Mode</em> changes every instance.</p>
+    <p>An instance can differ from its asset. Every difference is an <button type="button" class="term" data-term="override">override</button>: a changed property (shown in bold with a blue bar in the Inspector), an added or removed component, or an added child. The <em>Overrides</em> dropdown at the top of the Inspector lists them, and lets you <em>Apply</em> them to the asset or <em>Revert</em> them to the asset's values.</p>
+    <p>In the scene file, an instance is stored as a list of modifications against its source, each one a target object (by fileID and GUID), a property path and a value:</p>
+  </div>
+  <pre class="code" data-lang="yaml">--- !u!1001 &amp;1520748392
+PrefabInstance:
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3348129571231092, guid: 8f2c41d7e0a94b3c8d6e5f7a1b2c3d4e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4.5
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 8f2c41d7e0a94b3c8d6e5f7a1b2c3d4e, type: 3}</pre>
+  <div class="prose"><p>Two consequences follow. Overrides are stored per property, so an instance keeps following every property it has <em>not</em> overridden. And an override names its target by fileID and its property by path: if either changes in the source (a renamed object, a renamed field), the override has nothing left to apply to.</p></div>
+
+</section>
+<section class="chapter" id="nested" data-title="Nested prefabs" data-builds="unity-prefabs#prefab" data-summary="Prefab instances inside prefabs; overrides on a nested instance can be applied to the outer prefab or the inner one.">
+  <div class="head"><div class="num"></div><h2>Nested prefabs</h2></div>
+
+  <div class="prose">
+    <p>Prefabs can contain instances of other prefabs. A <em>House</em> prefab contains instances of <em>Door</em> and <em>Window</em>; edit the Window prefab and every window in every house updates. Each nested instance is an ordinary prefab instance inside the House asset, with its own overrides, stored in House.</p>
+    <p>That gives a nested instance two places to apply an override. Right-click an overridden property on a window inside House and Unity offers both: <em>Apply as Override in Prefab 'House'</em> keeps the change local to houses, while <em>Apply to Prefab 'Window'</em> pushes it into the Window asset, where every window everywhere gets it. Pick deliberately; the second one is easy to click by accident.</p>
+    <p>Build levels and large assets from nested pieces: modular walls in a room, rooms in a building. A change to one piece then takes one edit instead of a search through every scene.</p>
+  </div>
+
+</section>
+<section class="chapter" id="variants" data-title="Prefab variants" data-builds="unity-prefabs#nested" data-summary="A variant inherits a base and stores only overrides; the outermost override wins: scene &gt; nesting prefab &gt; variant &gt; base.">
+  <div class="head"><div class="num"></div><h2>Prefab variants</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="variant">prefab variant</button> is a prefab that inherits from another one, its <em>base</em>, and stores only its differences. <em>Enemy_Red</em> is a variant of <em>Enemy</em> with a red material and more health; fix the Enemy's collider and Enemy_Red has the fix too, while keeping its own colour. Create one with right-click on a prefab, <em>Create &gt; Prefab Variant</em>, or by dragging a modified instance into the Project window and choosing <em>Prefab Variant</em>.</p>
+    <p>Variants, nesting and scene overrides stack. When the same property is set at several levels, the outermost one wins: the scene instance over the prefab that nests it, over the variant, over the base:</p>
+  </div>
+  <div class="fx" data-fx="override"></div>
+  <div class="prose"><p>Variants can be based on variants, but keep chains short. Two levels (base and look) are easy to reason about; five levels make "why is this door red?" a detective story.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Door_Red overrides the colour to red. You change the base Door's colour to brown. What colour are the Door_Red instances?", ["Brown", "Red", "Half brown, half red", "Grey"], 1, "The variant overrides the colour, so base changes to that property no longer reach it. Other base properties still do."]]</script></details>
+
+</section>
+<section class="chapter" id="where" data-title="Where to make a change" data-builds="unity-prefabs#variants" data-summary="An edit reaches everything below it without an override: base → all, variant → its instances, nesting prefab → its nested copies, scene → one.">
+  <div class="head"><div class="num"></div><h2>Where to make a change</h2></div>
+
+  <div class="prose"><p>Every edit has a reach: it changes everything below it in the chain that does not override the property. Before editing, ask how many objects should change, and edit at the level that matches:</p></div>
+  <div class="fx" data-fx="propagate"></div>
+  <div class="prose"><p>A common mistake is fixing something on a scene instance (it looks right, the task is done) when the bug is in the prefab: the next level that uses the prefab has the bug again. Scene overrides are for placement and genuine one-offs; everything else belongs in a prefab or variant.</p></div>
+
+</section>
+<section class="chapter" id="wrap" data-title="Wrapping models: variant, nested or unpacked" data-builds="unity-prefabs#variants" data-summary="Variant of the model prefab (usual), prefab with the model nested (own root), never unpack.">
+  <div class="head"><div class="num"></div><h2>Wrapping models: variant, nested or unpacked</h2></div>
+
+  <div class="prose"><p>Since the model prefab cannot hold components, a game asset (a crate with a collider and a script, an enemy with LODs) needs a prefab of its own. There are three ways to make one, and they behave very differently when the FBX changes:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Setup</th><th>Reimport updates it</th><th>Can add components</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td>Model prefab as is</td><td>yes</td><td>no (read-only)</td><td>Static meshes placed in levels with no extra components</td></tr>
+      <tr><td>Variant of the model prefab</td><td>yes</td><td>yes, as overrides</td><td>Most game assets: colliders, scripts and LODs on top of the model</td></tr>
+      <tr><td>Prefab with the model nested inside</td><td>yes</td><td>yes, on its own root</td><td>When the asset needs its own root: a pivot offset, several models, gameplay root</td></tr>
+      <tr><td>Unpacked copy</td><td>no</td><td>yes</td><td>Almost never: the link to the FBX is gone</td></tr>
+    </tbody></table></div>
+
+  <div class="prose">
+    <p>Avoid <em>Unpack</em> and <em>Unpack Completely</em> on model instances. Unpacking turns the instance into plain GameObjects that keep a reference to the mesh but not to the model hierarchy, so new children, removed children and changed transforms from the next export never arrive.</p>
+  </div>
+
+</section>
+<section class="chapter" id="breaks" data-title="Why reimports break prefabs" data-builds="unity-guids#fileid unity-prefabs#prefab" data-summary="Overrides target model objects by fileID; renamed or deleted children orphan them. Stable, unique names prevent it.">
+  <div class="head"><div class="num"></div><h2>Why reimports break prefabs</h2></div>
+
+  <div class="prose"><p>A variant of a model stores its overrides and added components against the model's objects, by fileID, and those fileIDs come from object names in the FBX (<a class="x" href="../unity-guids/index.html#fileid">fileIDs inside files</a>). Some changes in the DCC tool are harmless, some silently orphan your work:</p></div>
+  <div class="fx" data-fx="reimport"></div>
+  <div class="prose">
+    <p>Unity 2022.2 and later show overrides whose target no longer exists as <em>unused overrides</em> and can remove them; in older versions they stay in the file invisibly. Prevention is cheaper than repair:</p>
+    <ul>
+      <li>Agree on object names in exported models and treat renames as breaking changes.</li>
+      <li>Give every child a unique name.</li>
+      <li>Put components on objects you own (the variant's root, or a child you added) rather than on deep model children when you can.</li>
+      <li>After re-exporting, open the variants that use the model and check the Overrides dropdown.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Unity" data-summary="ModelImportRules.cs for new models, a menu to create model variants, and OverrideReport.cs to read overrides before applying or after re-export.">
+  <div class="head"><div class="num"></div><h2>Set it up in Unity</h2></div>
+  <div class="prose"><p>Three editor scripts that turn the unit into a routine: import rules for every new model, a one-click variant of a model prefab, and a report of what an instance overrides, to read before applying or after a re-export. Written for Unity 6; Unity 2022 LTS works the same apart from a few renamed menu entries (Build Profiles was Build Settings).</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>ModelImportRules.cs: settings for every new FBX.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>ModelVariantMenu.cs: creates a variant of the selected model.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>OverrideReport.cs: lists overrides, added and removed components.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Prefab Mode and the Overrides dropdown.</span></div></div>
+<ol class="impl-steps"><li><div>Put the three scripts in an <code>Editor</code> folder. <code>ModelImportRules.cs</code> applies to models imported for the first time only (it checks <code>importSettingsMissing</code>), so files you have already tuned by hand keep their settings.</div></li><li><div>Export a test model from your DCC tool in metres (or centimetres with units written to the file) and drop it into <code>Assets/Models</code>. Check the Inspector: Bake Axis Conversion on, Read/Write off, cameras and lights not imported, materials remapped by name to existing project materials where names match.</div></li><li><div>Select the model and use <em>Assets &gt; Atlas &gt; Create Variant Of Model</em>. A <code>Name_Variant.prefab</code> appears next to it. Open it (double-click) and add what the asset needs: a collider on the root, a script, a LOD Group. These are overrides on top of the model.</div></li><li><div>Place the variant in a scene, not the FBX. For a one-off change on the instance, use the Inspector; for anything that should apply to every copy, open the variant and change it there (the <em>where</em> chapter).</div></li><li><div>To nest: create a prefab (for example a house) and drag variants into it in Prefab Mode. When you override a nested object's property, right-click it and pick deliberately between <em>Apply as Override in Prefab 'House'</em> and <em>Apply to Prefab '…'</em>.</div></li><li><div>Before applying, select an instance and run <em>Tools &gt; Atlas &gt; Report Overrides</em>. The Console lists every overridden property path, added and removed component and added child. Do the same after re-exporting a model to spot overrides that stopped applying.</div></li><li><div>After a re-export that renamed children, open the variant, open the <em>Overrides</em> dropdown and remove unused overrides (Unity 2022.2 and later), then re-add the components on the renamed objects.</div></li></ol>
+<div class="files"><div class="file" data-name="ModelImportRules.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using UnityEditor;
+
+// Default settings for models imported for the first time. Later changes in the Inspector are kept.
+public class ModelImportRules : AssetPostprocessor
+{
+    void OnPreprocessModel()
+    {
+        if (!assetImporter.importSettingsMissing) return;      // only brand-new files
+        var m = (ModelImporter)assetImporter;
+
+        m.useFileUnits = true;                                  // &quot;Convert Units&quot;
+        m.globalScale = 1f;                                     // &quot;Scale Factor&quot;
+        m.bakeAxisConversion = true;                            // no -90° root rotation from Z-up tools
+        m.isReadable = false;                                   // no CPU copy of the mesh
+        m.importCameras = false;
+        m.importLights = false;
+        m.meshCompression = ModelImporterMeshCompression.Off;
+        m.optimizeMeshPolygons = true;
+        m.optimizeMeshVertices = true;
+        m.importNormals = ModelImporterNormals.Import;          // keep the artist&#x27;s normals for baked maps
+
+        bool isStatic = assetPath.Contains(&quot;/Environment/&quot;);
+        m.generateSecondaryUV = isStatic;                       // lightmap UVs only for level geometry
+
+        // Materials: keep them in the model, but remap slots to project materials with the same name.
+        m.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
+        m.materialLocation = ModelImporterMaterialLocation.InPrefab;
+        m.SearchAndRemapMaterials(ModelImporterMaterialName.BasedOnMaterialName, ModelImporterMaterialSearch.Everywhere);
+    }
+}
+#endif</pre></div><div class="file" data-name="ModelVariantMenu.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+public static class ModelVariantMenu
+{
+    [MenuItem(&quot;Assets/Atlas/Create Variant Of Model&quot;)]
+    static void Create()
+    {
+        foreach (var obj in Selection.objects)
+        {
+            var model = obj as GameObject;
+            if (model == null || PrefabUtility.GetPrefabAssetType(model) != PrefabAssetType.Model) continue;
+
+            string src = AssetDatabase.GetAssetPath(model);
+            string path = AssetDatabase.GenerateUniqueAssetPath(
+                Path.Combine(Path.GetDirectoryName(src), Path.GetFileNameWithoutExtension(src) + &quot;_Variant.prefab&quot;).Replace(&#x27;\\&#x27;, &#x27;/&#x27;));
+
+            // Saving an instance of a prefab (here: the model prefab) as a new asset creates a Prefab Variant.
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            PrefabUtility.SaveAsPrefabAsset(instance, path);
+            Object.DestroyImmediate(instance);
+            Debug.Log($&quot;Created {path}&quot;, AssetDatabase.LoadMainAssetAtPath(path));
+        }
+    }
+
+    [MenuItem(&quot;Assets/Atlas/Create Variant Of Model&quot;, true)]
+    static bool Validate() =&gt; Selection.activeObject is GameObject g &amp;&amp; PrefabUtility.GetPrefabAssetType(g) == PrefabAssetType.Model;
+}
+#endif</pre></div><div class="file" data-name="OverrideReport.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+public static class OverrideReport
+{
+    [MenuItem(&quot;Tools/Atlas/Report Overrides&quot;)]
+    static void Report()
+    {
+        foreach (var go in Selection.gameObjects)
+        {
+            var root = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
+            if (root == null) { Debug.Log($&quot;{go.name} is not a prefab instance&quot;); continue; }
+
+            var sb = new StringBuilder();
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(root);
+            sb.AppendLine($&quot;{root.name} (instance of {AssetDatabase.GetAssetPath(source)})&quot;);
+
+            var mods = PrefabUtility.GetPropertyModifications(root);
+            if (mods != null)
+                foreach (var m in mods)
+                {
+                    if (PrefabUtility.IsDefaultOverride(m)) continue;     // position and rotation of the root are always overridden
+                    string target = m.target != null ? m.target.name + &quot; (&quot; + m.target.GetType().Name + &quot;)&quot; : &quot;MISSING TARGET&quot;;
+                    sb.AppendLine($&quot;  property  {target}.{m.propertyPath} = {(m.objectReference != null ? m.objectReference.name : m.value)}&quot;);
+                }
+            foreach (var a in PrefabUtility.GetAddedComponents(root))
+                sb.AppendLine($&quot;  added     {a.instanceComponent.GetType().Name} on {a.instanceComponent.gameObject.name}&quot;);
+            foreach (var r in PrefabUtility.GetRemovedComponents(root))
+                sb.AppendLine($&quot;  removed   {r.assetComponent.GetType().Name} from {r.containingInstanceGameObject.name}&quot;);
+            foreach (var g in PrefabUtility.GetAddedGameObjects(root))
+                sb.AppendLine($&quot;  child     {g.instanceGameObject.name}&quot;);
+            Debug.Log(sb.ToString(), root);
+        }
+    }
+}
+#endif</pre></div></div>
+<p class="note"><code>IsDefaultOverride</code> hides the root's position and rotation, which every instance overrides. A modification whose target is <em>MISSING</em> is exactly the orphaned override the last chapter describes.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Prefabs and model import are pipeline independent. The only difference is which shader the remapped materials use.</div><div class="eng" data-engine="unreal">Unreal's closest equivalents are Blueprint classes (prefabs with logic), child Blueprints (variants) and Level Instances or Packed Level Actors (nested, level-sized pieces). Static meshes import as their own assets; re-importing keeps references because Unreal identifies the mesh asset, not objects inside the FBX.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/Prefabs.html" rel="noopener">Prefabs</a></span><span class="by">Unity</span><span class="why">Prefab assets, instances and Prefab Mode.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/PrefabInstanceOverrides.html" rel="noopener">Instance overrides</a></span><span class="by">Unity</span><span class="why">Overrides, the Overrides dropdown, apply and revert.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/NestedPrefabs.html" rel="noopener">Nested prefabs</a></span><span class="by">Unity</span><span class="why">Prefab instances inside prefabs.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/PrefabVariants.html" rel="noopener">Prefab variants</a></span><span class="by">Unity</span><span class="why">Creating and editing variants, and how overrides stack.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/class-FBXImporter.html" rel="noopener">Model Import Settings</a></span><span class="by">Unity</span><span class="why">The Model, Rig, Animation and Materials tabs.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/PrefabUtility.html" rel="noopener">PrefabUtility</a></span><span class="by">Unity</span><span class="why">Creating variants and reading overrides from editor scripts.</span></li></ul>
+</section>
+
+<div class="next" data-next="unity-scenes unity-addressables texturing"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"modelprefab": [
+"Model prefab",
+"The read-only prefab Unity generates from a model file on import.",
+"#fbx"
+],
+"prefab": [
+"Prefab",
+"A GameObject hierarchy saved as an asset; instances stay linked to it.",
+"#prefab"
+],
+"override": [
+"Override",
+"A difference between an instance and its source: changed property, added or removed component or child.",
+"#prefab"
+],
+"variant": [
+"Prefab variant",
+"A prefab that inherits from a base prefab and stores only its overrides.",
+"#variants"
+],
+"nestedp": [
+"Nested prefab",
+"A prefab instance inside another prefab asset.",
+"#nested"
+],
+"unpack": [
+"Unpack",
+"Turns a prefab instance into plain GameObjects, cutting the link to the asset.",
+"#wrap"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="prefabs.js"></script>
+</body>
+</html>

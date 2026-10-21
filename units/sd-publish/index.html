@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Parameters, Publishing and Export · Tech Art Atlas</title>
+<meta name="description" content="How a Substance Designer graph leaves Designer: exposing and organising parameters, driving many nodes from one input, outputs and usages, exporting textures with the right formats, colour spaces and normal convention, and publishing SBSARs for Unity and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+<style>
+.tbl-wrap{overflow-x:auto;max-width:100%}
+.tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:600}
+.tbl td:first-child{font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body data-unit="sd-publish">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Parameters, Publishing and Export</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 9 chapters</div>
+  <h1>Parameters, Publishing and Export</h1>
+  <p class="lede">How a Substance Designer graph leaves Designer: exposing and organising parameters, driving many nodes from one input, outputs and usages, exporting textures with the right formats, colour spaces and normal convention, and publishing SBSARs for Unity and Unreal.</p>
+  <p class="meta">Builds on Graphs, Bit Depth and Colour Space. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-publish" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one published material at three settings of its Wear input.</figcaption></figure>
+<div class="needs" data-needs="sd-graphs#srgb sd-graphs#choose"></div>
+
+<section class="chapter" id="expose" data-title="Exposing a parameter" data-builds="sd-blend#node" data-summary="Expose as new graph input: identifier (for code), label, group, default, min, max, clamp.">
+  <div class="head"><div class="num"></div><h2>Exposing a parameter</h2></div>
+
+  <div class="prose">
+    <p>A graph becomes a reusable material when someone else can change it without opening it. That happens through <button type="button" class="term" data-term="exposed">exposed parameters</button>: node settings promoted to inputs of the whole graph.</p>
+    <ol>
+      <li>Select the node and find the parameter in the <em>Properties</em> panel.</li>
+      <li>Click the small menu button next to it and choose <em>Expose as new graph input</em>.</li>
+      <li>Fill in the dialog. The <strong>identifier</strong> is what scripts and engines use (no spaces, never change it once others depend on it); the <strong>label</strong> is what people see; the <strong>group</strong> sorts it into a collapsible section (use <code>/</code> for sub-groups); <strong>default</strong>, <strong>min</strong> and <strong>max</strong> set the slider, and <strong>clamp</strong> decides whether the limits are hard.</li>
+    </ol>
+    <p>The parameter's name turns blue on the node. All exposed inputs are listed when you select the graph itself (click an empty spot), under <em>Input Parameters</em>, and the <em>Preview</em> tab there shows them as users will see them. Used as an instance in another graph, the graph shows them as its own node parameters.</p>
+    <p>Expose few, well-named inputs. Twenty sliders called <code>float_3</code> are harder to use than the graph itself; five called Wear, Dirt, Tint, Roughness and Seed make a material.</p>
+  </div>
+
+</section>
+<section class="chapter" id="drive" data-title="Driving many nodes from one input" data-builds="sd-pixel-fx#functions sd-performance#cache" data-summary="Parameter functions read an exposed input (Get Float) and compute each node&#x27;s value: one slider, many nodes.">
+  <div class="head"><div class="num"></div><h2>Driving many nodes from one input</h2></div>
+
+  <div class="prose">
+    <p>One user-facing slider usually changes several nodes. "Wear" moves the edge-wear mask, raises dirt, roughens the surface and, past a point, lets rust appear. Each of those node parameters gets a <em>parameter function</em> (the button that appears next to a parameter) whose function graph reads the exposed input with a <em>Get Float</em> node and computes the node's value from it:</p>
+  </div>
+  <div class="fx" data-fx="drive"></div>
+  <div class="prose"><p>The functions are ordinary <a class="x" href="../sd-pixel-fx/index.html#functions">function graphs</a>: lerps to map 0–1 to a useful range, powers to make a slider feel even, comparisons to switch features on. Keep the mapping inside the graph, so every user of the material gets the same, tested behaviour from one number. Remember the cache: inputs that drive late nodes are cheap to change (<a class="x" href="../sd-performance/index.html#cache">where parameters belong</a>).</p></div>
+
+</section>
+<section class="chapter" id="organise" data-title="Groups, Visible If and presets" data-summary="Groups for order, Visible If to hide dependent inputs, presets for named value sets, seed exposed or Absolute.">
+  <div class="head"><div class="num"></div><h2>Groups, Visible If and presets</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Groups</strong> keep long lists readable: Base, Wear, Dirt, Advanced. Order inside a group follows the order in the Input Parameters list.</li>
+      <li><strong>Visible If</strong> hides a parameter unless a condition holds, written as an expression on other inputs, such as <code>input["use_rust"]</code>. Rust amount and rust colour then appear only when rust is on.</li>
+      <li><strong>Presets</strong> store a whole set of input values under a name (Clean, Worn, Ruined). They travel with the graph into the published SBSAR, so artists in Painter or an engine can start from them.</li>
+      <li><strong>Random seed</strong>: every graph has one. Leaving it exposed lets users reshuffle every random layout at once; set the graph's random seed attribute to Absolute if it should stay fixed.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["An engine script sets the parameter wear_amount every frame. A colleague renames its label to Wear Amount and its identifier to wear. What happens?", ["Nothing, labels and identifiers are the same thing", "The label change is harmless; the identifier change breaks the script, which still asks for wear_amount", "Both break the script", "Designer updates the script"], 1, "Code addresses parameters by identifier. Labels are for people and can change freely."]]</script></details>
+
+</section>
+<section class="chapter" id="outputs" data-title="Outputs and usages" data-builds="texture-settings#packing pbr-basics#maps" data-summary="Outputs carry identifier, label, group and usage; usages connect outputs to material slots. Pack engine-specific maps with RGBA Merge.">
+  <div class="head"><div class="num"></div><h2>Outputs and usages</h2></div>
+
+  <div class="prose">
+    <p>A graph's results leave through <em>Output</em> nodes. Each has an <strong>identifier</strong> (used in file names and by engines), a <strong>label</strong>, a <strong>group</strong>, and a <strong>usage</strong> such as <code>baseColor</code>, <code>normal</code>, <code>roughness</code>, <code>metallic</code>, <code>height</code>, <code>ambientOcclusion</code>, <code>emissive</code> or <code>opacity</code>. Usages are how other tools know what an output means: Painter, the engine plugins and Designer's own 3D view connect outputs to material slots by usage, not by name.</p>
+    <p>The output node's format is what gets written. A height output should be L16 if the chain before it is 16 bit; an output left on the default may quietly reduce it to 8 bits (<a class="x" href="../sd-graphs/index.html#choose">formats per map</a>).</p>
+    <p>Engines want maps the graph does not produce directly. HDRP's mask map packs metallic, AO, a detail mask and smoothness into one texture (<a class="x" href="../texture-settings/index.html#packing">packing layouts</a>). Build it in the graph: an <em>RGBA Merge</em> node with metallic in R, AO in G, white in B, and inverted roughness in A, into its own output. Then the export needs no extra tool.</p>
+  </div>
+
+</section>
+<section class="chapter" id="export" data-title="Exporting textures" data-builds="texture-settings#automation" data-summary="Export Outputs: destination, one format, a pattern of $(graph) and $(identifier), output toggles, Batch for size.">
+  <div class="head"><div class="num"></div><h2>Exporting textures</h2></div>
+
+  <div class="prose">
+    <p>To write files, right-click the graph in the Explorer and choose <em>Export outputs as bitmaps</em> (or <em>Tools &gt; Export Outputs</em> in the Graph view). The dialog has five things to set:</p>
+    <ul>
+      <li><strong>Destination</strong>: the folder.</li>
+      <li><strong>Format</strong>: one file type for the whole export (PNG, TGA, EXR…).</li>
+      <li><strong>Pattern</strong>: the file name, built from variables such as <code>$(graph)</code> and <code>$(identifier)</code>, with a preview of the result.</li>
+      <li><strong>Outputs</strong>: which outputs to write, so you can re-export just the one that changed.</li>
+      <li><strong>Automatic Export</strong>: re-exports whenever the graph changes. Handy while tuning a material in an engine; heavy for large graphs.</li>
+    </ul>
+    <p>Resolution comes from the graph. To export at another size without changing it, use the <em>Batch</em> tab, which overrides the output size (<a class="x" href="../sd-performance/index.html#resolution">resolution</a>). Choose identifiers and a pattern that your engine's import rules understand:</p>
+  </div>
+  <div class="fx" data-fx="pattern"></div>
+
+</section>
+<section class="chapter" id="formats" data-title="File formats and bit depth" data-builds="texture-memory#blocks texture-settings#maptypes" data-summary="PNG for 8 and 16 bit, EXR for float, never JPEG for data. The engine format decides GPU precision, not the file.">
+  <div class="head"><div class="num"></div><h2>File formats and bit depth</h2></div>
+
+  <div class="prose"><p>Because one format applies to the whole export, pick one that can hold every output's format, usually PNG, which stores 8 or 16 bits per channel losslessly. Export 16-bit heights and 8-bit everything else from the same graph, and the PNGs follow each output's format.</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>File format</th><th>Bits per channel</th><th>Use for</th><th>Avoid for</th></tr></thead>
+    <tbody>
+      <tr><td>PNG</td><td>8 or 16, lossless</td><td>Almost everything: colour, masks, normals, 16-bit heights</td><td>HDR values above 1</td></tr>
+      <tr><td>TGA</td><td>8, lossless</td><td>Pipelines that expect it; alpha channels</td><td>Heights (no 16 bit)</td></tr>
+      <tr><td>TIFF</td><td>8, 16 or 32 float</td><td>16-bit heights for DCC tools, archives</td><td>Engines that import it slowly</td></tr>
+      <tr><td>EXR</td><td>16F or 32F</td><td>HDR emissive, float displacement, vector maps</td><td>Ordinary 0–1 maps (large, no gain)</td></tr>
+      <tr><td>JPEG</td><td>8, lossy</td><td>Previews; bitmap resources inside SBSARs</td><td>Normals and masks: artefacts become bumps</td></tr>
+    </tbody></table></div>
+
+  <div class="prose"><p>Bits on disk are not bits on the GPU. The engine compresses most maps to a block format with its own precision, so a 16-bit base colour costs twice the disk space and arrives at the same quality. The exception is data that stays uncompressed, such as a height map imported as R16:</p></div>
+  <div class="fx" data-fx="filesize"></div>
+
+</section>
+<section class="chapter" id="colorspace" data-title="Colour spaces and normal formats" data-builds="sd-graphs#srgb texture-settings#srgb" data-summary="Legacy: sRGB/Linear/Raw labels, only Linear transforms. Normals: DirectX green down, OpenGL green up; Unity expects OpenGL.">
+  <div class="head"><div class="num"></div><h2>Colour spaces and normal formats</h2></div>
+
+  <div class="prose">
+    <p>Two settings decide whether exported maps are read correctly.</p>
+    <p><strong>Colour space.</strong> In the default Legacy mode, outputs offer <em>sRGB</em>, <em>Linear</em> and <em>Raw</em>, and only <em>Linear</em> changes the pixels: it is meant for float HDR images. Base colour stays sRGB, data maps stay raw, and the engine flags them accordingly. In OCIO and ACE modes you assign a real colour space per output in the export dialog, and Designer converts before saving (<a class="x" href="../sd-graphs/index.html#srgb">sRGB and linear in Designer</a>).</p>
+    <p><strong>Normal format.</strong> Tangent-space normal maps come in two conventions that differ only in the green channel. <em>DirectX</em> style (Designer's default, Unreal) points green down; <em>OpenGL</em> style (Unity, Blender) points green up. The <em>Normal</em> node's format setting chooses the convention; a map in the wrong one looks right in a flat preview and lit from the wrong side in the engine:</p>
+  </div>
+  <div class="fx" data-fx="normalflip"></div>
+  <div class="prose"><p>Either export in the engine's format, or flip green on import (Unity's texture importer has no flip; Unreal has <em>Flip Green Channel</em>). The Substance plugin for Unity converts DirectX normals automatically, which is why Adobe recommends leaving graphs on DirectX when they are used through the plugin.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Bumps on a wall look like dents when the light comes from above, but are correct when it comes from the side. The likely cause?", ["Roughness is inverted", "The normal map's green channel is in the other engine's convention", "sRGB is on for the normal map", "The mipmaps are missing"], 1, "Only the vertical component is flipped, so only vertical lighting is wrong."]]</script></details>
+
+</section>
+<section class="chapter" id="sbsar" data-title="Publishing an SBSAR" data-builds="sd-performance#runtime" data-summary="SBSAR = compiled package with inputs and presets; output size relative, bitmaps Absolute; plugins render it in Unity and Unreal.">
+  <div class="head"><div class="num"></div><h2>Publishing an SBSAR</h2></div>
+
+  <div class="prose">
+    <p>An <button type="button" class="term" data-term="sbsar">SBSAR</button> is a published, compiled package: the graphs, their exposed inputs and presets, and every resource they need, in one stand-alone file. Painter, Stager, Sampler and the engine plugins can render it and change its exposed inputs, but nobody can edit the graph inside. Publish with right-click on the package, <em>Publish .sbsar file</em>.</p>
+    <ul>
+      <li>The whole <strong>package</strong> is published. Graphs whose attribute <em>Exposed in SBSAR</em> is No stay hidden helpers.</li>
+      <li>Keep graph output sizes <strong>Relative to parent</strong>, so the user (or engine) sets the resolution.</li>
+      <li>Keep <strong>Bitmap</strong> nodes Absolute, or their images are stored at 256 × 256.</li>
+      <li><em>Archive compression</em> trades file size for publish time; JPEG bitmap resources shrink files further.</li>
+    </ul>
+    <p><strong>In Unity</strong>, the Substance 3D for Unity plugin imports an SBSAR into a graph asset with a folder of generated textures and a material for the active pipeline. Inputs and output resolution appear in the Inspector; changing them re-renders the textures. At runtime a <code>SubstanceRuntimeGraph</code> component lets scripts set inputs and render. <strong>In Unreal</strong>, the Substance plugin creates an instance factory, a graph instance with its textures and a material instance; Blueprints can set inputs and re-render.</p>
+    <p>Ship an SBSAR when users need its parameters: material libraries, customisation, variation at runtime. Ship exported textures when the look is final: they load faster, compress, need no plugin, and cost nothing to render (<a class="x" href="../sd-performance/index.html#runtime">rendering at runtime</a>).</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="Expose wear and drive nodes with functions, pack a mask map, export with engine suffixes or publish an SBSAR driven by WearController.cs.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>Both routes out of Designer, end to end. Route A exports textures named for the import rules from <a class="x" href="../texture-settings/index.html#automation">Texture Packing and Import Settings</a>, including an HDRP mask map packed inside the graph. Route B publishes an SBSAR with one exposed Wear input and drives it at runtime from a script. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>Exposed Wear input, parameter functions, a MaskMap output, export pattern.</span></div><div class="rt" data-k="plugin"><b>Engine plugin</b><span>Substance 3D for Unity: imports the SBSAR as a graph asset.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>WearController.cs: sets the Wear input and re-renders.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>AtlasTexturePostprocessor.cs from Texture Packing and Import Settings.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, pick the node that controls edge wear (for example the Histogram Scan on a curvature map). Next to its <em>Position</em>, choose <em>Expose as new graph input</em>: identifier <code>wear</code>, label <code>Wear</code>, group <code>Weathering</code>, default 0.3, min 0, max 1, clamp on.</div></li><li><div>On the other nodes that should follow (dirt Blend opacity, roughness Levels), open the parameter function and read the input: <em>Get Float</em> set to <code>wear</code>, then the mapping from the first widget (for example <em>Pow</em> 2 for the dirt opacity). Wear now drives everything.</div></li><li><div>Add an <em>RGBA Merge</em> node: metallic into R, ambient occlusion into G, a white <em>Uniform Color</em> into B, and roughness through <em>Invert Grayscale</em> into A. Connect it to a new <em>Output</em> node with identifier <code>MS</code> and no colour space conversion (Raw).</div></li><li><div>Set the other output identifiers to the suffixes your import script knows: <code>BC</code> base colour, <code>N</code> normal, <code>H</code> height (L16 output). Set the Normal node's format to <code>OpenGL</code> for Unity, <code>DirectX</code> for Unreal.</div></li><li><div>Route A: <em>Export outputs as bitmaps</em>, format <code>png</code>, pattern <code>T_$(graph)_$(identifier)</code>, destination inside the Unity project's <code>Assets/Textures</code>. The import script sets sRGB, compression and R16 per suffix; assign the textures to an HDRP/Lit material.</div></li><li><div>Route B: select the graph and set <em>Exposed in SBSAR</em> to Yes; keep its output size Relative to parent and every Bitmap node Absolute. Right-click the package, <em>Publish .sbsar file</em>.</div></li><li><div>In Unity, install the Substance 3D for Unity plugin (Asset Store or Adobe's package), then drag the SBSAR into the Project window. The plugin creates the graph asset, its textures and a material; with the plugin, leave normals on DirectX, it converts them. Set the output resolution in the Inspector.</div></li><li><div>For runtime changes, add the plugin's runtime component to the object as the plugin documentation describes, then add <code>WearController.cs</code> and assign the <code>SubstanceRuntimeGraph</code>. Changing <em>Wear</em> sets the <code>wear</code> input by identifier and requests a render, through the queue from <a class="x" href="../sd-performance/index.html#runtime">Keeping Graphs Fast</a> when it is in the scene.</div></li></ol>
+<div class="files"><div class="file" data-name="WearController.cs" data-lang="cs"><pre>using Adobe.Substance.Runtime;
+using UnityEngine;
+
+// Drives the exposed &#x27;wear&#x27; input of a runtime Substance graph and re-renders it.
+// Uses the identifier, not the label: renaming the label in Designer keeps this working.
+public class WearController : MonoBehaviour
+{
+    public SubstanceRuntimeGraph graph;
+    public string inputIdentifier = &quot;wear&quot;;
+    [Range(0f, 1f)] public float wear = 0.3f;
+    [Tooltip(&quot;Smallest change worth a re-render.&quot;)]
+    public float threshold = 0.02f;
+
+    float rendered = -1f;
+
+    void Start()
+    {
+        if (graph == null) { enabled = false; return; }
+        var desc = graph.GetInputDescription(inputIdentifier);   // fails loudly if the identifier changed
+        Debug.Log($&quot;Driving Substance input &#x27;{desc.Identifier}&#x27; ({desc.Label})&quot;);
+        Apply();
+    }
+
+    void Update()
+    {
+        if (Mathf.Abs(wear - rendered) &gt;= threshold) Apply();
+    }
+
+    void Apply()
+    {
+        graph.SetInputFloat(inputIdentifier, wear);
+        rendered = wear;
+        var queue = FindAnyObjectByType&lt;SubstanceRenderQueue&gt;();   // optional, from Keeping Graphs Fast
+        if (queue != null) SubstanceRenderQueue.Request(graph);
+        else graph.RenderAsync();
+    }
+}</pre></div></div>
+<p class="note">The plugin's API is documented on Adobe's Unity scripting page (<code>SetInputFloat</code>, <code>GetInputDescription</code>, <code>RenderAsync</code>); class names have changed between plugin versions, so check the version you install. Remove the queue lines if you do not use <code>SubstanceRenderQueue</code>.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">The plugin supports URP and generates a URP material; the URP Lit shader takes metallic in R and smoothness in A of its metallic map, so for Route A export a <code>MetallicSmoothness</code> output (RGBA Merge with metallic in R and inverted roughness in A) instead of the HDRP mask map.</div><div class="eng" data-engine="unreal">Route A: export with DirectX normals and an <code>ORM</code> output (AO in R, roughness in G, metallic in B). Route B: install the Substance 3D plugin for Unreal, import the SBSAR, and set inputs from Blueprint on the graph instance, then render asynchronously.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/manage-parameters/exposing-a-parameter" rel="noopener">Exposing a parameter</a></span><span class="by">Adobe</span><span class="why">Identifier, label, group, type, default, min, max and clamp.</span></li><li><span><span class="kind">Docs</span><a href="https://helpx.adobe.com/substance-3d-designer/substance-compositing-graphs/exposing-a-parameter/visible-if-control-visibility-of-inputs-outputs-and-parameters.html" rel="noopener">Visible if: control visibility of inputs, outputs and parameters</a></span><span class="by">Adobe</span><span class="why">Expressions that show and hide parameters.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/exporting-bitmaps" rel="noopener">Exporting bitmaps</a></span><span class="by">Adobe</span><span class="why">The export dialog, pattern variables and the Batch tab.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/publishing-substance-3d-asset-files-sbsar" rel="noopener">Publishing Substance 3D asset files (SBSAR)</a></span><span class="by">Adobe</span><span class="why">What a package contains, exposed graphs, bitmap sizes, compression.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/color-management/color-management" rel="noopener">Color management</a></span><span class="by">Adobe</span><span class="why">Export colour spaces in Legacy, OCIO and ACE modes.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d/ecosystem/game-engines/unity/unity-plugin-overview" rel="noopener">Unity plugin overview</a></span><span class="by">Adobe</span><span class="why">Importing SBSAR files into Unity and the automatic normal conversion.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d/ecosystem/game-engines/unity/substance-3d-for-unity-scripting/substance-3d-for-unity-scripting" rel="noopener">Substance 3D for Unity scripting</a></span><span class="by">Adobe</span><span class="why">SubstanceRuntimeGraph, setting inputs and RenderAsync.</span></li></ul>
+</section>
+
+<div class="next" data-next="texture-settings sd-performance pbr-basics"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"exposed": [
+"Exposed parameter",
+"A node setting promoted to an input of the whole graph, with identifier, label and range.",
+"#expose"
+],
+"identifier": [
+"Identifier",
+"The stable code name of an input or output; scripts and engines use it.",
+"#expose"
+],
+"usage": [
+"Usage",
+"Tag on an output (baseColor, normal…) that tools use to connect it to material slots.",
+"#outputs"
+],
+"sbsar": [
+"SBSAR",
+"A published, compiled Substance package: graphs, inputs, presets and resources in one file.",
+"#sbsar"
+],
+"dxgl": [
+"DirectX / OpenGL normals",
+"Two normal map conventions; the green channel points down (DirectX) or up (OpenGL).",
+"#colorspace"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdpublish.js"></script>
+</body>
+</html>

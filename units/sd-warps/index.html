@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Warps and Distortion · Tech Art Atlas</title>
+<meta name="description" content="How Substance Designer bends and frays patterns: a warp reads its input at shifted positions. Directional Warp, Warp along a gradient, Vector Warp, Slope Blur, the artefacts they cause and what they cost.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="sd-warps">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Warps and Distortion</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 8 chapters</div>
+  <h1>Warps and Distortion</h1>
+  <p class="lede">How Substance Designer bends and frays patterns: a warp reads its input at shifted positions. Directional Warp, Warp along a gradient, Vector Warp, Slope Blur, the artefacts they cause and what they cost.</p>
+  <p class="meta">Builds on Graphs, Bit Depth and Colour Space and Blend Modes. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-warps" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a ridged pattern bent by a directional warp.</figcaption></figure>
+<div class="needs" data-needs="sd-graphs#float sd-blend#minmax"></div>
+
+<section class="chapter" id="idea" data-title="A warp reads from somewhere else" data-builds="textures-sampling#uv" data-summary="out(p) = in(p + offset(p)): every pixel fetches from a shifted position, so warps stretch and tear but never leave holes.">
+  <div class="head"><div class="num"></div><h2>A warp reads from somewhere else</h2></div>
+
+  <div class="prose">
+    <p>Procedural patterns come out too perfect: straight lines, round dots, even noise. Warps are how they get bent, frayed and worn. All warp nodes share one idea: an output pixel does not read the input at its own position, but a little to the side, and how far and in which direction comes from a second image.</p>
+    <p>The direction of the arrow matters. A warp does not push pixels to new places, which could leave holes. Every output pixel <em>fetches</em> from a shifted position, so the result is always complete; where neighbouring pixels fetch from almost the same spot, the input stretches, and where they fetch from far apart spots, it tears. This is the same gather you use in a shader whenever you offset a UV before sampling (<a class="x" href="../mapping/index.html#flow">flow maps</a>):</p>
+  </div>
+  <div class="fx" data-fx="warpidea"></div>
+  <details class="check"><summary></summary><script type="application/json">[["A warp shifts a stripe pattern. In one area every output pixel reads from the same input pixel. What do you see there?", ["A hole", "That input pixel's value smeared over the whole area", "The original stripes", "Black"], 1, "Every pixel fetches, so there are no holes; many pixels fetching the same spot stretch its value across the area."]]</script></details>
+
+</section>
+<section class="chapter" id="directional" data-title="Directional Warp" data-builds="sd-warps#idea" data-summary="out(p) = in(p + i · (I(p) − offset) · (cos 2πa, sin 2πa)): one direction, distance from a greyscale map.">
+  <div class="head"><div class="num"></div><h2>Directional Warp</h2></div>
+
+  <div class="prose">
+    <p><em>Directional Warp</em> is the simplest warp. Every pixel reads along one fixed direction, the <em>Warp Angle</em> (in turns: 0.25 is a quarter turn), and how far it reads comes from a greyscale <em>intensity input</em>: white reads far, black not at all. <em>Intensity</em> scales the distance, and <em>Intensity Map Offset</em> is subtracted from the map first, so values below the offset read backwards.</p>
+  </div>
+  <div class="fx" data-fx="dirwarp"></div>
+  <div class="prose">
+    <p>Typical uses: wood grain (stretch noise along the board, warp it sideways with a soft noise), irregular stitches and weave in fabric, cracks that wander instead of running straight. Two settings decide the look. The <strong>scale of the intensity map</strong>: coarse noise bends the image as a whole, fine noise frays every edge. And the <strong>intensity</strong>: small values look natural; large ones produce visible smears in the warp direction, the classic warped-too-far look.</p>
+    <p>Because the shift has one direction everywhere, a directional warp keeps parallel lines parallel. That makes it predictable, and it tiles as long as the intensity map tiles.</p>
+  </div>
+
+</section>
+<section class="chapter" id="warp" data-title="Warp: along a gradient" data-builds="sd-warps#directional dot-cross#dot" data-summary="out(p) = in(p + k · ∇G(p)): reads uphill, as far as the slope is steep; flat areas do not move.">
+  <div class="head"><div class="num"></div><h2>Warp: along a gradient</h2></div>
+
+  <div class="prose">
+    <p>The atomic <em>Warp</em> node has no angle. It takes the <em>slope</em> of its <em>gradient input</em>: at every pixel, which way is uphill and how steep. Pixels read in the uphill direction, as far as the slope is steep. On a round white spot the slopes point to its centre from all sides, so the content near the centre is copied outward: the image looks pushed away from white areas.</p>
+  </div>
+  <div class="fx" data-fx="gradwarp"></div>
+  <div class="prose">
+    <p>Only slopes move pixels. Large flat areas of the gradient input, pure white or pure black, stay untouched, and the strongest warps happen where the gradient input changes fastest. That is why Adobe warns that the result depends heavily on the gradient input: a Levels or blur on it changes the warp more than the intensity slider does. Blur the gradient input slightly before warping with it; sharp edges in it make sharp, torn warps.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["You warp a brick pattern with Warp, using a noise with large pure-white areas as the gradient input. Which bricks stay straight?", ["Bricks over the white areas", "Bricks over the grey slopes", "None", "All of them"], 0, "Flat areas of the gradient input have no slope, so they do not warp. The slopes around them do."]]</script></details>
+
+</section>
+<section class="chapter" id="vector" data-title="Vector Warp: directions in a colour" data-builds="sd-warps#warp sd-graphs#float" data-summary="shift = intensity · (2R − 1, ±(2G − 1)); a normal map is a vector map; DirectX and OpenGL differ in the sign of G.">
+  <div class="head"><div class="num"></div><h2>Vector Warp: directions in a colour</h2></div>
+
+  <div class="prose">
+    <p>Sometimes one direction is not enough and a gradient is not what you want: pebbles should push sand away from their own centres, fibres should follow a hand-made flow. A <em>vector map</em> stores a direction per pixel in its red and green channels, with 0.5 meaning zero: red above 0.5 points right, below 0.5 left; green does the same vertically. <em>Vector Warp</em> reads that map and shifts each pixel by its direction times the intensity.</p>
+  </div>
+  <div class="fx" data-fx="vecwarp"></div>
+  <div class="prose">
+    <p>This is exactly how a tangent-space normal map is encoded, so a normal map makes a good vector map: content slides off the bumps. Mind the green channel. DirectX-style maps point green down, OpenGL-style maps up (<a class="x" href="../sd-publish/index.html#colorspace">normal formats</a>); with the wrong one the warp goes up instead of down. If a node has a vector format setting, match it to the map; otherwise invert the green channel.</p>
+    <p>Build vector maps in a float format (16F): a direction needs values on both sides of zero, and at 8 bits the 0.5 centre is not exactly representable (127 and 128 are the two nearest). <em>Multi-Directional Warp</em> is a related library node: it warps in several directions and combines them, which gives softer, less streaky results than one directional warp.</p>
+  </div>
+
+</section>
+<section class="chapter" id="slopeblur" data-title="Slope Blur: erosion and growth" data-builds="sd-warps#warp sd-blend#minmax" data-summary="Up to n + 1 reads along the slope: Blur averages, Min erodes, Max grows. Cost grows with the samples.">
+  <div class="head"><div class="num"></div><h2>Slope Blur: erosion and growth</h2></div>
+
+  <div class="prose">
+    <p><em>Slope Blur</em> reads many times along the slope of a second image instead of once: with 16 samples, every pixel looks at 17 positions along the direction of the slope and combines them. What it does with them is the <em>mode</em>. <strong>Blur</strong> averages, a smear that follows the slope image. <strong>Min</strong> keeps the darkest value, so a shape gets eaten away from its edges, chipped and eroded. <strong>Max</strong> keeps the brightest, so it grows ragged outgrowths:</p>
+  </div>
+  <div class="fx" data-fx="slopeblur"></div>
+  <div class="prose">
+    <p>Slope Blur in Min mode with a fine noise is behind most worn stone edges, chipped paint and broken tiles in Substance materials. Too few samples leave visible copies of the shape instead of a smooth erosion; more samples look better and cost proportionally more. A related node, <em>Non-Uniform Blur</em>, varies the blur radius per pixel from a map, for blurry areas next to sharp ones.</p>
+  </div>
+
+</section>
+<section class="chapter" id="artifacts" data-title="Artefacts and how to avoid them" data-summary="Smears: too much intensity. Tears: sharp maps. Seams: a non-tiling input. Jaggies: nearest filtering.">
+  <div class="head"><div class="num"></div><h2>Artefacts and how to avoid them</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Smears and streaks.</strong> Intensity too high for the scale of the intensity map. Use two small warps with different maps instead of one large one, or a Multi-Directional Warp.</li>
+      <li><strong>Torn edges.</strong> Sharp edges in the intensity or gradient input. Blur it a little first; the warp follows its slope, and a hard edge is an infinite slope.</li>
+      <li><strong>Seams at the texture border.</strong> Warps read across the border and wrap around, so the result tiles only if every map involved tiles. Built-in noises tile; a bitmap or a non-tiling shape does not.</li>
+      <li><strong>Blocky or jagged results.</strong> The node's filtering mode is nearest. Bilinear reads between pixels and is smoother.</li>
+      <li><strong>Different results at a different size.</strong> Intensities are in relative units, so a graph usually looks the same at 1k and 4k. Bitmaps and absolute sizes in the chain break that; test at two parent sizes.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A crack pattern looks great at 1k but shows a sharp seam across the middle when tiled. What is the likely cause?", ["The warp intensity is too high", "One of the maps feeding the warp does not tile", "The graph is 8-bit", "Bilinear filtering"], 1, "Warps read across the border; a non-tiling input map makes the wrapped reads disagree at the edge."]]</script></details>
+
+</section>
+<section class="chapter" id="cost" data-title="What warps cost" data-builds="sd-performance#heavy" data-summary="reads = size² · reads per pixel · nodes; warps and blurs are the heavy nodes.">
+  <div class="head"><div class="num"></div><h2>What warps cost</h2></div>
+
+  <div class="prose">
+    <p>Adobe's guidelines name blurs and warps as the most processor-intensive nodes, and advise against warps for graphs that render on mobile. The reason is the reads. A Levels node reads one pixel per output pixel, in order. A warp reads from a computed position, and a Slope Blur reads once per sample, often 16 or 32 times:</p>
+  </div>
+  <div class="fx" data-fx="warpcost"></div>
+  <div class="prose">
+    <p>Three habits keep it in check. Build and tune warps at a low parent size, since their look is resolution independent. Merge chains: three Directional Warps in a row can often be one with a better intensity map. And keep samples as low as the result allows; going from 32 to 16 samples halves the node's cost. <a class="x" href="../sd-performance/index.html#heavy">Keeping Graphs Fast</a> covers how to measure it.</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="A Designer chipped-stone graph with a tiling check; Warps.hlsl gives directional, vector and gradient warps of UVs at runtime.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>In Designer, a chipped stone tile built from the unit's three main warps, with a quick tiling check. In Unity HDRP, the same gather as a Custom Function: warping UVs at runtime for heat haze, wobbling glass or animated water, which Designer cannot do because its output is baked. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>A chipped-stone tile: Slope Blur, Directional Warp, Warp.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Warps.hlsl: directional and vector warps of UVs.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Shader Graph that warps its own texture over time.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, add a <em>Shape</em> node (square, slightly smaller than the tile) and a <em>Perlin Noise</em> or <em>Clouds 2</em> node at a fine scale.</div></li><li><div>Add <em>Slope Blur Grayscale</em>: the shape into the main input, the noise into the slope input. Mode <code>Min</code>, Samples <code>16</code>, a small intensity. The square's edges now look chipped.</div></li><li><div>Add <em>Directional Warp</em> after it with a coarse noise as intensity input, angle <code>0.25</code>, small intensity: the stone loses its perfect outline. Add a <em>Warp</em> with a blurred noise as gradient input for a gentle overall bulge.</div></li><li><div>Check tiling: add a <em>Transformation 2D</em> at the end with an offset of (0.5, 0.5). The former border is now in the middle of the view; any seam there means one of the warp inputs does not tile. Delete the check node afterwards.</div></li><li><div>Set the parent size to 512 and to 2048 and compare. The look should match; if it changes, an Absolute-size node or a bitmap in the chain is the cause.</div></li><li><div>In Unity, save <code>Warps.hlsl</code>. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Add properties <code>_MainTex</code> (Texture2D), <code>_NoiseTex</code> (Texture2D, a tiling noise, sRGB off), <code>_Intensity</code> (Float, 0–0.1), <code>_Angle</code> (Float, 0–1) and <code>_Speed</code> (Float).</div></li><li><div>Add a <em>Sampler State</em> node. Build the noise UV: <em>UV</em> plus <em>Time</em> × <code>_Speed</code>. Then add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Warps.hlsl</code> and <em>Name</em> to <code>DirectionalWarpUV</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), NoiseTex (Texture 2D), NoiseUV (Vector 2), SS (Sampler State), Intensity (Float), Angle (Float), Offset (Float)</b> and the outputs <b>WarpedUV (Vector 2)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Sample <code>_MainTex</code> with <em>WarpedUV</em> and connect it to <em>Base Color</em>. For a normal map as vector map, use <code>VectorWarpUV</code> instead and pass the normal texture; set <em>FlipGreen</em> to 1 if it is a DirectX-style map.</div></li><li><div>For distortion of what is behind a surface (heat haze, glass), use the warped offset on the screen position and sample the scene colour in a transparent material; HDRP's <em>Distortion</em> pass in the Unlit and Lit graphs does this for you.</div></li></ol>
+<div class="files"><div class="file" data-name="Warps.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_WARPS_INCLUDED
+#define ATLAS_WARPS_INCLUDED
+
+// Runtime versions of Designer&#x27;s warps. They return warped UVs: sample your texture with them.
+// Like Designer, every pixel fetches from a shifted position (a gather).
+
+// Directional Warp: one direction (Angle in turns), distance from a greyscale noise.
+void DirectionalWarpUV_float(float2 UV, UnityTexture2D NoiseTex, float2 NoiseUV, UnitySamplerState SS,
+                             float Intensity, float Angle, float Offset, out float2 WarpedUV)
+{
+    float i = SAMPLE_TEXTURE2D(NoiseTex.tex, SS.samplerstate, NoiseUV).r - Offset;
+    float a = Angle * 6.2831853;
+    WarpedUV = UV + Intensity * i * float2(cos(a), sin(a));
+}
+
+// Vector Warp: the direction per pixel comes from R and G (0.5 = no shift), e.g. a normal map.
+// FlipGreen = 1 for DirectX-style maps, whose green points down.
+void VectorWarpUV_float(float2 UV, UnityTexture2D VectorTex, float2 VectorUV, UnitySamplerState SS,
+                        float Intensity, float FlipGreen, out float2 WarpedUV)
+{
+    float2 d = SAMPLE_TEXTURE2D(VectorTex.tex, SS.samplerstate, VectorUV).rg * 2.0 - 1.0;
+    d.y = FlipGreen &gt; 0.5 ? -d.y : d.y;
+    WarpedUV = UV + Intensity * d;
+}
+
+// Warp along a gradient: reads uphill, as far as the slope is steep. Needs four extra samples.
+void GradientWarpUV_float(float2 UV, UnityTexture2D GradTex, float2 GradUV, UnitySamplerState SS,
+                          float Intensity, out float2 WarpedUV)
+{
+    float2 e = GradTex.texelSize.xy;
+    float gx = SAMPLE_TEXTURE2D(GradTex.tex, SS.samplerstate, GradUV + float2(e.x, 0)).r
+             - SAMPLE_TEXTURE2D(GradTex.tex, SS.samplerstate, GradUV - float2(e.x, 0)).r;
+    float gy = SAMPLE_TEXTURE2D(GradTex.tex, SS.samplerstate, GradUV + float2(0, e.y)).r
+             - SAMPLE_TEXTURE2D(GradTex.tex, SS.samplerstate, GradUV - float2(0, e.y)).r;
+    WarpedUV = UV + Intensity * float2(gx, gy) / (2.0 * e);
+}
+
+#endif</pre></div></div>
+<p class="note">A runtime warp costs one extra texture read per warp (four for the gradient version) in every pixel the material covers. That is cheap for a few objects and adds up on large surfaces; bake static warps in Designer instead.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Identical in a URP Lit or Unlit Shader Graph. For screen distortion, enable <em>Opaque Texture</em> in the URP asset and sample <em>Scene Color</em> at the warped screen position.</div><div class="eng" data-engine="unreal">In a material, add a noise texture sample times a direction to the texture coordinate before sampling, or use the <em>BumpOffset</em> and <em>Panner</em> nodes. Refraction (with the Pixel Normal Offset mode) gives the screen-space distortion.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/atomic-nodes/warp" rel="noopener">Warp (atomic node)</a></span><span class="by">Adobe</span><span class="why">Gradient input, intensity, and why the gradient decides the result.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/atomic-nodes/directional-warp" rel="noopener">Directional Warp (atomic node)</a></span><span class="by">Adobe</span><span class="why">Intensity input, warp angle in turns and intensity map offset.</span></li><li><span><span class="kind">Docs</span><a href="https://helpx.adobe.com/substance-3d-designer/substance-compositing-graphs/nodes-reference-for-substance-compositing-graphs/node-library/filters/effects/multi-directional-warp.html" rel="noopener">Multi-Directional Warp</a></span><span class="by">Adobe</span><span class="why">Warping in several directions at once.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/best-practices/performance-optimization-guidelines" rel="noopener">Performance optimization guidelines</a></span><span class="by">Adobe</span><span class="why">Blurs and warps as the most expensive nodes.</span></li></ul>
+</section>
+
+<div class="next" data-next="sd-pixel-fx sd-performance"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"intmap": [
+"Intensity map",
+"Greyscale input of Directional Warp: how far each pixel reads.",
+"#directional"
+],
+"gradin": [
+"Gradient input",
+"Greyscale input of Warp; its slope gives the direction and distance.",
+"#warp"
+],
+"vecmap": [
+"Vector map",
+"A colour image storing a direction per pixel in R and G, with 0.5 as zero.",
+"#vector"
+],
+"sb": [
+"Slope Blur",
+"Reads many times along the slope of a second image; Blur, Min or Max mode.",
+"#slopeblur"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdwarps.js"></script>
+</body>
+</html>

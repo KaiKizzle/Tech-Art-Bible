@@ -270,7 +270,10 @@
     hlsl: 'return if else for while do break continue struct cbuffer in out inout const static uniform groupshared discard clip true false register numthreads unroll loop branch flatten',
     cs: 'using namespace class struct enum interface public private protected internal static readonly const void return if else for foreach while do break continue new var override virtual abstract sealed partial this base null true false in out ref is as get set typeof switch case default try catch finally throw yield',
     cpp: 'return if else for while struct const static void auto true false',
-    py: 'import from for in if elif else def return and or not True False None isinstance with as class pass'
+    py: 'import from for in if elif else def return and or not True False None isinstance with as class pass try except',
+    sh: 'if then else elif fi for do done in while case esac exit echo set local return function',
+    yaml: 'true false',
+    txt: ''
   };
   const TY = {
     hlsl: /^(?:float|half|int|uint|bool|min16float|double)(?:[1-4](?:x[1-4])?)?$|^(?:void|Texture2D|Texture3D|Texture2DArray|TextureCube|RWTexture2D|RWTexture3D|RWTexture2DArray|StructuredBuffer|RWStructuredBuffer|AppendStructuredBuffer|ConsumeStructuredBuffer|ByteAddressBuffer|RWByteAddressBuffer|SamplerState|SamplerComparisonState|TEXTURE2D|SAMPLER|UnityTexture2D|UnitySamplerState)$/,
@@ -278,7 +281,10 @@
   };
   function highlight(code, lang) {
     const kw = new Set((KW[lang] || KW.hlsl).split(' ')), ty = TY[lang] || TY.hlsl;
-    const re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(#\s*[a-z]+)|(\b\d+(?:\.\d+)?(?:[eE][-+]?\d+)?[fFuU]?\b|\.\d+[fF]?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
+    const hashC = lang === 'py' || lang === 'sh' || lang === 'yaml';
+    if (lang === 'txt') return esc(code);
+    const re = hashC ? /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(\$\(?[A-Za-z_]+\)?)|(\b\d+(?:\.\d+)?(?:[eE][-+]?\d+)?\b|\.\d+\b)|([A-Za-z_][A-Za-z0-9_]*)/g
+                     : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(#\s*[a-z]+)|(\b\d+(?:\.\d+)?(?:[eE][-+]?\d+)?[fFuU]?\b|\.\d+[fF]?\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
     let out = '', last = 0, m;
     while ((m = re.exec(code))) {
       out += esc(code.slice(last, m.index)); last = re.lastIndex;

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Graphs, Bit Depth and Colour Space · Tech Art Atlas</title>
+<meta name="description" content="What the numbers in a Substance Designer graph are: output size and inheritance, what 8 and 16 bits mean, why heights band, when you need float formats, and how sRGB and linear values behave inside the graph and on export.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+<style>
+.tbl-wrap{overflow-x:auto;max-width:100%}
+.tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:600}
+.tbl td:first-child{font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body data-unit="sd-graphs">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Graphs, Bit Depth and Colour Space</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 8 chapters</div>
+  <h1>Graphs, Bit Depth and Colour Space</h1>
+  <p class="lede">What the numbers in a Substance Designer graph are: output size and inheritance, what 8 and 16 bits mean, why heights band, when you need float formats, and how sRGB and linear values behave inside the graph and on export.</p>
+  <p class="meta">No Designer experience needed. Builds on Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-graphs" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one height ramp stored at 8 bits, terraced into 255 steps.</figcaption></figure>
+<div class="needs" data-needs="color-values#linear-srgb textures-sampling#texture"></div>
+
+<section class="chapter" id="graph" data-title="A graph is a chain of images" data-builds="gpu-basics#per-pixel textures-sampling#texture" data-summary="Nodes compute images and pass them on. Greyscale (L, 1 channel) or colour (C, 4 channels); colour costs about 4×.">
+  <div class="head"><div class="num"></div><h2>A graph is a chain of images</h2></div>
+
+  <div class="prose">
+    <p>A Substance graph is a chain of small image programs. Every node takes images in, computes a new image, and passes it on, until the last nodes arrive at the <em>outputs</em> (base colour, normal, roughness and so on). Nothing is painted; every pixel is the result of the chain. Change a parameter at the start and every node after it is computed again.</p>
+    <p>There are two kinds of nodes. <button type="button" class="term" data-term="atomic">Atomic nodes</button> are the built-in building blocks (Blend, Levels, Warp, Blur, Transformation 2D, Pixel Processor, FX-Map and a few more). <em>Library nodes</em> such as Tile Sampler, Slope Blur or Histogram Scan are themselves graphs built from atomic nodes, which you can open and read.</p>
+    <p>Every node outputs one of two kinds of image: <strong>greyscale</strong> (one channel, shown as <em>L</em> for luminance) or <strong>colour</strong> (four channels, RGBA, shown as <em>C</em>). Most of a material is greyscale: heights, masks and roughness are single numbers per pixel. Designer stores every node's result so it can recompute only what changed, and that cache costs memory:</p>
+  </div>
+  <div class="fx" data-fx="nodemem"></div>
+  <div class="prose"><p>Adobe's performance guidelines put a number on the second cost: colour nodes take about four times as long as greyscale ones. Work in greyscale for as long as possible and turn heights and masks into colour near the end, with a <em>Gradient Map</em> or a few Blends.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Which output is naturally greyscale?", ["Base colour", "Roughness", "A colour ID map", "The final normal map"], 1, "Roughness is one number per pixel. Base colour, IDs and normals need several channels."]]</script></details>
+
+</section>
+<section class="chapter" id="size" data-title="Output size and inheritance" data-summary="Size is inherited: Relative to parent, Relative to input or Absolute. Relative sizes are power-of-two offsets.">
+  <div class="head"><div class="num"></div><h2>Output size and inheritance</h2></div>
+
+  <div class="prose">
+    <p>Every node has two base parameters that decide what its image is: <em>Output Size</em> and <em>Output Format</em>. Neither is usually typed in. Each one is <button type="button" class="term" data-term="inherit">inherited</button> in one of three ways:</p>
+    <ul>
+      <li><strong>Relative to parent</strong>: taken from the graph the node lives in, which takes it from whoever uses the graph: the <em>Parent Size</em> in the Graph view toolbar, the export dialog, or the engine.</li>
+      <li><strong>Relative to input</strong>: taken from the image on the node's primary input, so a chain follows its first node.</li>
+      <li><strong>Absolute</strong>: fixed on the node, ignoring everything above.</li>
+    </ul>
+    <p>Sizes are stored as powers of two. A relative size is an <em>offset</em>: 0 means "the same", +1 twice as large, −1 half. That is why the same graph renders at 512 while you work and at 4096 when you export, without touching a node:</p>
+  </div>
+  <div class="fx" data-fx="relsize"></div>
+  <div class="prose"><p>Two traps from Adobe's guidelines. An embedded bitmap is Absolute by default, and an Absolute node at the start of a chain forces its size on every node that inherits from it. Keep the Bitmap node Absolute (a Bitmap set to Relative to parent is saved at 256 × 256 when you publish), and put a <em>Transformation 2D</em> set to Relative to parent right after it. And avoid sizes below 16 × 16: they render slower, not faster. A <em>Uniform Color</em> set to Absolute 16 × 16 is the cheap way to make a flat value.</p></div>
+
+</section>
+<section class="chapter" id="bitdepth" data-title="What bit depth means" data-builds="color-values#rgb" data-summary="n bits store 2ⁿ levels: 8 bit 256 (step 1/255), 16 bit 65 536 (step 1/65 535).">
+  <div class="head"><div class="num"></div><h2>What bit depth means</h2></div>
+
+  <div class="prose">
+    <p>An image stores each channel of each pixel as a number. <button type="button" class="term" data-term="bitdepth">Bit depth</button> is how many bits that number gets, and with n bits a channel can hold 2<sup>n</sup> different values. An 8-bit channel has 256 values from 0 to 255, which Designer shows as 0 to 1 in steps of 1/255. A 16-bit channel has 65 536, in steps of 1/65 535.</p>
+    <p>Whether you can see the steps depends on how much of the range you use. A gradient from black to white over 1024 pixels at 8 bits has a new value every four pixels, which looks smooth. A gentle gradient that only uses a tenth of the range has 25 values for 1024 pixels: you see bands.</p>
+  </div>
+  <div class="fx" data-fx="levels"></div>
+  <div class="prose"><p>Designer labels each node's format in its info: <em>L8</em> is greyscale 8 bit, <em>C16</em> colour 16 bit, and <em>16F</em> and <em>32F</em> are the float formats of the next chapters. The 16-bit integer format costs twice the memory of 8 bit and is worth it where small differences matter: heights, and anything you will take a slope of.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A 16-bit integer channel stores values from 0 to 1 in steps of…", ["1/16", "1/255", "1/65 535", "any value, it is a float"], 2, "2¹⁶ = 65 536 levels, so steps of 1/65 535. Integer formats never go below 0 or above 1."]]</script></details>
+
+</section>
+<section class="chapter" id="banding" data-title="Banding and stair-stepped normals" data-builds="parallax#heightmap texture-settings#maptypes" data-summary="pixels per level = size / (Δh · (2ⁿ − 1)); more than 1 → terraces, and normals ridge at every jump.">
+  <div class="head"><div class="num"></div><h2>Banding and stair-stepped normals</h2></div>
+
+  <div class="prose">
+    <p>Heights are where 8 bits fail first. A gently sloping surface changes height by only a small amount across the whole texture, so at 8 bits many neighbouring pixels share the same value. The height becomes a staircase: flat terraces with a jump of 1/255 between them.</p>
+    <p>You rarely look at a height map directly, though. The <em>Normal</em> node, ambient occlusion and the engine's parallax all use its <em>slope</em>, the difference between neighbouring pixels. On a terrace the slope is zero; at each jump it spikes. The normal map turns into rings or ridges along the contour lines:</p>
+  </div>
+  <div class="fx" data-fx="banding"></div>
+  <div class="prose">
+    <p>The fix is to give the height chain 16 bits from its first node: set the generator's Output Format to <em>16 bits per channel</em> (Absolute), and let the nodes after it inherit it (Relative to input). Converting an 8-bit result to 16 bits later does not help, because the terraces are already in the values. A light blur hides them, but it also softens the detail.</p>
+    <p>The same applies on export. A height map used for displacement or parallax should leave Designer as a 16-bit PNG or TIFF and be imported in the engine without compression (<a class="x" href="../texture-settings/index.html#maptypes">per-map import settings</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="float" data-title="Float formats: beyond 0 and 1" data-builds="buffers#render-targets" data-summary="Integer formats clamp to 0–1 at every node; 16F and 32F keep negatives and values above 1. 16F step near v: 2^(⌊log₂ v⌋ − 10).">
+  <div class="head"><div class="num"></div><h2>Float formats: beyond 0 and 1</h2></div>
+
+  <div class="prose">
+    <p>The integer formats clamp: every value below 0 becomes 0, every value above 1 becomes 1, at every node. That is usually what you want for a mask, and a problem whenever the maths in between needs room. Subtract one image from another and add it back later, and the integer graph has lost everything that went negative in the middle:</p>
+  </div>
+  <div class="fx" data-fx="clampmath"></div>
+  <div class="prose">
+    <p>The <button type="button" class="term" data-term="float">float formats</button> store real numbers with a sign and an exponent, like the GPU's <code>half</code> and <code>float</code>. <em>16F</em> (half) holds about three significant digits, <em>32F</em> about seven, and both go below 0 and above 1. Use them for vector maps that drive warps (directions are negative half the time), for distance fields, for HDR emissive values and for intermediate maths.</p>
+    <p>Floats spend their precision unevenly: their steps grow with the value. Near 0 a 16F value is very precise; near 1 its step is 1/2048, coarser than 16-bit integer. For heights between 0 and 1, 16-bit integer is the better choice:</p>
+  </div>
+  <div class="fx" data-fx="precision"></div>
+
+</section>
+<section class="chapter" id="srgb" data-title="sRGB and linear in Designer" data-builds="color-values#linear-srgb texture-settings#srgb" data-summary="Legacy: no colour management, colour blends on encoded values. OCIO/ACE: linear working space, use 16-bit colour. Data maps are never colour.">
+  <div class="head"><div class="num"></div><h2>sRGB and linear in Designer</h2></div>
+
+  <div class="prose">
+    <p>Colours on disk and on screen are usually <a class="x" href="../color-values/index.html#linear-srgb">sRGB-encoded</a>: the stored number is not proportional to the light, it is bent so that 8 bits spend more codes on the darks, where eyes notice differences. Light adds up in <em>linear</em> values. Both facts matter inside a graph.</p>
+    <p>Designer has three colour management modes, set in the project settings:</p>
+    <ul>
+      <li><strong>Legacy</strong> (the default): no colour management. Colour values pass through the graph untouched, the graph is considered to work in sRGB, and a Blend mixes the stored, encoded numbers.</li>
+      <li><strong>OpenColorIO</strong> and <strong>Adobe ACE</strong>: bitmaps are converted from their colour space into a linear working space, nodes work on linear RGB, and outputs are converted to the colour space you assign on export.</li>
+    </ul>
+    <p>The difference shows when you mix two saturated colours. On encoded values the middle of the blend is darker and duller than the physically correct mix on linear values:</p>
+  </div>
+  <div class="fx" data-fx="mixspace"></div>
+  <div class="prose"><p>Working linear has a price. Linear values spend their codes evenly, so the darks get few of them, and an 8-bit linear colour image bands where an encoded one would not. That is why Adobe recommends at least 16 bits for colour nodes in OCIO and ACE modes:</p></div>
+  <div class="fx" data-fx="darkcodes"></div>
+  <div class="prose">
+    <p>Two rules hold in every mode. <strong>Data is never colour.</strong> Heights, masks, roughness, metallic and normals are numbers, not light; they must never be colour converted, and the engine imports them with sRGB off (<a class="x" href="../texture-settings/index.html#srgb">the sRGB checkbox</a>). <strong>Base colour and emissive are colour</strong>: they leave Designer sRGB-encoded at 8 bits, and the engine decodes them when it samples.</p>
+    <p>In Legacy mode the export choices <em>sRGB</em>, <em>Linear</em> and <em>Raw</em> are mostly labels: only <em>Linear</em> changes the pixels, and it is meant for float HDR images. In OCIO and ACE modes the colour space on each output is a real conversion, so set base colour to sRGB and every data map to raw or data.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Your team works in Legacy mode. A colour Blend at 50 % between red and green looks muddy compared with Photoshop set to linear blending. Why?", ["Designer has a bug", "Legacy mode blends the stored sRGB-encoded values; the linear mix is brighter in the middle", "The graph is 8-bit", "Green is too dark"], 1, "Mixing encoded values darkens the middle of a blend between saturated colours. OCIO or ACE mode blends in linear."]]</script></details>
+
+</section>
+<section class="chapter" id="choose" data-title="Choosing a format per map" data-builds="sd-graphs#bitdepth sd-graphs#float" data-summary="Heights L16, masks L8, base colour C8 (C16 when linear), vectors 16F, HDR 16F/32F.">
+  <div class="head"><div class="num"></div><h2>Choosing a format per map</h2></div>
+
+  <div class="prose"><p>Put together, most graphs follow one table. Formats are set once at the first node of a chain, Absolute, and every node after it inherits them:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Map or node chain</th><th>In the graph</th><th>Export</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Height, displacement</td><td>L16</td><td>16-bit PNG or TIFF</td><td>Normals and parallax are computed from its slope; 8 bits terrace it.</td></tr>
+      <tr><td>Normal map</td><td>C16 while building, C8 at the output</td><td>8-bit PNG (16-bit for hero assets)</td><td>The engine compresses it to BC5 or ASTC anyway.</td></tr>
+      <tr><td>Masks, roughness, metallic, AO</td><td>L8</td><td>8-bit PNG or TGA</td><td>Smooth enough, a quarter of the memory of colour.</td></tr>
+      <tr><td>Base colour</td><td>C8 (Legacy), C16 (OCIO or ACE)</td><td>8-bit PNG, sRGB</td><td>Encoded colour spends its 256 codes where eyes see differences.</td></tr>
+      <tr><td>Vector maps for warps, distance fields</td><td>C16F or L16F</td><td>not exported</td><td>Needs negative values and values above 1.</td></tr>
+      <tr><td>HDR emissive, light maps</td><td>C16F or C32F</td><td>EXR (Linear)</td><td>Brightness above 1 must survive.</td></tr>
+    </tbody></table></div>
+
+  <div class="prose"><p>The graph format and the file format are separate decisions. A 16-bit graph exported to an 8-bit PNG loses the extra precision at export, and an 8-bit graph saved as 16-bit TIFF only gains file size. How the files are named and written is covered in <a class="x" href="../sd-publish/index.html#export">Parameters, Publishing and Export</a>.</p></div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="Graph: Relative to parent, 8 bit; height chains Absolute 16 bit; Unity: heights R16 linear, checked by an import script.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>Three places decide the numbers in this unit: the graph attributes in Designer, each node's base parameters, and the texture importer in Unity. The steps set up a graph that follows the table in the last chapter, and an import script that catches 8-bit height maps before they reach a material. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>Graph attributes and base parameters: size and format inheritance.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Unity texture importer: sRGB off and R16 for heights.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>HeightImportCheck.cs: reads the PNG header and warns about 8-bit heights.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, <em>File &gt; New &gt; Substance graph</em>. Pick a physically based template (metallic/roughness) so the usual outputs exist, and set the size to <em>Relative to parent</em>.</div></li><li><div>Click an empty spot of the graph to select the graph itself. In the Properties panel, under the graph's base parameters, check that <em>Output Size</em> is <code>Relative to parent</code> with offset (0, 0) and <em>Output Format</em> is <code>8 bits per channel</code>. Every node that inherits from the parent now follows the graph.</div></li><li><div>Set the <em>Parent Size</em> in the Graph view toolbar to <code>512</code> or <code>1024</code> while you build. Raise it only to check detail; export at full size from the export dialog instead (next units).</div></li><li><div>Find the first node of your height chain (the shape or noise generator). In its base parameters set <em>Output Format</em> to <code>Absolute</code> and <code>16 bits per channel</code>. Leave the nodes after it on <code>Relative to input</code> so they inherit the 16 bits. Do the same with <code>16 bits float</code> for vector maps that will drive warps.</div></li><li><div>Check what a node really produces: hover its output connector or select it and look at the 2D view, which show its size and format (for example <code>1024 × 1024 L16</code>). A colour format on a height chain (<em>C</em> instead of <em>L</em>) is a common slowdown; a <em>Grayscale Conversion</em> node fixes it.</div></li><li><div>Check the colour management mode in the project settings. Keep <em>Legacy</em> unless the studio works in OCIO or ACE; if it does, set colour nodes to 16 bits and assign <code>sRGB</code> to the base colour output and a raw or data colour space to every other output.</div></li><li><div>Export height as a 16-bit PNG and the other maps as 8-bit PNG (the export itself is covered in <a class="x" href="../sd-publish/index.html#export">Parameters, Publishing and Export</a>). Name the height file with an <code>_H</code> suffix.</div></li><li><div>In Unity, select the exported textures and set the import settings: base colour <em>sRGB</em> on; masks and roughness sRGB off; normal map Texture Type <em>Normal map</em>; height sRGB off, Format <code>R16</code>, no compression (<a class="x" href="../texture-settings/index.html#maptypes">the per-map table</a>).</div></li><li><div>Put <code>HeightImportCheck.cs</code> in an <code>Editor</code> folder. From then on every texture ending in <code>_H</code> is imported as linear R16, and an 8-bit PNG logs a warning that points at the file.</div></li></ol>
+<div class="files"><div class="file" data-name="HeightImportCheck.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+// Height maps (file names ending in _H) are data: linear, single channel, 16 bit, uncompressed.
+// Also reads the PNG header and warns when the file itself only has 8 bits per channel.
+public class HeightImportCheck : AssetPostprocessor
+{
+    void OnPreprocessTexture()
+    {
+        string name = Path.GetFileNameWithoutExtension(assetPath);
+        if (!name.EndsWith(&quot;_H&quot;)) return;
+
+        var importer = (TextureImporter)assetImporter;
+        importer.sRGBTexture = false;
+        importer.mipmapEnabled = true;
+
+        var def = importer.GetDefaultPlatformTextureSettings();
+        def.format = TextureImporterFormat.R16;
+        def.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.SetPlatformTextureSettings(def);
+
+        if (assetPath.ToLowerInvariant().EndsWith(&quot;.png&quot;))
+        {
+            int bits = PngBitDepth(assetPath);
+            if (bits &gt; 0 &amp;&amp; bits &lt; 16)
+                Debug.LogWarning($&quot;{assetPath} is a {bits}-bit PNG. Heights should be exported at 16 bits, &quot; +
+                                 &quot;or normals and parallax computed from them will show terraces.&quot;);
+        }
+    }
+
+    // PNG layout: 8-byte signature, then the IHDR chunk. Byte 24 is the bit depth per channel.
+    static int PngBitDepth(string path)
+    {
+        try
+        {
+            using (var f = File.OpenRead(path))
+            {
+                var head = new byte[26];
+                if (f.Read(head, 0, head.Length) &lt; head.Length) return -1;
+                if (head[0] != 0x89 || head[1] != (byte)&#x27;P&#x27; || head[2] != (byte)&#x27;N&#x27; || head[3] != (byte)&#x27;G&#x27;) return -1;
+                return head[24];
+            }
+        }
+        catch (IOException) { return -1; }
+    }
+}
+#endif</pre></div></div>
+<p class="note">Designer does not know which engine will read its files, so the import side is where a wrong flag is cheapest to catch. The <a class="x" href="../texture-settings/index.html#automation">texture-settings automation</a> applies the same idea to every map suffix.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP uses the same texture importer, so the steps and the script are identical.</div><div class="eng" data-engine="unreal">Import the 16-bit height PNG and set <em>Compression Settings</em> to <code>Grayscale</code> (which keeps a 16-bit source as G16) and <em>sRGB</em> off. Masks use <code>Masks (no sRGB)</code>, normals <code>Normalmap</code>, base colour the default with sRGB on.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/inheritance-in-substance-compositing-graphs" rel="noopener">Inheritance in Substance graphs</a></span><span class="by">Adobe</span><span class="why">The three inheritance methods and the formats 8, 16, 16F and 32F.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/output-size" rel="noopener">Output size</a></span><span class="by">Adobe</span><span class="why">How sizes are stored as powers of two and offsets.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/color-management/color-management" rel="noopener">Color management</a></span><span class="by">Adobe</span><span class="why">Legacy, OpenColorIO and ACE modes, working spaces and export colour spaces.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/best-practices/performance-optimization-guidelines" rel="noopener">Performance optimization guidelines</a></span><span class="by">Adobe</span><span class="why">Colour versus greyscale cost, bitmap sizes and the 16 × 16 minimum.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/class-TextureImporter.html" rel="noopener">Texture Import Settings</a></span><span class="by">Unity</span><span class="why">sRGB, format and compression options for the exported maps.</span></li></ul>
+</section>
+
+<div class="next" data-next="sd-blend sd-warps sd-publish"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"atomic": [
+"Atomic node",
+"One of Designer's built-in nodes (Blend, Levels, Warp, Pixel Processor…). Library nodes are graphs built from them.",
+"#graph"
+],
+"inherit": [
+"Inheritance",
+"How a node gets its size or format: Relative to parent, Relative to input, or Absolute.",
+"#size"
+],
+"bitdepth": [
+"Bit depth",
+"Bits per channel. n bits store 2ⁿ levels; 8 bit = 256, 16 bit = 65 536.",
+"#bitdepth"
+],
+"float": [
+"Float format (16F, 32F)",
+"Stores real numbers with sign and exponent: negatives and values above 1 survive.",
+"#float"
+],
+"legacy": [
+"Legacy colour mode",
+"Designer's default: no colour management, values pass through as stored.",
+"#srgb"
+],
+"ocio": [
+"OpenColorIO (OCIO)",
+"A colour management system; in this mode Designer works in linear RGB and converts on import and export.",
+"#srgb"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdgraphs.js"></script>
+</body>
+</html>

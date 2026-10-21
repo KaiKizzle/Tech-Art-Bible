@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Keeping Graphs Fast · Tech Art Atlas</title>
+<meta name="description" content="How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="sd-performance">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Keeping Graphs Fast</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Substance Designer · 8 chapters</div>
+  <h1>Keeping Graphs Fast</h1>
+  <p class="lede">How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.</p>
+  <p class="meta">Builds on Graphs, Bit Depth and Colour Space, Warps and Distortion and Pixel Processor and FX-Maps.</p>
+</header>
+<figure class="keyart"><canvas data-render="sd-performance" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the same tile at four output sizes, each a quarter of the work of the last.</figcaption></figure>
+<div class="needs" data-needs="sd-graphs#size sd-warps#cost"></div>
+
+<section class="chapter" id="measure" data-title="Measure first" data-builds="reading-a-frame#routine" data-summary="Turn on node timing, find the slowest nodes, use the GPU engine; engine plugins may render on the CPU.">
+  <div class="head"><div class="num"></div><h2>Measure first</h2></div>
+
+  <div class="prose">
+    <p>A slow graph is usually slow because of a handful of nodes, and guessing which ones wastes an afternoon. Designer can show how long each node took. Turn on the node timing display in the Graph view toolbar: every node shows its computation time, and the slowest ones stand out. Re-measure after each change, and measure at the size you care about, since times scale with the pixel count.</p>
+    <p>Check the engine too. Designer has a GPU engine and a CPU (SSE2) engine; Adobe calls the GPU engine much faster and recommends it unless an integrated graphics chip is not supported (switch with <kbd>F9</kbd> or the engine menu). The CPU engine also lacks some formats: no 16-bit colour and no 8-bit greyscale. Adobe's guidelines note that the game-engine plugins have used the CPU engine, so a graph that feels fast in Designer can be slow when an engine renders it at runtime (<a class="x" href="../sd-performance/index.html#runtime">rendering at runtime</a>).</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A graph takes 2 seconds to update. Which step comes first?", ["Lower every node to 8 bit", "Turn on node timing and find the few slowest nodes", "Delete the blurs", "Switch to the CPU engine"], 1, "Measure, then fix the nodes that cost the most. Blanket changes often cost quality where nothing was slow."]]</script></details>
+
+</section>
+<section class="chapter" id="resolution" data-title="Resolution is the biggest lever" data-builds="sd-graphs#size" data-summary="time = t₂ₖ · (size / 2048)²: build at 512–1k, export at full size from the Batch tab.">
+  <div class="head"><div class="num"></div><h2>Resolution is the biggest lever</h2></div>
+
+  <div class="prose">
+    <p>Almost every node does work per pixel, so the whole graph scales with the pixel count. Each step of the parent size multiplies the time by four:</p>
+  </div>
+  <div class="fx" data-fx="pixcost"></div>
+  <div class="prose">
+    <p>So build at 512 or 1024, check details at 2048 now and then, and render the final size only on export. Adobe advises against switching the parent size to very high values just to export, because the whole graph, its cache and the thumbnails are recomputed; the export dialog's <em>Batch</em> tab overrides the output size for the export alone.</p>
+    <p>Individual nodes can also be smaller than the graph. A <em>Uniform Color</em> (a flat value) needs no resolution: set it to Absolute 16 × 16 and let the next node work at the parent size. Masks and blurred inputs that are soft anyway can run one or two sizes below the parent (Relative to parent, −1 or −2) and be scaled up with a <em>Transformation 2D</em>. Do not go below 16 × 16, which is slower rather than faster.</p>
+  </div>
+
+</section>
+<section class="chapter" id="formats" data-title="Greyscale, 8 bit, and fewer conversions" data-builds="sd-graphs#bitdepth sd-graphs#graph" data-summary="Colour ≈ 4× greyscale. Stay L8, use L16 for heights only, convert to colour once near the end.">
+  <div class="head"><div class="num"></div><h2>Greyscale, 8 bit, and fewer conversions</h2></div>
+
+  <div class="prose">
+    <p>Adobe's numbers: colour operations take about four times as long as greyscale ones, and 16 bits costs memory and bandwidth where 8 bits would do (<a class="x" href="../sd-graphs/index.html#graph">memory per node</a>). Three rules follow:</p>
+    <ul>
+      <li><strong>Stay greyscale until the end.</strong> Build heights, masks and roughness in L8 or L16, and create colour once, near the outputs, with a <em>Gradient Map</em> or a few colour Blends.</li>
+      <li><strong>16 bits only where it matters</strong>: height chains and anything a normal is computed from (<a class="x" href="../sd-graphs/index.html#banding">banding</a>). Masks stay 8 bit.</li>
+      <li><strong>Avoid ping-pong conversions</strong> between greyscale and colour. A colour node fed into a greyscale chain converts every time; a stray colour format on a height chain (C instead of L) silently quadruples its cost.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="cache" data-title="Caching and where parameters belong" data-builds="sd-graphs#graph" data-summary="A tweak recomputes the node and everything after it: put frequently tweaked parameters near the outputs.">
+  <div class="head"><div class="num"></div><h2>Caching and where parameters belong</h2></div>
+
+  <div class="prose">
+    <p>Designer keeps every node's last result. When you change a parameter, only that node and the nodes after it are recomputed; everything before it comes from the cache. The same is true when an engine changes an exposed parameter at runtime. So where a parameter sits in the graph decides what a change costs:</p>
+  </div>
+  <div class="fx" data-fx="recompute"></div>
+  <div class="prose">
+    <p>Put the parameters users will tweak often (colour tint, roughness offset, wear amount) as late in the graph as possible, ideally on nodes just before the outputs. A colour change implemented as an HSL node before the output costs one cheap node; the same change made by tinting the noise at the start costs the whole graph. Parameters that change the structure (pattern counts, seeds, tile shapes) necessarily sit early; expose fewer of them, or accept that they are slow to tweak.</p>
+    <p>The cache costs memory. Adobe's guidelines mention a RAM limit for it, which can be raised in extreme cases; large graphs at 4k with many 16-bit colour nodes are where it runs out.</p>
+  </div>
+
+</section>
+<section class="chapter" id="heavy" data-title="The heavy nodes and their cheap versions" data-builds="sd-warps#cost sd-pixel-fx#which" data-summary="Blur downscaled copies (cost / 8 per halving), fewer warp samples and patterns, fast noise variants.">
+  <div class="head"><div class="num"></div><h2>The heavy nodes and their cheap versions</h2></div>
+
+  <div class="prose">
+    <p>Adobe names blurs and warps as the most processor-intensive nodes and FX-Maps as costly. Each has a cheaper way to the same look:</p>
+    <ul>
+      <li><strong>Wide blurs</strong>: blur a downscaled copy. A blur reads a number of pixels proportional to its radius for every output pixel; at half size there are a quarter of the pixels and half the radius in pixels. For mobile, Adobe recommends downscaling transformations over blur nodes outright.</li>
+      <li><strong>Warps and Slope Blur</strong>: fewer samples, fewer chained warps, and tuning at a low size (<a class="x" href="../sd-warps/index.html#cost">what warps cost</a>).</li>
+      <li><strong>FX-Maps and Tile Generator</strong>: fewer patterns. Adobe notes that Tile Generator gets slower with every pattern added; check the timing before and after.</li>
+      <li><strong>Noises</strong>: some noises draw more patterns at a higher scale. For white noise use <em>White Noise Fast</em>; <em>Fractal Sum Base</em> and <em>Anisotropic Noise</em> are listed as fast options.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="blurcost"></div>
+
+</section>
+<section class="chapter" id="structure" data-title="Graph structure" data-builds="sd-blend#screen" data-summary="Share masks, use Switch for optional branches, compute repeated results once, keep bitmaps Absolute.">
+  <div class="head"><div class="num"></div><h2>Graph structure</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Share nodes between outputs.</strong> The height, the AO and the roughness are often built from the same masks. Compute each mask once and connect it to every chain that needs it, instead of copying the nodes.</li>
+      <li><strong>Switch optional features off for real.</strong> A Blend in Copy mode at opacity 0 still computes both inputs. A Blend in <em>Switch</em> mode skips the foreground at opacity 0 (and the background at opacity 1), so a moss layer that is off costs nothing.</li>
+      <li><strong>Mind instances.</strong> Each instance of a sub-graph is computed on its own, even with the same parameters. If two places need the same result, compute it once and connect it twice.</li>
+      <li><strong>Bitmaps.</strong> A Bitmap node set to Relative to parent is published at 256 × 256 in an SBSAR; keep it Absolute and resize after it. Adobe also suggests storing bitmap resources as JPEG to keep published files small.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="switchcost"></div>
+
+</section>
+<section class="chapter" id="runtime" data-title="Rendering at runtime" data-builds="sd-performance#resolution sd-publish#sbsar" data-summary="load time = materials · t₂ₖ · (size/2048)²: bake static materials, render only what must change.">
+  <div class="head"><div class="num"></div><h2>Rendering at runtime</h2></div>
+
+  <div class="prose">
+    <p>An SBSAR in an engine is not a set of textures: it is the graph, and the engine plugin renders it to produce the textures, at import, when a parameter changes, or when a level loads. Everything above applies, multiplied by how many materials are rendered at once:</p>
+  </div>
+  <div class="fx" data-fx="runtime"></div>
+  <div class="prose">
+    <p>For most game assets the answer is to bake: export textures, or let the plugin generate them once in the editor and ship those. Keep runtime rendering for materials that must change while the game runs (customisation, damage, seasons), render them at the smallest size that works, set the output size per platform, and spread renders over several frames or a loading screen. The implementation chapter has a queue that does that.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A level uses 60 SBSAR materials that never change during play. What is the cheapest setup?", ["Render all 60 when the level loads", "Bake them to textures in the editor and ship the textures", "Render them at 8k", "Render one per frame during gameplay"], 1, "Static materials gain nothing from runtime rendering; baked textures load faster and compress."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Designer and Unity HDRP" data-summary="graph_report.py lists heavy nodes in Designer; SubstanceRenderQueue.cs spreads runtime renders in Unity.">
+  <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
+  <div class="prose"><p>Two tools. In Designer, a Python script that lists every node of the open graph with its type, flags the heavy kinds, and prints the base parameters it can read, so a review starts from a list instead of a hunt. In Unity, a small queue that renders runtime Substance graphs one at a time, so twenty material changes do not land in the same frame. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>Node timing, the GPU engine, a lower parent size.</span></div><div class="rt" data-k="py"><b>Python script</b><span>graph_report.py: lists heavy nodes in the open graph.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>SubstanceRenderQueue.cs: spreads runtime renders over frames.</span></div></div>
+<ol class="impl-steps"><li><div>In Designer, turn on node timing in the Graph view toolbar and make sure the GPU engine is active (<kbd>F9</kbd> toggles it). Set the parent size to the size you ship.</div></li><li><div>Open <em>Windows &gt; Python Editor</em>, paste <code>graph_report.py</code>, open the graph you want to check and run the script. It prints each node's definition, marks blurs, warps, FX-Maps and Pixel Processors, and lists the output size and format values it can read.</div></li><li><div>Work from the list and the timings together: the slowest nodes first. For each, try the cheap version from the unit (downscaled blur, fewer samples, Switch instead of Copy) and check the timing again.</div></li><li><div>Move frequently tweaked exposed parameters to the end of the graph: replace an early colour tint with an <em>HSL</em> or <em>Levels</em> node right before the base colour output, driven by the same exposed input.</div></li><li><div>In Unity, import the SBSAR with the Substance 3D for Unity plugin and decide per material: bake (leave runtime changes off and ship the generated textures) or runtime. Only runtime materials need the queue.</div></li><li><div>Add <code>SubstanceRenderQueue.cs</code> to a GameObject in your bootstrap scene. Instead of calling <code>RenderAsync()</code> directly after setting inputs, call <code>SubstanceRenderQueue.Request(graph)</code>. The queue renders at most one graph every few frames and drops duplicate requests.</div></li><li><div>Profile on the target device with the Unity Profiler: the render calls show up on the frames where the queue submits them. Lower the plugin's output size for runtime materials until the cost fits the frame budget (<a class="x" href="../reading-a-frame/index.html#budget">frame budgets</a>).</div></li></ol>
+<div class="files"><div class="file" data-name="graph_report.py" data-lang="py"><pre># Run in Substance 3D Designer: Windows &gt; Python Editor, with the graph to check open.
+# Lists every node of the current graph, marks heavy node types, and prints the base
+# parameters it can read (output size, output format). Uses only basic API calls and
+# skips anything it cannot read, since property names can change between versions.
+import sd
+from sd.api.sdproperty import SDPropertyCategory
+
+HEAVY = (&#x27;blur&#x27;, &#x27;warp&#x27;, &#x27;fxmap&#x27;, &#x27;pixelprocessor&#x27;, &#x27;tile_generator&#x27;, &#x27;tile_sampler&#x27;, &#x27;splatter&#x27;)
+
+def node_kind(node):
+    kind = node.getDefinition().getId()
+    try:                                    # instances of library graphs: show which graph
+        res = node.getReferencedResource()
+        if res is not None:
+            kind = res.getIdentifier()
+    except Exception:
+        pass
+    return kind
+
+def base_values(node):
+    out = {}
+    for prop in node.getProperties(SDPropertyCategory.Input):
+        pid = prop.getId()
+        if pid in (&#x27;$outputsize&#x27;, &#x27;$format&#x27;):
+            try:
+                out[pid] = node.getPropertyValue(prop).get()
+            except Exception:
+                out[pid] = &#x27;?&#x27;
+    return out
+
+graph = sd.getContext().getSDApplication().getQtForPythonUIMgr().getCurrentGraph()
+if graph is None:
+    print(&#x27;Open a Substance graph first.&#x27;)
+else:
+    rows = []
+    for node in graph.getNodes():
+        kind = node_kind(node)
+        heavy = any(h in kind.lower() for h in HEAVY)
+        rows.append((not heavy, kind, base_values(node)))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    heavy_count = sum(1 for r in rows if not r[0])
+    print(&#x27;%d nodes, %d of a heavy kind&#x27; % (len(rows), heavy_count))
+    for light, kind, vals in rows:
+        flag = &#x27;   &#x27; if light else &#x27;!! &#x27;
+        print(flag + kind + (&#x27;  &#x27; + str(vals) if vals else &#x27;&#x27;))</pre></div><div class="file" data-name="SubstanceRenderQueue.cs" data-lang="cs"><pre>using System.Collections.Generic;
+using Adobe.Substance.Runtime;
+using UnityEngine;
+
+// Renders runtime Substance graphs one at a time instead of all in the same frame.
+// Usage: set inputs on a SubstanceRuntimeGraph, then call SubstanceRenderQueue.Request(graph).
+public class SubstanceRenderQueue : MonoBehaviour
+{
+    [Tooltip(&quot;Frames to wait between two renders.&quot;)]
+    public int framesBetweenRenders = 3;
+
+    static SubstanceRenderQueue instance;
+    readonly Queue&lt;SubstanceRuntimeGraph&gt; queue = new Queue&lt;SubstanceRuntimeGraph&gt;();
+    readonly HashSet&lt;SubstanceRuntimeGraph&gt; pending = new HashSet&lt;SubstanceRuntimeGraph&gt;();
+    int wait;
+
+    void Awake()
+    {
+        if (instance != null &amp;&amp; instance != this) { Destroy(gameObject); return; }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    public static void Request(SubstanceRuntimeGraph graph)
+    {
+        if (instance == null || graph == null) { if (graph != null) graph.RenderAsync(); return; }
+        if (instance.pending.Add(graph)) instance.queue.Enqueue(graph);   // ignore duplicate requests
+    }
+
+    void Update()
+    {
+        if (wait &gt; 0) { wait--; return; }
+        if (queue.Count == 0) return;
+        var graph = queue.Dequeue();
+        pending.Remove(graph);
+        if (graph != null) graph.RenderAsync();
+        wait = framesBetweenRenders;
+    }
+}</pre></div></div>
+<p class="note">The Python API is documented in Designer's scripting reference; calls such as <code>getReferencedResource</code> are wrapped in <code>try</code> so the script still runs where a call differs. The C# file uses <code>SubstanceRuntimeGraph</code> and <code>RenderAsync()</code> from Adobe's Unity scripting page; check the plugin version you install.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">The plugin supports URP as well; the queue and the advice are the same.</div><div class="eng" data-engine="unreal">In Unreal, the Substance plugin exposes graph instances to Blueprint: set inputs, then render asynchronously. Batch the renders the same way, for example from a manager actor that renders one instance per tick, and prefer baked textures for static materials.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/best-practices/performance-optimization-guidelines" rel="noopener">Performance optimization guidelines</a></span><span class="by">Adobe</span><span class="why">Engines, caching, output sizes, formats, blur, warp and FX-Map costs, mobile advice.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/best-practices/filesize-reduction-guidelines" rel="noopener">Filesize reduction guidelines</a></span><span class="by">Adobe</span><span class="why">Keeping published SBSAR files small.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d/ecosystem/game-engines/unity/optimization-guidelines" rel="noopener">Substance optimization guidelines for Unity</a></span><span class="by">Adobe</span><span class="why">What the Unity plugin renders and when.</span></li><li><span><span class="kind">Docs</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/output-size" rel="noopener">Output size</a></span><span class="by">Adobe</span><span class="why">Sizes relative to the parent and absolute sizes.</span></li></ul>
+</section>
+
+<div class="next" data-next="sd-publish reading-a-frame"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"gpueng": [
+"GPU engine",
+"Designer's GPU-based renderer; much faster than the CPU (SSE2) engine.",
+"#measure"
+],
+"cache": [
+"Node cache",
+"Stored results of every node; a tweak recomputes only the nodes after it.",
+"#cache"
+],
+"batch": [
+"Batch export",
+"Export dialog tab that overrides the output size without changing the graph.",
+"#resolution"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="sdperf.js"></script>
+</body>
+</html>

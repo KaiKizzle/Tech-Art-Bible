@@ -11,7 +11,7 @@ regenerates the link index after you add or change chapters; the site runs witho
 
 ## Units
 
-Every unit ends with a **Build it in Unity HDRP** chapter: the tools it needs, numbered steps, and complete `.hlsl`, `.cs` and `.compute` files to copy, plus URP and Unreal notes.
+Every unit ends with an implementation chapter (**Build it in Unity HDRP**, or **Set it up in Designer and Unity HDRP** / **Set it up in Unity** for the Substance Designer and Unity project units): the tools it needs, numbered steps, and complete `.hlsl`, `.cs`, `.compute`, Python and shell files to copy, plus URP and Unreal notes.
 
 | Category | Unit | Folder |
 |---|---|---|
@@ -46,6 +46,16 @@ Every unit ends with a **Build it in Unity HDRP** chapter: the tools it needs, n
 | Characters | Cloth Shading (sheen, cloth visibility, silk anisotropy, fuzz, weave) | `units/cloth/` |
 | Characters | Fabric and Folds in Real Time (normal blending, wrinkle maps, Verlet cloth lab) | `units/fabric-folds/` |
 | Performance & tools | Reading a Frame (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
+| Substance Designer | Graphs, Bit Depth and Colour Space (inheritance, 8/16 bit, float, sRGB vs linear) | `units/sd-graphs/` |
+| Substance Designer | Blend Modes (every mode as a formula, masks, height blend) | `units/sd-blend/` |
+| Substance Designer | Warps and Distortion (directional, gradient, vector warp, slope blur) | `units/sd-warps/` |
+| Substance Designer | Pixel Processor and FX-Maps (function graphs, quadtrees, scattering) | `units/sd-pixel-fx/` |
+| Substance Designer | Keeping Graphs Fast (resolution, formats, cache, heavy nodes, runtime) | `units/sd-performance/` |
+| Substance Designer | Parameters, Publishing and Export (exposing, outputs, export, SBSAR) | `units/sd-publish/` |
+| Unity projects & assets | GUIDs and .meta Files (references, breakage, version control) | `units/unity-guids/` |
+| Unity projects & assets | FBX, Prefabs, Variants and Nested Prefabs (overrides, reimports) | `units/unity-prefabs/` |
+| Unity projects & assets | Scene Management (single and additive, async, memory, bootstrap) | `units/unity-scenes/` |
+| Unity projects & assets | Addressables (groups, refcounts, duplicates, catalogs, breakage) | `units/unity-addressables/` |
 
 Rooms Behind Glass was written against Unity HDRP; its maths carries over to other engines, and the catalogue
 says so on its card. Every other unit has notes for all three engines.

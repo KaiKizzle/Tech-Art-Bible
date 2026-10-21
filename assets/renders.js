@@ -873,6 +873,140 @@ vec3 emit(float id, vec3 p, vec3 n){ if (id < .5 || n.y < .5) return vec3(0.0);
   return v * tint * .5; }
 vec3 render(vec2 frag){ return scene(vec3(-.15, 2.5, 2.9), vec3(-.15, .0, .1), 2.25, frag); }`
   });
+  Object.assign(SCENES, {
+    /* A smooth ramp next to the same ramp stored at a few bits: terraces. */
+    'sd-graphs': '#define KEYDIR vec3(-.55, .75, .5)\n' + SDF + `
+float wedge(vec3 p){ vec3 q = p - vec3(-1.05, 0.0, 0.0); float b = sdBox(q - vec3(0.0, .3, 0.0), vec3(.75, .3, .55)); return max(b, dot(q - vec3(-.75, 0.0, 0.0), normalize(vec3(-.6, 1.5, 0.0)))) ; }
+float stairs(vec3 p){ vec3 q = p - vec3(1.05, 0.0, 0.0); float d = 1e9;
+  for (int i = 0; i < 8; i++){ float fi = float(i); float x0 = -.75 + fi * .1875; float h = .075 * (fi + 1.0); d = min(d, sdBox(q - vec3(x0 + .09375, h * .5, 0.0), vec3(.09375, h * .5, .55))); }
+  return d; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); r = U(r, wedge(p) * .8, 1.0); r = U(r, stairs(p), 2.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) return vec3(.32, .33, .35); return n.y > .5 ? ORANGE * .75 : vec3(.3, .31, .33); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.4, 1.9, 3.9), vec3(0.0, .25, 0.0), 2.3, frag); }`,
+
+    /* Stones merged with Max, half sunk into rippled sand. */
+    'sd-blend': '#define KEYDIR vec3(-.6, .7, .4)\n' + SDF + `
+float sand(vec3 p){ return p.y - (.04 + .025 * sin(p.x * 9.0 + 2.0 * fbm(vec3(p.xz * 1.3, 2.0))) + .03 * fbm(vec3(p.xz * 4.0, 5.0))); }
+float stone(vec3 p, vec3 c, vec3 r){ vec3 q = (p - c) / r; return (length(q) - 1.0) * min(r.x, min(r.y, r.z)); }
+float stones(vec3 p){ float d = 1e9;
+  d = min(d, stone(p, vec3(-.9, .05, .1), vec3(.55, .3, .45)));
+  d = min(d, stone(p, vec3(-.25, .02, -.35), vec3(.42, .26, .38)));
+  d = min(d, stone(p, vec3(.45, .04, .2), vec3(.5, .32, .42)));
+  d = min(d, stone(p, vec3(1.15, .0, -.25), vec3(.38, .24, .36)));
+  d = min(d, stone(p, vec3(.1, -.02, .7), vec3(.34, .2, .3)));
+  return d; }
+vec2 map(vec3 p){ vec2 r = vec2(sand(p) * .6, 0.0); r = U(r, stones(p), 2.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return vec3(.16, .11, .06) * (.8 + .3 * fbm(vec3(p.xz * 6.0, 1.0)));
+  return mix(vec3(.07, .07, .075), vec3(.2, .19, .18), fbm(p * 5.0)); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.2, 2.1, 3.3), vec3(0.0, .05, 0.0), 2.2, frag); }`,
+
+    /* Ridges bent by a directional warp, on a tile. */
+    'sd-warps': '#define KEYDIR vec3(-.7, .55, .45)\n' + SDF + `
+float ridgeH(vec2 xz){ float w = 1.4 * fbm(vec3(xz * .9, 3.0)); float s = sin((xz.x + w) * 11.0); return .09 * smoothstep(.2, .95, s); }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  float b = sdBox(p - vec3(0.0, .08, 0.0), vec3(1.5, .08, 1.0));
+  float top = p.y - .16 - ridgeH(p.xz);
+  r = U(r, max(sdBox(p - vec3(0.0, .15, 0.0), vec3(1.5, .15, 1.0)), top * .5), 1.0);
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; float h = ridgeH(p.xz) / .09; return mix(vec3(.12, .12, .13), ORANGE * .8, smoothstep(.3, .9, h)); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.3, 2.4, 2.9), vec3(0.0, .1, 0.0), 2.2, frag); }`,
+
+    /* Pebbles scattered by a seeded loop: one per cell, jittered, random size. */
+    'sd-pixel-fx': '#define KEYDIR vec3(-.5, .8, .35)\n' + SDF + `
+const float CELL = .34;
+vec3 peb(vec2 c){ float r = .07 + .08 * hash12(c * 1.7 + 3.1); vec2 j = (vec2(hash12(c), hash12(c + 7.3)) - .5) * (CELL - 2.0 * r) ; return vec3(j, r); }
+float pebbles(vec3 p){ vec2 c0 = floor(p.xz / CELL); float d = 1e9;
+  for (int i = -1; i <= 1; i++) for (int k = -1; k <= 1; k++){ vec2 c = c0 + vec2(float(i), float(k)); if (length(c * CELL + CELL * .5) > 1.9) continue; vec3 q = peb(c);
+    vec3 ctr = vec3(c.x * CELL + CELL * .5 + q.x, q.z * .35, c.y * CELL + CELL * .5 + q.y); vec3 e = (p - ctr) / vec3(q.z, q.z * .6, q.z); d = min(d, (length(e) - 1.0) * q.z * .6); }
+  return d; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); float b = sdBox(p - vec3(0.0, .1, 0.0), vec3(2.0, .12, 2.0)); r = U(r, b > .05 ? b : pebbles(p), 1.0); return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; vec2 c = floor(p.xz / CELL); float t = hash12(c + 11.0);
+  return t > .9 ? ORANGE * .7 : mix(vec3(.06, .06, .065), vec3(.22, .21, .2), t); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.0, 2.6, 2.7), vec3(0.0, .0, .1), 2.2, frag); }`,
+
+    /* The same tile at four output sizes: 64, 32, 16 and 8 texels across. */
+    'sd-performance': '#define KEYDIR vec3(-.4, .85, .45)\n' + SDF + `
+const float HS = .52;
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  for (int i = 0; i < 4; i++){ float fi = float(i); r = U(r, sdBox(p - vec3(-1.86 + fi * 1.24, .05, 0.0), vec3(HS, .05, HS)) - .01, 1.0 + fi); }
+  return r; }
+float pat(vec2 uv){ return smoothstep(.45, .6, fbm(vec3(uv * 3.0, 2.0))) * .8 + .2 * step(.5, fract(uv.x * 4.0)) * step(.5, fract(uv.y * 4.0)); }
+vec3 albedo(float id, vec3 p, vec3 n){ return id < .5 ? FLOOR : vec3(.03); }
+vec3 emit(float id, vec3 p, vec3 n){ if (id < .5 || n.y < .5) return vec3(0.0); float fk = floor(id - .5);
+  vec2 uv = (p.xz - vec2(-1.86 + fk * 1.24, 0.0)) / (2.0 * HS) + .5; float res = 64.0 / pow(2.0, fk); uv = (floor(uv * res) + .5) / res;
+  float v = pat(uv); return mix(vec3(.05, .05, .06), fk < .5 ? ORANGE * .9 : vec3(.75), v) * .6; }
+vec3 render(vec2 frag){ return scene(vec3(0.0, 3.1, 2.5), vec3(0.0, .0, .05), 1.75, frag); }`,
+
+    /* One material at three settings of its Wear input. */
+    'sd-publish': '#define KEYDIR vec3(-.55, .7, .5)\n' + SDF + `
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0); for (int i = 0; i < 3; i++){ float fi = float(i); r = U(r, sdSphere(p - vec3(-1.25 + fi * 1.25, .5, 0.0), .5), 1.0 + fi); } return r; }
+float wearMask(vec3 p, float w){ float n = fbm(p * 3.5) + .25 * fbm(p * 14.0); return smoothstep(.78 - .45 * w, .8 - .45 * w, n); }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; float w = (id - 1.0) * .5; vec3 c = vec3(-1.25 + (id - 1.0) * 1.25, .5, 0.0);
+  float m = wearMask(p - c, w); vec3 paint = vec3(.05, .16, .32); vec3 rust = mix(vec3(.25, .08, .02), vec3(.5, .2, .05), fbm(p * 20.0)); return mix(paint, rust, m); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(0.0, 1.3, 4.6), vec3(0.0, .45, 0.0), 2.6, frag); }`,
+
+    /* A chain of references, one link broken open. */
+    'unity-guids': '#define KEYDIR vec3(-.5, .8, .4)\n' + SDF + `
+float sdLink(vec3 p, float le, float r1, float r2){ vec3 q = vec3(p.x, max(abs(p.y) - le, 0.0), p.z); return length(vec2(length(q.xy) - r1, q.z)) - r2; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox(p - vec3(-1.75, .25, 0.0), vec3(.25)) - .02, 1.0);
+  r = U(r, sdBox(p - vec3(1.75, .25, 0.0), vec3(.25)) - .02, 1.0);
+  for (int i = 0; i < 5; i++){ float fi = float(i); vec3 l = p - vec3(-1.2 + fi * .6, .25, 0.0); vec3 q = mod(fi, 2.0) > .5 ? vec3(l.z, l.x, l.y) : vec3(l.y, l.x, l.z);
+    float d = sdLink(q, .12, .18, .045); if (i == 3) d = max(d, -sdBox(p - vec3(-1.2 + fi * .6 + .25, .25, 0.0), vec3(.06, .3, .3)));
+    r = U(r, d, i == 3 ? 3.0 : 2.0); }
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) return vec3(.3, .31, .33); if (id < 2.5) return vec3(.55, .56, .58); return ORANGE * .8; }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.3, 1.4, 3.4), vec3(0.0, .25, 0.0), 2.3, frag); }`,
+
+    /* One house prefab nested three times; one instance is the red variant. */
+    'unity-prefabs': '#define KEYDIR vec3(-.6, .75, .45)\n' + SDF + `
+float sdTriPrism(vec3 p, vec2 h){ vec3 q = abs(p); return max(q.z - h.y, max(q.x * .866025 + p.y * .5, -p.y) - h.x * .5); }
+float house(vec3 p){ float d = sdBox(p - vec3(0.0, .3, 0.0), vec3(.36, .3, .3));
+  d = min(d, sdTriPrism(p - vec3(0.0, .72, 0.0), vec2(.5, .34)) - .01);
+  d = max(d, -sdBox(p - vec3(-.14, .24, .3), vec3(.07, .07, .04))); d = max(d, -sdBox(p - vec3(.14, .24, .3), vec3(.07, .07, .04)));
+  return d; }
+float roof(vec3 p){ return sdTriPrism(p - vec3(0.0, .72, 0.0), vec2(.5, .34)) - .01; }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  for (int i = 0; i < 3; i++){ float fi = float(i); vec3 q = p - vec3(-1.15 + fi * 1.15, 0.0, -.2 + .25 * mod(fi, 2.0)); r = U(r, house(q), i == 1 ? 2.0 : 1.0); }
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; float isRoof = step(.6, p.y) ; vec3 wall = vec3(.3, .29, .28);
+  vec3 rf = id > 1.5 ? RED * .8 : vec3(.22, .23, .25); return mix(wall, rf, isRoof); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.6, 1.6, 3.6), vec3(0.0, .4, 0.0), 2.4, frag); }`,
+
+    /* Scene layers loaded on top of each other. */
+    'unity-scenes': '#define KEYDIR vec3(-.45, .85, .4)\n' + SDF + `
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox(p - vec3(0.0, .05, 0.0), vec3(1.4, .04, .9)) - .01, 1.0);
+  r = U(r, sdBox(p - vec3(.15, .55, -.1), vec3(1.2, .03, .75)) - .01, 2.0);
+  r = U(r, sdBox(p - vec3(.3, 1.05, -.2), vec3(1.0, .03, .6)) - .01, 3.0);
+  r = U(r, sdBox(p - vec3(-.6, .2, .2), vec3(.12)), 1.0); r = U(r, sdSphere(p - vec3(.7, .22, -.2), .14), 1.0);
+  r = U(r, sdBox(p - vec3(-.3, .68, -.3), vec3(.1, .1, .1)), 2.0); r = U(r, sdSphere(p - vec3(.6, .7, .1), .12), 2.0);
+  r = U(r, sdCapsule(p - vec3(.1, 1.08, -.2), vec3(-.3, .0, 0.0), vec3(.3, .0, 0.0), .06), 3.0);
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) return vec3(.3, .31, .33); if (id < 2.5) return vec3(.45, .46, .48); return ORANGE * .8; }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(1.0, 2.2, 3.6), vec3(.1, .5, -.1), 2.3, frag); }`,
+
+    /* Content packed in bundles; one opened on demand. */
+    'unity-addressables': '#define KEYDIR vec3(-.5, .8, .45)\n' + SDF + `
+float crate(vec3 p){ return min(sdBox(p, vec3(.26)) , sdBoxFrame(p, vec3(.28), .035)); }
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  for (int i = 0; i < 3; i++) for (int k = 0; k < 2; k++){ float fi = float(i), fk = float(k); vec3 c = vec3(-.85 + fi * .85, .28, -.35 + fk * .75);
+    if (i == 1 && k == 1){ float d = max(sdBox(p - c, vec3(.28)), -sdBox(p - c - vec3(0.0, .1, 0.0), vec3(.24, .3, .24))); r = U(r, d, 1.0);
+      r = U(r, sdBox(p - c - vec3(0.0, .3, 0.0), vec3(.12)), 3.0); r = U(r, sdBox((p - c - vec3(0.0, .42, -.36)) * rX(-1.0), vec3(.28, .02, .28)), 1.0); }
+    else r = U(r, crate(p - c), 1.0 + step(.5, fract((fi + fk * 3.0) * .37)) ); }
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) return vec3(.33, .3, .27); if (id < 2.5) return vec3(.42, .4, .37); return ORANGE * .8; }
+vec3 emit(float id, vec3 p, vec3 n){ return id > 2.5 ? ORANGE * .35 : vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.5, 2.0, 3.0), vec3(0.0, .25, .1), 2.3, frag); }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Addressables · Tech Art Atlas</title>
+<meta name="description" content="How Unity&#x27;s Addressables load content on demand: why direct references load everything, addresses, labels and groups, loading and releasing with reference counts, duplicated dependencies, catalogs and content builds, why builds break, and addressable scenes.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="../../assets/fonts.css">
+<link rel="stylesheet" href="../../assets/atlas.css">
+</head>
+<body data-unit="unity-addressables">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Addressables</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Unity projects & assets · 9 chapters</div>
+  <h1>Addressables</h1>
+  <p class="lede">How Unity's Addressables load content on demand: why direct references load everything, addresses, labels and groups, loading and releasing with reference counts, duplicated dependencies, catalogs and content builds, why builds break, and addressable scenes.</p>
+  <p class="meta">Builds on GUIDs and .meta Files and Scene Management. Engine notes cover Unity HDRP and URP, with Unreal comparisons.</p>
+</header>
+<figure class="keyart"><canvas data-render="unity-addressables" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: content packed into bundles, one opened on demand.</figcaption></figure>
+<div class="needs" data-needs="unity-guids#refs unity-scenes#memory"></div>
+
+<section class="chapter" id="why" data-title="Why direct references are not enough" data-builds="unity-scenes#memory" data-summary="Direct references load everything with the scene; Resources loads an index of everything; Addressables load by address with refcounts.">
+  <div class="head"><div class="num"></div><h2>Why direct references are not enough</h2></div>
+
+  <div class="prose">
+    <p>When a scene or prefab references an asset directly (a prefab in a list, a material in a field), Unity treats it as a hard dependency: loading the scene loads every asset it references, and everything those reference, before the first frame. That is simple and fast for what a level always needs. It breaks down for content that is only sometimes needed: a shop with 200 items, character skins, seasonal events, localised voice lines.</p>
+  </div>
+  <div class="fx" data-fx="directref"></div>
+  <div class="prose">
+    <p>The old escape hatches have their own problems. The <code>Resources</code> folder puts everything inside it into the build, whether used or not, and builds an index of all of it at startup. Raw AssetBundles load on demand but leave dependency tracking, loading and unloading to you.</p>
+    <p><button type="button" class="term" data-term="addressables">Addressables</button> (the <code>com.unity.addressables</code> package) wraps AssetBundles with three things: an <strong>address</strong> per asset, a <strong>catalog</strong> that maps addresses to bundles and their dependencies, and <strong>reference-counted</strong> loading. Code asks for an address; the system finds the bundle, loads its dependencies, and frees it all when the last user lets go, whether the bundle sits in the build or on a server.</p>
+  </div>
+
+</section>
+<section class="chapter" id="groups" data-title="Addresses, labels and groups" data-builds="unity-addressables#why" data-summary="Address per asset, labels across groups; groups set build/load paths and Bundle Mode: together, separately, by label.">
+  <div class="head"><div class="num"></div><h2>Addresses, labels and groups</h2></div>
+
+  <div class="prose">
+    <p>Tick <em>Addressable</em> at the top of an asset's Inspector and it gets an address (by default its path, which you can shorten) and lands in a <strong>group</strong>, shown in <em>Window &gt; Asset Management &gt; Addressables &gt; Groups</em>. <strong>Labels</strong> are tags across groups ("Weapons", "Winter") for loading many assets at once.</p>
+    <p>A group decides how its assets are built: where the bundles go (local, in the build, or remote, on a server) and its <em>Bundle Mode</em>. <em>Pack Together</em> makes one bundle per group, <em>Pack Separately</em> one per asset, <em>Pack Together By Label</em> one per label. The choice trades the number of files against how much changes when content changes:</p>
+  </div>
+  <div class="fx" data-fx="packmode"></div>
+  <div class="prose"><p>Group by what is loaded and unloaded together, not by asset type. "Forest level", "UI icons" and "Skin: Knight" are good groups; "All textures" is not, because loading one texture keeps that whole bundle around (<a class="x" href="../unity-addressables/index.html#release">releasing</a>).</p></div>
+
+</section>
+<section class="chapter" id="loading" data-title="Loading by address or by reference" data-builds="unity-addressables#groups unity-guids#tools" data-summary="LoadAssetAsync returns a handle; AssetReference fields store GUIDs and survive renames; strings and labels fail only at runtime.">
+  <div class="head"><div class="num"></div><h2>Loading by address or by reference</h2></div>
+
+  <div class="prose">
+    <p>Every load returns an <code>AsyncOperationHandle</code> immediately and completes later, so loading never blocks a frame. The safest key is an <button type="button" class="term" data-term="assetref">AssetReference</button> field: you drag the asset onto it in the Inspector, it stores the asset's GUID (<a class="x" href="../unity-guids/index.html#tools">GUIDs in tools</a>), and it survives renames and moves:</p>
+  </div>
+  <pre class="code" data-lang="cs">using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
+public class ShopItemView : MonoBehaviour
+{
+    public AssetReferenceGameObject itemPrefab;   // drag a prefab here; stores its GUID
+    GameObject instance;
+
+    async void OnEnable()
+    {
+        AsyncOperationHandle&lt;GameObject&gt; handle = itemPrefab.LoadAssetAsync();   // +1 on the prefab and its bundle
+        GameObject prefab = await handle.Task;
+        if (this == null || !enabled) return;     // disabled while loading
+        instance = Instantiate(prefab, transform);
+    }
+
+    void OnDisable()
+    {
+        if (instance) Destroy(instance);
+        if (itemPrefab.IsValid()) itemPrefab.ReleaseAsset();   // -1: every load needs one release
+    }
+}</pre>
+  <div class="prose"><p>String addresses and labels work too, and are useful for data-driven content (an item table that lists addresses). They are also the most common source of <code>InvalidKeyException</code>, because nothing checks a string until it runs:</p></div>
+  <pre class="code" data-lang="cs">// By address (a string key) or by label (all assets tagged &quot;Weapons&quot;):
+var one = Addressables.LoadAssetAsync&lt;Material&gt;(&quot;Materials/Rust&quot;);
+var all = Addressables.LoadAssetsAsync&lt;GameObject&gt;(&quot;Weapons&quot;, w =&gt; Debug.Log(w.name));
+// ...later, once each:
+Addressables.Release(one);
+Addressables.Release(all);</pre>
+  <div class="prose"><p><code>Addressables.InstantiateAsync</code> combines load and instantiate; destroy those instances with <code>Addressables.ReleaseInstance</code> so their count goes down.</p></div>
+
+</section>
+<section class="chapter" id="release" data-title="Releasing and reference counts" data-builds="unity-addressables#loading" data-summary="Each load +1, each Release −1; a bundle unloads at 0 and takes all its loaded assets with it; no partial unload.">
+  <div class="head"><div class="num"></div><h2>Releasing and reference counts</h2></div>
+
+  <div class="prose">
+    <p>Addressables counts. Every load of an asset adds one to its count and to its bundle's count; every <code>Release</code> subtracts one. When a bundle's count reaches zero, Unity unloads the bundle and everything loaded from it. One rule follows: <strong>one release per load</strong>, no more (the handle becomes invalid and the counts go wrong), no less (the memory never comes back).</p>
+    <p>The catch is that a bundle cannot be unloaded in part. A released asset stays in memory as long as anything else from its bundle is still held:</p>
+  </div>
+  <div class="fx" data-fx="refcount"></div>
+  <div class="prose">
+    <p>Unity's documentation describes the opposite effect too, <em>churn</em>: releasing the last asset of a bundle unloads it, and if something asks for an asset from it a moment later, the whole bundle loads again. Both point the same way: put assets that live and die together in the same bundle, and keep unrelated assets apart. <code>Resources.UnloadUnusedAssets</code> frees released assets from partly used bundles, but it is slow, so call it on a loading screen. The <em>Addressables Profiler</em> module in the Unity Profiler shows the counts live.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["You load an icon from the UI bundle and release it, but the memory does not go down. Most likely:", ["Addressables leaks memory", "Another asset from the same bundle is still held, so the bundle and the icon stay loaded", "Release does nothing on icons", "The icon is in the Resources folder"], 1, "Assets leave memory with their bundle. One held asset keeps the bundle, and everything loaded from it, alive."]]</script></details>
+
+</section>
+<section class="chapter" id="deps" data-title="Dependencies and duplicates" data-builds="unity-addressables#release" data-summary="Non-addressable dependencies are copied into every bundle that uses them; fix with shared groups; find them with Analyze.">
+  <div class="head"><div class="num"></div><h2>Dependencies and duplicates</h2></div>
+
+  <div class="prose">
+    <p>An addressable prefab depends on its meshes, materials, textures and shaders. If a dependency is addressable itself, Addressables loads its bundle first. If it is <em>not</em>, the build copies it into every bundle that needs it. Two groups using the same non-addressable texture atlas get two copies, on disk and, when both are loaded, in memory:</p>
+  </div>
+  <div class="fx" data-fx="dupes"></div>
+  <div class="prose">
+    <p>Duplicates are more than wasted megabytes. A duplicated ScriptableObject is two objects with two states; a duplicated material breaks material batching; a shader duplicated across bundles compiles twice. The same happens between Addressables and assets referenced directly by scenes in the build, or placed in a <code>Resources</code> folder.</p>
+    <p>Find them with <em>Window &gt; Asset Management &gt; Addressables &gt; Analyze</em>: the rule <em>Check Duplicate Bundle Dependencies</em> lists implicit duplicates and its fix moves them into a new shared group. Read the list before fixing: Unity's documentation warns that the automatic fix can be harmful, for example for an FBX whose meshes are split across groups. The build report (Addressables Report) shows the same information per bundle after each build.</p>
+  </div>
+
+</section>
+<section class="chapter" id="catalog" data-title="Catalogs and content builds" data-builds="unity-addressables#groups" data-summary="Content builds write bundles plus a catalog per platform; build with the player, test with Use Existing Build, update remote content from the saved state.">
+  <div class="head"><div class="num"></div><h2>Catalogs and content builds</h2></div>
+
+  <div class="prose">
+    <p>Addressables content is built separately from the player: <em>Build &gt; New Build &gt; Default Build Script</em> in the Groups window writes the bundles and a <button type="button" class="term" data-term="catalog">catalog</button>, the file that maps every address and label to a bundle, its dependencies and its location. At startup the player loads the catalog; every load after that is a catalog lookup. Content is built per platform, like the player.</p>
+    <ul>
+      <li><strong>Build with the player.</strong> In the Addressable Asset Settings, under <em>Build</em>, set content to build as part of every player build, or a player can ship with an old catalog, or none.</li>
+      <li><strong>Test with real bundles.</strong> The Groups window's <em>Play Mode Script</em> defaults to <em>Use Asset Database</em>, which reads assets directly and skips bundles entirely. It is fast and hides every build problem; switch to <em>Use Existing Build</em> before you trust a result.</li>
+      <li><strong>Remote content.</strong> Groups with remote paths go to a server. Shipping a change means <em>Update a Previous Build</em>, which uses the content state file saved by the original build to keep unchanged bundles identical; players fetch the new catalog with <code>CheckForCatalogUpdates</code> and <code>UpdateCatalogs</code>.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="breaks" data-title="Why things break" data-builds="unity-addressables#catalog unity-addressables#deps" data-summary="InvalidKeyException, editor-only success, pink bundles, duplicated singletons, growing memory, stale catalogs: causes and fixes.">
+  <div class="head"><div class="num"></div><h2>Why things break</h2></div>
+
+  <div class="prose"><p>Most Addressables bugs are one of six. Pick the symptom:</p></div>
+  <div class="fx" data-fx="addrlab"></div>
+
+</section>
+<section class="chapter" id="scenes" data-title="Addressable scenes" data-builds="unity-scenes#async unity-scenes#bootstrap" data-summary="Addressables.LoadSceneAsync → SceneInstance; not in the build list; unload with Addressables.UnloadSceneAsync(handle).">
+  <div class="head"><div class="num"></div><h2>Addressable scenes</h2></div>
+
+  <div class="prose">
+    <p>Scenes can be addressable too, which moves their content out of the player build and lets them be downloaded later. They load through Addressables instead of <code>SceneManager</code>:</p>
+  </div>
+  <pre class="code" data-lang="cs">// Load additively; the handle owns the scene and its dependencies.
+var h = Addressables.LoadSceneAsync(&quot;Levels/Forest&quot;, LoadSceneMode.Additive, activateOnLoad: false);
+await h.Task;
+await h.Result.ActivateAsync();            // activation, like allowSceneActivation
+SceneManager.SetActiveScene(h.Result.Scene);
+// ...later:
+await Addressables.UnloadSceneAsync(h).Task;  // unloads the scene and releases its bundles</pre>
+  <div class="prose">
+    <p>An addressable scene must not also be in the Build Profiles scene list: it would be built twice and loaded the wrong way. Keep only the bootstrap there (<a class="x" href="../unity-scenes/index.html#bootstrap">the bootstrap pattern</a>). Unload with <code>Addressables.UnloadSceneAsync</code> and the handle you got from loading; unloading through <code>SceneManager</code> leaves the bundle counts behind. Everything from <a class="x" href="../unity-scenes/index.html#memory">scene memory</a> still applies: free unused assets behind a loading screen and watch the activation frame.</p>
+  </div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Set it up in Unity" data-summary="Groups, labels and shared dependencies; AddressableScope releases what it loads; AddressableSpawner for instances; a build guard for missing content and doubled scenes.">
+  <div class="head"><div class="num"></div><h2>Set it up in Unity</h2></div>
+  <div class="prose"><p>Setup from package to build, plus three files that remove the usual bugs: a scope object that releases everything it loaded, a spawner for addressable prefabs, and an editor guard that fails a build when Addressables content would be missing or a scene is in both systems. Written for Unity 6; Unity 2022 LTS works the same apart from a few renamed menu entries (Build Profiles was Build Settings).</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Package, groups, labels, Play Mode Script, build settings.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>AddressableScope.cs: loads, and releases all on Dispose.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>AddressableSpawner.cs: InstantiateAsync and ReleaseInstance.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>AddressablesBuildGuard.cs: checks before every player build.</span></div></div>
+<ol class="impl-steps"><li><div>Install <em>Addressables</em> from the Package Manager (Unity Registry). Open <em>Window &gt; Asset Management &gt; Addressables &gt; Groups</em> and click <em>Create Addressables Settings</em>.</div></li><li><div>Create groups by what loads together (for example <code>UI</code>, <code>Level_Forest</code>, <code>Skins_Knight</code>, <code>Shared</code>). Tick <em>Addressable</em> on assets or drag them into groups; shorten addresses (right-click, <em>Simplify Addressable Names</em>) and add labels where you load sets.</div></li><li><div>For each group, set <em>Bundle Mode</em>: <code>Pack Together</code> for content that loads as a unit, <code>Pack Separately</code> for large, independently loaded items. Put textures, materials and shaders used by several groups into <code>Shared</code>.</div></li><li><div>Run <em>Analyze</em> (<em>Window &gt; Asset Management &gt; Addressables &gt; Analyze</em>), rule <em>Check Duplicate Bundle Dependencies</em>. Read the list, then fix by moving the shared assets to <code>Shared</code> yourself or with <em>Fix Selected Rules</em>.</div></li><li><div>In the Addressable Asset Settings, under <em>Build</em>, set Addressables to build with every player build. Put <code>AddressablesBuildGuard.cs</code> in an <code>Editor</code> folder: it fails a player build when that setting is off, and when a scene is both addressable and in the Build Profiles list.</div></li><li><div>Load in code through <code>AddressableScope</code>: create one per screen or level, <code>await scope.Load&lt;T&gt;(key)</code> as often as needed, and call <code>Dispose()</code> when the screen closes. Every handle it opened is released exactly once, which removes both leaks and double releases.</div></li><li><div>For spawned objects, put <code>AddressableSpawner</code> on a manager and call <code>Spawn</code> and <code>Despawn</code>. It uses <code>InstantiateAsync</code> and <code>ReleaseInstance</code>, so instance counts stay right.</div></li><li><div>Before testing a build-related bug, switch the Groups window's <em>Play Mode Script</em> to <em>Use Existing Build</em> and build content once (<em>Build &gt; New Build &gt; Default Build Script</em>). Watch counts in the Profiler's Addressables module.</div></li></ol>
+<div class="files"><div class="file" data-name="AddressableScope.cs" data-lang="cs"><pre>using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
+// Owns every handle it loads and releases them all, once, on Dispose.
+// Typical use: one scope per screen or level.
+public sealed class AddressableScope : IDisposable
+{
+    readonly List&lt;AsyncOperationHandle&gt; handles = new List&lt;AsyncOperationHandle&gt;();
+    bool disposed;
+
+    public async Task&lt;T&gt; Load&lt;T&gt;(object key)
+    {
+        if (disposed) throw new ObjectDisposedException(nameof(AddressableScope));
+        var h = Addressables.LoadAssetAsync&lt;T&gt;(key);
+        handles.Add(h);                         // tracked even if awaiting throws
+        return await h.Task;
+    }
+
+    public async Task&lt;IList&lt;T&gt;&gt; LoadAll&lt;T&gt;(object label)
+    {
+        if (disposed) throw new ObjectDisposedException(nameof(AddressableScope));
+        var h = Addressables.LoadAssetsAsync&lt;T&gt;(label, null);
+        handles.Add(h);
+        return await h.Task;
+    }
+
+    public void Dispose()
+    {
+        if (disposed) return;
+        disposed = true;
+        foreach (var h in handles)
+            if (h.IsValid()) Addressables.Release(h);
+        handles.Clear();
+    }
+}</pre></div><div class="file" data-name="AddressableSpawner.cs" data-lang="cs"><pre>using System.Collections.Generic;
+using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+
+// Spawns addressable prefabs; each instance holds one reference until Despawn.
+public class AddressableSpawner : MonoBehaviour
+{
+    readonly HashSet&lt;GameObject&gt; live = new HashSet&lt;GameObject&gt;();
+
+    public async Task&lt;GameObject&gt; Spawn(AssetReferenceGameObject prefab, Vector3 pos, Quaternion rot)
+    {
+        var h = Addressables.InstantiateAsync(prefab, pos, rot);
+        GameObject go = await h.Task;
+        if (go != null) live.Add(go);
+        return go;
+    }
+
+    public void Despawn(GameObject go)
+    {
+        if (go == null || !live.Remove(go)) return;
+        Addressables.ReleaseInstance(go);       // destroys it and releases its reference
+    }
+
+    void OnDestroy()
+    {
+        foreach (var go in live) if (go != null) Addressables.ReleaseInstance(go);
+        live.Clear();
+    }
+}</pre></div><div class="file" data-name="AddressablesBuildGuard.cs" data-lang="cs"><pre>#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Settings;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
+using UnityEngine;
+
+// Fails a player build that would ship without Addressables content, or with a scene in both systems.
+public class AddressablesBuildGuard : IPreprocessBuildWithReport
+{
+    public int callbackOrder =&gt; -100;
+
+    public void OnPreprocessBuild(BuildReport report)
+    {
+        var settings = AddressableAssetSettingsDefaultObject.Settings;
+        if (settings == null) return;                                   // project does not use Addressables
+
+        if (settings.BuildAddressablesWithPlayerBuild == AddressableAssetSettings.PlayerBuildOption.DoNotBuildWithPlayer)
+            throw new BuildFailedException(&quot;Addressables are set not to build with the player. &quot; +
+                &quot;Build content first, or enable building with the player in the Addressable Asset Settings.&quot;);
+        if (settings.BuildAddressablesWithPlayerBuild == AddressableAssetSettings.PlayerBuildOption.PreferencesValue)
+            Debug.LogWarning(&quot;Addressables build with the player only if your Editor preferences say so. Prefer the explicit project setting.&quot;);
+
+        foreach (var s in EditorBuildSettings.scenes)
+        {
+            if (!s.enabled) continue;
+            if (settings.FindAssetEntry(s.guid.ToString()) != null)
+                throw new BuildFailedException($&quot;{s.path} is addressable and also in the build scene list. Remove it from one of them.&quot;);
+        }
+    }
+}
+#endif</pre></div></div>
+<p class="note"><code>AddressableScope</code> keeps assets alive until it is disposed, which is the point: a level's scope holds the level's content. For assets that should outlive any screen (fonts, shared UI atlases) use a scope owned by the bootstrap scene (<a class="x" href="../unity-scenes/index.html#bootstrap">bootstrap pattern</a>).</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">Addressables are pipeline independent. Shader stripping differs per pipeline: if bundled materials render pink only in builds, check the pipeline asset's stripping settings and keep shaders in a shared group.</div><div class="eng" data-engine="unreal">Unreal's equivalents are soft references (<code>TSoftObjectPtr</code>, loaded with the Asset Manager or <em>Async Load Asset</em> in Blueprint) for on-demand loading, and chunking with Primary Asset Labels for packaging content into separate pak files. Hard references load everything, exactly as in Unity.</div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity.cn/Packages/com.unity.addressables@2.0/manual/GroupsWindow.html" rel="noopener">Groups window (Addressables)</a></span><span class="by">Unity</span><span class="why">Groups, bundle modes and the Play Mode Script menu.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.addressables@1.21/manual/MemoryManagement.html" rel="noopener">Memory management (Addressables)</a></span><span class="by">Unity</span><span class="why">Reference counts, bundle unloading, churn and UnloadUnusedAssets.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.addressables@2.7/manual/analyze-addressables-window.html" rel="noopener">Addressables Analyze window</a></span><span class="by">Unity</span><span class="why">Check Duplicate Bundle Dependencies and when its fix is harmful.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.addressables@2.7/manual/LoadingAssetReferences.html" rel="noopener">Load an AssetReference</a></span><span class="by">Unity</span><span class="why">Loading and releasing through AssetReference fields.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.addressables@2.8/manual/build-intro.html" rel="noopener">Build introduction (Addressables)</a></span><span class="by">Unity</span><span class="why">Content builds, building with the player, Play Mode scripts and Update a Previous Build.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/AssetBundlesIntro.html" rel="noopener">AssetBundles</a></span><span class="by">Unity</span><span class="why">The format underneath Addressables.</span></li></ul>
+</section>
+
+<div class="next" data-next="unity-scenes texture-memory reading-a-frame"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"addressables": [
+"Addressables",
+"Unity package that loads assets by address from AssetBundles, with a catalog and reference counts.",
+"#why"
+],
+"address": [
+"Address",
+"The key an addressable asset is loaded by; by default its path.",
+"#groups"
+],
+"group": [
+"Group",
+"A set of addressable assets built with the same settings into one or more bundles.",
+"#groups"
+],
+"assetref": [
+"AssetReference",
+"A serializable field that stores an addressable asset's GUID and loads it.",
+"#loading"
+],
+"catalog": [
+"Catalog",
+"The file mapping addresses and labels to bundles, dependencies and locations.",
+"#catalog"
+],
+"churn": [
+"Churn",
+"A bundle repeatedly unloaded and reloaded because its last asset is released and requested again.",
+"#release"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/index.js"></script>
+<script src="../../assets/atlas.js"></script>
+<script src="../../assets/renders.js"></script>
+<script src="../../assets/site.js"></script>
+<script src="addressables.js"></script>
+</body>
+</html>

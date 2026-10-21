@@ -1086,6 +1086,311 @@ window.ATLAS_INDEX = {
     "checks": 12
    }
   },
+  "sd-blend": {
+   "title": "Blend Modes",
+   "chapters": [
+    {
+     "id": "node",
+     "title": "The Blend node",
+     "summary": "result = lerp(B, mode(F, B), opacity · mask), per pixel and per channel."
+    },
+    {
+     "id": "arith",
+     "title": "Add, subtract, multiply, divide",
+     "summary": "Add B + F, Subtract B − F, Multiply B · F, Divide B / F; integer formats clamp; Subtract and Divide depend on order."
+    },
+    {
+     "id": "minmax",
+     "title": "Max and Min: combining heights",
+     "summary": "Max = union of height shapes (the higher wins), Min = intersection; Add stacks and can clip at 1."
+    },
+    {
+     "id": "addsub",
+     "title": "Add Sub and Overlay: detail around 0.5",
+     "summary": "Add Sub: above 0.5 adds, below subtracts, 0.5 neutral. Overlay: multiply below 0.5, screen above, based on the background."
+    },
+    {
+     "id": "screen",
+     "title": "Screen, overlay and colour",
+     "summary": "Screen = 1 − (1 − B)(1 − F). Colour blends run per channel on encoded values in Legacy mode. Switch skips the unused input."
+    },
+    {
+     "id": "masks",
+     "title": "Masks: where a blend applies",
+     "summary": "mask = saturate((h − (p − w/2)) / w): Histogram Scan and Levels turn heights, curvature or AO into masks."
+    },
+    {
+     "id": "heightblend",
+     "title": "Blending materials by height",
+     "summary": "mask = saturate(0.5 + (h_top + offset − h_bottom) / contrast): the higher material shows."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "A Designer test graph for the modes, and SDBlend.hlsl with a height-blend mask driven at runtime in Shader Graph."
+    }
+   ],
+   "stats": {
+    "fx": 5,
+    "labs": 0,
+    "checks": 3
+   }
+  },
+  "sd-graphs": {
+   "title": "Graphs, Bit Depth and Colour Space",
+   "chapters": [
+    {
+     "id": "graph",
+     "title": "A graph is a chain of images",
+     "summary": "Nodes compute images and pass them on. Greyscale (L, 1 channel) or colour (C, 4 channels); colour costs about 4×."
+    },
+    {
+     "id": "size",
+     "title": "Output size and inheritance",
+     "summary": "Size is inherited: Relative to parent, Relative to input or Absolute. Relative sizes are power-of-two offsets."
+    },
+    {
+     "id": "bitdepth",
+     "title": "What bit depth means",
+     "summary": "n bits store 2ⁿ levels: 8 bit 256 (step 1/255), 16 bit 65 536 (step 1/65 535)."
+    },
+    {
+     "id": "banding",
+     "title": "Banding and stair-stepped normals",
+     "summary": "pixels per level = size / (Δh · (2ⁿ − 1)); more than 1 → terraces, and normals ridge at every jump."
+    },
+    {
+     "id": "float",
+     "title": "Float formats: beyond 0 and 1",
+     "summary": "Integer formats clamp to 0–1 at every node; 16F and 32F keep negatives and values above 1. 16F step near v: 2^(⌊log₂ v⌋ − 10)."
+    },
+    {
+     "id": "srgb",
+     "title": "sRGB and linear in Designer",
+     "summary": "Legacy: no colour management, colour blends on encoded values. OCIO/ACE: linear working space, use 16-bit colour. Data maps are never colour."
+    },
+    {
+     "id": "choose",
+     "title": "Choosing a format per map",
+     "summary": "Heights L16, masks L8, base colour C8 (C16 when linear), vectors 16F, HDR 16F/32F."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "Graph: Relative to parent, 8 bit; height chains Absolute 16 bit; Unity: heights R16 linear, checked by an import script."
+    }
+   ],
+   "stats": {
+    "fx": 8,
+    "labs": 0,
+    "checks": 3
+   }
+  },
+  "sd-performance": {
+   "title": "Keeping Graphs Fast",
+   "chapters": [
+    {
+     "id": "measure",
+     "title": "Measure first",
+     "summary": "Turn on node timing, find the slowest nodes, use the GPU engine; engine plugins may render on the CPU."
+    },
+    {
+     "id": "resolution",
+     "title": "Resolution is the biggest lever",
+     "summary": "time = t₂ₖ · (size / 2048)²: build at 512–1k, export at full size from the Batch tab."
+    },
+    {
+     "id": "formats",
+     "title": "Greyscale, 8 bit, and fewer conversions",
+     "summary": "Colour ≈ 4× greyscale. Stay L8, use L16 for heights only, convert to colour once near the end."
+    },
+    {
+     "id": "cache",
+     "title": "Caching and where parameters belong",
+     "summary": "A tweak recomputes the node and everything after it: put frequently tweaked parameters near the outputs."
+    },
+    {
+     "id": "heavy",
+     "title": "The heavy nodes and their cheap versions",
+     "summary": "Blur downscaled copies (cost / 8 per halving), fewer warp samples and patterns, fast noise variants."
+    },
+    {
+     "id": "structure",
+     "title": "Graph structure",
+     "summary": "Share masks, use Switch for optional branches, compute repeated results once, keep bitmaps Absolute."
+    },
+    {
+     "id": "runtime",
+     "title": "Rendering at runtime",
+     "summary": "load time = materials · t₂ₖ · (size/2048)²: bake static materials, render only what must change."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "graph_report.py lists heavy nodes in Designer; SubstanceRenderQueue.cs spreads runtime renders in Unity."
+    }
+   ],
+   "stats": {
+    "fx": 5,
+    "labs": 0,
+    "checks": 2
+   }
+  },
+  "sd-pixel-fx": {
+   "title": "Pixel Processor and FX-Maps",
+   "chapters": [
+    {
+     "id": "functions",
+     "title": "Function graphs: small programs for values",
+     "summary": "Function graphs compute values, not images: parameter functions, Value Processor, Pixel Processor, FX-Map."
+    },
+    {
+     "id": "pixel",
+     "title": "The Pixel Processor: a pixel shader",
+     "summary": "One function per output pixel, $pos in 0–1, no pixel sees another: a pixel shader."
+    },
+    {
+     "id": "sampling",
+     "title": "Reading inputs and neighbours",
+     "summary": "Sample input n at $pos + k / $size for neighbours; wrap with frac; no reading its own output."
+    },
+    {
+     "id": "fxmap",
+     "title": "FX-Maps: drawing patterns",
+     "summary": "Quadrant splits cells (4^d patterns at level d), Iterate repeats a branch, Switch chooses one."
+    },
+    {
+     "id": "dynamic",
+     "title": "Random values and blending per pattern",
+     "summary": "Per-pattern functions with $number, $depth, $pos and seeded Random; Max for heights, Add piles up and clips."
+    },
+    {
+     "id": "tools",
+     "title": "Ready-made scattering tools",
+     "summary": "Tile Sampler, Tile Generator and Shape Splatter cover most scattering; open them to learn."
+    },
+    {
+     "id": "which",
+     "title": "Pixel Processor or FX-Map?",
+     "summary": "Pixel Processor: size² · reads. FX-Map: patterns · pattern area. Gather for per-position maths, scatter for many objects."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "A Designer Pixel Processor and FX-Map; ProceduralBake.compute gathers soft dots and a Max scatter, baked to PNG by an editor menu."
+    }
+   ],
+   "stats": {
+    "fx": 5,
+    "labs": 0,
+    "checks": 2
+   }
+  },
+  "sd-publish": {
+   "title": "Parameters, Publishing and Export",
+   "chapters": [
+    {
+     "id": "expose",
+     "title": "Exposing a parameter",
+     "summary": "Expose as new graph input: identifier (for code), label, group, default, min, max, clamp."
+    },
+    {
+     "id": "drive",
+     "title": "Driving many nodes from one input",
+     "summary": "Parameter functions read an exposed input (Get Float) and compute each node&#x27;s value: one slider, many nodes."
+    },
+    {
+     "id": "organise",
+     "title": "Groups, Visible If and presets",
+     "summary": "Groups for order, Visible If to hide dependent inputs, presets for named value sets, seed exposed or Absolute."
+    },
+    {
+     "id": "outputs",
+     "title": "Outputs and usages",
+     "summary": "Outputs carry identifier, label, group and usage; usages connect outputs to material slots. Pack engine-specific maps with RGBA Merge."
+    },
+    {
+     "id": "export",
+     "title": "Exporting textures",
+     "summary": "Export Outputs: destination, one format, a pattern of $(graph) and $(identifier), output toggles, Batch for size."
+    },
+    {
+     "id": "formats",
+     "title": "File formats and bit depth",
+     "summary": "PNG for 8 and 16 bit, EXR for float, never JPEG for data. The engine format decides GPU precision, not the file."
+    },
+    {
+     "id": "colorspace",
+     "title": "Colour spaces and normal formats",
+     "summary": "Legacy: sRGB/Linear/Raw labels, only Linear transforms. Normals: DirectX green down, OpenGL green up; Unity expects OpenGL."
+    },
+    {
+     "id": "sbsar",
+     "title": "Publishing an SBSAR",
+     "summary": "SBSAR = compiled package with inputs and presets; output size relative, bitmaps Absolute; plugins render it in Unity and Unreal."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "Expose wear and drive nodes with functions, pack a mask map, export with engine suffixes or publish an SBSAR driven by WearController.cs."
+    }
+   ],
+   "stats": {
+    "fx": 4,
+    "labs": 0,
+    "checks": 2
+   }
+  },
+  "sd-warps": {
+   "title": "Warps and Distortion",
+   "chapters": [
+    {
+     "id": "idea",
+     "title": "A warp reads from somewhere else",
+     "summary": "out(p) = in(p + offset(p)): every pixel fetches from a shifted position, so warps stretch and tear but never leave holes."
+    },
+    {
+     "id": "directional",
+     "title": "Directional Warp",
+     "summary": "out(p) = in(p + i · (I(p) − offset) · (cos 2πa, sin 2πa)): one direction, distance from a greyscale map."
+    },
+    {
+     "id": "warp",
+     "title": "Warp: along a gradient",
+     "summary": "out(p) = in(p + k · ∇G(p)): reads uphill, as far as the slope is steep; flat areas do not move."
+    },
+    {
+     "id": "vector",
+     "title": "Vector Warp: directions in a colour",
+     "summary": "shift = intensity · (2R − 1, ±(2G − 1)); a normal map is a vector map; DirectX and OpenGL differ in the sign of G."
+    },
+    {
+     "id": "slopeblur",
+     "title": "Slope Blur: erosion and growth",
+     "summary": "Up to n + 1 reads along the slope: Blur averages, Min erodes, Max grows. Cost grows with the samples."
+    },
+    {
+     "id": "artifacts",
+     "title": "Artefacts and how to avoid them",
+     "summary": "Smears: too much intensity. Tears: sharp maps. Seams: a non-tiling input. Jaggies: nearest filtering."
+    },
+    {
+     "id": "cost",
+     "title": "What warps cost",
+     "summary": "reads = size² · reads per pixel · nodes; warps and blurs are the heavy nodes."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Designer and Unity HDRP",
+     "summary": "A Designer chipped-stone graph with a tiling check; Warps.hlsl gives directional, vector and gradient warps of UVs at runtime."
+    }
+   ],
+   "stats": {
+    "fx": 6,
+    "labs": 0,
+    "checks": 3
+   }
+  },
   "shader-anatomy": {
    "title": "Reading a Shader",
    "chapters": [
@@ -1536,6 +1841,216 @@ window.ATLAS_INDEX = {
     "checks": 5
    }
   },
+  "unity-addressables": {
+   "title": "Addressables",
+   "chapters": [
+    {
+     "id": "why",
+     "title": "Why direct references are not enough",
+     "summary": "Direct references load everything with the scene; Resources loads an index of everything; Addressables load by address with refcounts."
+    },
+    {
+     "id": "groups",
+     "title": "Addresses, labels and groups",
+     "summary": "Address per asset, labels across groups; groups set build/load paths and Bundle Mode: together, separately, by label."
+    },
+    {
+     "id": "loading",
+     "title": "Loading by address or by reference",
+     "summary": "LoadAssetAsync returns a handle; AssetReference fields store GUIDs and survive renames; strings and labels fail only at runtime."
+    },
+    {
+     "id": "release",
+     "title": "Releasing and reference counts",
+     "summary": "Each load +1, each Release −1; a bundle unloads at 0 and takes all its loaded assets with it; no partial unload."
+    },
+    {
+     "id": "deps",
+     "title": "Dependencies and duplicates",
+     "summary": "Non-addressable dependencies are copied into every bundle that uses them; fix with shared groups; find them with Analyze."
+    },
+    {
+     "id": "catalog",
+     "title": "Catalogs and content builds",
+     "summary": "Content builds write bundles plus a catalog per platform; build with the player, test with Use Existing Build, update remote content from the saved state."
+    },
+    {
+     "id": "breaks",
+     "title": "Why things break",
+     "summary": "InvalidKeyException, editor-only success, pink bundles, duplicated singletons, growing memory, stale catalogs: causes and fixes."
+    },
+    {
+     "id": "scenes",
+     "title": "Addressable scenes",
+     "summary": "Addressables.LoadSceneAsync → SceneInstance; not in the build list; unload with Addressables.UnloadSceneAsync(handle)."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Unity",
+     "summary": "Groups, labels and shared dependencies; AddressableScope releases what it loads; AddressableSpawner for instances; a build guard for missing content and doubled scenes."
+    }
+   ],
+   "stats": {
+    "fx": 5,
+    "labs": 0,
+    "checks": 1
+   }
+  },
+  "unity-guids": {
+   "title": "GUIDs and .meta Files",
+   "chapters": [
+    {
+     "id": "meta",
+     "title": "Every asset has a .meta file",
+     "summary": "Rock.png.meta holds the asset&#x27;s permanent GUID and its import settings."
+    },
+    {
+     "id": "refs",
+     "title": "A reference is a GUID plus a fileID",
+     "summary": "{fileID, guid, type}: guid → .meta → file, fileID → object inside it; same-file references store only the fileID."
+    },
+    {
+     "id": "fileid",
+     "title": "fileIDs inside files",
+     "summary": "Native: saved local IDs. Imported main objects: class ID · 100 000. FBX sub-objects: computed from names, so renames break references."
+    },
+    {
+     "id": "breaks",
+     "title": "How references break",
+     "summary": "Keep file and .meta together: Project window moves are safe; moving without the .meta, forgetting to commit it, or duplicating it breaks references."
+    },
+    {
+     "id": "missing",
+     "title": "Missing references, missing scripts, renamed fields",
+     "summary": "None = empty, Missing = unresolved GUID/fileID. Missing scripts are lost script GUIDs. Field renames need [FormerlySerializedAs]."
+    },
+    {
+     "id": "vcs",
+     "title": "Version control settings",
+     "summary": "Visible Meta Files, Force Text, commit .meta with every file, ignore Library; GUID collisions are negligible."
+    },
+    {
+     "id": "tools",
+     "title": "Working with GUIDs in tools",
+     "summary": "AssetPathToGUID, GUIDToAssetPath, TryGetGUIDAndLocalFileIdentifier; search text assets for a GUID; detect Missing via SerializedProperty."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Unity",
+     "summary": "Visible Meta Files + Force Text, a pre-commit hook for .meta pairs, GuidTools.cs to find references and Missing."
+    }
+   ],
+   "stats": {
+    "fx": 4,
+    "labs": 0,
+    "checks": 1
+   }
+  },
+  "unity-prefabs": {
+   "title": "FBX, Prefabs, Variants and Nested Prefabs",
+   "chapters": [
+    {
+     "id": "fbx",
+     "title": "What importing an FBX creates",
+     "summary": "The Model Importer turns an FBX into meshes, a read-only model prefab, materials, clips and an avatar; Unity works in metres."
+    },
+    {
+     "id": "importer",
+     "title": "Import settings that matter",
+     "summary": "Bake Axis Conversion, Read/Write off, normals Import, lightmap UVs only for static meshes, remap materials by name."
+    },
+    {
+     "id": "prefab",
+     "title": "Prefabs and overrides",
+     "summary": "Instances store overrides as {target fileID, property path, value}; everything not overridden follows the asset."
+    },
+    {
+     "id": "nested",
+     "title": "Nested prefabs",
+     "summary": "Prefab instances inside prefabs; overrides on a nested instance can be applied to the outer prefab or the inner one."
+    },
+    {
+     "id": "variants",
+     "title": "Prefab variants",
+     "summary": "A variant inherits a base and stores only overrides; the outermost override wins: scene &gt; nesting prefab &gt; variant &gt; base."
+    },
+    {
+     "id": "where",
+     "title": "Where to make a change",
+     "summary": "An edit reaches everything below it without an override: base → all, variant → its instances, nesting prefab → its nested copies, scene → one."
+    },
+    {
+     "id": "wrap",
+     "title": "Wrapping models: variant, nested or unpacked",
+     "summary": "Variant of the model prefab (usual), prefab with the model nested (own root), never unpack."
+    },
+    {
+     "id": "breaks",
+     "title": "Why reimports break prefabs",
+     "summary": "Overrides target model objects by fileID; renamed or deleted children orphan them. Stable, unique names prevent it."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Unity",
+     "summary": "ModelImportRules.cs for new models, a menu to create model variants, and OverrideReport.cs to read overrides before applying or after re-export."
+    }
+   ],
+   "stats": {
+    "fx": 4,
+    "labs": 0,
+    "checks": 2
+   }
+  },
+  "unity-scenes": {
+   "title": "Scene Management",
+   "chapters": [
+    {
+     "id": "what",
+     "title": "What a scene is",
+     "summary": "A scene is a YAML file of GameObjects plus lighting and navigation data; build scenes come from the Build Profiles scene list."
+    },
+    {
+     "id": "modes",
+     "title": "Single, additive and the active scene",
+     "summary": "Single replaces all scenes, Additive adds one; the active scene receives new objects and, in URP/built-in, supplies lighting settings."
+    },
+    {
+     "id": "async",
+     "title": "Loading in the background",
+     "summary": "LoadSceneAsync: progress 0 → 0.9 while loading, then a single activation frame ≈ objects · Awake cost; allowSceneActivation holds at 0.9."
+    },
+    {
+     "id": "memory",
+     "title": "Memory: unloading scenes and their assets",
+     "summary": "Single: peak ≈ A + B. Transition scene: ≈ max(A, B). Additive unloads need Resources.UnloadUnusedAssets to free assets."
+    },
+    {
+     "id": "bootstrap",
+     "title": "The bootstrap pattern",
+     "summary": "Bootstrap scene with persistent systems, additive UI and levels, a loader that swaps levels; auto-load the bootstrap when playing any scene."
+    },
+    {
+     "id": "crossscene",
+     "title": "References between scenes",
+     "summary": "No serialized cross-scene references: use ScriptableObject channels, runtime lookups or IDs; avoid scene names as plain strings."
+    },
+    {
+     "id": "lighting",
+     "title": "Lighting with several scenes",
+     "summary": "Lightmaps per scene, retetrahedralize probes after additive loads, APV baking sets, Volumes by priority, environment from the active scene."
+    },
+    {
+     "id": "implement",
+     "title": "Set it up in Unity",
+     "summary": "SceneRef for rename-proof scene fields, a SceneLoader that unloads, frees assets, loads held at 0.9 and activates, and a Bootstrapper for Play in any scene."
+    }
+   ],
+   "stats": {
+    "fx": 3,
+    "labs": 0,
+    "checks": 2
+   }
+  },
   "vectors": {
    "title": "Vectors",
    "chapters": [
@@ -1583,6 +2098,43 @@ window.ATLAS_INDEX = {
   }
  },
  "backlinks": {
+  "exposure#units": [
+   [
+    "baked-gi",
+    "indirect",
+    "Light that bounces"
+   ],
+   [
+    "baked-gi",
+    "irradiance",
+    "Light from a whole sky"
+   ],
+   [
+    "dot-cross",
+    "lambert",
+    "Lighting with one dot product"
+   ],
+   [
+    "light-types",
+    "point",
+    "Point lights and a finite range"
+   ],
+   [
+    "light-types",
+    "spot-units",
+    "How bright is a spot in lumens?"
+   ],
+   [
+    "pbr-brdf",
+    "split",
+    "Two ways a surface reflects"
+   ],
+   [
+    "pbr-brdf",
+    "diffuse",
+    "Diffuse: Lambert again"
+   ]
+  ],
   "dot-cross#lambert": [
    [
     "baked-gi",
@@ -1625,41 +2177,36 @@ window.ATLAS_INDEX = {
     "The cheapest trick: wrap lighting"
    ]
   ],
-  "exposure#units": [
+  "textures-sampling#filter": [
    [
     "baked-gi",
-    "indirect",
-    "Light that bounces"
+    "lightmaps",
+    "Lightmaps"
    ],
    [
-    "baked-gi",
-    "irradiance",
-    "Light from a whole sky"
+    "interior-mapping",
+    "mips",
+    "Mips and seams"
    ],
    [
-    "dot-cross",
-    "lambert",
-    "Lighting with one dot product"
+    "sd-pixel-fx",
+    "sampling",
+    "Reading inputs and neighbours"
    ],
    [
-    "light-types",
-    "point",
-    "Point lights and a finite range"
+    "texture-memory",
+    "mips",
+    "Mipmaps and how the GPU picks one"
    ],
    [
-    "light-types",
-    "spot-units",
-    "How bright is a spot in lumens?"
+    "texture-settings",
+    "filtering",
+    "Max size, mipmaps and anisotropy"
    ],
    [
-    "pbr-brdf",
-    "split",
-    "Two ways a surface reflects"
-   ],
-   [
-    "pbr-brdf",
-    "diffuse",
-    "Diffuse: Lambert again"
+    "transparency",
+    "premultiplied",
+    "Premultiplied alpha and dark fringes"
    ]
   ],
   "texture-memory#density": [
@@ -1692,33 +2239,6 @@ window.ATLAS_INDEX = {
     "texturing",
     "density",
     "Texel density targets"
-   ]
-  ],
-  "textures-sampling#filter": [
-   [
-    "baked-gi",
-    "lightmaps",
-    "Lightmaps"
-   ],
-   [
-    "interior-mapping",
-    "mips",
-    "Mips and seams"
-   ],
-   [
-    "texture-memory",
-    "mips",
-    "Mipmaps and how the GPU picks one"
-   ],
-   [
-    "texture-settings",
-    "filtering",
-    "Max size, mipmaps and anisotropy"
-   ],
-   [
-    "transparency",
-    "premultiplied",
-    "Premultiplied alpha and dark fringes"
    ]
   ],
   "shader-anatomy#functions": [
@@ -1766,6 +2286,16 @@ window.ATLAS_INDEX = {
     "pbr-brdf",
     "fresnel",
     "How much bounces: Fresnel"
+   ],
+   [
+    "sd-blend",
+    "node",
+    "The Blend node"
+   ],
+   [
+    "sd-pixel-fx",
+    "functions",
+    "Function graphs: small programs for values"
    ],
    [
     "textures-sampling",
@@ -1834,6 +2364,11 @@ window.ATLAS_INDEX = {
     "gpu-basics",
     "parallel",
     "Thousands of pixels at the same time"
+   ],
+   [
+    "sd-graphs",
+    "graph",
+    "A graph is a chain of images"
    ],
    [
     "skin",
@@ -1985,18 +2520,6 @@ window.ATLAS_INDEX = {
     "Why fabric needs its own model"
    ]
   ],
-  "pbr-brdf#half": [
-   [
-    "cloth",
-    "sheen",
-    "The sheen distribution"
-   ],
-   [
-    "hair",
-    "highlight",
-    "The highlight band"
-   ]
-  ],
   "pbr-brdf#ndf": [
    [
     "cloth",
@@ -2017,6 +2540,18 @@ window.ATLAS_INDEX = {
     "skin",
     "specular",
     "Skin specular: two lobes"
+   ]
+  ],
+  "pbr-brdf#half": [
+   [
+    "cloth",
+    "sheen",
+    "The sheen distribution"
+   ],
+   [
+    "hair",
+    "highlight",
+    "The highlight band"
    ]
   ],
   "pbr-brdf#geometry": [
@@ -2211,13 +2746,6 @@ window.ATLAS_INDEX = {
     "Normalizing: keeping only the direction"
    ]
   ],
-  "ray-sphere#cpu-gpu": [
-   [
-    "cloud-march",
-    "cost",
-    "What it costs"
-   ]
-  ],
   "reading-a-frame#budget": [
    [
     "cloud-march",
@@ -2233,6 +2761,23 @@ window.ATLAS_INDEX = {
     "gpu-basics",
     "frame",
     "A frame and its time budget"
+   ],
+   [
+    "sd-performance",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ],
+   [
+    "unity-scenes",
+    "async",
+    "Loading in the background"
+   ]
+  ],
+  "ray-sphere#cpu-gpu": [
+   [
+    "cloud-march",
+    "cost",
+    "What it costs"
    ]
   ],
   "ray-sphere#implement": [
@@ -2240,33 +2785,6 @@ window.ATLAS_INDEX = {
     "cloud-march",
     "implement",
     "Build it in Unity HDRP"
-   ]
-  ],
-  "shader-anatomy#types": [
-   [
-    "color-values",
-    "rgb",
-    "A colour is three numbers"
-   ],
-   [
-    "dot-cross",
-    "lambert",
-    "Lighting with one dot product"
-   ],
-   [
-    "gpu-basics",
-    "per-pixel",
-    "One small program per pixel"
-   ],
-   [
-    "texture-memory",
-    "packing",
-    "Channel packing"
-   ],
-   [
-    "vectors",
-    "what",
-    "Arrows made of numbers"
    ]
   ],
   "vectors#what": [
@@ -2296,6 +2814,45 @@ window.ATLAS_INDEX = {
     "One point, many coordinates"
    ]
   ],
+  "shader-anatomy#types": [
+   [
+    "color-values",
+    "rgb",
+    "A colour is three numbers"
+   ],
+   [
+    "dot-cross",
+    "lambert",
+    "Lighting with one dot product"
+   ],
+   [
+    "gpu-basics",
+    "per-pixel",
+    "One small program per pixel"
+   ],
+   [
+    "sd-pixel-fx",
+    "functions",
+    "Function graphs: small programs for values"
+   ],
+   [
+    "texture-memory",
+    "packing",
+    "Channel packing"
+   ],
+   [
+    "vectors",
+    "what",
+    "Arrows made of numbers"
+   ]
+  ],
+  "exposure#display": [
+   [
+    "color-values",
+    "linear-srgb",
+    "Linear values and sRGB encoding"
+   ]
+  ],
   "texture-memory#color-data": [
    [
     "color-values",
@@ -2313,11 +2870,11 @@ window.ATLAS_INDEX = {
     "The sRGB checkbox"
    ]
   ],
-  "exposure#display": [
+  "exposure#range": [
    [
     "color-values",
-    "linear-srgb",
-    "Linear values and sRGB encoding"
+    "hdr",
+    "Values above 1"
    ]
   ],
   "buffers#render-targets": [
@@ -2342,6 +2899,11 @@ window.ATLAS_INDEX = {
     "From triangles to pixels"
    ],
    [
+    "sd-graphs",
+    "float",
+    "Float formats: beyond 0 and 1"
+   ],
+   [
     "skin",
     "screen-space",
     "Blurring in screen space"
@@ -2350,13 +2912,6 @@ window.ATLAS_INDEX = {
     "transparency",
     "alpha",
     "What alpha means"
-   ]
-  ],
-  "exposure#range": [
-   [
-    "color-values",
-    "hdr",
-    "Values above 1"
    ]
   ],
   "dot-cross#dot": [
@@ -2369,6 +2924,11 @@ window.ATLAS_INDEX = {
     "mapping",
     "triplanar",
     "Triplanar mapping"
+   ],
+   [
+    "sd-warps",
+    "warp",
+    "Warp: along a gradient"
    ],
    [
     "shader-anatomy",
@@ -2413,6 +2973,11 @@ window.ATLAS_INDEX = {
     "parallax",
     "heightmap",
     "What parallax fixes"
+   ],
+   [
+    "sd-warps",
+    "idea",
+    "A warp reads from somewhere else"
    ],
    [
     "spaces",
@@ -2492,13 +3057,6 @@ window.ATLAS_INDEX = {
     "When to use compute"
    ]
   ],
-  "fabric-folds#implement": [
-   [
-    "compute-shaders",
-    "implement",
-    "Build it in Unity HDRP"
-   ]
-  ],
   "cloud-march#implement": [
    [
     "compute-shaders",
@@ -2538,6 +3096,25 @@ window.ATLAS_INDEX = {
     "From the painting tool to the engine"
    ]
   ],
+  "fabric-folds#implement": [
+   [
+    "compute-shaders",
+    "implement",
+    "Build it in Unity HDRP"
+   ]
+  ],
+  "ray-sphere#world-ray": [
+   [
+    "depth-effects",
+    "nonlinear",
+    "Why stored depth is not distance"
+   ],
+   [
+    "spaces",
+    "chain",
+    "Object to world to view to clip"
+   ]
+  ],
   "spaces#perspective": [
    [
     "depth-effects",
@@ -2570,18 +3147,6 @@ window.ATLAS_INDEX = {
     "Texel density"
    ]
   ],
-  "ray-sphere#world-ray": [
-   [
-    "depth-effects",
-    "nonlinear",
-    "Why stored depth is not distance"
-   ],
-   [
-    "spaces",
-    "chain",
-    "Object to world to view to clip"
-   ]
-  ],
   "buffers#constant": [
    [
     "depth-effects",
@@ -2602,18 +3167,6 @@ window.ATLAS_INDEX = {
     "shader-anatomy",
     "properties",
     "Values the same for every pixel: properties"
-   ]
-  ],
-  "ray-sphere#view-ray": [
-   [
-    "depth-effects",
-    "reconstruct",
-    "Rebuilding the position of a pixel"
-   ],
-   [
-    "spaces",
-    "perspective",
-    "Perspective: dividing by distance"
    ]
   ],
   "spaces#chain": [
@@ -2646,6 +3199,18 @@ window.ATLAS_INDEX = {
     "shadow-maps",
     "light-space",
     "Into light space"
+   ]
+  ],
+  "ray-sphere#view-ray": [
+   [
+    "depth-effects",
+    "reconstruct",
+    "Rebuilding the position of a pixel"
+   ],
+   [
+    "spaces",
+    "perspective",
+    "Perspective: dividing by distance"
    ]
   ],
   "vectors#normalize": [
@@ -2709,14 +3274,14 @@ window.ATLAS_INDEX = {
     "The cross product: a perpendicular vector"
    ]
   ],
-  "color-values#luminance": [
+  "color-values#hdr": [
    [
     "exposure",
     "range",
     "Too much range"
    ]
   ],
-  "color-values#hdr": [
+  "color-values#luminance": [
    [
     "exposure",
     "range",
@@ -2738,6 +3303,11 @@ window.ATLAS_INDEX = {
     "pbr-basics",
     "basecolor",
     "Base colour: colour without light"
+   ],
+   [
+    "sd-graphs",
+    "srgb",
+    "sRGB and linear in Designer"
    ],
    [
     "texture-memory",
@@ -2852,6 +3422,11 @@ window.ATLAS_INDEX = {
     "Bug lab"
    ],
    [
+    "sd-graphs",
+    "bitdepth",
+    "What bit depth means"
+   ],
+   [
     "transparency",
     "alpha",
     "What alpha means"
@@ -2867,18 +3442,6 @@ window.ATLAS_INDEX = {
     "gpu-basics",
     "per-pixel",
     "One small program per pixel"
-   ]
-  ],
-  "reading-a-frame#quads": [
-   [
-    "gpu-basics",
-    "pipeline",
-    "From triangles to pixels"
-   ],
-   [
-    "texture-memory",
-    "mips",
-    "Mipmaps and how the GPU picks one"
    ]
   ],
   "dot-cross#cross": [
@@ -2903,6 +3466,18 @@ window.ATLAS_INDEX = {
     "Which way is up"
    ]
   ],
+  "reading-a-frame#quads": [
+   [
+    "gpu-basics",
+    "pipeline",
+    "From triangles to pixels"
+   ],
+   [
+    "texture-memory",
+    "mips",
+    "Mipmaps and how the GPU picks one"
+   ]
+  ],
   "reading-a-frame#implement": [
    [
     "gpu-basics",
@@ -2917,6 +3492,13 @@ window.ATLAS_INDEX = {
     "Strands or cards"
    ]
   ],
+  "transparency#a2c": [
+   [
+    "hair",
+    "sorting",
+    "Alpha, sorting and depth"
+   ]
+  ],
   "transparency#alpha-test": [
    [
     "hair",
@@ -2927,13 +3509,6 @@ window.ATLAS_INDEX = {
     "texture-settings",
     "filtering",
     "Max size, mipmaps and anisotropy"
-   ]
-  ],
-  "transparency#a2c": [
-   [
-    "hair",
-    "sorting",
-    "Alpha, sorting and depth"
    ]
   ],
   "transparency#dither": [
@@ -2964,18 +3539,6 @@ window.ATLAS_INDEX = {
     "Build it in Unity HDRP"
    ]
   ],
-  "rays-math#ray": [
-   [
-    "interior-mapping",
-    "trick",
-    "The trick"
-   ],
-   [
-    "interior-mapping",
-    "rays",
-    "Rays from the camera"
-   ]
-  ],
   "gpu-basics#per-pixel": [
    [
     "interior-mapping",
@@ -2988,6 +3551,16 @@ window.ATLAS_INDEX = {
     "What we are building"
    ],
    [
+    "sd-graphs",
+    "graph",
+    "A graph is a chain of images"
+   ],
+   [
+    "sd-pixel-fx",
+    "pixel",
+    "The Pixel Processor: a pixel shader"
+   ],
+   [
     "shader-anatomy",
     "types",
     "Numbers and groups of numbers"
@@ -2996,6 +3569,18 @@ window.ATLAS_INDEX = {
     "textures-sampling",
     "uv",
     "UV coordinates: where to read"
+   ]
+  ],
+  "rays-math#ray": [
+   [
+    "interior-mapping",
+    "trick",
+    "The trick"
+   ],
+   [
+    "interior-mapping",
+    "rays",
+    "Rays from the camera"
    ]
   ],
   "buffers#vertex-index": [
@@ -3056,6 +3641,13 @@ window.ATLAS_INDEX = {
     "Finding the wall"
    ]
   ],
+  "exposure#multiplier": [
+   [
+    "interior-mapping",
+    "glass",
+    "Glass and light"
+   ]
+  ],
   "pbr-brdf#fresnel": [
    [
     "interior-mapping",
@@ -3071,13 +3663,6 @@ window.ATLAS_INDEX = {
     "skin",
     "specular",
     "Skin specular: two lobes"
-   ]
-  ],
-  "exposure#multiplier": [
-   [
-    "interior-mapping",
-    "glass",
-    "Glass and light"
    ]
   ],
   "texture-memory#mips": [
@@ -3163,16 +3748,14 @@ window.ATLAS_INDEX = {
     "Into light space"
    ],
    [
+    "unity-prefabs",
+    "fbx",
+    "What importing an FBX creates"
+   ],
+   [
     "vectors",
     "what",
     "Arrows made of numbers"
-   ]
-  ],
-  "textures-sampling#wrap": [
-   [
-    "mapping",
-    "flow",
-    "Scrolling and flow maps"
    ]
   ],
   "hair#tangent": [
@@ -3188,6 +3771,13 @@ window.ATLAS_INDEX = {
    ]
   ],
   "cloth#silk": [
+   [
+    "mapping",
+    "flow",
+    "Scrolling and flow maps"
+   ]
+  ],
+  "textures-sampling#wrap": [
    [
     "mapping",
     "flow",
@@ -3241,6 +3831,11 @@ window.ATLAS_INDEX = {
     "Normal, occlusion and height"
    ],
    [
+    "sd-graphs",
+    "banding",
+    "Banding and stair-stepped normals"
+   ],
+   [
     "texture-memory",
     "normals",
     "Normal maps"
@@ -3251,6 +3846,11 @@ window.ATLAS_INDEX = {
     "pbr-basics",
     "workflows",
     "Specular/gloss and other conventions"
+   ],
+   [
+    "sd-publish",
+    "outputs",
+    "Outputs and usages"
    ],
    [
     "texturing",
@@ -3329,18 +3929,6 @@ window.ATLAS_INDEX = {
     "From a pixel to UV and NDC"
    ]
   ],
-  "rays-math#which-t": [
-   [
-    "ray-sphere",
-    "hit",
-    "Where the ray enters and leaves the layer"
-   ],
-   [
-    "ray-sphere",
-    "cases",
-    "When the camera is inside or above the layer"
-   ]
-  ],
   "rays-math#quadratic": [
    [
     "ray-sphere",
@@ -3351,6 +3939,18 @@ window.ATLAS_INDEX = {
     "ray-sphere",
     "output",
     "Writing the result into the frame"
+   ]
+  ],
+  "rays-math#which-t": [
+   [
+    "ray-sphere",
+    "hit",
+    "Where the ray enters and leaves the layer"
+   ],
+   [
+    "ray-sphere",
+    "cases",
+    "When the camera is inside or above the layer"
    ]
   ],
   "transparency#modes": [
@@ -3393,7 +3993,55 @@ window.ATLAS_INDEX = {
     "A texture is a grid of values"
    ]
   ],
+  "sd-graphs#float": [
+   [
+    "sd-blend",
+    "arith",
+    "Add, subtract, multiply, divide"
+   ],
+   [
+    "sd-warps",
+    "vector",
+    "Vector Warp: directions in a colour"
+   ]
+  ],
+  "sd-graphs#srgb": [
+   [
+    "sd-blend",
+    "screen",
+    "Screen, overlay and colour"
+   ],
+   [
+    "sd-publish",
+    "colorspace",
+    "Colour spaces and normal formats"
+   ]
+  ],
+  "sd-performance#structure": [
+   [
+    "sd-blend",
+    "screen",
+    "Screen, overlay and colour"
+   ]
+  ],
+  "sd-graphs#choose": [
+   [
+    "sd-blend",
+    "masks",
+    "Masks: where a blend applies"
+   ],
+   [
+    "sd-publish",
+    "outputs",
+    "Outputs and usages"
+   ]
+  ],
   "reading-a-frame#drawcalls": [
+   [
+    "sd-blend",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ],
    [
     "shader-anatomy",
     "properties",
@@ -3403,6 +4051,265 @@ window.ATLAS_INDEX = {
     "shadow-maps",
     "cost",
     "What shadows cost"
+   ]
+  ],
+  "texture-settings#maptypes": [
+   [
+    "sd-graphs",
+    "banding",
+    "Banding and stair-stepped normals"
+   ],
+   [
+    "sd-graphs",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ],
+   [
+    "sd-publish",
+    "formats",
+    "File formats and bit depth"
+   ]
+  ],
+  "texture-settings#srgb": [
+   [
+    "sd-graphs",
+    "srgb",
+    "sRGB and linear in Designer"
+   ],
+   [
+    "sd-publish",
+    "colorspace",
+    "Colour spaces and normal formats"
+   ]
+  ],
+  "sd-publish#export": [
+   [
+    "sd-graphs",
+    "choose",
+    "Choosing a format per map"
+   ],
+   [
+    "sd-graphs",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ]
+  ],
+  "texture-settings#automation": [
+   [
+    "sd-graphs",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ],
+   [
+    "sd-publish",
+    "export",
+    "Exporting textures"
+   ],
+   [
+    "sd-publish",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ]
+  ],
+  "reading-a-frame#routine": [
+   [
+    "sd-performance",
+    "measure",
+    "Measure first"
+   ]
+  ],
+  "sd-graphs#size": [
+   [
+    "sd-performance",
+    "resolution",
+    "Resolution is the biggest lever"
+   ],
+   [
+    "sd-pixel-fx",
+    "pixel",
+    "The Pixel Processor: a pixel shader"
+   ]
+  ],
+  "sd-graphs#graph": [
+   [
+    "sd-performance",
+    "formats",
+    "Greyscale, 8 bit, and fewer conversions"
+   ],
+   [
+    "sd-performance",
+    "cache",
+    "Caching and where parameters belong"
+   ]
+  ],
+  "sd-graphs#banding": [
+   [
+    "sd-performance",
+    "formats",
+    "Greyscale, 8 bit, and fewer conversions"
+   ]
+  ],
+  "sd-graphs#bitdepth": [
+   [
+    "sd-performance",
+    "formats",
+    "Greyscale, 8 bit, and fewer conversions"
+   ]
+  ],
+  "sd-warps#cost": [
+   [
+    "sd-performance",
+    "heavy",
+    "The heavy nodes and their cheap versions"
+   ]
+  ],
+  "sd-pixel-fx#which": [
+   [
+    "sd-performance",
+    "heavy",
+    "The heavy nodes and their cheap versions"
+   ]
+  ],
+  "sd-blend#screen": [
+   [
+    "sd-performance",
+    "structure",
+    "Graph structure"
+   ]
+  ],
+  "sd-publish#sbsar": [
+   [
+    "sd-performance",
+    "runtime",
+    "Rendering at runtime"
+   ]
+  ],
+  "sd-publish#drive": [
+   [
+    "sd-pixel-fx",
+    "functions",
+    "Function graphs: small programs for values"
+   ]
+  ],
+  "sd-blend#minmax": [
+   [
+    "sd-pixel-fx",
+    "dynamic",
+    "Random values and blending per pattern"
+   ],
+   [
+    "sd-warps",
+    "slopeblur",
+    "Slope Blur: erosion and growth"
+   ]
+  ],
+  "compute-shaders#when": [
+   [
+    "sd-pixel-fx",
+    "which",
+    "Pixel Processor or FX-Map?"
+   ]
+  ],
+  "compute-shaders#cpu": [
+   [
+    "sd-pixel-fx",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ],
+   [
+    "texture-settings",
+    "packer",
+    "A channel packer in the engine"
+   ]
+  ],
+  "sd-blend#node": [
+   [
+    "sd-publish",
+    "expose",
+    "Exposing a parameter"
+   ]
+  ],
+  "sd-pixel-fx#functions": [
+   [
+    "sd-publish",
+    "drive",
+    "Driving many nodes from one input"
+   ]
+  ],
+  "sd-performance#cache": [
+   [
+    "sd-publish",
+    "drive",
+    "Driving many nodes from one input"
+   ]
+  ],
+  "pbr-basics#maps": [
+   [
+    "sd-publish",
+    "outputs",
+    "Outputs and usages"
+   ]
+  ],
+  "sd-performance#resolution": [
+   [
+    "sd-publish",
+    "export",
+    "Exporting textures"
+   ]
+  ],
+  "texture-memory#blocks": [
+   [
+    "sd-publish",
+    "formats",
+    "File formats and bit depth"
+   ],
+   [
+    "texture-settings",
+    "maptypes",
+    "One setting per kind of map"
+   ],
+   [
+    "texture-settings",
+    "compression",
+    "Why packed masks need BC7"
+   ],
+   [
+    "texture-settings",
+    "mobile",
+    "Mobile formats and platform overrides"
+   ]
+  ],
+  "sd-performance#runtime": [
+   [
+    "sd-publish",
+    "sbsar",
+    "Publishing an SBSAR"
+   ],
+   [
+    "sd-publish",
+    "implement",
+    "Set it up in Designer and Unity HDRP"
+   ]
+  ],
+  "mapping#flow": [
+   [
+    "sd-warps",
+    "idea",
+    "A warp reads from somewhere else"
+   ]
+  ],
+  "sd-publish#colorspace": [
+   [
+    "sd-warps",
+    "vector",
+    "Vector Warp: directions in a colour"
+   ]
+  ],
+  "sd-performance#heavy": [
+   [
+    "sd-warps",
+    "cost",
+    "What warps cost"
    ]
   ],
   "buffers#implement": [
@@ -3464,31 +4371,14 @@ window.ATLAS_INDEX = {
     "Unique, tiling and trim sheets"
    ]
   ],
-  "texture-memory#blocks": [
-   [
-    "texture-settings",
-    "maptypes",
-    "One setting per kind of map"
-   ],
-   [
-    "texture-settings",
-    "compression",
-    "Why packed masks need BC7"
-   ],
-   [
-    "texture-settings",
-    "mobile",
-    "Mobile formats and platform overrides"
-   ]
-  ],
-  "texture-memory#packing": [
+  "pbr-basics#roughness": [
    [
     "texture-settings",
     "packing",
     "Packing layouts per engine"
    ]
   ],
-  "pbr-basics#roughness": [
+  "texture-memory#packing": [
    [
     "texture-settings",
     "packing",
@@ -3500,13 +4390,6 @@ window.ATLAS_INDEX = {
     "texture-settings",
     "filtering",
     "Max size, mipmaps and anisotropy"
-   ]
-  ],
-  "compute-shaders#cpu": [
-   [
-    "texture-settings",
-    "packer",
-    "A channel packer in the engine"
    ]
   ],
   "shader-anatomy#interpolation": [
@@ -3535,6 +4418,110 @@ window.ATLAS_INDEX = {
     "transparency",
     "dither",
     "Dithered transparency"
+   ]
+  ],
+  "unity-scenes#memory": [
+   [
+    "unity-addressables",
+    "why",
+    "Why direct references are not enough"
+   ],
+   [
+    "unity-addressables",
+    "scenes",
+    "Addressable scenes"
+   ]
+  ],
+  "unity-guids#tools": [
+   [
+    "unity-addressables",
+    "loading",
+    "Loading by address or by reference"
+   ]
+  ],
+  "unity-scenes#bootstrap": [
+   [
+    "unity-addressables",
+    "scenes",
+    "Addressable scenes"
+   ],
+   [
+    "unity-addressables",
+    "implement",
+    "Set it up in Unity"
+   ]
+  ],
+  "unity-scenes#async": [
+   [
+    "unity-addressables",
+    "scenes",
+    "Addressable scenes"
+   ]
+  ],
+  "unity-prefabs#breaks": [
+   [
+    "unity-guids",
+    "fileid",
+    "fileIDs inside files"
+   ]
+  ],
+  "unity-addressables#loading": [
+   [
+    "unity-guids",
+    "tools",
+    "Working with GUIDs in tools"
+   ]
+  ],
+  "unity-guids#meta": [
+   [
+    "unity-prefabs",
+    "fbx",
+    "What importing an FBX creates"
+   ]
+  ],
+  "baked-gi#lightmaps": [
+   [
+    "unity-prefabs",
+    "importer",
+    "Import settings that matter"
+   ],
+   [
+    "unity-scenes",
+    "lighting",
+    "Lighting with several scenes"
+   ]
+  ],
+  "unity-guids#refs": [
+   [
+    "unity-prefabs",
+    "prefab",
+    "Prefabs and overrides"
+   ],
+   [
+    "unity-scenes",
+    "what",
+    "What a scene is"
+   ]
+  ],
+  "unity-guids#fileid": [
+   [
+    "unity-prefabs",
+    "breaks",
+    "Why reimports break prefabs"
+   ]
+  ],
+  "unity-addressables#scenes": [
+   [
+    "unity-scenes",
+    "what",
+    "What a scene is"
+   ]
+  ],
+  "baked-gi#probes": [
+   [
+    "unity-scenes",
+    "lighting",
+    "Lighting with several scenes"
    ]
   ]
  }
