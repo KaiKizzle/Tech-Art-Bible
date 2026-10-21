@@ -6,8 +6,9 @@
 <title>Graphs, Bit Depth and Colour Space · Tech Art Atlas</title>
 <meta name="description" content="What the numbers in a Substance Designer graph are: output size and inheritance, what 8 and 16 bits mean, why heights band, when you need float formats, and how sRGB and linear values behave inside the graph and on export.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -38,7 +39,7 @@
   <p class="lede">What the numbers in a Substance Designer graph are: output size and inheritance, what 8 and 16 bits mean, why heights band, when you need float formats, and how sRGB and linear values behave inside the graph and on export.</p>
   <p class="meta">No Designer experience needed. Builds on Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="sd-graphs" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one height ramp stored at 8 bits, terraced into 255 steps.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/sd-graphs.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One height ramp stored at 8 bits, terraced into 255 steps.</figcaption></figure>
 <div class="needs" data-needs="color-values#linear-srgb textures-sampling#texture"></div>
 
 <section class="chapter" id="graph" data-title="A graph is a chain of images" data-builds="gpu-basics#per-pixel textures-sampling#texture" data-summary="Nodes compute images and pass them on. Greyscale (L, 1 channel) or colour (C, 4 channels); colour costs about 4×.">
@@ -255,11 +256,10 @@ public class HeightImportCheck : AssetPostprocessor
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="sdgraphs.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="sdgraphs.js?v=6af33373"></script>
 </body>
 </html>

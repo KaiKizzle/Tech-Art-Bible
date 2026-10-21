@@ -6,8 +6,9 @@
 <title>Colour as Numbers · Tech Art Atlas</title>
 <meta name="description" content="Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="color-values">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.</p>
   <p class="meta">Swatches below show the colours as your screen displays them.</p>
 </header>
-<figure class="keyart"><canvas data-render="color-values" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: red, green and blue lights adding up on a grey floor.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/color-values.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Red, green and blue lights adding up on a grey floor.</figcaption></figure>
 <div class="needs" data-needs="vectors#what shader-anatomy#functions"></div>
 
 <section class="chapter" id="rgb" data-title="A colour is three numbers" data-builds="vectors#what shader-anatomy#types" data-summary="A colour is (r, g, b) from 0 to 1; 8-bit images store 0–255.">
@@ -168,11 +169,10 @@ public class ColorFromScript : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="color-values.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="color-values.js?v=1331d338"></script>
 </body>
 </html>

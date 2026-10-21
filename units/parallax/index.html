@@ -6,8 +6,9 @@
 <title>Parallax and POM · Tech Art Atlas</title>
 <meta name="description" content="Bricks that hide their mortar, cobbles that cover each other: depth on a flat surface, computed per pixel from a height map. From a one-sample guess to parallax occlusion mapping with shadows.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="parallax">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Bricks that hide their mortar, cobbles that cover each other: depth on a flat surface, computed per pixel from a height map. From a one-sample guess to parallax occlusion mapping with shadows.</p>
   <p class="meta">Builds on tangent space and the raymarching idea from the cloud unit. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="parallax" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a brick height field traced per pixel, lit from the side.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/parallax.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A brick height field traced per pixel, lit from the side.</figcaption></figure>
 <div class="needs" data-needs="spaces#tangent textures-sampling#uv dot-cross#angle"></div>
 
 <section class="chapter" id="heightmap" data-title="What parallax fixes" data-builds="spaces#tangent textures-sampling#uv" data-summary="Going one unit deeper shifts the sightline by tan θ across the texture.">
@@ -230,11 +231,10 @@ void POMShadow_float(UnityTexture2D HeightTex, UnitySamplerState SS, float2 UV, 
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="parallax.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="parallax.js?v=bd49ad9f"></script>
 </body>
 </html>

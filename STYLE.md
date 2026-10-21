@@ -1,7 +1,7 @@
 # Visual style
 
-The site looks like an asset library (think Poly Haven): neutral greys, a top bar, a filter sidebar and a grid of rendered thumbnails.
-The renders and the diagrams carry the color; the UI itself is grey with one orange accent.
+The site looks like an asset library (think Poly Haven): neutral greys, a top bar, a filter sidebar and a grid of simple line-icon tiles.
+The key art and the diagrams carry the color; the UI itself is grey with one orange accent.
 
 ## Four image modes
 
@@ -18,14 +18,18 @@ If a topic seems to need pixel or voxel art for style reasons, use a render or a
 
 ## Key art
 
-Each unit has one rendered key image (`assets/renders.js`). It shows the unit's own technique working,
-for example the interior-mapped facade, or a split view of the lit image and its cost. To add one:
+Each unit has one key image, shown as a static WebP (`assets/keyart/<slug>.webp`, 1600 × 610) so pages never compile shaders.
+It shows the unit's own technique working. The images are rendered from the GLSL scenes in `assets/renders.js`:
 
-1. Add a GLSL scene to `SCENES` in `assets/renders.js` with a `vec3 render(vec2 frag)` function that returns linear color.
+1. Add a scene to `SCENES` in `assets/renders.js` with a `vec3 render(vec2 frag)` function that returns linear color.
    Use `screenUV(frag)`, `studio(rd)` for the backdrop and the helpers in the prelude.
-2. Put `<canvas data-render="your-slug">` in the unit's `keyart` figure and on the hub (automatic from the catalogue slug).
-3. Or render the image in Blender, Unity or Unreal instead: export a 2400×914 (21:8) JPEG, save it as
-   `units/<slug>/keyart.jpg`, and replace the canvas with an `<img>`. Use the same studio lighting so it fits next to the others.
+2. Run `python tools/render_keyart.py <slug>` to write `assets/keyart/<slug>.webp`.
+3. Or render the image in Blender, Unity or Unreal instead and save it under the same name and size, with the same studio lighting.
+
+## Hub icons
+
+Tiles on the hub show one simple line icon per unit (`assets/icons.js`, 48 × 48 viewBox, 2.2 px strokes in `currentColor`,
+the one element that matters in the accent class `a`). No fills except one accent dot (`af`), no text, no perspective tricks.
 
 ## Type and color
 
@@ -34,8 +38,9 @@ for example the interior-mapped facade, or a split view of the lit image and its
 - Colors are tokens in `assets/atlas.css`. Use color scarcely: the UI is neutral grey; the orange `--accent` marks only the current
   item (active filter, current chapter), the logo and focus. Categories have no colors. Links are underlined text, not colored.
   Inside live formulas and labs, colors carry meaning (one per variable, axis colors for X/Y/Z) and stay.
-- Layout: a sticky top bar (`.hubtop`) on every page; a left sidebar (hub filters or the unit's chapters); square-cornered
-  (6 px) panels with 1 px lines instead of shadows.
+- Layout: a sticky top bar (`.hubtop`) on every page; a left sidebar (hub filters or the unit's chapters). Unit content is one
+  centred column (`--col`, 920 px); every chapter is a framed card, and widgets, labs, code and tables inside it are framed again
+  with 1 px lines. Panels have small radii and no shadows.
 - Dark is the default theme; light is an explicit choice of the reader. Draw lab canvases with `Atlas.col('token')`
   so they follow both.
 
@@ -45,7 +50,9 @@ Plain, direct sentences. Name things by what readers know from their engine. No 
 
 - Small steps. A chapter introduces one idea and uses only ideas from earlier chapters or linked lessons.
   If a sentence needs something the reader may not know, link it (`a.x`) instead of assuming it.
-- Every formula is a live `Atlas.fx` widget: each symbol a slider, with a picture of what it computes and a graph.
+- Every formula is a live `Atlas.fx` widget: each symbol a control, with a picture of what it computes and a graph.
+  Continuous values get sliders; anything with only a few settings (a format, a mode, on/off, up to eight steps) gets buttons:
+  give the variable `values` and `labels` and the widget draws them as a button row automatically.
   Show the substituted numbers, and intermediate steps when there are several.
 - Checks are optional panels between lessons, a few questions each, with an explanation for every answer.
 - Every unit has a final **"Build it in Unity HDRP"** chapter (`id="implement"`, class `chapter impl`), placed before the sources:

@@ -6,8 +6,9 @@
 <title>Textures and Sampling · Tech Art Atlas</title>
 <meta name="description" content="A texture is a lookup table the GPU can read anywhere, fast. This unit covers how a shader asks for a value and what the hardware does between the texels.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="textures-sampling">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">A texture is a lookup table the GPU can read anywhere, fast. This unit covers how a shader asks for a value and what the hardware does between the texels.</p>
   <p class="meta">Builds on How a GPU Draws a Frame and the functions in Reading a Shader.</p>
 </header>
-<figure class="keyart"><canvas data-render="textures-sampling" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a checkerboard tinted by the mip level its distance would pick.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/textures-sampling.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A checkerboard tinted by the mip level its distance would pick.</figcaption></figure>
 <div class="needs" data-needs="gpu-basics shader-anatomy#functions"></div>
 
 <section class="chapter" id="texture" data-title="A texture is a grid of values" data-builds="gpu-basics#screen" data-summary="A texture is a grid of texels in GPU memory, each holding up to four numbers.">
@@ -167,11 +168,10 @@ void ManualBilinear_float(UnityTexture2D Tex, float2 UV, out float4 Out)
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="textures-sampling.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="textures-sampling.js?v=fe8202c6"></script>
 </body>
 </html>

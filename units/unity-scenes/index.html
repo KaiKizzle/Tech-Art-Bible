@@ -6,8 +6,9 @@
 <title>Scene Management · Tech Art Atlas</title>
 <meta name="description" content="How Unity loads scenes: Single and additive loading, the active scene, loading in the background and the activation hitch, peak memory when switching levels, the bootstrap pattern, references between scenes, and lighting with several scenes loaded.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="unity-scenes">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">How Unity loads scenes: Single and additive loading, the active scene, loading in the background and the activation hitch, peak memory when switching levels, the bootstrap pattern, references between scenes, and lighting with several scenes loaded.</p>
   <p class="meta">Builds on GUIDs and .meta Files. Engine notes cover Unity HDRP and URP, with Unreal comparisons.</p>
 </header>
-<figure class="keyart"><canvas data-render="unity-scenes" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a level built from scene layers loaded on top of each other.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/unity-scenes.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A level built from scene layers loaded on top of each other.</figcaption></figure>
 <div class="needs" data-needs="unity-guids#refs"></div>
 
 <section class="chapter" id="what" data-title="What a scene is" data-builds="unity-guids#refs" data-summary="A scene is a YAML file of GameObjects plus lighting and navigation data; build scenes come from the Build Profiles scene list.">
@@ -293,11 +294,10 @@ public static class Bootstrapper
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="scenes.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="scenes.js?v=157470e5"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Texturing a Game Asset · Tech Art Atlas</title>
 <meta name="description" content="How a model gets its textures: unwrapping UVs, padding against mip bleeding, texel density targets, baking from a high-poly model, why hard edges cost vertices, when to share textures, and exporting to the engine.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="texturing">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">How a model gets its textures: unwrapping UVs, padding against mip bleeding, texel density targets, baking from a high-poly model, why hard edges cost vertices, when to share textures, and exporting to the engine.</p>
   <p class="meta">Builds on Textures and Sampling. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="texturing" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a crate with its UV checker on one side and its finished material on the other.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/texturing.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A crate with its UV checker on one side and its finished material on the other.</figcaption></figure>
 <div class="needs" data-needs="textures-sampling#uv texture-memory#mips"></div>
 
 <section class="chapter" id="uvs" data-title="UVs: flattening the surface" data-builds="textures-sampling#uv" data-summary="Cut seams where they hide; keep islands unstretched (aspect 1) and at even density.">
@@ -224,11 +225,10 @@ public static class TexelDensityReport
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="texturing.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="texturing.js?v=a1dd8809"></script>
 </body>
 </html>

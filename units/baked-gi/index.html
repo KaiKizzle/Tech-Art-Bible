@@ -6,8 +6,9 @@
 <title>Baked Light: Lightmaps and Probes · Tech Art Atlas</title>
 <meta name="description" content="Most of the light indoors has bounced at least once. This unit explains indirect light, then the ways games store it: lightmaps, spherical harmonics probes and reflection probes, and where each one breaks.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="baked-gi">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Most of the light indoors has bounced at least once. This unit explains indirect light, then the ways games store it: lightmaps, spherical harmonics probes and reflection probes, and where each one breaks.</p>
   <p class="meta">Builds on the light units and the slab test. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="baked-gi" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a room lit by one opening, with colour bleeding from the walls.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/baked-gi.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A room lit by one opening, with colour bleeding from the walls.</figcaption></figure>
 <div class="needs" data-needs="exposure#units dot-cross#lambert rays-math#box"></div>
 
 <section class="chapter" id="indirect" data-title="Light that bounces" data-builds="exposure#units dot-cross#lambert" data-summary="E_bounce ≈ ρ_wall · E_wall · F; each bounce multiplies by ρ · F.">
@@ -206,11 +207,10 @@ public class ProbeSampler : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="baked-gi.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="baked-gi.js?v=954af215"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Buffers and Render Targets · Tech Art Atlas</title>
 <meta name="description" content="Shaders only see what is already in GPU memory. This unit covers every kind of memory a shader reads and writes: meshes, per-draw values, lists of your own data, lists built on the GPU, and the images frames are drawn into.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="buffers">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Shaders only see what is already in GPU memory. This unit covers every kind of memory a shader reads and writes: meshes, per-draw values, lists of your own data, lists built on the GPU, and the images frames are drawn into.</p>
   <p class="meta">Builds on How a GPU Draws a Frame. Code is HLSL; engine notes show the C# and C++ side.</p>
 </header>
-<figure class="keyart"><canvas data-render="buffers" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: three buffers as rows of memory cells, partly filled.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/buffers.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Three buffers as rows of memory cells, partly filled.</figcaption></figure>
 <div class="needs" data-needs="gpu-basics shader-anatomy#properties"></div>
 
 <section class="chapter" id="memory" data-title="A buffer is a list in GPU memory" data-builds="gpu-basics#parallel" data-summary="A buffer is a list of equally sized elements in GPU memory: size = count × stride.">
@@ -277,11 +278,10 @@ void Markers_float(float3 PositionAWS, out float Mask)
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="buffers.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="buffers.js?v=391577a1"></script>
 </body>
 </html>

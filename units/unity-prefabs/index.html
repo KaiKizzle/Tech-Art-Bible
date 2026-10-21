@@ -6,8 +6,9 @@
 <title>FBX, Prefabs, Variants and Nested Prefabs · Tech Art Atlas</title>
 <meta name="description" content="What importing an FBX creates and which import settings matter, how prefabs store overrides, nested prefabs and prefab variants, where to make a change, how to wrap models, and why re-exporting a model can break the prefabs built on it.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -38,7 +39,7 @@
   <p class="lede">What importing an FBX creates and which import settings matter, how prefabs store overrides, nested prefabs and prefab variants, where to make a change, how to wrap models, and why re-exporting a model can break the prefabs built on it.</p>
   <p class="meta">Builds on GUIDs and .meta Files. Applies to every Unity render pipeline.</p>
 </header>
-<figure class="keyart"><canvas data-render="unity-prefabs" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one modular house prefab nested three times, one variant in red.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/unity-prefabs.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One modular house prefab nested three times, one variant in red.</figcaption></figure>
 <div class="needs" data-needs="unity-guids#refs unity-guids#fileid"></div>
 
 <section class="chapter" id="fbx" data-title="What importing an FBX creates" data-builds="spaces#transform" data-summary="The Model Importer turns an FBX into meshes, a read-only model prefab, materials, clips and an avatar; Unity works in metres.">
@@ -311,11 +312,10 @@ public static class OverrideReport
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="prefabs.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="prefabs.js?v=7e12c7fa"></script>
 </body>
 </html>

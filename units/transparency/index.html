@@ -6,8 +6,9 @@
 <title>Transparency and Alpha · Tech Art Atlas</title>
 <meta name="description" content="Glass, smoke, foliage and fades all need something to show through. This unit explains what the GPU does with alpha, why order matters, and the four ways around sorting.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="transparency">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Glass, smoke, foliage and fades all need something to show through. This unit explains what the GPU does with alpha, why order matters, and the four ways around sorting.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
 </header>
-<figure class="keyart"><canvas data-render="transparency" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: three tinted glass spheres, blended back to front.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/transparency.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Three tinted glass spheres, blended back to front.</figcaption></figure>
 <div class="needs" data-needs="shader-anatomy#functions buffers#render-targets textures-sampling#filter"></div>
 
 <section class="chapter" id="alpha" data-title="What alpha means" data-builds="shader-anatomy#functions buffers#render-targets" data-summary="result = src · a + dst · (1 − a): a lerp from the background to the new colour.">
@@ -224,11 +225,10 @@ public class TransparentOrder : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="transparency.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="transparency.js?v=744e50e5"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Cloth Shading · Tech Art Atlas</title>
 <meta name="description" content="Velvet glows at its edges, satin streaks, cotton is soft. This unit explains why fabric needs its own shading terms and builds them: sheen, a cloth visibility term, wrapped diffuse, anisotropic silk, fuzz and weave.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="cloth">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Velvet glows at its edges, satin streaks, cotton is soft. This unit explains why fabric needs its own shading terms and builds them: sheen, a cloth visibility term, wrapped diffuse, anisotropic silk, fuzz and weave.</p>
   <p class="meta">Builds on Inside a PBR Shader. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="cloth" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: velvet with a Charlie sheen on the left, anisotropic satin on the right.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/cloth.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Velvet with a Charlie sheen on the left, anisotropic satin on the right.</figcaption></figure>
 <div class="needs" data-needs="pbr-brdf#ndf pbr-brdf#geometry spaces#tangent"></div>
 
 <section class="chapter" id="why" data-title="Why fabric needs its own model" data-builds="pbr-brdf#full" data-summary="Loose fibres catch light at grazing angles (sheen); parallel threads stretch the highlight (anisotropy).">
@@ -170,11 +171,10 @@ void SilkAniso_float(float3 Normal, float3 Tangent, float3 ViewDir, float3 Light
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="cloth.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="cloth.js?v=6513a8bb"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Texels on a Budget · Tech Art Atlas</title>
 <meta name="description" content="Textures are usually the biggest item in a game&#x27;s memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="texture-memory">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Textures are usually the biggest item in a game's memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.</p>
   <p class="meta">From bytes per texel down to the bits in a 4×4 block, with notes for Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="texture-memory" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser. Left: the lit material. Right: the mip level each pixel samples at 1080p.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/texture-memory.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Rendered live in your browser. Left: the lit material. Right: the mip level each pixel samples at 1080p.</figcaption></figure>
 <div class="needs" data-needs="textures-sampling#texture textures-sampling#mips color-values#linear-srgb spaces#tangent"></div>
 
 <section class="chapter" id="cost" data-title="What a texture costs" data-builds="textures-sampling#texture" data-summary="bytes = width · height · bpp / 8, × 4/3 with mips. Resolution ×2 = memory ×4.">
@@ -452,12 +453,11 @@ public class TextureMemoryHUD : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="textures.js"></script>
-<script src="texture-fx.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="textures.js?v=2c5f19e1"></script>
+<script src="texture-fx.js?v=b0d7e14b"></script>
 </body>
 </html>

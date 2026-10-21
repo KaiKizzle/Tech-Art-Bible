@@ -6,8 +6,9 @@
 <title>Keeping Graphs Fast · Tech Art Atlas</title>
 <meta name="description" content="How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="sd-performance">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.</p>
   <p class="meta">Builds on Graphs, Bit Depth and Colour Space, Warps and Distortion and Pixel Processor and FX-Maps.</p>
 </header>
-<figure class="keyart"><canvas data-render="sd-performance" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the same tile at four output sizes, each a quarter of the work of the last.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/sd-performance.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The same tile at four output sizes, each a quarter of the work of the last.</figcaption></figure>
 <div class="needs" data-needs="sd-graphs#size sd-warps#cost"></div>
 
 <section class="chapter" id="measure" data-title="Measure first" data-builds="reading-a-frame#routine" data-summary="Turn on node timing, find the slowest nodes, use the GPU engine; engine plugins may render on the CPU.">
@@ -248,11 +249,10 @@ public class SubstanceRenderQueue : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="sdperf.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="sdperf.js?v=adc57ffb"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Shadow Maps · Tech Art Atlas</title>
 <meta name="description" content="Real-time shadows are a second camera at the light and one depth comparison per pixel. This unit builds that comparison, then fixes everything that goes wrong with it: acne, blocky edges, wasted resolution and cost.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="shadow-maps">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Real-time shadows are a second camera at the light and one depth comparison per pixel. This unit builds that comparison, then fixes everything that goes wrong with it: acne, blocky edges, wasted resolution and cost.</p>
   <p class="meta">Builds on the depth buffer and coordinate spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="shadow-maps" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: pillars casting long shadows, with the light's depth view on the right.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/shadow-maps.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Pillars casting long shadows, with the light's depth view on the right.</figcaption></figure>
 <div class="needs" data-needs="depth-effects#what-depth spaces#chain texture-memory#density"></div>
 
 <section class="chapter" id="idea" data-title="Seeing the scene from the light" data-builds="depth-effects#what-depth" data-summary="Render depth from the light; a point is shadowed if it is farther from the light than the stored depth.">
@@ -185,11 +186,10 @@ public class ShadowOnDemand : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="shadow-maps.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="shadow-maps.js?v=ed80702b"></script>
 </body>
 </html>

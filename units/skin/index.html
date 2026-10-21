@@ -6,8 +6,9 @@
 <title>Skin: Light Under the Surface · Tech Art Atlas</title>
 <meta name="description" content="Skin glows because light travels under it before it comes back out. This unit builds the techniques games use for that, from a one-line wrap to diffusion profiles, pre-integration and light through ears, plus the two-lobe specular on top.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="skin">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Skin glows because light travels under it before it comes back out. This unit builds the techniques games use for that, from a one-line wrap to diffusion profiles, pre-integration and light through ears, plus the two-lobe specular on top.</p>
   <p class="meta">Builds on Inside a PBR Shader. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="skin" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a lit bust, with subsurface scattering on the left half and plain Lambert on the right.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/skin.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A lit bust, with subsurface scattering on the left half and plain Lambert on the right.</figcaption></figure>
 <div class="needs" data-needs="pbr-brdf#diffuse pbr-brdf#ndf dot-cross#lambert"></div>
 
 <section class="chapter" id="why" data-title="Why skin is not Lambert" data-builds="pbr-brdf#diffuse" data-summary="Light enters skin and leaves millimetres away; red travels farthest, so terminators and shadow edges turn warm and soft.">
@@ -254,11 +255,10 @@ void PreintegratedSkin_float(UnityTexture2D LUT, UnitySamplerState SS, float3 No
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="skin.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="skin.js?v=1223dab8"></script>
 </body>
 </html>

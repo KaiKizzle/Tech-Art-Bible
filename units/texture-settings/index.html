@@ -6,8 +6,9 @@
 <title>Texture Packing and Import Settings · Tech Art Atlas</title>
 <meta name="description" content="The import settings that decide how every texture looks and what it costs: sRGB or data, the right compression per map type, packing layouts for HDRP, URP and Unreal, mobile formats, mipmaps and anisotropy, and tools that set it all automatically.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -38,7 +39,7 @@
   <p class="lede">The import settings that decide how every texture looks and what it costs: sRGB or data, the right compression per map type, packing layouts for HDRP, URP and Unreal, mobile formats, mipmaps and anisotropy, and tools that set it all automatically.</p>
   <p class="meta">Builds on Texels on a Budget. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="texture-settings" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one mask texture taken apart into its four channels.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/texture-settings.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One mask texture taken apart into its four channels.</figcaption></figure>
 <div class="needs" data-needs="texture-memory#blocks texture-memory#packing"></div>
 
 <section class="chapter" id="maptypes" data-title="One setting per kind of map" data-builds="texture-memory#cost texture-memory#blocks" data-summary="Per map type: sRGB on or off, a format, a maximum size. BC7 1 byte per texel, BC1 and BC4 half that.">
@@ -377,11 +378,10 @@ for t in unreal.EditorUtilityLibrary.get_selected_assets():
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="texsettings.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="texsettings.js?v=ebed49ee"></script>
 </body>
 </html>

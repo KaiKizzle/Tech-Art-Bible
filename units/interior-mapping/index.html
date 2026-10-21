@@ -6,8 +6,9 @@
 <title>Rooms Behind Glass · Tech Art Atlas</title>
 <meta name="description" content="Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 <style>
 .bugnote{border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:.93rem;background:var(--bg)}
 .bugnote b{font-family:var(--font-display)}
@@ -51,7 +52,7 @@ figure.lab{margin-left:0;margin-right:0}
   <p class="lede">Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.</p>
   <p class="meta">Built for Unity HDRP; the maths transfers to URP and Unreal unchanged. Builds on the Foundations units for vectors, spaces, rays and textures.</p>
 </header>
-<figure class="keyart"><canvas data-render="interior-mapping" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: every window is one flat face, the rooms are traced per pixel.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/interior-mapping.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Every window is one flat face, the rooms are traced per pixel.</figcaption></figure>
 <div class="needs" data-needs="rays-math#box spaces#tangent dot-cross#projection textures-sampling#uv"></div>
 
 <section class="chapter" id="trick" data-title="The trick" data-builds="rays-math#ray gpu-basics#per-pixel" data-summary="One flat quad per window; a per-pixel ray against an imaginary box picks a point in a pre-rendered room picture.">
@@ -921,12 +922,11 @@ public class FacadeRooms : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="rooms.js"></script>
-<script src="rooms-fx.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="rooms.js?v=09ab213f"></script>
+<script src="rooms-fx.js?v=f2ce39d8"></script>
 </body>
 </html>

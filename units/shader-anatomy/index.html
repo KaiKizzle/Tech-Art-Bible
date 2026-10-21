@@ -6,8 +6,9 @@
 <title>Reading a Shader · Tech Art Atlas</title>
 <meta name="description" content="Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="shader-anatomy">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.</p>
   <p class="meta">Builds on How a GPU Draws a Frame. Every function is shown as a live graph.</p>
 </header>
-<figure class="keyart"><canvas data-render="shader-anatomy" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: lerp from blue to orange, as five spheres, over a smoothstep ramp.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/shader-anatomy.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Lerp from blue to orange, as five spheres, over a smoothstep ramp.</figcaption></figure>
 <div class="needs" data-needs="gpu-basics"></div>
 
 <section class="chapter" id="types" data-title="Numbers and groups of numbers" data-builds="gpu-basics#per-pixel" data-summary="float, float2, float3, float4 and half; swizzles like c.bgr; maths works part by part.">
@@ -291,11 +292,10 @@ public class PulseDriver : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="shader-anatomy.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="shader-anatomy.js?v=d1f15964"></script>
 </body>
 </html>

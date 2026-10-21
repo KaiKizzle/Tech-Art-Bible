@@ -67,9 +67,21 @@
   }
   function range(id, fmtf, cb) {
     const el = document.getElementById(id), out = document.getElementById(id + '-o');
-    const f = () => { const v = +el.value; if (out) out.textContent = fmtf ? fmtf(v) : v; if (cb) cb(v); };
+    let mark = () => {};
+    const f = () => { const v = +el.value; if (out) out.textContent = fmtf ? fmtf(v) : v; mark(); if (cb) cb(v); };
     el.addEventListener('input', f);
     if (out) out.textContent = fmtf ? fmtf(+el.value) : el.value;
+    // a slider with only a few positions reads better as buttons
+    const st = el.step === 'any' ? 0 : +(el.step || 1), lo = +el.min, n = st ? Math.round((+el.max - lo) / st) + 1 : 99;
+    if (n <= 6) {
+      const vals = Array.from({ length: n }, (_, i) => +(lo + i * st).toFixed(6)), box = document.createElement('div');
+      box.className = 'seg lab-seg'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', (el.labels && el.labels[0] && el.labels[0].textContent) || id);
+      box.innerHTML = vals.map((x, i) => `<button type="button" data-i="${i}">${esc(fmtf ? fmtf(x) : String(x))}</button>`).join('');
+      el.hidden = true; if (out) out.hidden = true; el.after(box);
+      mark = () => $$('button', box).forEach(b => b.setAttribute('aria-pressed', vals[+b.dataset.i] === +el.value ? 'true' : 'false'));
+      box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.value = vals[+b.dataset.i]; f(); });
+      mark();
+    }
     return { get v() { return +el.value; }, set(v) { el.value = v; f(); }, el };
   }
   function seg(el, cb) {
@@ -354,11 +366,20 @@
        size: [W, H] of each canvas, note: text under the widget
      } */
   const FX = {}, fxPalette = ['ray', 'accent', 'ax-y', 'ax-x', 'ax-z', 'cat-perf'];
-  function fxDefine(name, spec) { FX[name] = spec; const el = document.querySelector(`.fx[data-fx="${name}"]`); if (el && !el.dataset.ready) fxBuild(el, spec); }
+  /* widgets are built when they come near the viewport, so long pages open fast */
+  const fxIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; fxIO.unobserve(e.target); const s = FX[e.target.dataset.fx]; if (s && !e.target.dataset.ready) fxBuild(e.target, s); }), { rootMargin: '900px 0px' }) : null;
+  function fxQueue(el) { const s = FX[el.dataset.fx]; if (!s || el.dataset.ready || el.dataset.queued) return; if (fxIO) { el.dataset.queued = '1'; fxIO.observe(el); } else fxBuild(el, s); }
+  function fxDefine(name, spec) { FX[name] = spec; const el = document.querySelector(`.fx[data-fx="${name}"]`); if (el) fxQueue(el); }
   function fxBuild(root, spec) {
     root.dataset.ready = '1';
     const keys = Object.keys(spec.vars || {});
     const vars = spec.vars || {};
+    // a slider with only a handful of positions is a choice: show buttons instead
+    Object.keys(vars).forEach(k => { const d = vars[k]; if (d.values || d.const || d.derived || d.log || !d.step) return;
+      const n = Math.round((d.max - d.min) / d.step) + 1; if (n > 8) return;
+      d.values = Array.from({ length: n }, (_, i) => +(d.min + i * d.step).toFixed(6)); let bi = 0; d.values.forEach((x, i) => { if (Math.abs(x - d.value) < Math.abs(d.values[bi] - d.value)) bi = i; }); d.index = bi; });
+    const isSeg = k => !vars[k].const && !vars[k].derived && vars[k].values && vars[k].values.length <= 10;
+    const segLabel = (d, x) => d.labels ? d.labels[d.values.indexOf(x)] : d.fmt ? d.fmt(x) : num(x) + (d.unit && d.unit !== '%' ? (d.unit === '°' ? '°' : ' ' + d.unit) : d.unit === '%' ? '%' : '');
     const outs = spec.out ? (Array.isArray(spec.out) ? spec.out : [spec.out]) : [];
     keys.forEach(k => { if (vars[k].derived) vars[k].const = true; });
     const live = keys.filter(k => !vars[k].const);
@@ -381,6 +402,8 @@
       ${spec.steps ? '<div class="fx-steps"></div>' : ''}
       ${hasDraw || hasPlot ? `<div class="fx-body${hasDraw && hasPlot ? ' two' : ''}">${hasDraw ? `<canvas class="fx-draw" width="${CW}" height="${CH}" aria-label="Picture of ${esc(spec.title || 'the formula')}"></canvas>` : ''}${hasPlot ? `<canvas class="fx-plot" width="${hasDraw ? CW : CW * 2}" height="${(spec.plot && spec.plot.height) || CH}" aria-label="Graph of ${esc(spec.title || 'the formula')}"></canvas>` : ''}</div>` : ''}
       <div class="fx-vars">${keys.map(k => { const d = vars[k]; const n = d.values ? d.values.length - 1 : null;
+        if (isSeg(k)) { const labs = d.values.map(x => segLabel(d, x)), wide = labs.join('').length > 30;
+          return `<div class="fx-var seg${wide ? ' wide' : ''}" data-k="${k}" style="--v:var(--${d.color})"><span class="fv-s">${symOf(k)}</span><span class="fv-n">${d.name || ''}</span><div class="fx-seg" role="group" aria-label="${esc(d.name || k)}">${labs.map((l, i) => `<button type="button" data-i="${i}" aria-pressed="${d.values[i] === v[k]}">${esc(l)}</button>`).join('')}</div><output></output></div>`; }
         const sl = d.const ? `<span class="fx-const">${d.derived ? 'computed from the sliders above' : 'constant'}</span>` : `<input type="range" id="${id}-${k}" min="${d.values ? 0 : d.log ? Math.log(d.min) : d.min}" max="${d.values ? n : d.log ? Math.log(d.max) : d.max}" step="${d.values ? 1 : d.log ? 'any' : (d.step || (d.max - d.min) / 200)}" value="${d.values ? (d.index || 0) : d.log ? Math.log(v[k]) : v[k]}" aria-label="${esc(d.name || k)}">`;
         return `<label class="fx-var" data-k="${k}" style="--v:var(--${d.color})"><span class="fv-s">${symOf(k)}</span><span class="fv-n">${d.name || ''}${d.unit && d.unit !== '°' ? ` <i>${d.unit}</i>` : ''}</span>${sl}<output></output></label>`; }).join('')}</div>
       ${hasPlot || spec.animate ? `<div class="fx-ctl">${hasPlot ? `<button type="button" class="btn fx-play">Animate <span class="fx-pk"></span></button>` : ''}${spec.note ? `<span class="cap">${spec.note}</span>` : ''}</div>` : (spec.note ? `<p class="cap">${spec.note}</p>` : '')}`;
@@ -469,6 +492,7 @@
     function dot(ctx, x, y, c, r = 5) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
     function lbl(ctx, text, x, y, c, align = 'left', bold) { ctx.font = (bold ? '600 ' : '') + '12px "Source Sans 3 Variable","Source Sans 3",sans-serif'; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = c; ctx.fillText(text, x, y); }
     function syncSliders() {
+      $$('.fx-var.seg', root).forEach(r => { const k = r.dataset.k, d = vars[k]; $$('button', r).forEach(b => b.setAttribute('aria-pressed', d.values[+b.dataset.i] === v[k] ? 'true' : 'false')); });
       keys.forEach(k => { const d = vars[k], inp = document.getElementById(`${id}-${k}`); if (!inp) return; inp.value = d.values ? d.values.indexOf(v[k]) : d.log ? Math.log(v[k]) : v[k]; });
     }
     function refresh() {
@@ -491,6 +515,7 @@
       const inp = document.getElementById(`${id}-${k}`); if (!inp) return;
       inp.addEventListener('input', () => { stop(); const d = vars[k]; v[k] = d.values ? d.values[+inp.value] : d.log ? Math.exp(+inp.value) : +inp.value; refresh(); });
     });
+    root.addEventListener('click', e => { const sb = e.target.closest('.fx-seg button'); if (sb) { const k = sb.closest('.fx-var').dataset.k; stop(); v[k] = vars[k].values[+sb.dataset.i]; syncSliders(); refresh(); return; } });
     root.addEventListener('click', e => { const b = e.target.closest('.fv'); if (!b || vars[b.dataset.k].const || !hasPlot) return; xKey = b.dataset.k; refresh(); });
     root.addEventListener('pointerover', e => { const b = e.target.closest('.fv,.fx-var'); $$('.fx-var,.fv', root).forEach(r => r.classList.toggle('hl', !!b && r.dataset.k === b.dataset.k)); });
     root.addEventListener('pointerleave', () => $$('.hl', root).forEach(r => r.classList.remove('hl')));
@@ -537,7 +562,7 @@
 
   function boot() {
     crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines(); files();
-    $$('.fx[data-fx]').forEach(el => { const s = FX[el.dataset.fx]; if (s && !el.dataset.ready) fxBuild(el, s); });
+    $$('.fx[data-fx]').forEach(fxQueue);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -6,8 +6,9 @@
 <title>Compute Shaders · Tech Art Atlas</title>
 <meta name="description" content="A compute shader is GPU code you start yourself, with no triangles involved. This unit explains threads and groups, which thread does what, waves, shared memory, atomics, dispatching from C#, reading results back, and when compute is the right tool.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="compute-shaders">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">A compute shader is GPU code you start yourself, with no triangles involved. This unit explains threads and groups, which thread does what, waves, shared memory, atomics, dispatching from C#, reading results back, and when compute is the right tool.</p>
   <p class="meta">Builds on How a GPU Draws a Frame and Buffers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="compute-shaders" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a dispatch as blocks of 8 × 8 threads, the groups at the edge hanging over the image.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/compute-shaders.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A dispatch as blocks of 8 × 8 threads, the groups at the edge hanging over the image.</figcaption></figure>
 <div class="needs" data-needs="gpu-basics#parallel buffers#structured"></div>
 
 <section class="chapter" id="what" data-title="A shader without triangles" data-builds="gpu-basics#parallel gpu-basics#pipeline buffers#structured" data-summary="threads = (groups X · Y · Z) · (numthreads X · Y · Z); you choose both, there are no triangles.">
@@ -319,11 +320,10 @@ public class ComputeNoise : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="compute.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="compute.js?v=3bddbbd0"></script>
 </body>
 </html>

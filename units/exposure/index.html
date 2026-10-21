@@ -6,8 +6,9 @@
 <title>Sun to Screen · Tech Art Atlas</title>
 <meta name="description" content="A sunlit wall is ten thousand times brighter than the same wall at night, and your monitor shows about a thousand to one. Exposure and tonemapping squeeze one into the other. Every formula on the way is live.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="exposure">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">A sunlit wall is ten thousand times brighter than the same wall at night, and your monitor shows about a thousand to one. Exposure and tonemapping squeeze one into the other. Every formula on the way is live.</p>
   <p class="meta">Units of light, EV100 and the physical camera, auto exposure, tonemapping curves and display encoding, with notes for Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="exposure" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a chrome ball, an 18% grey ball and a colour checker, the standard set for judging exposure.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/exposure.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A chrome ball, an 18% grey ball and a colour checker, the standard set for judging exposure.</figcaption></figure>
 <div class="needs" data-needs="color-values#hdr color-values#linear-srgb dot-cross#lambert"></div>
 
 <section class="chapter" id="range" data-title="Too much range" data-builds="color-values#hdr color-values#luminance" data-summary="Real scenes span about 15 stops (a stop is a factor of 2); a display shows about 10.">
@@ -497,12 +498,11 @@ public class ExposureBlend : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="exposure.js"></script>
-<script src="exposure-fx.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="exposure.js?v=88dffa78"></script>
+<script src="exposure-fx.js?v=9770cea6"></script>
 </body>
 </html>

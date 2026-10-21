@@ -6,8 +6,9 @@
 <title>Hair: Strands and Cards · Tech Art Atlas</title>
 <meta name="description" content="Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="hair">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.</p>
   <p class="meta">Builds on PBR shading and Transparency. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="hair" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: a lock of strands with Kajiya–Kay shading and two shifted highlights.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/hair.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A lock of strands with Kajiya–Kay shading and two shifted highlights.</figcaption></figure>
 <div class="needs" data-needs="pbr-brdf#half transparency#alpha-test spaces#tangent"></div>
 
 <section class="chapter" id="cards" data-title="Strands or cards" data-builds="transparency#alpha reading-a-frame#overdraw" data-summary="Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw.">
@@ -220,11 +221,10 @@ public static class HairCardSorter
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="hair.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="hair.js?v=58d40e4c"></script>
 </body>
 </html>

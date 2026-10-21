@@ -6,8 +6,9 @@
 <title>Simple Mapping Techniques · Tech Art Atlas</title>
 <meta name="description" content="Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="mapping">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.</p>
   <p class="meta">Builds on Textures and Spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="mapping" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one shape textured with planar, triplanar and matcap mapping.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/mapping.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One shape textured with planar, triplanar and matcap mapping.</figcaption></figure>
 <div class="needs" data-needs="textures-sampling#uv spaces#transform texture-memory#normals"></div>
 
 <section class="chapter" id="planar" data-title="Planar projection: world position as UV" data-builds="textures-sampling#uv spaces#transform" data-summary="uv = worldPos.xz · scale; stretch = 1 / |N · axis|.">
@@ -249,11 +250,10 @@ public class DecalOnClick : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="mapping.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="mapping.js?v=3db34008"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Parameters, Publishing and Export · Tech Art Atlas</title>
 <meta name="description" content="How a Substance Designer graph leaves Designer: exposing and organising parameters, driving many nodes from one input, outputs and usages, exporting textures with the right formats, colour spaces and normal convention, and publishing SBSARs for Unity and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -38,7 +39,7 @@
   <p class="lede">How a Substance Designer graph leaves Designer: exposing and organising parameters, driving many nodes from one input, outputs and usages, exporting textures with the right formats, colour spaces and normal convention, and publishing SBSARs for Unity and Unreal.</p>
   <p class="meta">Builds on Graphs, Bit Depth and Colour Space. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="sd-publish" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one published material at three settings of its Wear input.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/sd-publish.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One published material at three settings of its Wear input.</figcaption></figure>
 <div class="needs" data-needs="sd-graphs#srgb sd-graphs#choose"></div>
 
 <section class="chapter" id="expose" data-title="Exposing a parameter" data-builds="sd-blend#node" data-summary="Expose as new graph input: identifier (for code), label, group, default, min, max, clamp.">
@@ -242,11 +243,10 @@ public class WearController : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="sdpublish.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="sdpublish.js?v=29f2ea13"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 <title>Addressables · Tech Art Atlas</title>
 <meta name="description" content="How Unity&#x27;s Addressables load content on demand: why direct references load everything, addresses, labels and groups, loading and releasing with reference counts, duplicated dependencies, catalogs and content builds, why builds break, and addressable scenes.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="unity-addressables">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">How Unity's Addressables load content on demand: why direct references load everything, addresses, labels and groups, loading and releasing with reference counts, duplicated dependencies, catalogs and content builds, why builds break, and addressable scenes.</p>
   <p class="meta">Builds on GUIDs and .meta Files and Scene Management. Engine notes cover Unity HDRP and URP, with Unreal comparisons.</p>
 </header>
-<figure class="keyart"><canvas data-render="unity-addressables" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: content packed into bundles, one opened on demand.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/unity-addressables.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Content packed into bundles, one opened on demand.</figcaption></figure>
 <div class="needs" data-needs="unity-guids#refs unity-scenes#memory"></div>
 
 <section class="chapter" id="why" data-title="Why direct references are not enough" data-builds="unity-scenes#memory" data-summary="Direct references load everything with the scene; Resources loads an index of everything; Addressables load by address with refcounts.">
@@ -316,11 +317,10 @@ public class AddressablesBuildGuard : IPreprocessBuildWithReport
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="addressables.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="addressables.js?v=5324c58c"></script>
 </body>
 </html>

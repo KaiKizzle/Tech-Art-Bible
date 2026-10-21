@@ -6,8 +6,9 @@
 <title>Reading the Depth Buffer · Tech Art Atlas</title>
 <meta name="description" content="One number per pixel says how far away the scene is. Soft particles, water, fog, decals, outlines and ambient occlusion all start by reading it. This unit takes the number apart and builds the effects on top.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="depth-effects">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">One number per pixel says how far away the scene is. Soft particles, water, fog, decals, outlines and ambient occlusion all start by reading it. This unit takes the number apart and builds the effects on top.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Every formula is live.</p>
 </header>
-<figure class="keyart"><canvas data-render="depth-effects" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser. Left: lit. Right: the same view as linear depth, the image every effect here starts from.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/depth-effects.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Rendered live in your browser. Left: lit. Right: the same view as linear depth, the image every effect here starts from.</figcaption></figure>
 <div class="needs" data-needs="buffers#render-targets spaces#perspective ray-sphere#view-ray"></div>
 
 <section class="chapter" id="what-depth" data-title="What the depth buffer stores" data-builds="buffers#render-targets gpu-basics#pipeline" data-summary="One distance per pixel; a new fragment is kept only if it is nearer than the stored one.">
@@ -247,11 +248,10 @@ void ReconstructPositionWS_float(float2 UV, float RawDepth, out float3 PositionW
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="depth-effects.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="depth-effects.js?v=64166e22"></script>
 </body>
 </html>

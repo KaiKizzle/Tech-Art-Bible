@@ -1,0 +1,50 @@
+/* Tech Art Atlas — one simple line icon per unit for the hub tiles (48 × 48, stroke = currentColor, class "a" = accent).
+   Add a unit: add an entry here; units without one get the category's fallback. */
+(function () {
+  'use strict';
+  const I = {
+    'gpu-basics': '<rect x="10" y="10" width="28" height="28" rx="3"/><path d="M16 4v6M24 4v6M32 4v6M16 38v6M24 38v6M32 38v6M4 16h6M4 24h6M4 32h6M38 16h6M38 24h6M38 32h6"/><rect class="a" x="17" y="17" width="14" height="14" rx="1"/>',
+    'shader-anatomy': '<path d="M17 12l-9 12 9 12M31 12l9 12-9 12"/><path class="a" d="M27 9l-6 30"/>',
+    'vectors': '<path d="M8 40V8M8 40h32"/><path class="a" d="M8 40L34 14M34 14h-9M34 14v9"/>',
+    'dot-cross': '<path d="M10 38L38 30M10 38L22 10"/><path class="a" d="M17 36a8 8 0 0 0-2-9"/><circle cx="10" cy="38" r="2"/>',
+    'spaces': '<path d="M8 40V18M8 40h22"/><path class="a" d="M22 30l14-14M22 30l8 10M22 30v-16"/>',
+    'textures-sampling': '<rect x="8" y="8" width="32" height="32" rx="2"/><path d="M8 19h32M8 29h32M19 8v32M29 8v32"/><circle class="af" cx="24" cy="24" r="3.5"/>',
+    'buffers': '<path d="M8 14l16-7 16 7-16 7z"/><path d="M8 22l16 7 16-7"/><path class="a" d="M8 30l16 7 16-7"/>',
+    'compute-shaders': '<rect x="7" y="7" width="15" height="15" rx="1.5"/><rect x="26" y="7" width="15" height="15" rx="1.5"/><rect x="7" y="26" width="15" height="15" rx="1.5"/><rect class="a" x="26" y="26" width="15" height="15" rx="1.5"/><path d="M11 11h7M11 15h7M11 19h7"/>',
+    'color-values': '<circle cx="19" cy="19" r="10"/><circle cx="29" cy="19" r="10"/><circle class="a" cx="24" cy="28" r="10"/>',
+    'rays-math': '<circle cx="31" cy="27" r="10"/><path class="a" d="M5 12l20 11"/><circle cx="5" cy="12" r="2"/><circle class="af" cx="22" cy="21.3" r="2.5"/>',
+    'ray-sphere': '<path d="M4 34c8-4 32-4 40 0"/><circle cx="24" cy="20" r="11"/><path class="a" d="M6 6l12 9"/>',
+    'interior-mapping': '<rect x="8" y="8" width="32" height="32"/><rect x="17" y="17" width="14" height="14"/><path class="a" d="M8 8l9 9M40 8l-9 9M8 40l9-9M40 40l-9-9"/>',
+    'depth-effects': '<path d="M8 36h32M12 28h24M16 20h16M20 12h8"/><path class="a" d="M24 6v34"/>',
+    'transparency': '<rect x="8" y="8" width="22" height="22" rx="2"/><rect class="a" x="18" y="18" width="22" height="22" rx="2" stroke-dasharray="3 3"/>',
+    'cloud-march': '<path d="M14 30a7 7 0 0 1 1-14 10 10 0 0 1 19 3 6 6 0 0 1-1 11z"/><path class="a" d="M6 40l32-28" stroke-dasharray="1 5"/>',
+    'parallax': '<path d="M6 30l14-8 22 6-14 8z"/><path d="M6 22l14-8 22 6-14 8z" opacity=".5"/><path class="a" d="M24 4v20"/>',
+    'exposure': '<circle cx="24" cy="24" r="16"/><path class="a" d="M24 8l6 14M40 24l-14 6M24 40l-6-14M8 24l14-6"/>',
+    'pbr-brdf': '<path d="M6 36h36"/><path d="M24 36V20"/><path class="a" d="M24 36c2-14 10-22 16-24-2 8-8 18-16 24z"/><path d="M8 14l16 22"/>',
+    'shadow-maps': '<circle cx="10" cy="10" r="4"/><path d="M4 38h40"/><rect x="16" y="22" width="10" height="16"/><path class="a" d="M26 38h16l-8-9h-8"/><path d="M14 14l12 8" stroke-dasharray="2 3"/>',
+    'baked-gi': '<rect x="6" y="6" width="36" height="36" rx="2"/><circle cx="16" cy="16" r="2.5"/><circle cx="32" cy="16" r="2.5"/><circle cx="16" cy="32" r="2.5"/><circle class="af" cx="32" cy="32" r="3"/>',
+    'light-types': '<path d="M18 30a10 10 0 1 1 12 0v4H18z"/><path d="M19 39h10"/><path class="a" d="M24 4v3M8 12l2 2M40 12l-2 2"/>',
+    'texture-memory': '<rect x="6" y="18" width="24" height="24"/><rect x="30" y="18" width="12" height="12"/><rect class="a" x="30" y="30" width="6" height="6"/>',
+    'mapping': '<path d="M24 8l14 8v16l-14 8-14-8V16z"/><path d="M10 16l14 8 14-8M24 24v16"/><path class="a" d="M24 2v6M44 12l-6 4M4 12l6 4"/>',
+    'pbr-basics': '<circle cx="24" cy="26" r="15"/><circle class="af" cx="19" cy="20" r="3"/><path d="M8 42h32"/>',
+    'texturing': '<path d="M18 6h12v12h12v12H30v12H18V30H6V18h12z"/><path class="a" d="M18 18h12v12H18z"/>',
+    'texture-settings': '<path d="M10 12h28M10 24h28M10 36h28"/><circle cx="18" cy="12" r="3"/><circle class="af" cx="30" cy="24" r="3.5"/><circle cx="14" cy="36" r="3"/>',
+    'skin': '<circle cx="24" cy="24" r="16"/><circle class="a" cx="19" cy="20" r="6" stroke-dasharray="2 3.2"/><path d="M29 33c-3 1.5-7 1.5-10 0"/>',
+    'hair': '<path d="M12 40c0-10 6-14 4-30M20 40c0-10 6-14 4-30M28 40c0-10 6-14 4-30"/><path class="a" d="M36 40c0-10 6-14 4-30"/>',
+    'cloth': '<path d="M6 10h36"/><path d="M10 10c-2 12 2 22-2 30h32c-4-8 0-18-2-30"/><path class="a" d="M18 10c2 10-2 20 2 30M30 10c-2 10 2 20-2 30"/>',
+    'fabric-folds': '<path d="M6 14l9 6 9-6 9 6 9-6"/><path class="a" d="M6 24l9 6 9-6 9 6 9-6"/><path d="M6 34l9 6 9-6 9 6 9-6"/>',
+    'reading-a-frame': '<path d="M6 40h36"/><rect x="8" y="26" width="5" height="14"/><rect x="16" y="18" width="5" height="22"/><rect class="a" x="24" y="8" width="5" height="32"/><rect x="32" y="22" width="5" height="18"/>',
+    'sd-graphs': '<rect x="4" y="8" width="12" height="9" rx="2"/><rect x="4" y="31" width="12" height="9" rx="2"/><rect class="a" x="32" y="19" width="12" height="10" rx="2"/><path d="M16 12c8 0 8 12 16 12M16 36c8 0 8-12 16-12"/>',
+    'sd-blend': '<circle cx="18" cy="24" r="12"/><circle cx="30" cy="24" r="12"/><path class="a" d="M24 13.6a12 12 0 0 1 0 20.8 12 12 0 0 1 0-20.8z"/>',
+    'sd-warps': '<path d="M6 10c8 0 8 6 16 6s10-6 20-6"/><path class="a" d="M6 22c8 0 8 8 16 8s10-8 20-8"/><path d="M6 34c8 0 8 6 16 6s10-6 20-6"/>',
+    'sd-pixel-fx': '<rect x="6" y="6" width="36" height="36"/><path d="M24 6v36M6 24h36M15 6v18M6 15h18"/><circle class="af" cx="33" cy="33" r="4"/><circle cx="10.5" cy="10.5" r="2"/><circle cx="33" cy="15" r="3"/>',
+    'sd-performance': '<path d="M8 34a16 16 0 1 1 32 0"/><path class="a" d="M24 34l9-11"/><circle cx="24" cy="34" r="2.5"/>',
+    'sd-publish': '<path d="M8 18l16-8 16 8v16l-16 8-16-8z"/><path d="M8 18l16 8 16-8M24 26v16"/><path class="a" d="M33 4h9v9M42 4L32 14"/>',
+    'unity-guids': '<rect x="4" y="18" width="18" height="12" rx="6"/><rect x="26" y="18" width="18" height="12" rx="6"/><path class="a" d="M16 24h16"/>',
+    'unity-prefabs': '<path d="M24 6l16 9v18l-16 9-16-9V15z"/><path class="a" d="M24 18l7 4v8l-7 4-7-4v-8z"/>',
+    'unity-scenes': '<path d="M6 30l18 9 18-9"/><path d="M6 22l18 9 18-9"/><path class="a" d="M6 14l18-9 18 9-18 9z"/>',
+    'unity-addressables': '<path d="M6 16l18-9 18 9v18l-18 9-18-9z"/><path d="M6 16l18 9 18-9M24 25v18"/><path class="a" d="M33 30v12M28 37l5 5 5-5"/>'
+  };
+  const FALLBACK = '<rect x="8" y="8" width="32" height="32" rx="4"/><path class="a" d="M16 24h16"/>';
+  window.ATLAS_ICON = slug => `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[slug] || FALLBACK}</svg>`;
+})();

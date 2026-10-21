@@ -5,6 +5,8 @@
   const me = document.currentScript && document.currentScript.src;
   const root = me ? new URL('../', me).href : './';
   const S = Object.assign({ name: 'Tech Art Atlas', owner: 'Kai Mergener', year: new Date().getFullYear(), contentLicense: 'CC BY 4.0', codeLicense: 'MIT', repo: '' }, window.ATLAS_SITE || {});
+  // cache pages and assets for fast repeat visits (https only; GitHub Pages)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register(root + 'sw.js'); } catch (e) {} }
   const foot = document.getElementById('site-foot') || document.querySelector('footer.foot');
   if (!foot) return;
   const isHub = document.body.dataset.unit === 'hub';

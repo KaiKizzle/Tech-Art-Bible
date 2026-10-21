@@ -6,8 +6,9 @@
 <title>Dot and Cross Product · Tech Art Atlas</title>
 <meta name="description" content="Two ways to combine vectors. The dot product measures how much two directions agree; the cross product builds a direction perpendicular to two others. Lighting, facing tests, reflections and normals all come from them.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="dot-cross">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">Two ways to combine vectors. The dot product measures how much two directions agree; the cross product builds a direction perpendicular to two others. Lighting, facing tests, reflections and normals all come from them.</p>
   <p class="meta">Drag the arrows in each drawing; the formula above it updates with the numbers you set.</p>
 </header>
-<figure class="keyart"><canvas data-render="dot-cross" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the sphere is banded by N · L; green is the normal, orange the direction to the light.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/dot-cross.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The sphere is banded by N · L; green is the normal, orange the direction to the light.</figcaption></figure>
 <div class="needs" data-needs="vectors"></div>
 
 <section class="chapter" id="dot" data-title="The dot product: multiply and add" data-builds="vectors#what" data-summary="a·b = aₓbₓ + a_yb_y + a_zb_z: multiply matching components and add.">
@@ -196,11 +197,10 @@ public class SunToShader : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="dot-cross.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="dot-cross.js?v=332078ce"></script>
 </body>
 </html>

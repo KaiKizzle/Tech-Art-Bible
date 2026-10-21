@@ -1,5 +1,5 @@
 /* Tech Art Atlas — hub: a browse page with a filter sidebar (categories, learning paths, level, engine),
-   a search box, a sort menu and a grid of unit thumbnails rendered by renders.js.
+   a search box, a sort menu and a grid of unit tiles with line icons (icons.js).
    The current filter lives in the URL (?c=, ?path=, ?level=, ?q=, ?sort=) so views can be linked.
    Nothing about the reader is stored except the theme and engine choice. */
 (function () {
@@ -97,13 +97,12 @@
 
   /* ---------- grid ---------- */
   const grid = document.getElementById('grid');
-  const cache = {};   // keep rendered thumbnails across filter changes
   function tile(u, i) {
     const c = catOf(u.cat);
     const eng = u.engines.length < 3 ? ' · ' + esc(u.engines.join(', ')) : '';
     const n = st.path !== null && st.sort === 'path' ? `<span class="no">${PATHS[st.path].units.indexOf(u.slug) + 1}</span>` : '';
     return `<a class="tile" href="${u.path}">
-      <div class="thumb"><canvas data-render="${u.slug}" aria-hidden="true"></canvas>${n}<div class="info">${esc(u.summary)}</div></div>
+      <div class="thumb">${window.ATLAS_ICON ? window.ATLAS_ICON(u.slug) : ''}${n}<div class="info">${esc(u.summary)}</div></div>
       <div class="t-title">${esc(u.title)}</div>
       <div class="t-meta">${esc(c ? c.name : '')} · ${stat(u, 'chapters')} chapters · ${u.minutes} min${eng}</div>
     </a>`;
@@ -123,12 +122,9 @@
   function update(scrollTop) {
     sidebar(); sortOptions(); syncURL();
     navLinks.forEach((a, i) => { if (i < 2) { if ((i === 1) === (st.path !== null)) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
-    grid.querySelectorAll('canvas[data-rendered]').forEach(cv => { cache[cv.dataset.render] = cv; });
     const us = list();
     head(us.length);
     grid.innerHTML = us.length ? us.map(tile).join('') : `<p class="empty">No unit matches “${esc(st.q)}”. Try a broader word like shader, light or texture.</p>`;
-    grid.querySelectorAll('canvas[data-render]').forEach(cv => { const old = cache[cv.dataset.render]; if (old) cv.replaceWith(old); });
-    if (window.AtlasRender) window.AtlasRender.drawAll(grid);
     if (scrollTop && window.scrollY > 200) window.scrollTo({ top: 0 });
   }
   update(false);

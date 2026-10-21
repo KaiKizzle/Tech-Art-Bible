@@ -6,8 +6,9 @@
 <title>Rays, Spheres and Shaders · Tech Art Atlas</title>
 <meta name="description" content="The first stage of any sky, atmosphere or cloud effect: for every pixel, the direction it looks and where that ray crosses a layer around a curved planet. Every step is a formula you can move.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="ray-sphere">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">The first stage of any sky, atmosphere or cloud effect: for every pixel, the direction it looks and where that ray crosses a layer around a curved planet. Every step is a formula you can move.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Test values are given so you can check your own implementation.</p>
 </header>
-<figure class="keyart"><canvas data-render="ray-sphere" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: one ray-sphere test per pixel for the planet, its atmosphere and its cloud shell.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/ray-sphere.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One ray-sphere test per pixel for the planet, its atmosphere and its cloud shell.</figcaption></figure>
 <div class="needs" data-needs="gpu-basics#per-pixel spaces#perspective rays-math#quadratic buffers#constant"></div>
 
 <section class="chapter" id="goal" data-title="What we are building" data-builds="gpu-basics#per-pixel" data-summary="A full-screen pass that finds, per pixel, the ray direction and where it crosses a cloud layer 1500–2500 m above a curved planet.">
@@ -319,11 +320,10 @@ public class CameraRayParams : MonoBehaviour
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="ray-sphere.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="ray-sphere.js?v=86fab613"></script>
 </body>
 </html>

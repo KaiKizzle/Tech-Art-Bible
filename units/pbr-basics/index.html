@@ -6,8 +6,9 @@
 <title>PBR Materials: the Basics · Tech Art Atlas</title>
 <meta name="description" content="What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
-<link rel="stylesheet" href="../../assets/fonts.css">
-<link rel="stylesheet" href="../../assets/atlas.css">
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=7cccd870">
+<link rel="stylesheet" href="../../assets/atlas.css?v=325906cc">
 </head>
 <body data-unit="pbr-basics">
 <header class="hubtop">
@@ -31,7 +32,7 @@
   <p class="lede">What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.</p>
   <p class="meta">No prerequisites beyond Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
-<figure class="keyart"><canvas data-render="pbr-basics" aria-label="Rendered key art"></canvas><figcaption>Rendered live in your browser: the same sphere as rough plastic, polished plastic, rough metal and polished gold.</figcaption></figure>
+<figure class="keyart"><img src="../../assets/keyart/pbr-basics.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The same sphere as rough plastic, polished plastic, rough metal and polished gold.</figcaption></figure>
 <div class="needs" data-needs="color-values#linear-srgb"></div>
 
 <section class="chapter" id="idea" data-title="What PBR asks of you" data-builds="pbr-brdf#split color-values#linear-srgb" data-summary="Author what the surface is; light does the rest. Reflected ≈ F0 + (1 − F0) · albedo, always below 1.">
@@ -218,11 +219,10 @@ public static class BaseColorRangeCheck
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js"></script>
-<script src="../../assets/index.js"></script>
-<script src="../../assets/atlas.js"></script>
-<script src="../../assets/renders.js"></script>
-<script src="../../assets/site.js"></script>
-<script src="pbrbasics.js"></script>
+<script src="../../assets/catalog.js?v=dd3d2db8"></script>
+<script src="../../assets/index.js?v=53c156c6"></script>
+<script src="../../assets/atlas.js?v=41624f49"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="pbrbasics.js?v=02d18e27"></script>
 </body>
 </html>
