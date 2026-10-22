@@ -4,45 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Tech Art Atlas</title>
-<meta name="description" content="Free, interactive learning units on real-time graphics workflows for game development: shaders, lighting, textures, characters and performance, with notes for Unity HDRP, URP and Unreal.">
+<meta name="description" content="Free, interactive learning units on real-time graphics workflows for game development: shaders, lighting, surfaces, textures, characters, Substance Designer and Unity projects, with notes for Unity HDRP, URP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/fonts.css?v=7cccd870">
-<link rel="stylesheet" href="assets/atlas.css?v=325906cc">
+<link rel="preload" href="assets/fonts/oswald-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="assets/atlas.css?v=123dbb24">
 </head>
-<body data-unit="hub">
-<header class="hubtop">
-  <a class="logo" href="index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
-  <nav aria-label="Site"><a href="index.html" aria-current="page">All units</a><a href="index.html?path=1">Learning paths</a><a class="opt" href="#about">About</a></nav>
-  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
-</header>
+<body data-unit="hub" class="app">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="index.html?type=unit" data-nav="units" title="All learning units"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
 
-<div class="browse">
-  <aside class="side-nav" id="side" aria-label="Filters"></aside>
+<div class="appmain">
+  <header class="topbar">
+    <form class="searchpill" role="search" onsubmit="return false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+      <input type="search" id="q" placeholder="Search units" aria-label="Search units" autocomplete="off">
+    </form>
+    <a class="pill" href="index.html?view=paths">Learning paths</a>
+  </header>
+  <div class="filters" id="filters" role="group" aria-label="Filters"></div>
+  <main id="top" class="view" tabindex="-1"></main>
 
-  <main class="browse-main" id="top">
-    <div class="browse-head"><h1 id="b-title">All units</h1><span class="count" id="b-count"></span></div>
-    <p class="browse-desc" id="b-desc"></p>
-    <div class="toolbar" role="search">
-      <input type="search" class="search" id="q" placeholder="Search: dot product, mipmaps, blend modes, addressables…" aria-label="Search units">
-      <label class="sort" for="sort">Sort by <select class="sel" id="sort"></select></label>
-    </div>
-    <div class="grid" id="grid"></div>
-
-    <section class="about" id="about" aria-label="How it works">
-      <div><h3>Small steps, linked</h3><p>Chapters move one idea at a time. When a chapter uses something explained elsewhere, a link leads there, with a preview on hover.</p></div>
-      <div><h3>Every formula is live</h3><p>Symbols in a formula are sliders. Click one to graph the result against it; the numbers are substituted step by step.</p></div>
-      <div><h3>Built in your tools</h3><p>Every unit ends with the setup in Unity HDRP, Substance Designer or the Unity editor: the tools it needs, the steps, and complete files to copy, plus URP and Unreal notes.</p></div>
-      <div><h3>Nothing to sign up for</h3><p>Optional checks between lessons, no scores. The site only remembers your theme and engine choice, in your browser.</p></div>
-    </section>
-    <footer class="foot" id="site-foot"></footer>
-  </main>
+  <section class="about" id="about" aria-label="How it works">
+    <div><h3>Small steps, linked</h3><p>Chapters move one idea at a time. When a chapter uses something explained elsewhere, a link leads there, with a preview on hover.</p></div>
+    <div><h3>Every formula is live</h3><p>Symbols in a formula are controls. Change one and see the picture, the graph and the substituted numbers update.</p></div>
+    <div><h3>Built in your tools</h3><p>Every unit ends with the setup in Unity HDRP, Substance Designer or the Unity editor: the tools it needs, the steps, and complete files to copy, plus URP and Unreal notes.</p></div>
+    <div><h3>Nothing to sign up for</h3><p>Optional checks between lessons, no scores. The site only remembers your theme and engine choice, in your browser.</p></div>
+  </section>
+  <footer class="foot" id="site-foot"></footer>
 </div>
-<script src="assets/catalog.js?v=dd3d2db8"></script>
-<script src="assets/index.js?v=53c156c6"></script>
-<script src="assets/atlas.js?v=41624f49"></script>
-<script src="assets/icons.js?v=2e7fc980"></script>
+<script src="assets/catalog.js?v=61a152e5"></script>
+<script src="assets/index.js?v=e04e6fb6"></script>
+<script src="assets/atlas.js?v=76ca92fc"></script>
 <script src="assets/site.js?v=43b0b305"></script>
-<script src="assets/hub.js?v=b682320f"></script>
+<script src="assets/icons.js?v=6c67ef35"></script>
+<script src="assets/hub.js?v=bdcb025c"></script>
 </body>
 </html>

@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reflections, Mirrors and Cheap Metal · Tech Art Atlas</title>
+<meta name="description" content="Where reflections come from in a real-time renderer: probes and box projection, screen-space and ray-traced reflections, planar mirrors, specular occlusion, and cheap fallbacks that still sell a metal, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="reflections">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Reflections, Mirrors and Cheap Metal</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 10 chapters</div>
+  <h1>Reflections, Mirrors and Cheap Metal</h1>
+  <p class="lede">Where reflections come from in a real-time renderer: probes and box projection, screen-space and ray-traced reflections, planar mirrors, specular occlusion, and cheap fallbacks that still sell a metal, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Metals and Inside a PBR Shader. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/reflections.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A chrome sphere on a reflective floor in a box-projected room.</figcaption></figure>
+<div class="needs" data-needs="metals#electrons"></div>
+
+<section class="chapter" id="sources" data-title="Where reflections come from" data-builds="dot-cross#reflect pbr-brdf#ibl" data-summary="R = 2(N·V)N − V. Engines stack techniques: traced or screen-space → planar → probes → sky → black.">
+  <div class="head"><div class="num"></div><h2>Where reflections come from</h2></div>
+
+  <div class="prose">
+    <p>A smooth surface shows what lies in the mirror direction. With the view vector V (from the surface to the eye) and the normal N, that direction is R = 2(N·V)N − V (<a class="x" href="../dot-cross/index.html#reflect">reflection</a>). A rough surface shows a blurred average around R (<a class="x" href="../pbr-brdf/index.html#ibl">image-based lighting</a>). The whole problem of real-time reflections is answering one question per pixel: <em>what is out there along R?</em></p>
+  </div>
+  <div class="fx" data-fx="reflect"></div>
+  <div class="prose">
+    <p>No technique answers it fully and cheaply, so engines stack several and fall back from the most exact to the cheapest:</p>
+    <ol>
+      <li>Ray tracing or screen-space reflections, where they find a hit.</li>
+      <li>A planar reflection, on surfaces that have one.</li>
+      <li>Local cubemap probes, blended by distance.</li>
+      <li>The sky.</li>
+      <li>Black, if nothing is set up, which is why <a class="x" href="../metals/index.html#mistakes">metals in an empty scene</a> look dead.</li>
+    </ol>
+    <p>The same chain holds in every renderer: HDRP documents it as its reflection hierarchy, Unreal's Lumen falls back to its own scene data and then to the sky. The chapters go through each step.</p>
+  </div>
+
+</section>
+<section class="chapter" id="probes" data-title="Probes: the environment in a cube" data-builds="pbr-brdf#ibl reflections#sources" data-summary="Probes = cubemaps with pre-blurred mips; mip = r(1.7 − 0.7r)·6 in Unity. Static content only.">
+  <div class="head"><div class="num"></div><h2>Probes: the environment in a cube</h2></div>
+
+  <div class="prose">
+    <p>A <button type="button" class="term" data-term="probe">reflection probe</button> is a camera that renders its surroundings into a cubemap, once (baked) or now and then (real-time). Shaders look the cubemap up along R. That covers the static world everywhere at the cost of a texture read.</p>
+    <p>Rough surfaces need blurred lookups. Probes store pre-blurred versions in their mip levels, each convolved with the shape of a wider highlight, and the shader picks the mip from the roughness (<a class="x" href="../pbr-brdf/index.html#ibl">the split-sum approximation</a> separates this blur from the Fresnel part). Unity maps roughness to mip like this:</p>
+  </div>
+  <div class="fx" data-fx="mip"></div>
+  <div class="prose"><p>Two consequences: a rough surface reads a tiny mip, so the probe resolution matters only for smooth surfaces; and anything not in the probe (moving objects, the player) is missing from its reflections. Probes are the base layer, the more exact techniques add detail on top.</p></div>
+
+</section>
+<section class="chapter" id="box" data-title="Box projection" data-builds="rays-math#box reflections#probes" data-summary="Intersect P + tR with the room box, look up (hit − probe). Influence volume ≠ projection box.">
+  <div class="head"><div class="num"></div><h2>Box projection</h2></div>
+
+  <div class="prose">
+    <p>A cubemap is captured from one point and treats everything as infinitely far away. Inside a room that is wrong: a point near the right wall that looks up-left should see the left wall from <em>its</em> position, not from the probe's. The error makes reflections slide across the floor as you walk.</p>
+    <p><button type="button" class="term" data-term="boxproj">Box projection</button> (parallax correction) fixes it for box-shaped rooms: intersect the ray from the shaded point with the room box (<a class="x" href="../rays-math/index.html#box">ray against box</a>), then look up the cubemap in the direction from the probe to that hit point:</p>
+  </div>
+  <div class="fx" data-fx="box"></div>
+  <div class="prose"><p>Set the box to the walls, not to where you want the probe to apply: those are two different volumes (HDRP calls them influence and proxy volume). For L-shaped or round rooms, split into several boxes or accept some sliding. The same trick drives <a class="x" href="../interior-mapping/index.html#trick">interior mapping</a>, which fakes rooms behind windows with a box and a cubemap.</p></div>
+
+</section>
+<section class="chapter" id="ssr" data-title="Screen-space reflections" data-builds="depth-effects#reconstruct reflections#sources" data-summary="March R through the depth buffer, copy the colour found. Fails off screen and behind objects; fade to the probe.">
+  <div class="head"><div class="num"></div><h2>Screen-space reflections</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="ssr">Screen-space reflections</button> (SSR) reuse the frame already rendered. For each smooth pixel, the shader steps along R through the <a class="x" href="../depth-effects/index.html#reconstruct">depth buffer</a> until the ray passes behind a surface, then takes that pixel's colour. Moving objects and the player appear in reflections, at the cost of one screen pass.</p>
+    <p>The limitation is in the name: only what is on screen can be found. Move the shaded point and the box, and watch when the reflection disappears:</p>
+  </div>
+  <div class="fx" data-fx="ssr"></div>
+  <div class="prose">
+    <p>Typical artefacts follow from that: reflections cut off at the top of the screen, holes behind characters, reflections vanishing when you look down. Engines fade SSR out near the screen border and blend to the probe below it, which is why a good probe still matters. The depth buffer also has no thickness: a thin pole and a thick wall look the same, so rays slip behind objects or stop too early; HDRP exposes this as <em>Object Thickness</em>.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Standing on a reflective floor, you tilt the camera down. The reflection of a tall tower ahead fades away. Why?", ["The floor got rougher", "The top of the tower left the screen, so SSR cannot find it and falls back to the probe, which does not contain the tower", "A bug in the depth buffer", "Fresnel"], 1, "SSR can only copy what the camera sees. Add the tower to the baked probe or accept the fade."]]</script></details>
+
+</section>
+<section class="chapter" id="planar" data-title="Planar reflections and mirrors" data-builds="reflections#sources spaces#chain" data-summary="Mirror the camera: p′ = p − 2(n·p − d)n, oblique near plane, flipped culling. Costs a second render.">
+  <div class="head"><div class="num"></div><h2>Planar reflections and mirrors</h2></div>
+
+  <div class="prose">
+    <p>A flat mirror has an exact solution: render the scene a second time from a camera mirrored across the plane, and show that image on the mirror. Mirroring a point across a plane with normal n at distance d is p′ = p − 2(n·p − d)n:</p>
+  </div>
+  <div class="fx" data-fx="planar"></div>
+  <div class="prose">
+    <p>Two details make it work. The mirrored camera must not see things behind the mirror, so its near plane is replaced by the mirror plane (an oblique clip plane). And its triangles come out with reversed winding, so the culling direction flips. Engines handle both in their planar probes; a hand-made render-texture mirror must do it too.</p>
+    <p>The cost is the second render: draw calls, shadows, everything. Keep the reflection camera cheap: lower resolution, a culling mask without small props, no post-processing, a shorter far plane. Rough mirrors also need the image blurred, so a perfect mirror (roughness 0) is the cheapest planar case.</p>
+  </div>
+
+</section>
+<section class="chapter" id="raytraced" data-title="Ray-traced reflections and Lumen" data-builds="reflections#ssr reflections#probes" data-summary="Trace R through the scene; cost = pixels · scale² · rays · share of smooth pixels, plus shading and denoising.">
+  <div class="head"><div class="num"></div><h2>Ray-traced reflections and Lumen</h2></div>
+
+  <div class="prose">
+    <p>Ray tracing answers the question directly: shoot a ray along R through the whole scene, off screen included, and shade the hit. The price is per ray, and a rough surface needs several rays to average its blurred reflection, plus denoising. So every implementation limits the work: rays only for pixels smoother than a threshold, at reduced resolution, one ray each, with the probe below the threshold:</p>
+  </div>
+  <div class="fx" data-fx="rtcost"></div>
+  <div class="prose">
+    <p>Unreal's Lumen traces against a simplified scene (signed distance fields or the hardware ray-tracing scene) and shades hits from a cached surface lighting by default; <em>hit lighting</em> shades them fully and costs more. HDRP's ray-traced reflections trace the real meshes. In both, the roughness threshold is the main quality and cost control.</p>
+  </div>
+
+</section>
+<section class="chapter" id="occlusion" data-title="Specular occlusion" data-builds="pbr-basics#maps reflections#probes" data-summary="SO = saturate((N·V + AO)^(2^(−16α − 1)) − 1 + AO): darkens probe reflections in occluded spots.">
+  <div class="head"><div class="num"></div><h2>Specular occlusion</h2></div>
+
+  <div class="prose">
+    <p>A probe captures the room from its centre. In a crevice or under a table, most of that environment is blocked, but the probe does not know it, so crevices glow with reflected sky. Real-time renderers derive a <button type="button" class="term" data-term="specocc">specular occlusion</button> from the ambient occlusion, the view angle and the roughness (Lagarde and de Rousiers, 2014):</p>
+  </div>
+  <div class="fx" data-fx="specocc"></div>
+  <div class="prose"><p>It is a fit, not physics, but it removes most leaks. Screen-space and ray-traced reflections need it less, because they see the actual surroundings. Bent normals (the average open direction, baked with the AO) improve it further, and HDRP has a mode for them.</p></div>
+
+</section>
+<section class="chapter" id="cheap" data-title="Cheap metal: gradients, matcaps, one probe" data-builds="mapping#matcap reflections#probes" data-summary="Three-colour gradient env by R.y, matcaps, one global probe, fake Fresnel, analytic env BRDF.">
+  <div class="head"><div class="num"></div><h2>Cheap metal: gradients, matcaps, one probe</h2></div>
+
+  <div class="prose">
+    <p>A metal needs something to reflect, but it does not always need the real world. On mobile, for distant objects or in stylised games, three colours do a surprising job: ground, a bright horizon, sky, blended by the height of R. A soft horizon reads as a rough surface, a sharp one as chrome:</p>
+  </div>
+  <div class="fx" data-fx="cheap"></div>
+  <div class="prose">
+    <p>Related shortcuts:</p>
+    <ul>
+      <li><strong>Matcap</strong>: a picture of a lit sphere, looked up with the view-space normal (<a class="x" href="../mapping/index.html#matcap">matcaps</a>). Bakes light and reflection together; perfect for tools and stylised looks, wrong as the camera turns.</li>
+      <li><strong>One global probe</strong>: a single low-resolution cubemap of the level, no blending. The mobile default in most engines.</li>
+      <li><strong>Fake Fresnel</strong>: brighten the reflection at grazing angles with (1 − N·V)⁵. Cheap and does most of the work of selling a surface.</li>
+      <li><strong>Analytic environment BRDF</strong>: Karis' polynomial fit replaces the split-sum lookup texture with a few multiplies (the build files use it).</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="mirrors" data-title="Choosing a mirror technique" data-builds="reflections#planar reflections#ssr" data-summary="Pick by what must appear and the budget: planar, SSR, RT, probes, mirrored room, gradients.">
+  <div class="head"><div class="num"></div><h2>Choosing a mirror technique</h2></div>
+
+  <div class="prose"><p>For a given mirror or reflective surface, the question is what must appear in it and what the frame can afford:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Technique</th><th>Reflects</th><th>Cost</th><th>Use it for</th><th>Breaks when</th></tr></thead>
+    <tbody>
+      <tr><td>Planar reflection</td><td>everything, moving, exact</td><td>the scene drawn again per mirror</td><td>mirrors, calm water, one hero floor</td><td>the surface is not flat; several mirrors see each other</td></tr>
+      <tr><td>Render-texture camera</td><td>same as planar, set up by hand</td><td>same as planar</td><td>engines or platforms without planar probes, portals, security monitors</td><td>you forget the oblique clip plane: objects behind the mirror show up</td></tr>
+      <tr><td>Screen-space</td><td>what is on screen</td><td>one pass, scales with pixels</td><td>floors, wet streets, glossy props</td><td>the reflected thing is off screen or hidden</td></tr>
+      <tr><td>Ray tracing, Lumen</td><td>everything, including off screen</td><td>rays per smooth pixel, plus denoising</td><td>high-end PC and console</td><td>budget; rough surfaces need many rays</td></tr>
+      <tr><td>Box-projected cubemap</td><td>the static room</td><td>a texture read</td><td>everything, as the base layer</td><td>moving objects, and the room shape is not a box</td></tr>
+      <tr><td>Mirrored room</td><td>a modelled copy of the room</td><td>the duplicated geometry</td><td>one fixed mirror in a fixed room, old consoles, VR</td><td>anything dynamic has to be mirrored by script</td></tr>
+      <tr><td>Gradient or matcap</td><td>nothing real</td><td>a few instructions</td><td>distant LODs, mobile, stylised</td><td>you look closely at a large flat surface</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>The mirrored room is the oldest trick and still useful: build the room a second time behind the mirror, mirrored, and make the mirror a hole. It is exact and costs only the copied geometry. Classic console games used it, down to a copy of the player character animated in sync. In VR, where planar reflections cost two extra views, it is worth remembering.</p>
+    <p>Combine techniques by distance: planar for the hero mirror, SSR for floors, probes everywhere, a gradient for far LODs.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A bathroom mirror in a VR game, room fully static except the player. Cheapest exact solution?", ["Screen-space reflections", "A mirrored copy of the room behind the mirror plus a mirrored player avatar", "A box-projected probe", "A matcap"], 1, "SSR cannot see the player's face in front of the mirror (off screen); a probe misses the player. The mirrored room is exact and costs no extra view."], ["Wet street at night with moving cars, mid-range console. First choice?", ["Planar reflection", "Screen-space reflections over box-projected probes", "A matcap", "Nothing"], 1, "SSR gets cars and lights on screen; probes fill the rest."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Sky, box-projected probes, SSR override, Planar Reflection Probe for mirrors, ray tracing, specular occlusion and cheap fallbacks.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP has every technique of this unit built in, chained in a hierarchy: screen-space or ray-traced reflections first, then planar and cubemap probes, then the sky. The steps set them up in that order, and the files add the cheap fallbacks and a custom specular occlusion. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Sky, Reflection Probes with box projection, the Screen Space Reflection override, Planar Reflection Probes.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Specular occlusion: the Custom mode of a Lit graph with SpecularOcclusion.hlsl.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>CheapReflection.hlsl and BoxProjection.hlsl: gradient environments and box projection for your own cubemaps.</span></div></div>
+<ol class="impl-steps"><li><div>Sky first: in a global Volume add <em>Visual Environment</em> (Sky type <code>HDRI Sky</code>) and an <em>HDRI Sky</em> override. Every reflection that finds nothing else falls back to it.</div></li><li><div>Cubemap probes: <em>GameObject &gt; Light &gt; Reflection Probe</em>, one per room or area. Set <em>Type</em> to <code>Baked</code> (or <code>Realtime</code>, update <code>On Demand</code> for changing rooms). Size the <em>Influence Volume</em> box to the room and use <em>Blend Distance</em> so neighbouring probes cross-fade.</div></li><li><div>Box projection: in the probe, leave <em>Proxy Volume</em> empty and tick <em>Use Influence Volume As Proxy Volume</em>, or add a <em>Reflection Proxy Volume</em> that matches the walls exactly. Then bake (<em>Window &gt; Rendering &gt; Lighting &gt; Generate Lighting</em>). Reflections on the floor now line up with the walls.</div></li><li><div>Screen-space reflections: enable <em>Screen Space Reflection</em> in the HDRP Asset (<em>Lighting &gt; Reflections</em>) and in the Frame Settings, then add the <em>Lighting &gt; Screen Space Reflection</em> override to a Volume. Set <em>State (Opaque)</em> to Enabled, <em>Algorithm</em> to <code>PBR Accumulation</code> (more accurate, needs a still-ish camera) or <code>Approximation</code>. <em>Minimum Smoothness</em> decides which surfaces trace; rougher ones use probes. Raise <em>Screen Edge Fade Distance</em> to hide the cut at the screen border.</div></li><li><div>A mirror: <em>GameObject &gt; Light &gt; Planar Reflection Probe</em>. Place it on the mirror surface, with the gizmo plane on the glass, and size its influence box around the mirror only. Untick <em>Rough Reflections</em> for a perfect mirror (cheaper), pick a <em>Resolution</em>, and give the mirror a Lit material with metallic 1, smoothness 1 and a base colour of about 230 sRGB. Use a <em>Culling Mask</em> to leave small objects out of the reflection.</div></li><li><div>Ray-traced reflections (DXR hardware, ray tracing enabled in the HDRP Asset): in the Screen Space Reflection override set <em>Tracing</em> to <code>Ray Tracing</code> or <code>Mixed</code> (screen space first, rays for the rest). Keep <em>Minimum Smoothness</em> high to limit the number of rays (the ray-count chapter).</div></li><li><div>Specular occlusion: Lit materials compute it from AO by default (<em>Specular Occlusion Mode</em> <code>From AO</code>). In a Lit Shader Graph you can set the mode to <code>Custom</code>, which adds a <em>Specular Occlusion</em> block. Put <code>SpecularOcclusion.hlsl</code> in <code>Assets/Shaders/</code> and In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>SpecularOcclusion.hlsl</code> and <em>Name</em> to <code>SpecularOcclusionFromAO</code> (without the <code>_float</code> suffix). Add the inputs <b>NdotV (Float), AO (Float), Smoothness (Float)</b> and the outputs <b>SpecularOcclusion (Float)</b>, in that order and with those types: they must match the function's parameters. Multiply the result by a cavity mask before connecting it, for extra darkening in tiny cracks.</div></li><li><div>Cheap reflections for distant LODs, stylised or very low-end targets: in an Unlit graph, In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>CheapReflection.hlsl</code> and <em>Name</em> to <code>CheapReflection</code> (without the <code>_float</code> suffix). Add the inputs <b>NormalWS (Vector 3), ViewWS (Vector 3), F0 (Vector 3), Roughness (Float), Ground (Vector 3), Horizon (Vector 3), Sky (Vector 3)</b> and the outputs <b>Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Take the colours from your sky so the fake matches.</div></li><li><div>Your own cubemap with box projection (a fake interior behind a window, a baked shop): sample a <em>Cubemap</em> with a direction from <code>BoxProjection.hlsl</code>: In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>BoxProjection.hlsl</code> and <em>Name</em> to <code>BoxProjectDirection</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionWS (Vector 3), R (Vector 3), BoxMin (Vector 3), BoxMax (Vector 3), ProbePos (Vector 3)</b> and the outputs <b>Direction (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Use a <em>Position</em> node set to <code>Absolute World</code>: HDRP's plain World space is camera-relative.</div></li></ol>
+<div class="files"><div class="file" data-name="SpecularOcclusion.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SPECULAR_OCCLUSION_INCLUDED
+#define ATLAS_SPECULAR_OCCLUSION_INCLUDED
+
+// Lagarde and de Rousiers 2014 (Frostbite), as in Unity&#x27;s CommonLighting.hlsl.
+// Roughness is alpha = perceptualRoughness^2 = (1 - smoothness)^2.
+void SpecularOcclusionFromAO_float(float NdotV, float AO, float Smoothness, out float SpecularOcclusion)
+{
+    float alpha = (1.0 - Smoothness) * (1.0 - Smoothness);
+    SpecularOcclusion = saturate(pow(saturate(NdotV) + AO, exp2(-16.0 * alpha - 1.0)) - 1.0 + AO);
+}
+#endif</pre></div><div class="file" data-name="CheapReflection.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_CHEAP_REFLECTION_INCLUDED
+#define ATLAS_CHEAP_REFLECTION_INCLUDED
+
+// Three colours and two smoothsteps as the whole environment.
+float3 Atlas_GradientEnv(float3 R, float3 Ground, float3 Horizon, float3 Sky, float Softness)
+{
+    float3 low = lerp(Ground, Horizon, smoothstep(-Softness, 0.0, R.y));
+    return lerp(low, Sky, smoothstep(0.0, 1.5 * Softness + 0.2, R.y));
+}
+
+// Karis&#x27; analytic fit of the split-sum environment BRDF (mobile, 2014): spec = F0 * AB.x + AB.y
+float2 Atlas_EnvBRDFApprox(float roughness, float NoV)
+{
+    const float4 c0 = float4(-1.0, -0.0275, -0.572, 0.022);
+    const float4 c1 = float4( 1.0,  0.0425,  1.040, -0.040);
+    float4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NoV)) * r.x + r.y;
+    return float2(-1.04, 1.04) * a004 + r.zw;
+}
+
+// Cheap metal or glossy paint: gradient environment, roughness-aware Fresnel. Normal and View in world space,
+// View pointing from the surface to the camera.
+void CheapReflection_float(float3 NormalWS, float3 ViewWS, float3 F0, float Roughness,
+                           float3 Ground, float3 Horizon, float3 Sky, out float3 Color)
+{
+    float3 N = normalize(NormalWS), V = normalize(ViewWS);
+    float3 R = reflect(-V, N);
+    float3 env = Atlas_GradientEnv(R, Ground, Horizon, Sky, 0.02 + 0.6 * Roughness);
+    float2 AB = Atlas_EnvBRDFApprox(Roughness, saturate(dot(N, V)));
+    Color = env * (F0 * AB.x + AB.y);
+}
+#endif</pre></div><div class="file" data-name="BoxProjection.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_BOX_PROJECTION_INCLUDED
+#define ATLAS_BOX_PROJECTION_INCLUDED
+
+// Box projection for a cubemap you sample yourself (a baked room cubemap, a fake interior).
+// All positions in the same space (absolute world in HDRP: use Position node set to Absolute World).
+// BoxMin/BoxMax: the room the cubemap was captured in. ProbePos: where it was captured.
+void BoxProjectDirection_float(float3 PositionWS, float3 R, float3 BoxMin, float3 BoxMax, float3 ProbePos,
+                               out float3 Direction)
+{
+    float3 invR = 1.0 / R;                               // inf on axis-parallel rays is fine
+    float3 tFar = max((BoxMax - PositionWS) * invR, (BoxMin - PositionWS) * invR);
+    float t = min(min(tFar.x, tFar.y), tFar.z);          // distance to the wall the ray leaves through
+    Direction = PositionWS + R * t - ProbePos;           // look up the cubemap towards that wall point
+}
+#endif</pre></div></div>
+<p class="note">Check the hierarchy with <em>Rendering Debugger &gt; Lighting</em>: the <em>Reflection</em> debug views show which probe a pixel uses, and the Screen Space Reflection override has a debug mode for hit and miss.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: Reflection Probes with <em>Box Projection</em> (enable it on the URP Asset and the probe), probe blending, and for mirrors a second camera rendering to a Render Texture. URP has had no built-in screen-space reflections for most of its history; check the renderer features of your version, otherwise rely on probes and the cheap gradient above.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Reflection method (Lumen or SSR), sky light, box captures, planar reflection for mirrors, Custom node fallbacks.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal chains the same techniques: Lumen or screen-space reflections, planar reflections, reflection captures and the sky light. With Lumen as the reflection method most of the hierarchy is automatic; captures and the cheap paths still matter for mobile, for Lumen's fallbacks and for stylised work. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Reflection method: Lumen, screen space or none, and the post process settings.</span></div><div class="rt" data-k="actor"><b>Level actor</b><span>Sky Light, Sphere and Box Reflection Captures, Planar Reflection.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>CheapReflection.ush and BoxProjectDirection.ush for custom cubemaps and mobile.</span></div></div>
+<ol class="impl-steps"><li><div>Sky: a <em>Sky Light</em> (captured scene or a specified HDRI cubemap) lights and reflects everything that has nothing closer. Set it to <code>Movable</code> with Lumen, <code>Stationary</code> or <code>Static</code> with baked lighting.</div></li><li><div>Pick the method in <em>Project Settings &gt; Rendering &gt; Reflections</em>: <em>Reflection Method</em> <code>Lumen</code>, <code>Screen Space</code> or <code>None</code>. A <em>Post Process Volume</em> can override it per area (<em>Reflections</em> section).</div></li><li><div>Lumen: in the Post Process Volume, <em>Lumen Reflections &gt; Max Roughness To Trace</em> sets which surfaces get traced rays (lower is cheaper; rougher surfaces reuse Lumen's diffuse data). With hardware ray tracing, <em>Ray Lighting Mode</em> <code>Hit Lighting for Reflections</code> gives mirror-quality lighting in reflections at a higher cost. For glass and other translucent surfaces enable <em>High Quality Translucency Reflections</em> in the project settings and the volume.</div></li><li><div>Reflection captures for the non-Lumen path, for mobile, and as Lumen's fallback where it has no data: place a <em>Box Reflection Capture</em> per room (its box is the projection shape; <em>Box Transition Distance</em> blends at the edges) or a <em>Sphere Reflection Capture</em> in open areas. Recapture after changes with <em>Build &gt; Build Reflection Captures</em>.</div></li><li><div>A mirror: in <em>Project Settings &gt; Rendering</em>, enable <em>Support global clip plane for Planar Reflections</em> and restart. Place a <em>Planar Reflection</em> actor (Visual Effects) on the mirror plane. Lower <em>Screen Percentage</em> to save GPU time, use <em>Distance from plane fadeout</em> to limit which surfaces receive it, and give the mirror metallic 1, roughness 0. Each planar reflection renders the scene again.</div></li><li><div>Cheap reflections (mobile, distant objects, stylised): in a material, add a <em>Custom</em> node with <code>CheapReflection.ush</code>. Inputs: <em>PixelNormalWS</em> as N, <em>CameraVector</em> as V, F0, Roughness and three colour parameters. Connect the result to <em>Emissive Color</em> of an Unlit material, or add it to a Default Lit material with Metallic 0 and a black base for a fake polish.</div></li><li><div>Your own cubemap with box projection: a <em>TextureSampleParameterCube</em> whose UVs come from a Custom node with <code>BoxProjectDirection.ush</code> (P from <em>Absolute World Position</em>, R from <em>ReflectionVector</em>, the room box in world units). For a live cube, render it with a <em>Scene Capture Cube</em> into a <em>Cube Render Target</em>, sparingly.</div></li></ol>
+<div class="files"><div class="file" data-name="CheapReflection.ush" data-lang="hlsl"><pre>// Custom node &quot;CheapReflection&quot;. Inputs: N (float3, world normal), V (float3, CameraVector),
+// F0 (float3), Roughness (float), Ground, Horizon, Sky (float3). Output Type: CMOT Float 3.
+float3 R = reflect(-V, N);
+float soft = 0.02 + 0.6 * Roughness;
+float3 low = lerp(Ground, Horizon, smoothstep(-soft, 0.0, R.z));      // Unreal is Z-up
+float3 env = lerp(low, Sky, smoothstep(0.0, 1.5 * soft + 0.2, R.z));
+float4 c0 = float4(-1.0, -0.0275, -0.572, 0.022);
+float4 c1 = float4( 1.0,  0.0425,  1.040, -0.040);
+float4 r = Roughness * c0 + c1;
+float a004 = min(r.x * r.x, exp2(-9.28 * saturate(dot(N, V)))) * r.x + r.y;
+float2 AB = float2(-1.04, 1.04) * a004 + r.zw;
+return env * (F0 * AB.x + AB.y);</pre></div><div class="file" data-name="BoxProjectDirection.ush" data-lang="hlsl"><pre>// Custom node &quot;BoxProjectDirection&quot;. Inputs: P (float3, Absolute World Position), R (float3, ReflectionVector),
+// BoxMin, BoxMax, ProbePos (float3, world units). Output Type: CMOT Float 3. Feed the result into the UVs of a
+// TextureSampleParameterCube.
+float3 tFar = max((BoxMax - P) / R, (BoxMin - P) / R);
+float t = min(min(tFar.x, tFar.y), tFar.z);
+return P + R * t - ProbePos;</pre></div></div>
+<p class="note">Specular occlusion: Unreal derives it from the material's <em>Ambient Occlusion</em> input when it applies reflection captures and the sky, with a formula of the same family as the one in this unit. Lumen traces reflections and needs no help from AO.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/reflection-understand.html" rel="noopener">HDRP: understand reflection, reflection hierarchy and probes</a></span><span class="by">Unity</span><span class="why">The fallback order, Influence and Proxy volumes, Planar Reflection Probe settings.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/reference-screen-space-reflection.html" rel="noopener">HDRP Screen Space Reflection override</a></span><span class="by">Unity</span><span class="why">Algorithms, Minimum Smoothness, edge fade, thickness and ray tracing modes.</span></li><li><span><span class="kind">Code</span><a href="https://github.com/Unity-Technologies/Graphics" rel="noopener">Unity Graphics: ImageBasedLighting.hlsl, CommonLighting.hlsl</a></span><span class="by">Unity</span><span class="why">PerceptualRoughnessToMipmapLevel and GetSpecularOcclusionFromAmbientOcclusion as used in the widgets.</span></li><li><span><span class="kind">Course</span><a href="https://seblagarde.wordpress.com/2015/07/14/siggraph-2014-moving-frostbite-to-physically-based-rendering/" rel="noopener">Moving Frostbite to PBR</a></span><span class="by">Sébastien Lagarde, Charles de Rousiers · SIGGRAPH 2014</span><span class="why">Specular occlusion from AO, probe parallax correction, the reflection hierarchy.</span></li><li><span><span class="kind">Article</span><a href="https://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/" rel="noopener">Image-based lighting approaches and parallax-corrected cubemap</a></span><span class="by">Sébastien Lagarde</span><span class="why">Box projection in detail.</span></li><li><span><span class="kind">Article</span><a href="https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile" rel="noopener">Physically based shading on mobile</a></span><span class="by">Brian Karis · Epic Games</span><span class="why">The analytic environment BRDF used by the cheap reflection files.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-global-illumination-and-reflections-in-unreal-engine" rel="noopener">Lumen global illumination and reflections</a></span><span class="by">Epic Games</span><span class="why">Max Roughness To Trace, hit lighting, translucency reflections.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/planar-reflections-in-unreal-engine" rel="noopener">Planar reflections in Unreal Engine</a></span><span class="by">Epic Games</span><span class="why">Setup, global clip plane setting and cost.</span></li><li><span><span class="kind">Article</span><a href="https://terathon.com/lengyel/Lengyel-Oblique.pdf" rel="noopener">Oblique view frustum depth projection and clipping</a></span><span class="by">Eric Lengyel</span><span class="why">How a mirror camera clips at the mirror plane.</span></li></ul>
+</section>
+
+<div class="next" data-next="glass screen-transparency water"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"probe": [
+"Reflection probe",
+"A cubemap of the surroundings, captured at a point, with pre-blurred mips for rough surfaces.",
+"#probes"
+],
+"boxproj": [
+"Box projection",
+"Correcting a cubemap lookup by intersecting the reflection ray with the room box first.",
+"#box"
+],
+"ssr": [
+"Screen-space reflections",
+"Ray marching the depth buffer of the current frame to copy reflected colours from the screen.",
+"#ssr"
+],
+"planar": [
+"Planar reflection",
+"Rendering the scene again from a camera mirrored across a plane.",
+"#planar"
+],
+"specocc": [
+"Specular occlusion",
+"Darkening probe reflections in occluded places, derived from AO, view angle and roughness.",
+"#occlusion"
+],
+"matcap": [
+"Matcap",
+"A sphere image looked up by view-space normal; bakes light and reflection into one texture.",
+"#cheap"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="reflections.js?v=8e0b39d8"></script>
+</body>
+</html>

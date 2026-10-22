@@ -1,7 +1,8 @@
 # Visual style
 
-The site looks like an asset library (think Poly Haven): neutral greys, a top bar, a filter sidebar and a grid of simple line-icon tiles.
-The key art and the diagrams carry the color; the UI itself is grey with one orange accent.
+The hub looks like an asset library browser: a narrow icon rail on the left, a large pill search bar, a row of dropdown
+filters, a featured banner and rows of tiles grouped by topic. Neutral greys, one green accent (#417D31), and a colour per topic.
+The key art and the diagrams carry the colour; the UI itself stays grey.
 
 ## Four image modes
 
@@ -26,19 +27,49 @@ It shows the unit's own technique working. The images are rendered from the GLSL
 2. Run `python tools/render_keyart.py <slug>` to write `assets/keyart/<slug>.webp`.
 3. Or render the image in Blender, Unity or Unreal instead and save it under the same name and size, with the same studio lighting.
 
-## Hub icons
+## Hub tiles
 
-Tiles on the hub show one simple line icon per unit (`assets/icons.js`, 48 × 48 viewBox, 2.2 px strokes in `currentColor`,
-the one element that matters in the accent class `a`). No fills except one accent dot (`af`), no text, no perspective tricks.
+Each tile carries three signals, always in the same places:
+
+- **Software badges** top left: which tool the unit targets (`software` in the catalogue: `any`, `unity`, `unreal`, `sd`, `blender`).
+  By default they are neutral text chips (ANY, UNITY, UE, SD, BLENDER), not official logos: those are trademarks with brand rules.
+  Drop your own badge art into `assets/img/software/<id>.svg` to replace a chip.
+- **Kind** top right: `UNIT` (a learning unit) or `WORKFLOW` (accent-coloured, clipped corner). Set with `type` in the catalogue.
+- **Topic colour**: a 4 px bar under the image and a dot before the meta line, from the category `tone`.
+
+The image is a drawn placeholder (the unit's line icon on a tinted grid) until you add a render with the naming in
+`assets/img/README.txt`: `assets/img/units/<slug>-tile.webp` (4:3), `<slug>-hero.webp` (21:8, replaces the key art on the
+unit page), `assets/img/paths/<path-id>.webp`. Run `python tools/build.py` after adding images.
+
+Icons (`assets/icons.js`) are 48 × 48 viewBox, 2.2 px strokes in `currentColor`, the one element that matters in the accent
+class `a`. No fills except one accent dot (`af`), no text, no perspective tricks.
+
+## Topic colours
+
+| Topic | Tone |
+|---|---|
+| Foundations | `#8a97ab` |
+| Shading | `#b07ce8` |
+| Light | `#e3b341` |
+| Surfaces | `#4aa3f0` |
+| Materials & texture pipeline | `#2fb3b3` |
+| Characters | `#e06cae` |
+| Performance | `#e05a4f` |
+| Substance Designer | `#d9822b` |
+| Unity projects & assets | `#5b6ee8` |
+
+Topic colours appear only as the tile bar, the dot, the unit header's left border and the placeholder tint, never as text colour.
 
 ## Type and color
 
-- Headings and body: Source Sans 3 (headings 700, body 17 px). Archivo only for the logo. Code and numbers: JetBrains Mono.
+- Headings and body: Source Sans 3 (headings 700, body 17 px). Oswald (condensed, uppercase) for hub banners and row titles.
+  Archivo only for the logo. Code and numbers: JetBrains Mono.
 - All fonts are self-hosted in `assets/fonts/` (SIL Open Font License). Do not link Google Fonts or any other font CDN.
-- Colors are tokens in `assets/atlas.css`. Use color scarcely: the UI is neutral grey; the orange `--accent` marks only the current
-  item (active filter, current chapter), the logo and focus. Categories have no colors. Links are underlined text, not colored.
+- Colors are tokens in `assets/atlas.css`. Use color scarcely: the UI is neutral grey; the green `--accent` (#417D31, with
+  `--accent-ink` for text on dark and light) marks the current item, primary buttons, the logo and focus. Topics have the tones
+  above. Links are underlined text, not colored.
   Inside live formulas and labs, colors carry meaning (one per variable, axis colors for X/Y/Z) and stay.
-- Layout: a sticky top bar (`.hubtop`) on every page; a left sidebar (hub filters or the unit's chapters). Unit content is one
+- Layout: the hub has an icon rail and a top search bar; unit pages a sticky top bar (`.hubtop`) and the chapter rail. Unit content is one
   centred column (`--col`, 920 px); every chapter is a framed card, and widgets, labs, code and tables inside it are framed again
   with 1 px lines. Panels have small radii and no shadows.
 - Dark is the default theme; light is an explicit choice of the reader. Draw lab canvases with `Atlas.col('token')`

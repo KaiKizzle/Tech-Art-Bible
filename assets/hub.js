@@ -1,130 +1,152 @@
-/* Tech Art Atlas — hub: a browse page with a filter sidebar (categories, learning paths, level, engine),
-   a search box, a sort menu and a grid of unit tiles with line icons (icons.js).
-   The current filter lives in the URL (?c=, ?path=, ?level=, ?q=, ?sort=) so views can be linked.
-   Nothing about the reader is stored except the theme and engine choice. */
+/* Tech Art Atlas — hub. A browse page in the style of an asset library:
+   an icon rail, a search pill, filter dropdowns (type, software, topic, level, sort), a featured banner,
+   learning-path cards and rows of unit tiles. Tiles show the software badge, a topic colour and UNIT / WORKFLOW.
+   The current view lives in the URL (?q= &type= &sw= &c= &level= &sort= &path= &view=paths) so views can be linked.
+   Pictures come from assets/img/ by file name (listed in assets/index.js by tools/build.py); placeholders otherwise. */
 (function () {
   'use strict';
   const CATS = window.ATLAS_CATEGORIES, UNITS = window.ATLAS_UNITS, PATHS = window.ATLAS_PATHS || [];
+  const SW = window.ATLAS_SOFTWARE || {}, FEAT = window.ATLAS_FEATURED;
   const IDX = (window.ATLAS_INDEX && window.ATLAS_INDEX.units) || {};
+  const IMG = (window.ATLAS_INDEX && window.ATLAS_INDEX.images) || { units: {}, paths: {}, software: {} };
   const LEVELS = ['Start here', 'Foundations', 'Beginner', 'Intermediate', 'Advanced'];
-  const catOf = id => CATS.find(c => c.id === id);
+  const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const catOf = id => CATS.find(c => c.id === id) || { name: '', tone: '#888' };
   const unit = slug => UNITS.find(u => u.slug === slug);
+  const pathOf = id => PATHS.find(p => p.id === id) || (/^\d+$/.test(id || '') ? PATHS[+id - 1] : null);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const date = d => { const [y, m, dd] = d.split('-'); return `${MONTHS[+m - 1]} ${+dd}, ${y}`; };
+  const icon = slug => window.ATLAS_ICON ? window.ATLAS_ICON(slug) : '';
+  const chapters = u => { const x = IDX[u.slug]; return x ? (Array.isArray(x.chapters) ? x.chapters.length : x.chapters || 0) : 0; };
+  const stat = (u, k) => { const x = IDX[u.slug]; return x && x.stats ? x.stats[k] || 0 : 0; };
   function get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const stat = (u, k) => { const x = IDX[u.slug]; if (!x) return 0; return k === 'chapters' ? (Array.isArray(x.chapters) ? x.chapters.length : x.chapters || 0) : (x.stats && x.stats[k]) || 0; };
-  const order = UNITS.slice().sort((a, b) => CATS.findIndex(c => c.id === a.cat) - CATS.findIndex(c => c.id === b.cat));   // category order, then catalogue order
 
-  /* ---------- state from the URL ---------- */
+  /* ---------- state ---------- */
   const P = new URLSearchParams(location.search);
-  const st = { cat: P.get('c') || 'all', path: P.has('path') ? Math.max(0, Math.min(PATHS.length - 1, (+P.get('path') || 1) - 1)) : null, level: P.get('level') || 'all', q: (P.get('q') || '').trim(), sort: P.get('sort') || 'rec' };
-  if (st.path !== null) st.cat = 'all';
-  if (st.path !== null || st.level !== 'all') document.getElementById('side').classList.add('open');
+  const st = { q: (P.get('q') || '').trim(), type: P.get('type') || '', sw: P.get('sw') || '', c: P.get('c') || '', level: P.get('level') || '', sort: P.get('sort') || 'new', path: P.get('path') || '', view: P.get('view') || '' };
   function syncURL() {
     const u = new URLSearchParams();
-    if (st.cat !== 'all') u.set('c', st.cat);
-    if (st.path !== null) u.set('path', st.path + 1);
-    if (st.level !== 'all') u.set('level', st.level);
-    if (st.q) u.set('q', st.q);
-    if (st.sort !== 'rec') u.set('sort', st.sort);
+    ['q', 'type', 'sw', 'c', 'level', 'path', 'view'].forEach(k => { if (st[k]) u.set(k, st[k]); });
+    if (st.sort !== 'new') u.set('sort', st.sort);
     const s = u.toString();
     try { history.replaceState(null, '', s ? '?' + s : location.pathname); } catch (e) {}
   }
+  const filtered = () => st.q || st.type || st.sw || st.c || st.level;
 
-  /* ---------- sidebar ---------- */
-  const side = document.getElementById('side');
-  const levelsUsed = LEVELS.filter(l => UNITS.some(u => u.level === l));
-  function sidebar() {
-    const item = (attrs, label, n, on) => `<button type="button" class="sn-item" ${attrs} aria-pressed="${on}">${esc(label)}<span>${n}</span></button>`;
-    side.innerHTML = `
-      <div class="sn-group"><div class="sn-h">Categories</div><div class="sn-list">
-        ${item('data-c="all"', 'All units', UNITS.length, st.cat === 'all' && st.path === null)}
-        ${CATS.map(c => item(`data-c="${c.id}"`, c.name, UNITS.filter(u => u.cat === c.id).length, st.cat === c.id)).join('')}
-      </div><button type="button" class="sn-toggle" aria-expanded="${side.classList.contains('open')}">Paths, level and engine</button></div>
-      <div class="sn-group extra"><div class="sn-h">Learning paths</div><div class="sn-list">
-        ${PATHS.map((p, i) => item(`data-p="${i}"`, p.name, p.units.length, st.path === i)).join('')}
-      </div></div>
-      <div class="sn-group extra"><div class="sn-h">Level</div><div class="sn-list">
-        ${item('data-l="all"', 'Any level', UNITS.length, st.level === 'all')}
-        ${levelsUsed.map(l => item(`data-l="${esc(l)}"`, l, UNITS.filter(u => u.level === l).length, st.level === l)).join('')}
-      </div></div>
-      <div class="sn-group extra"><div class="sn-h"><label for="engine">Engine notes</label></div>
-        <select class="sel" id="engine"><option value="hdrp">Unity HDRP</option><option value="urp">Unity URP</option><option value="unreal">Unreal Engine</option></select>
-      </div>`;
-    const eng = document.getElementById('engine');
-    eng.value = get('atlas:engine', 'hdrp');
+  /* ---------- filter bar ---------- */
+  const bar = document.getElementById('filters');
+  const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`;
+  function filters() {
+    const used = LEVELS.filter(l => UNITS.some(u => u.level === l));
+    const sws = Object.keys(SW).filter(k => UNITS.some(u => u.software.includes(k)));
+    bar.innerHTML = `
+      <label class="dd"><span class="sr">Type</span><select data-k="type">${opt('', 'All types', st.type)}${opt('unit', 'Learning units', st.type)}${opt('workflow', 'Workflows', st.type)}</select></label>
+      <label class="dd"><span class="sr">Software</span><select data-k="sw">${opt('', 'All software', st.sw)}${sws.map(k => opt(k, SW[k], st.sw)).join('')}</select></label>
+      <label class="dd"><span class="sr">Topic</span><select data-k="c">${opt('', 'All topics', st.c)}${CATS.map(c => opt(c.id, c.name, st.c)).join('')}</select></label>
+      <label class="dd"><span class="sr">Level</span><select data-k="level">${opt('', 'All levels', st.level)}${used.map(l => opt(l, l, st.level)).join('')}</select></label>
+      <label class="dd"><span class="sr">Sort</span><select data-k="sort">${opt('new', 'Newest first', st.sort)}${opt('rec', 'Topic order', st.sort)}${opt('name', 'Name', st.sort)}${opt('short', 'Shortest first', st.sort)}${opt('long', 'Longest first', st.sort)}</select></label>
+      <label class="dd eng" title="Which engine's notes unit pages open with"><span>Notes for</span><select id="engine">${opt('hdrp', 'Unity HDRP', '')}${opt('urp', 'Unity URP', '')}${opt('unreal', 'Unreal Engine', '')}</select></label>`;
+    const eng = document.getElementById('engine'); eng.value = get('atlas:engine', 'hdrp');
     eng.addEventListener('change', () => set('atlas:engine', eng.value));
+    $$('select[data-k]', bar).forEach(s => s.closest('.dd').classList.toggle('on', !!s.value && s.dataset.k !== 'sort'));
   }
-  side.addEventListener('click', e => {
-    const t = e.target.closest('.sn-toggle'); if (t) { side.classList.toggle('open'); t.setAttribute('aria-expanded', side.classList.contains('open')); return; }
-    const b = e.target.closest('.sn-item'); if (!b) return;
-    if (b.dataset.c) { st.cat = b.dataset.c; st.path = null; }
-    else if (b.dataset.p !== undefined) { st.path = +b.dataset.p; st.cat = 'all'; }
-    else if (b.dataset.l) st.level = b.dataset.l;
-    if (st.path === null && st.sort === 'path') st.sort = 'rec';
-    update(true);
-  });
-
-  /* ---------- toolbar ---------- */
-  const qEl = document.getElementById('q'), sortEl = document.getElementById('sort');
+  bar.addEventListener('change', e => { const s = e.target.closest('select[data-k]'); if (!s) return; st[s.dataset.k] = s.value; if (s.dataset.k !== 'sort') { st.path = ''; st.view = ''; } update(true); });
+  const qEl = document.getElementById('q');
   qEl.value = st.q;
-  qEl.addEventListener('input', () => { st.q = qEl.value.trim(); update(false); });
-  const SORTS = [['rec', 'Recommended'], ['name', 'Name'], ['short', 'Shortest first'], ['long', 'Longest first'], ['fx', 'Most live formulas']];
-  function sortOptions() {
-    const opts = (st.path !== null ? [['path', 'Path order']] : []).concat(SORTS);
-    if (!opts.some(o => o[0] === st.sort)) st.sort = opts[0][0];
-    if (st.path !== null && st.sort === 'rec') st.sort = 'path';
-    sortEl.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-    sortEl.value = st.sort;
+  qEl.addEventListener('input', () => { st.q = qEl.value.trim(); st.path = ''; st.view = ''; update(false); });
+  function $$(sel, root) { return [...(root || document).querySelectorAll(sel)]; }
+
+  /* ---------- pieces ---------- */
+  function swChips(u) {
+    return `<span class="sws">${u.software.map(k => IMG.software[k] ? `<span class="sw img" title="${esc(SW[k] || k)}"><img src="${IMG.software[k]}" alt="${esc(SW[k] || k)}"></span>` : `<span class="sw" title="${esc(SW[k] || k)}">${{ any: 'ANY', unity: 'UNITY', unreal: 'UE', sd: 'SD', blender: 'BLENDER' }[k] || esc(k.toUpperCase())}</span>`).join('')}</span>`;
   }
-  sortEl.addEventListener('change', () => { st.sort = sortEl.value; update(false); });
+  const placeholder = (slug, tone, big) => `<div class="ph${big ? ' big' : ''}" style="--tc:${tone}">${icon(slug)}</div>`;
+  function picture(u, kind) {
+    const f = IMG.units[u.slug] && (IMG.units[u.slug][kind] || (kind === 'tile' ? null : IMG.units[u.slug].tile));
+    return f ? `<img src="${f}" alt="" loading="lazy" decoding="async">` : placeholder(u.slug, catOf(u.cat).tone);
+  }
+  function tile(u, n, noTopic) {
+    const c = catOf(u.cat);
+    return `<a class="tile" href="${u.path}" style="--tc:${c.tone}">
+      <div class="thumb">${picture(u, 'tile')}${swChips(u)}<span class="kind ${u.type}">${u.type === 'workflow' ? 'Workflow' : 'Unit'}</span>${n ? `<span class="no">${n}</span>` : ''}<i class="tbar"></i>
+        <div class="info">${esc(u.summary)}</div></div>
+      <div class="t-title">${esc(u.title)}</div>
+      <div class="t-meta"><i class="dot"></i><span>${noTopic ? '' : esc(c.name) + ' · '}${esc(u.level)} · ${u.minutes} min</span></div>
+    </a>`;
+  }
+  const grid = (list, numbered, noTopic) => `<div class="grid">${list.map((u, i) => tile(u, numbered ? i + 1 : 0, noTopic)).join('')}</div>`;
+  function pathTone(p) { const n = {}; p.units.map(unit).filter(Boolean).forEach(u => { n[u.cat] = (n[u.cat] || 0) + 1; }); const top = Object.keys(n).sort((a, b) => n[b] - n[a])[0]; return catOf(top).tone; }
+  function collage(p, count) { return `<div class="collage">${p.units.slice(0, count).map(s => `<span>${icon(s)}</span>`).join('')}</div>`; }
+  function pathCard(p) {
+    const f = IMG.paths[p.id], us = p.units.map(unit).filter(Boolean), min = us.reduce((a, u) => a + u.minutes, 0);
+    return `<a class="pcard" href="index.html?path=${encodeURIComponent(p.id)}" style="--tc:${pathTone(p)}">
+      ${f ? `<img src="${f}" alt="" loading="lazy">` : `<div class="ph wide" style="--tc:${pathTone(p)}">${collage(p, 4)}</div>`}
+      <div class="pc-text"><span class="pc-meta">${us.length} units · ${Math.round(min / 60 * 2) / 2} h</span><span class="pc-title">${esc(p.name)}</span></div></a>`;
+  }
+  function hero() {
+    if (!FEAT) return '';
+    let link, img, tone, art, title = FEAT.title, sub = FEAT.subtitle;
+    if (FEAT.kind === 'path') { const p = pathOf(FEAT.id); if (!p) return ''; link = `index.html?path=${encodeURIComponent(p.id)}`; img = IMG.paths[p.id]; tone = pathTone(p); art = collage(p, 6); title = title || p.name; }
+    else { const u = unit(FEAT.id); if (!u) return ''; link = u.path; img = IMG.units[u.slug] && (IMG.units[u.slug].hero || IMG.units[u.slug].tile); tone = catOf(u.cat).tone; art = `<div class="collage one"><span>${icon(u.slug)}</span></div>`; title = title || u.title; sub = sub || u.summary; }
+    return `<section class="hero" style="--tc:${tone}">
+      ${img ? `<img class="hero-img" src="${img}" alt="">` : `<div class="ph hero-ph" style="--tc:${tone}">${art}</div>`}
+      <div class="hero-text">${FEAT.date ? `<span class="hero-date">${date(FEAT.date)}</span>` : ''}<h1 class="poster">${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}<a class="pill big" href="${link}">${esc(FEAT.button || 'Open')}</a></div>
+    </section>`;
+  }
+  const section = (title, body, extra, tone) => `<section class="hrow"${tone ? ` style="--tc:${tone}"` : ''}><div class="hrow-head"><h2 class="poster-s">${tone ? '<i class="dot"></i>' : ''}${esc(title)}</h2>${extra || ''}</div>${body}</section>`;
 
   /* ---------- filtering and sorting ---------- */
   function matches(u) {
-    if (st.cat !== 'all' && u.cat !== st.cat) return false;
-    if (st.level !== 'all' && u.level !== st.level) return false;
+    if (st.type && u.type !== st.type) return false;
+    if (st.sw && !u.software.includes(st.sw)) return false;
+    if (st.c && u.cat !== st.c) return false;
+    if (st.level && u.level !== st.level) return false;
     if (!st.q) return true;
     const ch = IDX[u.slug] && Array.isArray(IDX[u.slug].chapters) ? IDX[u.slug].chapters.map(c => c.title).join(' ') : '';
-    const hay = [u.title, u.topic, u.summary, ch, ...(u.tags || [])].join(' ').toLowerCase();
+    const hay = [u.title, u.topic, u.summary, ch, catOf(u.cat).name, ...(u.tags || [])].join(' ').toLowerCase();
     return st.q.toLowerCase().split(/\s+/).every(w => hay.includes(w));
   }
-  function list() {
-    let us = st.path !== null ? PATHS[st.path].units.map(unit).filter(Boolean) : order.slice();
-    us = us.filter(matches);
-    const by = { name: (a, b) => a.title.localeCompare(b.title), short: (a, b) => a.minutes - b.minutes, long: (a, b) => b.minutes - a.minutes, fx: (a, b) => stat(b, 'fx') - stat(a, 'fx') }[st.sort];
-    return by ? us.slice().sort(by) : us;
+  const catIndex = u => CATS.findIndex(c => c.id === u.cat);
+  function sorted(list) {
+    const by = { new: (a, b) => b.added.localeCompare(a.added) || catIndex(a) - catIndex(b), rec: (a, b) => catIndex(a) - catIndex(b), name: (a, b) => a.title.localeCompare(b.title), short: (a, b) => a.minutes - b.minutes, long: (a, b) => b.minutes - a.minutes }[st.sort];
+    return by ? list.slice().sort(by) : list.slice();
   }
 
-  /* ---------- grid ---------- */
-  const grid = document.getElementById('grid');
-  function tile(u, i) {
-    const c = catOf(u.cat);
-    const eng = u.engines.length < 3 ? ' · ' + esc(u.engines.join(', ')) : '';
-    const n = st.path !== null && st.sort === 'path' ? `<span class="no">${PATHS[st.path].units.indexOf(u.slug) + 1}</span>` : '';
-    return `<a class="tile" href="${u.path}">
-      <div class="thumb">${window.ATLAS_ICON ? window.ATLAS_ICON(u.slug) : ''}${n}<div class="info">${esc(u.summary)}</div></div>
-      <div class="t-title">${esc(u.title)}</div>
-      <div class="t-meta">${esc(c ? c.name : '')} · ${stat(u, 'chapters')} chapters · ${u.minutes} min${eng}</div>
-    </a>`;
-  }
-  function head(n) {
-    const t = document.getElementById('b-title'), cnt = document.getElementById('b-count'), d = document.getElementById('b-desc');
-    if (st.path !== null) { const p = PATHS[st.path]; t.textContent = p.name; d.textContent = 'A suggested order. Each unit also links back to the lessons it builds on, so you can start anywhere and fill gaps as you go.'; }
-    else if (st.cat !== 'all') { const c = catOf(st.cat); t.textContent = c.name; d.textContent = c.blurb; }
-    else {
-      t.textContent = 'All units';
-      const tot = k => UNITS.reduce((a, u) => a + stat(u, k), 0);
-      d.textContent = `Free, interactive lessons on how real-time graphics work, from what a pixel shader is to character shading, procedural materials in Substance Designer and keeping a Unity project in order. ${tot('chapters')} chapters, ${tot('fx')} live formulas, ${tot('labs')} labs.`;
+  /* ---------- views ---------- */
+  const view = document.getElementById('top');
+  function render() {
+    let html = '';
+    const p = st.path ? pathOf(st.path) : null;
+    if (p) {
+      const us = p.units.map(unit).filter(Boolean), min = us.reduce((a, u) => a + u.minutes, 0);
+      html = `<section class="pathhead" style="--tc:${pathTone(p)}">${IMG.paths[p.id] ? `<img src="${IMG.paths[p.id]}" alt="">` : `<div class="ph wide" style="--tc:${pathTone(p)}">${collage(p, 6)}</div>`}
+        <div class="pc-text"><span class="pc-meta">Learning path · ${us.length} units · about ${Math.round(min / 60 * 2) / 2} h</span><h1 class="poster">${esc(p.name)}</h1><p>A suggested order. Each unit links back to what it builds on, so you can start anywhere and fill gaps as you go.</p></div></section>`
+        + grid(us, true);
+    } else if (st.view === 'paths') {
+      html = section('Learning paths', `<div class="pgrid">${PATHS.map(pathCard).join('')}</div>`);
+    } else if (filtered()) {
+      const list = sorted(UNITS.filter(matches)), c = st.c ? catOf(st.c) : null;
+      const title = c ? c.name : st.type === 'workflow' ? 'Workflows' : st.q ? 'Search results' : 'Units';
+      html = `<div class="listhead"${c ? ` style="--tc:${c.tone}"` : ''}><h1 class="poster">${c ? '<i class="dot"></i>' : ''}${esc(title)}</h1><span class="count">${list.length} ${list.length === 1 ? 'result' : 'results'}</span>${c ? `<p>${esc(c.blurb)}</p>` : ''}</div>`
+        + (list.length ? grid(list, false, !!c) : `<p class="empty">${st.type === 'workflow' ? 'Workflows are on their way: step-by-step production recipes that combine several units. Until then, the learning units cover the techniques.' : `Nothing matches${st.q ? ` “${esc(st.q)}”` : ''}. Try a broader word like shader, light, metal or texture, or clear a filter.`}</p>`);
+    } else {
+      const fresh = UNITS.slice().sort((a, b) => b.added.localeCompare(a.added)).slice(0, 6);
+      const recentPaths = PATHS.slice().reverse().filter(x => !FEAT || FEAT.kind !== 'path' || x.id !== FEAT.id).slice(0, 3);
+      html = hero()
+        + `<div class="pgrid three">${recentPaths.map(pathCard).join('')}</div>`
+        + section('New units', grid(fresh), `<a class="more" href="index.html?sort=new&type=unit">View all</a>`)
+        + CATS.map(c => { const us = UNITS.filter(u => u.cat === c.id); return us.length ? section(c.name, grid(us.slice().sort((a, b) => b.added.localeCompare(a.added)), false, true), `<a class="more" href="index.html?c=${c.id}">${us.length} units</a>`, c.tone) : ''; }).join('');
     }
-    cnt.textContent = `${n} unit${n === 1 ? '' : 's'}` + (st.level !== 'all' ? ` · ${st.level}` : '');
+    view.innerHTML = html;
   }
-  const navLinks = document.querySelectorAll('.hubtop nav a');
+  function navState() {
+    const cur = st.path || st.view === 'paths' ? 'paths' : st.type === 'workflow' ? 'workflows' : st.type === 'unit' ? 'units' : filtered() ? '' : 'home';
+    $$('.iconrail [data-nav]').forEach(a => { if (a.dataset.nav === cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    qEl.placeholder = `Search ${UNITS.length} units`;
+  }
   function update(scrollTop) {
-    sidebar(); sortOptions(); syncURL();
-    navLinks.forEach((a, i) => { if (i < 2) { if ((i === 1) === (st.path !== null)) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
-    const us = list();
-    head(us.length);
-    grid.innerHTML = us.length ? us.map(tile).join('') : `<p class="empty">No unit matches “${esc(st.q)}”. Try a broader word like shader, light or texture.</p>`;
+    filters(); syncURL(); render(); navState();
     if (scrollTop && window.scrollY > 200) window.scrollTo({ top: 0 });
   }
   update(false);

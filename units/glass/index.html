@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Glass · Tech Art Atlas</title>
+<meta name="description" content="How glass reflects and bends light, why flat panes do not distort, how colour builds with thickness, how engines fake refraction with a screen copy, frosted and cheap glass, and sorting, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="glass">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Glass</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 9 chapters</div>
+  <h1>Glass</h1>
+  <p class="lede">How glass reflects and bends light, why flat panes do not distort, how colour builds with thickness, how engines fake refraction with a screen copy, frosted and cheap glass, and sorting, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Metals (Fresnel) and Transparency. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/glass.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A solid glass ball, a hollow bulb and a green-edged pane in front of a checkerboard.</figcaption></figure>
+<div class="needs" data-needs="transparency#alpha"></div>
+
+<section class="chapter" id="fresnel" data-title="Glass is a dielectric" data-builds="pbr-brdf#fresnel pbr-terms#specular" data-summary="F0 = ((n−1)/(n+1))² ≈ 4 %; a pane reflects 2F/(1+F) ≈ 8 %; reflection takes over at grazing angles.">
+  <div class="head"><div class="num"></div><h2>Glass is a dielectric</h2></div>
+
+  <div class="prose">
+    <p>Glass, water, plastic and gemstones are <button type="button" class="term" data-term="dielectric">dielectrics</button>: their electrons are bound, so light passes into them instead of being absorbed at the surface as in <a class="x" href="../metals/index.html#electrons">metals</a>. At the surface a part reflects, set by the <a class="x" href="../pbr-terms/index.html#specular">IOR</a> and the angle, and the rest enters. A pane has two surfaces, so it reflects at both:</p>
+  </div>
+  <div class="fx" data-fx="dielectric"></div>
+  <div class="prose">
+    <p>About 8 % of the light reflects off a window head-on and over 90 % goes through. That is why a window at night is a mirror: the 8 % of a bright room beats the 92 % of a dark street. At grazing angles the reflection takes over completely, which is what makes glass read as glass. A glass shader with the wrong Fresnel looks like plastic film.</p>
+  </div>
+
+</section>
+<section class="chapter" id="snell" data-title="Bending light: Snell&#x27;s law" data-builds="glass#fresnel vectors#normalize" data-summary="n₁ sin θ₁ = n₂ sin θ₂. A flat pane only shifts light (≈ 1 mm for a window). Total internal reflection beyond 42°.">
+  <div class="head"><div class="num"></div><h2>Bending light: Snell's law</h2></div>
+
+  <div class="prose">
+    <p>Light that enters glass slows down and changes direction. <button type="button" class="term" data-term="snell">Snell's law</button> gives the new angle: n₁ sin θ₁ = n₂ sin θ₂. A flat pane bends the ray on the way in and back on the way out by the same amount, so the light leaves parallel to how it came, only shifted sideways:</p>
+  </div>
+  <div class="fx" data-fx="snell"></div>
+  <div class="prose">
+    <p>For a window (4 mm) the shift is about a millimetre: invisible. That is the most important practical fact about glass in games: <strong>flat panes do not distort</strong>. Distortion comes from curved or uneven surfaces: bottles, lenses, old wavy window glass, ripples on water. A shader that distorts a flat window is doing it for effect.</p>
+    <p>Going the other way, from glass into air, the angle grows, and beyond the <em>critical angle</em> (about 42° for glass) light cannot leave at all: <em>total internal reflection</em>. It makes the sides of a glass block look silvery and gemstones sparkle.</p>
+  </div>
+
+</section>
+<section class="chapter" id="shapes" data-title="Panes, blocks, balls and bulbs" data-builds="glass#snell rays-math#sphere" data-summary="Solid balls invert the image; hollow objects barely bend. Engines assume a shape: Planar, Sphere or Thin.">
+  <div class="head"><div class="num"></div><h2>Panes, blocks, balls and bulbs</h2></div>
+
+  <div class="prose">
+    <p>What you see through glass depends on its shape more than on its IOR. A ball refracts twice through strongly curved surfaces, so it acts as a lens and turns the image upside down. A light bulb or a drinking glass is hollow: two thin walls, each almost a pane:</p>
+  </div>
+  <div class="fx" data-fx="ball"></div>
+  <div class="prose">
+    <p>Real-time renderers cannot trace the actual shape (except with ray tracing), so they assume one. HDRP's refraction models are exactly these assumptions: <em>Planar</em> treats the surface as a slab of a given thickness (panes, hollow glasses, bottles), <em>Sphere</em> as a ball of that thickness (solid round objects), <em>Thin</em> as a very thin sheet. OpenPBR has the same split: <code>geometry_thin_walled</code> for objects made of thin shells, a closed volume otherwise.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A glass marble on a table. Which refraction model?", ["Planar", "Sphere: it is a solid convex object", "Thin", "None"], 1, "Solid and round: the image behind it is inverted, which Sphere reproduces."], ["A wine glass. Which one?", ["Sphere", "Planar or Thin: the walls are thin and nearly parallel", "None", "Any"], 1, "It is hollow, so each wall behaves like a pane."]]</script></details>
+
+</section>
+<section class="chapter" id="colour" data-title="Colour comes from thickness" data-builds="glass#snell water#absorb" data-summary="T = e^(−μd), μ = −ln(colour)/distance. Colour builds with path length: edges and thick parts show it.">
+  <div class="head"><div class="num"></div><h2>Colour comes from thickness</h2></div>
+
+  <div class="prose">
+    <p>Coloured glass does not have a colour on its surface. It absorbs some wavelengths a little per centimetre, and the colour builds up with the distance light travels inside. That is <button type="button" class="term" data-term="beer">Beer–Lambert's law</button>: transmittance T = e<sup>−μd</sup>, with μ the absorption per unit length. Window glass looks clear face-on and green at its edge, where light travels its full width:</p>
+  </div>
+  <div class="fx" data-fx="beer"></div>
+  <div class="prose">
+    <p>Nobody wants to type μ, so renderers ask for the colour reached at a distance and compute μ = −ln(colour) / distance. OpenPBR calls them <code>transmission_color</code> and <code>transmission_depth</code>; HDRP <em>Transmittance Color</em> and <em>Absorption Distance</em>. With depth 0, OpenPBR treats the colour as a simple surface tint instead.</p>
+    <p>For thin objects (bottles, panes), the path length is thickness / cos θ inside the glass, so the colour deepens at grazing views. Multiplying the background by a flat tint ignores that and makes glass look like a coloured film.</p>
+  </div>
+
+</section>
+<section class="chapter" id="realtime" data-title="Refraction in real time is a screen lookup" data-builds="screen-transparency#copies glass#shapes" data-summary="Refraction = reading the opaque scene copy at a shifted UV; offset from normal, IOR and assumed thickness.">
+  <div class="head"><div class="num"></div><h2>Refraction in real time is a screen lookup</h2></div>
+
+  <div class="prose">
+    <p>A rasteriser does not know what is behind a pixel. So real-time refraction reads a copy of the frame rendered so far (the opaque objects): HDRP's <em>colour pyramid</em>, Unreal's <em>scene colour</em>, URP's <em>opaque texture</em> (<a class="x" href="../screen-transparency/index.html#copies">where the copy comes from</a>). The shader estimates where the refracted ray would land on screen and reads the copy there:</p>
+  </div>
+  <div class="fx" data-fx="ssrefr"></div>
+  <div class="prose">
+    <p>Three consequences shape every glass shader:</p>
+    <ul>
+      <li>The <strong>thickness</strong> you enter sets the amount of distortion, not the true distance to the background.</li>
+      <li>Only what is in the copy can be refracted: other transparent objects (particles, other glass) are missing behind the glass.</li>
+      <li>Near the screen border the lookup leaves the image and must fade out; foreground objects can leak into the refraction (<a class="x" href="../screen-transparency/index.html#leaks">fixing leaks</a>).</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="frosted" data-title="Frosted and rough glass" data-builds="glass#realtime reflections#probes" data-summary="Rough refraction = blurrier mip of the screen copy; HDRP: mip = r^1.3 · (mips − 1).">
+  <div class="head"><div class="num"></div><h2>Frosted and rough glass</h2></div>
+
+  <div class="prose">
+    <p>Etched, sandblasted or dirty glass is rough on the inside of the light path too: light scatters as it passes, so the background blurs. Like <a class="x" href="../reflections/index.html#probes">rough reflections</a> that read blurrier probe mips, rough refraction reads a blurrier mip of the screen copy. HDRP builds a mip chain of the colour buffer for this and maps roughness to a mip level:</p>
+  </div>
+  <div class="fx" data-fx="frost"></div>
+  <div class="prose"><p>Mips are blocky at high levels, so HDRP filters its pyramid with a Gaussian. Without a mip chain (URP, Unreal translucency) frosted glass needs several offset reads of the scene colour and averaging, which is the cost to keep in mind for large frosted panels.</p></div>
+
+</section>
+<section class="chapter" id="cheap" data-title="Cheap glass: alpha with premultiplied reflections" data-builds="transparency#premultiplied reflections#cheap" data-summary="Premultiplied: out = F·env + bg·(1 − α). The reflection survives at low opacity.">
+  <div class="head"><div class="num"></div><h2>Cheap glass: alpha with premultiplied reflections</h2></div>
+
+  <div class="prose">
+    <p>Before screen copies, and still on low-end targets, glass was an alpha-blended surface with a reflection. The trap: plain alpha blending multiplies everything the glass draws by its opacity, including the reflection. Clear glass has a low opacity, so its reflection disappears. <a class="x" href="../transparency/index.html#premultiplied">Premultiplied alpha</a> fixes it: the surface adds its reflection at full strength and only the background is dimmed:</p>
+  </div>
+  <div class="fx" data-fx="premul"></div>
+  <div class="prose">
+    <p>That is the whole trick behind convincing cheap glass: a low opacity, a bright reflection from a probe or a <a class="x" href="../reflections/index.html#cheap">gradient</a> scaled by Fresnel, and premultiplied blending (blend One, OneMinusSrcAlpha). HDRP exposes it as <em>Preserve specular lighting</em>. Add a slight tint by multiplying the background with a colour blend (Blend DstColor, Zero) in a second pass if you need coloured glass without a screen copy.</p>
+  </div>
+
+</section>
+<section class="chapter" id="order" data-title="Sorting, double sides and dirt" data-builds="transparency#order glass#cheap" data-summary="Back faces before front faces, glass does not see glass in the screen copy, liquids inset, shadows, smudges in roughness.">
+  <div class="head"><div class="num"></div><h2>Sorting, double sides and dirt</h2></div>
+
+  <div class="prose">
+    <p>Glass is transparent geometry, so it inherits the <a class="x" href="../transparency/index.html#order">sorting problems</a> of all transparency:</p>
+    <ul>
+      <li><strong>Closed objects</strong> (a glass, a bottle) need their back faces drawn before their front faces. Engines offer a two-pass option (HDRP: <em>Back Then Front Rendering</em>); otherwise split the mesh into inner and outer parts.</li>
+      <li><strong>Glass behind glass</strong>: with screen-copy refraction the rear pane is not in the copy. Use alpha blending for the rear one, or accept it.</li>
+      <li><strong>Liquids in glasses</strong>: model the liquid surface slightly inside the glass wall, not touching it, so sorting has a clear order.</li>
+      <li><strong>Shadows</strong>: clear glass should cast little or no shadow; coloured glass a tinted one. Most engines need a setting or a separate shadow caster for this.</li>
+      <li><strong>Dirt and fingerprints</strong>: a roughness map with smudges sells glass more than any refraction. Opaque dirt goes into the alpha, so it sorts and lights like a surface.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A bottle shows its back wall in front of its front wall from some angles. Fix?", ["Raise the IOR", "Render back faces first, then front faces (two passes or a split mesh)", "Lower the opacity", "Use a cubemap"], 1, "Within one mesh the triangle order is fixed; a two-pass back-then-front render or splitting the mesh fixes it."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Transparent Lit with a refraction model, IOR, real thickness, transmittance colour at a distance, preserve specular, back-then-front.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Lit shader implements this unit's model directly: a refraction model (Planar, Sphere or Thin) that sets the shape, an IOR, a thickness, and absorption as a transmittance colour reached at a distance, the same parameters as OpenPBR. Rough glass reads a blurrier mip of the colour pyramid. The files add the same maths for custom graphs. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>A transparent Lit material with a refraction model, IOR, thickness and absorption.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Screen Space Refraction override and sorting options.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Glass.hlsl in an Unlit graph with HD Scene Color: custom frosted or stylised glass.</span></div></div>
+<ol class="impl-steps"><li><div>Create a material with <em>HDRP/Lit</em>. <em>Surface Options</em>: Surface Type <code>Transparent</code>, Rendering Pass <code>Default</code> (the <em>Before Refraction</em> pass would neither refract nor show up behind refractive objects).</div></li><li><div><em>Surface Inputs</em>: Base Color white with a low alpha (clear glass 0.05–0.2; alpha is how much the surface blocks), Metallic 0, Smoothness 0.95–1. Under <em>Surface Options</em>, enable <em>Preserve specular lighting</em> so reflections stay at full strength however low the alpha is (the premultiplied idea of the cheap glass chapter).</div></li><li><div><em>Transparency Inputs</em>: <em>Refraction Model</em> <code>Planar</code> for panes, glasses and bottles (hollow, parallel walls), <code>Sphere</code> for solid rounded objects (a paperweight, a marble), <code>Thin</code> for very thin sheets (fixed 5 mm). <em>Index of Refraction</em> 1.5 (crystal glass up to about 1.6). <em>Refraction Thickness</em>: the real wall thickness in metres, for example 0.004 for a window.</div></li><li><div>Colour: set <em>Transmittance Color</em> to the tint you want to reach after the <em>Absorption Distance</em> (for example light green at 0.1 m for window glass). Keep the colour below 1 in every channel. HDRP computes μ = −ln(colour) / distance, exactly the Beer–Lambert chapter.</div></li><li><div>Frosted glass: lower Smoothness (0.3–0.7). HDRP reads the colour pyramid at mip = roughness<sup>1.3</sup> · (mip count − 1). Add a smoothness map for patterns (etched letters, a clear stripe in frosted glass).</div></li><li><div>Screen edges and quality: add the <em>Lighting &gt; Screen Space Refraction</em> override to a Volume and raise <em>Screen Weight Distance</em> to fade the effect near the border. Place a Reflection Probe around the glass: where refraction leaves the screen, HDRP falls back to it.</div></li><li><div>Closed objects (a glass, a bottle): enable <em>Back Then Front Rendering</em> so the far wall is drawn before the near one. Remember that refractive objects do not see each other: the colour pyramid holds opaque objects only. For dirt and fingerprints, paint them into the base map alpha (opaque spots) and a smoothness map (smudges).</div></li><li><div>Custom glass graph (stylised, or to control the offset yourself): put <code>Glass.hlsl</code> in <code>Assets/Shaders/</code>, create an Unlit Shader Graph with Surface Type Transparent. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Glass.hlsl</code> and <em>Name</em> to <code>FrostedGlassUV</code> (without the <code>_float</code> suffix). Add the inputs <b>ScreenUV (Vector 2), NormalVS (Vector 3), Strength (Float), PerceptualRoughness (Float), LodCount (Float)</b> and the outputs <b>UV (Vector 2), Lod (Float)</b>, in that order and with those types: they must match the function's parameters. ScreenUV comes from a <em>Screen Position</em> node, NormalVS from a <em>Normal Vector</em> node in View space (or a transformed normal map). Feed UV and Lod into an <em>HD Scene Color</em> node; multiply the result with <code>GlassAbsorption</code> and add a reflection. If the result is too bright or dark, toggle the node's <em>Exposure</em> option.</div></li></ol>
+<div class="files"><div class="file" data-name="Glass.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_GLASS_INCLUDED
+#define ATLAS_GLASS_INCLUDED
+
+// Beer-Lambert with the same parameters as HDRP Lit and OpenPBR: the colour reached after AtDistance.
+void GlassAbsorption_float(float3 TransmittanceColor, float AtDistance, float PathLength, out float3 Transmittance)
+{
+    float3 mu = -log(max(TransmittanceColor, 1e-4)) / max(AtDistance, 1e-4);   // extinction per metre
+    Transmittance = exp(-mu * PathLength);
+}
+
+// Path length through a pane of thickness T, seen at an angle (Snell inside the glass)
+void PanePathLength_float(float Thickness, float NdotV, float IOR, out float PathLength)
+{
+    float sin2 = 1.0 - saturate(NdotV) * saturate(NdotV);
+    float cosT = sqrt(max(1.0 - sin2 / (IOR * IOR), 1e-4));
+    PathLength = Thickness / cosT;
+}
+
+// Screen UV and colour-pyramid LOD for a custom frosted-glass graph (HD Scene Color node).
+// NormalVS: view-space normal; Strength: offset in UV units at full tilt.
+void FrostedGlassUV_float(float2 ScreenUV, float3 NormalVS, float Strength, float PerceptualRoughness,
+                          float LodCount, out float2 UV, out float Lod)
+{
+    float2 uv = ScreenUV + NormalVS.xy * Strength;
+    float2 edge = saturate(min(uv, 1.0 - uv) / 0.05);     // fade the offset out near the screen border
+    UV  = lerp(ScreenUV, uv, edge.x * edge.y);
+    Lod = pow(PerceptualRoughness, 1.3) * max(LodCount - 1.0, 0.0);   // same remap HDRP Lit uses
+}
+#endif</pre></div></div>
+<p class="note">Check the setup in the Scene view with a checkerboard behind the glass: the Planar model shifts it, Sphere flips it, and the absorption should only be visible through thick parts and edges.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: no refraction in the stock Lit shader. Enable <em>Opaque Texture</em> on the URP Asset and sample it in a transparent Shader Graph with the <em>Scene Color</em> node, offset by the normal; the same Glass.hlsl functions work, without the mip-based frost (sample several offsets instead).</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Translucent + Surface ForwardShading, refraction method by surface size, Thin Translucent for tinted panes, Lumen translucency reflections, a blurred SceneColor for frost.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal renders glass as a translucent material that reads the scene colour behind it, with a choice of refraction methods, or with the Thin Translucent shading model for physically tinted panes. Lumen supplies reflections on the front translucent layer. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>M_Glass: translucent, Surface ForwardShading, refraction method, opacity and tint.</span></div><div class="rt" data-k="mat"><b>Material</b><span>M_GlassThin: the Thin Translucent shading model for tinted panes.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>GlassAbsorption.ush: Beer–Lambert tint from thickness and view angle.</span></div><div class="rt" data-k="mf"><b>Material Function</b><span>MF_SceneColorBlur: frosted glass from a few offset scene-colour reads.</span></div></div>
+<ol class="impl-steps"><li><div>Create <code>M_Glass</code>. In <em>Details</em>: <em>Blend Mode</em> <code>Translucent</code>, <em>Shading Model</em> <code>Default Lit</code>, <em>Translucency &gt; Lighting Mode</em> <code>Surface ForwardShading</code> (proper specular and reflections on the surface). Base Color near white, Metallic 0, Specular 0.5 (F0 0.04), Roughness 0.02–0.1, Opacity 0.1–0.3.</div></li><li><div>Refraction: in <em>Details &gt; Refraction</em>, set <em>Refraction Method</em>. <code>Index of Refraction</code> with a constant 1.5 into the <em>Refraction</em> input bends by the normal; it is physical but reads far outside the screen on large flat panels. For windows and other big flat panes use <code>Pixel Normal Offset</code>, which offsets only by the normal-map detail (a flat pane does not distort, as the Snell chapter shows), with Refraction around 1.1–1.3 as strength.</div></li><li><div>Reflections: with Lumen, enable <em>High Quality Translucency Reflections</em> in <em>Project Settings &gt; Rendering</em> and in the Post Process Volume; the front translucent layer then gets sharp traced reflections. Without Lumen, tick <em>Screen Space Reflections</em> in the material's Translucency section (it needs Surface ForwardShading).</div></li><li><div>Tinted panes: create <code>M_GlassThin</code> with Blend Mode <code>Translucent</code>, Shading Model <code>Thin Translucent</code>, Lighting Mode <code>Surface ForwardShading</code>, and add a <em>Thin Translucent Material</em> output node. Its <em>Transmittance Color</em> tints what is behind (a saturated colour gives real coloured glass, not a milky one); Opacity then mostly controls the surface layer.</div></li><li><div>Absorption by thickness: add a Custom node with <code>GlassAbsorption.ush</code> (inputs TransmittanceColor, AtDistance, Thickness, NdotV from a <em>Dot</em> of <em>PixelNormalWS</em> and <em>CameraVector</em>, IOR). Multiply its result into Transmittance Color (thin) or Base Color (default lit). Thick parts and grazing views get more colour.</div></li><li><div>Frosted glass: make <code>MF_SceneColorBlur</code>: 6–8 <em>SceneColor</em> nodes whose <em>Offset Fraction</em> inputs sit on a small disc (for example ±0.004 on a circle), scaled by a Roughness input, averaged. Use it in a translucent material through <em>Emissive Color</em> with Opacity 1 and lighting off (<em>Unlit</em>), plus a separate thin glass layer for the reflection. Each tap is a full screen read; keep frosted areas small.</div></li><li><div>Sorting: set <em>Translucency Sort Priority</em> on the mesh component when glass layers flicker in order, and split glasses or bottles into an inner and an outer mesh so each sorts on its own. Translucent objects do not refract each other.</div></li></ol>
+<div class="files"><div class="file" data-name="GlassAbsorption.ush" data-lang="hlsl"><pre>// Custom node &quot;GlassAbsorption&quot;. Inputs: TransmittanceColor (float3), AtDistance (float, cm),
+// Thickness (float, cm), NdotV (float), IOR (float). Output Type: CMOT Float 3.
+float sin2 = 1.0 - saturate(NdotV) * saturate(NdotV);
+float cosT = sqrt(max(1.0 - sin2 / (IOR * IOR), 1e-4));
+float path = Thickness / cosT;                                   // path through a pane, Snell inside
+float3 mu = -log(max(TransmittanceColor, 1e-4)) / max(AtDistance, 1e-4);
+return exp(-mu * path);                                          // multiply into the tint / transmittance</pre></div></div>
+<p class="note">Substrate offers glass through Slab parameters and its own translucency options; the material-level choices above (translucent, Surface ForwardShading, refraction method) stay the same.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Spec</span><a href="https://academysoftwarefoundation.github.io/OpenPBR/" rel="noopener">OpenPBR Surface: transmission and thin-walled geometry</a></span><span class="by">Academy Software Foundation</span><span class="why">transmission_color and transmission_depth, Beer–Lambert, thin-walled mode.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/create-a-refractive-material.html" rel="noopener">HDRP: create a refractive material, refraction models</a></span><span class="by">Unity</span><span class="why">Refraction models, IOR table, transmittance colour and absorption distance.</span></li><li><span><span class="kind">Code</span><a href="https://github.com/Unity-Technologies/Graphics" rel="noopener">Unity Graphics: Refraction.hlsl and Lit.hlsl</a></span><span class="by">Unity</span><span class="why">RefractionModelBox and RefractionModelSphere, the 5 mm thin model and the roughness-to-mip remap.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/refraction-using-pixel-normal-offset-in-unreal-engine" rel="noopener">Refraction using Pixel Normal Offset</a></span><span class="by">Epic Games</span><span class="why">Unreal's refraction methods and why IOR mode breaks on large flat surfaces.</span></li><li><span><span class="kind">Article</span><a href="https://www.unrealengine.com/en-US/tech-blog/improved-shading-models-in-unreal-engine-4-25-and-beyond" rel="noopener">Improved shading models in Unreal Engine 4.25 and beyond</a></span><span class="by">Epic Games</span><span class="why">Thin Translucent shading model setup.</span></li><li><span><span class="kind">Book</span><a href="https://pbr-book.org/4ed/Reflection_Models/Specular_Reflection_and_Transmission" rel="noopener">Physically Based Rendering, 4th edition: specular reflection and transmission</a></span><span class="by">Pharr, Jakob, Humphreys</span><span class="why">Exact dielectric Fresnel and Snell's law.</span></li><li><span><span class="kind">Article</span><a href="https://developer.nvidia.com/content/alpha-blending-pre-or-not-pre" rel="noopener">Alpha blending: to pre or not to pre</a></span><span class="by">NVIDIA</span><span class="why">Why premultiplied blending keeps additive parts such as reflections.</span></li></ul>
+</section>
+
+<div class="next" data-next="screen-transparency water reflections"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"dielectric": [
+"Dielectric",
+"A non-conductor (glass, water, plastic): light enters it; F0 set by the IOR.",
+"#fresnel"
+],
+"snell": [
+"Snell's law",
+"n₁ sin θ₁ = n₂ sin θ₂: how much a ray bends when it enters another medium.",
+"#snell"
+],
+"tir": [
+"Total internal reflection",
+"Inside a dense medium, beyond the critical angle light cannot leave and reflects completely.",
+"#snell"
+],
+"beer": [
+"Beer–Lambert law",
+"Transmittance falls exponentially with path length: T = e^(−μd).",
+"#colour"
+],
+"pyramid": [
+"Colour pyramid",
+"A mip chain of the opaque frame; HDRP reads blurrier levels for rough refraction.",
+"#frosted"
+],
+"thinwalled": [
+"Thin-walled",
+"A surface treated as an infinitely thin shell (bubbles, leaves, hollow glass) rather than a volume.",
+"#shapes"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="glass.js?v=6c10d605"></script>
+</body>
+</html>

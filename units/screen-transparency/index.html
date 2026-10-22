@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Faking Transparency with Screen Passes · Tech Art Atlas</title>
+<meta name="description" content="Blending versus reading a copy of the screen: what the copy contains in each engine, full-screen passes driven by a mask, foreground leaks and depth rejection, thickness from depth, and the artefacts to hide, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="screen-transparency">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Faking Transparency with Screen Passes</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 7 chapters</div>
+  <h1>Faking Transparency with Screen Passes</h1>
+  <p class="lede">Blending versus reading a copy of the screen: what the copy contains in each engine, full-screen passes driven by a mask, foreground leaks and depth rejection, thickness from depth, and the artefacts to hide, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Transparency and Depth Buffer Effects. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/screen-transparency.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A frosted, tinted panel in front of a striped wall, with a pillar in front of it.</figcaption></figure>
+<div class="needs" data-needs="transparency#alpha"></div>
+
+<section class="chapter" id="two-ways" data-title="Two ways to see through a surface" data-builds="transparency#alpha glass#colour" data-summary="Blending: out = c·α + bg·(1 − α), fixed. Screen reads: shader computes bg·T, refraction, blur from a copy.">
+  <div class="head"><div class="num"></div><h2>Two ways to see through a surface</h2></div>
+
+  <div class="prose">
+    <p>There are two fundamentally different ways to draw something you can see through:</p>
+    <ol>
+      <li><strong>Blending</strong>: draw the surface on top of what is already in the frame and mix by alpha (<a class="x" href="../transparency/index.html#alpha">alpha blending</a>). The GPU does the mix in fixed hardware; the shader only supplies a colour and an alpha.</li>
+      <li><strong>Reading the screen</strong>: copy what is behind first, then let the shader read that copy wherever it likes and compute the final colour itself, written as an opaque pixel.</li>
+    </ol>
+    <p>Blending is cheap and sorts with everything, but a single alpha cannot describe glass that absorbs colours differently. Red glass should make a green background nearly black; blending can only fade towards red:</p>
+  </div>
+  <div class="fx" data-fx="filter"></div>
+  <div class="prose"><p>Reading the screen allows everything blending cannot: per-channel absorption, refraction (reading somewhere else), blur (reading a blurred copy), absorption by depth (<a class="x" href="#thickness">reading depth too</a>). The price is the copy and its limits, which the rest of this unit is about.</p></div>
+
+</section>
+<section class="chapter" id="copies" data-title="Where the copy comes from" data-builds="screen-transparency#two-ways buffers#render-targets" data-summary="URP Opaque Texture, HDRP colour pyramid, Unreal SceneColor; one copy per frame, made after opaques.">
+  <div class="head"><div class="num"></div><h2>Where the copy comes from</h2></div>
+
+  <div class="prose"><p>Every renderer makes a copy of the frame at a fixed point, usually after the opaque objects and the sky, before transparent objects. Shaders that run later read it:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Renderer</th><th>The copy</th><th>What is in it</th><th>How a shader reads it</th></tr></thead>
+    <tbody>
+      <tr><td>Unity built-in</td><td>GrabPass</td><td>everything drawn so far</td><td><code>GrabPass {}</code> then <code>_GrabTexture</code>; a copy per use unless named</td></tr>
+      <tr><td>Unity URP</td><td>Opaque Texture</td><td>opaque objects and sky</td><td>enable on the URP Asset; Shader Graph <em>Scene Color</em>, HLSL <code>SampleSceneColor</code></td></tr>
+      <tr><td>Unity HDRP</td><td>Colour pyramid</td><td>opaque objects and sky, with blurred mips</td><td>Lit refraction; Shader Graph <em>HD Scene Color</em> (with LOD); custom passes <code>CustomPassSampleCameraColor</code></td></tr>
+      <tr><td>Unreal</td><td>Scene colour</td><td>opaque objects (translucency reads it); post process: the whole frame so far</td><td><em>SceneColor</em> node in translucent materials, <em>SceneTexture: PostProcessInput0</em> in post process materials</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>The copy costs memory and bandwidth every frame, and a mip chain for blur costs a third more:</p></div>
+  <div class="fx" data-fx="copycost"></div>
+  <div class="prose">
+    <p>Two rules follow. Ask for the copy once and share it: the old Unity GrabPass without a name made a copy per object, which was a common performance trap. And remember <em>when</em> the copy was made: anything drawn after it (particles, other glass, UI) is not in it, so it cannot appear behind the surface that reads it.</p>
+  </div>
+
+</section>
+<section class="chapter" id="fullscreen" data-title="A full-screen pass with a mask" data-builds="screen-transparency#copies transparency#order" data-summary="Mask the objects into stencil/custom buffer, then one full-screen pass: out = lerp(scene, effect(scene), mask).">
+  <div class="head"><div class="num"></div><h2>A full-screen pass with a mask</h2></div>
+
+  <div class="prose">
+    <p>Each glass object reading the copy works, but each one is a separate transparent draw with its own sorting. A different structure turns it around:</p>
+    <ol>
+      <li>Draw all "glass" objects into a <strong>mask</strong> only: a stencil value or a custom buffer, plus their depth. They are not drawn normally.</li>
+      <li>Run <strong>one full-screen pass</strong> that reads the scene colour, the depth and the mask, and applies the effect wherever the mask is set.</li>
+    </ol>
+  </div>
+  <div class="fx" data-fx="mask"></div>
+  <div class="prose">
+    <p>The pattern fits effects that should look continuous across many objects or ignore their edges: a frosted window wall built from many panes, heat haze over an area, an x-ray or scanner view through walls, an underwater region, a force field. It costs one full-screen pass regardless of how many objects are masked, there is no sorting among them, and the effect can blur across their borders.</p>
+    <p>What it gives up: per-object lighting and reflections (add them as a separate, ordinary pass), and the mask is binary per pixel unless you store coverage.</p>
+  </div>
+
+</section>
+<section class="chapter" id="leaks" data-title="Leaks and depth rejection" data-builds="depth-effects#linearize screen-transparency#fullscreen" data-summary="Offsets read foreground pixels. If depth at the offset UV is in front of the glass, use the unoffset UV.">
+  <div class="head"><div class="num"></div><h2>Leaks and depth rejection</h2></div>
+
+  <div class="prose">
+    <p>Distortion reads the copy at an offset position. The copy is flat: it does not know which pixels were behind the glass and which in front of it. Near an object that stands in front of the glass, the offset lands on that object and copies its colour into the glass, a ghost outline:</p>
+  </div>
+  <div class="fx" data-fx="leak"></div>
+  <div class="prose">
+    <p>The fix is to compare depths. Read the depth buffer at the offset position: if that pixel is closer to the camera than the glass surface, it was in front of the glass, and the shader falls back to the undistorted position. In reversed-Z depth buffers (HDRP, Unreal's device depth) "closer" means a <em>larger</em> value; with linear depth, a smaller one (<a class="x" href="../depth-effects/index.html#linearize">depth conventions</a>).</p>
+    <p>The same check repairs water edges, heat haze around characters and every refraction that runs into foreground geometry.</p>
+  </div>
+
+</section>
+<section class="chapter" id="thickness" data-title="Thickness from depth" data-builds="depth-effects#water glass#colour" data-summary="thickness = back depth − front depth (linear); T = e^(−μ·thickness) per channel.">
+  <div class="head"><div class="num"></div><h2>Thickness from depth</h2></div>
+
+  <div class="prose">
+    <p>With depth available, the shader can measure how much material the view ray crosses. Two cases:</p>
+    <ul>
+      <li><strong>A volume in front of opaque geometry</strong> (water, fog, murky glass blocks): thickness = depth of the opaque surface behind − depth of the glass surface. That is the <a class="x" href="../depth-effects/index.html#water">water depth trick</a>.</li>
+      <li><strong>A closed object</strong> (a crystal, jelly): render its back faces' depth into a second buffer; thickness = back depth − front depth.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="thick"></div>
+  <div class="prose"><p>Feed the thickness into <a class="x" href="../glass/index.html#colour">Beer–Lambert absorption</a> per channel and the object gets darker and more saturated where it is thick, the strongest cue that it is a volume and not a coloured film. Linearise both depths before subtracting.</p></div>
+
+</section>
+<section class="chapter" id="artefacts" data-title="Artefacts and how to hide them" data-builds="screen-transparency#copies screen-transparency#leaks" data-summary="Missing transparents, border fade w = saturate(min(u, 1−u)/f), mip shimmer, TAA smear, double refraction, injection point.">
+  <div class="head"><div class="num"></div><h2>Artefacts and how to hide them</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Missing transparents</strong>: particles and other glass behind the surface are not in the copy. Draw important ones before the copy (some engines let you move them to a pre-refraction pass; HDRP has <em>Before Refraction</em>), or accept it.</li>
+      <li><strong>Screen borders</strong>: the offset reads outside the image near the edges. Fade the offset towards the border:</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="edge"></div>
+  <div class="prose">
+    <ul>
+      <li><strong>Resolution and mips</strong>: blurred reads of a mip chain shimmer when the camera moves slowly; a Gaussian-filtered pyramid (HDRP) or a few extra taps hide it.</li>
+      <li><strong>Temporal anti-aliasing</strong>: the effect has no motion vectors of its own, so fast distortion smears. Keep animation slow or mark the pixels for less history.</li>
+      <li><strong>Double refraction</strong>: two layers of glass cannot both refract through each other. Merge them in the mask pattern, or let the rear one blend.</li>
+      <li><strong>Post-processing order</strong>: before or after tonemapping, before or after depth of field. Inject where the effect should sit: a frosted window is part of the scene (before), a scanner overlay part of the UI (after).</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Smoke particles behind a refractive window vanish. Most likely reason?", ["The particles are too dark", "The particles are drawn after the screen copy, so the window's refraction does not contain them", "Wrong IOR", "Depth rejection"], 1, "Everything drawn after the copy is missing behind surfaces that read it. Move the particles earlier or render them in front."], ["The distortion of a window shows a smeared band at the left screen edge. Fix?", ["Raise the IOR", "Fade the offset out within a few percent of the screen border", "Increase blur", "Disable TAA"], 1, "Near the border the offset reads clamped pixels; fade it to zero there."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Custom buffer, a layer outside the camera culling mask, Draw Renderers into custom colour/depth, then a Full Screen pass that composites.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Custom Pass system does exactly the mask-then-full-screen pattern: a <em>Draw Renderers</em> pass writes the glass objects into the custom colour and depth buffers, a <em>Full Screen</em> pass reads the scene colour pyramid, the camera depth and the mask, and composites. The objects never render normally, so there is no sorting between them. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Custom buffer in the HDRP Asset, a layer for screen glass, a Custom Pass Volume.</span></div><div class="rt" data-k="pass"><b>Custom Pass</b><span>Draw Renderers pass with ScreenGlassMask.shader into the custom buffers.</span></div><div class="rt" data-k="pass"><b>Custom Pass</b><span>Full Screen pass with ScreenGlass.shader: offset, edge fade, depth rejection, blur, absorption.</span></div></div>
+<ol class="impl-steps"><li><div>In the HDRP Asset, under <em>Rendering &gt; Custom Pass</em>, make sure custom passes are enabled and set <em>Custom Buffer Format</em> to <code>R8G8B8A8</code> (enough for a coverage mask).</div></li><li><div>Add a layer <code>ScreenGlass</code> (<em>Edit &gt; Project Settings &gt; Tags and Layers</em>), put the glass objects on it, and remove it from the camera's <em>Culling Mask</em>. The objects now only exist for the custom pass, which can still draw layers the camera does not.</div></li><li><div>Save <code>ScreenGlassMask.shader</code> and <code>ScreenGlass.shader</code> in <code>Assets/Shaders/</code> and create a material from each (right-click the shader, <em>Create &gt; Material</em>).</div></li><li><div>Create <em>GameObject &gt; Volume &gt; Custom Pass</em>. Mode <code>Global</code> (or Local with a collider around the area), <em>Injection Point</em> <code>Before Post Process</code>.</div></li><li><div>Add a <em>Draw Renderers Custom Pass</em>: Target Color Buffer <code>Custom</code>, Target Depth Buffer <code>Custom</code>, Clear Flags <code>All</code>, Layer Mask <code>ScreenGlass</code>, Queue <code>All</code>, Override Mode <code>Material</code> with the mask material and Pass Name <code>FirstPass</code>. The mask shader discards pixels hidden behind opaque objects itself.</div></li><li><div>Add a <em>Full Screen Custom Pass</em> below it: Target Color Buffer <code>Camera</code>, Target Depth Buffer <code>None</code>, material <code>ScreenGlass</code>. Order matters: the mask must be written first.</div></li><li><div>Tune the material: <em>Distortion</em> 0.005–0.02, <em>Blur</em> 0 for clear glass and 2–4 for frosted, <em>Absorption</em> per channel (higher red for a blue-green tint). Move a foreground object in front of the glass and check that no outline leaks into the distortion; switch the depth-rejection lines off to see the difference.</div></li></ol>
+<div class="files"><div class="file" data-name="ScreenGlassMask.shader" data-lang="hlsl"><pre>// Writes coverage (and depth) of &quot;screen glass&quot; objects into HDRP&#x27;s custom buffers.
+// Used as the override material of a Draw Renderers custom pass (Pass Name: FirstPass).
+Shader &quot;Renderers/ScreenGlassMask&quot;
+{
+    Properties { }
+
+    HLSLINCLUDE
+    #pragma target 4.5
+    #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+    #pragma multi_compile_instancing
+    ENDHLSL
+
+    SubShader
+    {
+        Tags { &quot;RenderPipeline&quot; = &quot;HDRenderPipeline&quot; }
+        Pass
+        {
+            Name &quot;FirstPass&quot;
+            Tags { &quot;LightMode&quot; = &quot;FirstPass&quot; }
+
+            Blend Off
+            ZWrite On          // the custom depth buffer keeps the nearest glass surface
+            ZTest LEqual
+            Cull Back
+
+            HLSLPROGRAM
+            #define ATTRIBUTES_NEED_NORMAL
+            #include &quot;Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl&quot;
+
+            CBUFFER_START(UnityPerMaterial)
+            CBUFFER_END
+
+            #include &quot;Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassRenderersV2.hlsl&quot;
+
+            void GetSurfaceAndBuiltinData(FragInputs fragInputs, float3 viewDirection, inout PositionInputs posInput,
+                                          out SurfaceData surfaceData, out BuiltinData builtinData)
+            {
+                // Hidden behind an opaque object? Then this pixel is not glass. (Reversed Z: smaller = farther.)
+                float sceneDepth = LoadCameraDepth(posInput.positionSS);
+                if (posInput.deviceDepth &lt; sceneDepth)
+                    discard;
+
+                ZERO_BUILTIN_INITIALIZE(builtinData);
+                ZERO_INITIALIZE(SurfaceData, surfaceData);
+                builtinData.opacity = 1.0;       // alpha = coverage
+                surfaceData.color = float3(1.0, 1.0, 1.0);
+            }
+
+            #include &quot;Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/ShaderPass/ShaderPassForwardUnlit.hlsl&quot;
+            #pragma vertex Vert
+            #pragma fragment Frag
+            ENDHLSL
+        }
+    }
+}</pre></div><div class="file" data-name="ScreenGlass.shader" data-lang="hlsl"><pre>// Full-screen custom pass: distorts, blurs and tints the scene wherever the glass mask is set.
+// Injection point: Before Post Process. Target Color Buffer: Camera.
+Shader &quot;FullScreen/ScreenGlass&quot;
+{
+    Properties
+    {
+        _Tint(&quot;Tint&quot;, Color) = (0.85, 0.95, 1.0, 1.0)
+        _Distortion(&quot;Distortion (screen UV)&quot;, Range(0, 0.05)) = 0.01
+        _NoiseScale(&quot;Distortion scale&quot;, Float) = 40
+        _BlurLod(&quot;Blur (colour pyramid mip)&quot;, Range(0, 6)) = 1.5
+        _Absorption(&quot;Absorption per metre (RGB)&quot;, Vector) = (0.6, 0.15, 0.1, 0)
+        _MaxThickness(&quot;Max thickness (m)&quot;, Float) = 20
+        _EdgeFade(&quot;Screen edge fade width&quot;, Range(0.001, 0.2)) = 0.05
+    }
+
+    HLSLINCLUDE
+    #pragma vertex Vert
+    #pragma target 4.5
+    #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+
+    #include &quot;Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl&quot;
+
+    float4 _Tint;
+    float  _Distortion, _NoiseScale, _BlurLod, _MaxThickness, _EdgeFade;
+    float4 _Absorption;
+
+    float4 FullScreenPass(Varyings varyings) : SV_Target
+    {
+        UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(varyings);
+        uint2  px = (uint2)varyings.positionCS.xy;
+        float  coverage = CustomPassLoadCustomColor(px).a;      // written by ScreenGlassMask
+        if (coverage &lt;= 0.0)
+            discard;                                            // not glass: keep the camera colour
+
+        float2 uv = varyings.positionCS.xy * _ScreenSize.zw;
+        float  glassDepth = CustomPassLoadCustomDepth(px);
+
+        // 1. offset: a simple animated wobble; replace with a normal map in your project
+        float2 n = float2(sin(uv.y * _NoiseScale + _TimeParameters.x * 1.3),
+                          cos(uv.x * _NoiseScale * 0.8 + _TimeParameters.x * 0.9));
+        float2 uvOff = uv + n * _Distortion;
+
+        // 2. fade the offset out near the screen border
+        float2 edge = saturate(min(uvOff, 1.0 - uvOff) / _EdgeFade);
+        uvOff = lerp(uv, uvOff, edge.x * edge.y);
+
+        // 3. depth rejection: if the pixel we would read is in front of the glass, read straight through
+        float depthAtOff = CustomPassLoadCameraDepth(uint2(uvOff * _ScreenSize.xy));
+        if (depthAtOff &gt; glassDepth)                            // reversed Z: larger = closer
+            uvOff = uv;
+
+        // 4. read the scene behind, blurred by the mip level
+        float3 behind = CustomPassSampleCameraColor(uvOff, _BlurLod);
+
+        // 5. thickness from depth: from the glass surface to the opaque surface behind it
+        float sceneDepth = CustomPassLoadCameraDepth(uint2(uvOff * _ScreenSize.xy));
+        float d = LinearEyeDepth(sceneDepth, _ZBufferParams) - LinearEyeDepth(glassDepth, _ZBufferParams);
+        float3 T = exp(-_Absorption.rgb * clamp(d, 0.0, _MaxThickness));
+
+        return float4(behind * T * _Tint.rgb, coverage);
+    }
+    ENDHLSL
+
+    SubShader
+    {
+        Tags { &quot;RenderPipeline&quot; = &quot;HDRenderPipeline&quot; }
+        Pass
+        {
+            Name &quot;Custom Pass 0&quot;
+            ZWrite Off
+            ZTest Always
+            Blend SrcAlpha OneMinusSrcAlpha
+            Cull Off
+            HLSLPROGRAM
+            #pragma fragment FullScreenPass
+            ENDHLSL
+        }
+    }
+    Fallback Off
+}</pre></div></div>
+<p class="note">Reflections are not part of this pass. Add them with a second, ordinary transparent material on the same meshes in a layer the camera does render (Fresnel-scaled probe reflection, premultiplied, as in the Glass unit), or add a probe sample to the full-screen shader.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: the same pattern with the <em>Full Screen Pass Renderer Feature</em> (Unity 2022.2 and later) and a Full Screen Shader Graph that samples <em>URP Sample Buffer</em> (BlitSource) and the opaque texture; write the mask with a <em>Render Objects</em> feature into the stencil and test it in the full-screen pass.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Custom Depth-Stencil enabled, glass meshes hidden from the main pass, a post process material that masks, offsets, rejects by depth and absorbs.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal's version of the pattern is a Post Process Material that reads the scene colour and depth, with the glass objects marked in the Custom Depth and Stencil buffers. The meshes are hidden from the main pass, so they exist only as a mask. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Custom Depth-Stencil Pass enabled with stencil.</span></div><div class="rt" data-k="actor"><b>Level actor</b><span>Glass meshes: Render CustomDepth Pass on, a stencil value, Render in Main Pass off.</span></div><div class="rt" data-k="ppm"><b>Post Process Material</b><span>PP_ScreenGlass: mask from the stencil, offset, depth rejection, absorption.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>ScreenGlassUV.ush and DepthReject.ush for the two Custom nodes.</span></div></div>
+<ol class="impl-steps"><li><div>In <em>Project Settings &gt; Rendering &gt; Postprocessing</em>, set <em>Custom Depth-Stencil Pass</em> to <code>Enabled with Stencil</code>.</div></li><li><div>On each glass mesh component: <em>Rendering &gt; Render CustomDepth Pass</em> on, <em>CustomDepth Stencil Value</em> 5 (any value you reserve for glass), and <em>Render in Main Pass</em> off so the mesh is invisible except in the custom depth.</div></li><li><div>Create <code>PP_ScreenGlass</code>: <em>Material Domain</em> <code>Post Process</code>, <em>Blendable Location</em> <code>Before Tonemapping</code>. Get the mask with a <em>SceneTexture: CustomStencil</em> node compared to 5 (an <em>If</em> node or a subtract and saturate), and only where the CustomDepth is nearer than the SceneDepth at the same pixel (the glass is not hidden).</div></li><li><div>Offset: a Custom node with <code>ScreenGlassUV.ush</code>; UV from <em>ViewportUV</em> (or <em>ScreenPosition</em> ViewportUV output), Time from <em>Time</em>, plus scalar parameters Strength (0.005–0.02), Scale (40) and EdgeFade (0.05).</div></li><li><div>Depth rejection: sample <em>SceneTexture: SceneDepth</em> with the offset UV, <em>SceneTexture: CustomDepth</em> with the plain UV, and pass both into a Custom node with <code>DepthReject.ush</code>. Its output is the UV to read the scene with.</div></li><li><div>Read <em>SceneTexture: PostProcessInput0</em> at that UV. For absorption, multiply by <em>Exp</em>(−Absorption · (SceneDepth − CustomDepth) / 100), the thickness in metres. Finally <em>Lerp</em> between the untouched PostProcessInput0 at the plain UV and the result by the mask, into <em>Emissive Color</em>.</div></li><li><div>Add the material to a <em>Post Process Volume</em> (Infinite Extent or a bounded volume) under <em>Rendering Features &gt; Post Process Materials</em>.</div></li></ol>
+<div class="files"><div class="file" data-name="ScreenGlassUV.ush" data-lang="hlsl"><pre>// Custom node &quot;ScreenGlassUV&quot; (Post Process material). Inputs: UV (float2, ViewportUV),
+// Time (float), Strength (float), Scale (float), EdgeFade (float). Output Type: CMOT Float 2.
+float2 n = float2(sin(UV.y * Scale + Time * 1.3), cos(UV.x * Scale * 0.8 + Time * 0.9));
+float2 uvOff = UV + n * Strength;
+float2 edge = saturate(min(uvOff, 1.0 - uvOff) / EdgeFade);     // no reads outside the image
+return lerp(UV, uvOff, edge.x * edge.y);</pre></div><div class="file" data-name="DepthReject.ush" data-lang="hlsl"><pre>// Custom node &quot;DepthReject&quot;. Inputs: UV (float2), OffsetUV (float2), DepthAtOffset (float, SceneDepth sampled
+// at OffsetUV), GlassDepth (float, CustomDepth at UV). Output Type: CMOT Float 2.
+// Unreal&#x27;s SceneDepth and CustomDepth are linear distances in cm: smaller = closer.
+return DepthAtOffset &lt; GlassDepth ? UV : OffsetUV;</pre></div></div>
+<p class="note">Blur: <em>SceneTexture</em> has no mip chain in a post process material, so frosted variants average several offset reads (as in the Glass unit). Translucent objects drawn after the chosen blendable location are not in PostProcessInput0; use <code>Before Translucency</code> if they should appear on top of the effect instead of behind it.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Custom-Pass.html" rel="noopener">HDRP Custom Pass: creating, buffers and injection points</a></span><span class="by">Unity</span><span class="why">Draw Renderers and Full Screen passes, custom buffers, rendering objects outside the camera culling mask.</span></li><li><span><span class="kind">Code</span><a href="https://github.com/Unity-Technologies/Graphics" rel="noopener">Unity Graphics: CustomPassSampling.hlsl and the custom pass templates</a></span><span class="by">Unity</span><span class="why">CustomPassSampleCameraColor, LoadCustomColor and depth functions used by the build files.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity.com/en-us/engine/6000.0/manual/post-processing-and-full-screen-effects/urp/custom-post-processing/renderer-feature-full-screen-pass" rel="noopener">URP Full Screen Pass Renderer Feature</a></span><span class="by">Unity</span><span class="why">The same pattern in URP.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/post-process-materials-in-unreal-engine" rel="noopener">Post process materials in Unreal Engine</a></span><span class="by">Epic Games</span><span class="why">Blendable locations, SceneTexture inputs, custom depth and stencil.</span></li><li><span><span class="kind">Article</span><a href="https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-19-generic-refraction-simulation" rel="noopener">GPU Gems 2, chapter 19: generic refraction simulation</a></span><span class="by">Tiago Sousa · NVIDIA</span><span class="why">The screen-copy refraction technique and the foreground leak problem.</span></li></ul>
+</section>
+
+<div class="next" data-next="water glass depth-effects"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"grab": [
+"Scene colour copy",
+"A copy of the frame (usually opaques and sky) that later shaders read: GrabPass, Opaque Texture, colour pyramid, SceneColor.",
+"#copies"
+],
+"mask": [
+"Mask pass",
+"Drawing objects only into a stencil or custom buffer so a later full-screen pass knows where to apply an effect.",
+"#fullscreen"
+],
+"stencil": [
+"Stencil buffer",
+"A per-pixel integer buffer next to depth, used to mark pixels for later passes.",
+"#fullscreen"
+],
+"reject": [
+"Depth rejection",
+"Discarding offset samples that lie in front of the surface to stop foreground leaks.",
+"#leaks"
+],
+"reversedz": [
+"Reversed Z",
+"Depth stored as 1 at the near plane and 0 at the far plane, for precision; closer means larger.",
+"#leaks"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="screen.js?v=05dad3e1"></script>
+</body>
+</html>

@@ -28,7 +28,7 @@
   /* ---------- theme: dark by default, light on request ---------- */
   function applyTheme(t) {
     if (t === 'light') document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme;
-    $$('[data-theme-toggle]').forEach(b => { b.textContent = t === 'light' ? 'Dark theme' : 'Light theme'; });
+    $$('[data-theme-toggle]').forEach(b => { const l = t === 'light' ? 'Dark theme' : 'Light theme'; const sp = b.querySelector('span'); if (sp) { sp.textContent = 'Theme'; b.title = l; } else b.textContent = l; });
   }
   let theme = store.get('theme', 'dark') === 'light' ? 'light' : 'dark';
   applyTheme(theme);
@@ -167,7 +167,7 @@
   function crumbs() {
     const el = $('.crumbs'); if (!el) return;
     const u = unitMeta(slug), c = u ? CATS.find(x => x.id === u.cat) : null;
-    el.innerHTML = `<a href="${ROOT}index.html">Tech Art Atlas</a><span>/</span>` + (c ? `<a href="${ROOT}index.html#cat-${c.id}">${esc(c.name)}</a><span>/</span>` : '') +
+    el.innerHTML = `<a href="${ROOT}index.html">Tech Art Atlas</a><span>/</span>` + (c ? `<a href="${ROOT}index.html?c=${c.id}">${esc(c.name)}</a><span>/</span>` : '') +
       `<a href="#top">${esc(u ? u.title : document.title.split(' · ')[0])}</a><span>/</span><b id="crumb-chapter"></b>`;
   }
   function chip(s, id, cls) {
@@ -560,8 +560,21 @@
 
   window.Atlas = { $, $$, fig, pointer, range, seg, col, alpha, clamp, lerp, fmt, num, pn, short, esc, store, redraw: redrawAll, onRedraw: f => redrawers.add(f), fx: fxDefine, href: hrefFor, reduceMotion, grid2d, arrow: arrowG, text };
 
+  /* unit header: topic colour, software badges, UNIT / WORKFLOW, and a hero image added by name (assets/img/units/<slug>-hero.*) */
+  function unitBadges() {
+    const slug = document.body.dataset.unit, u = UNITS.find(x => x.slug === slug); if (!u) return;
+    const c = CATS.find(x => x.id === u.cat) || {}, SWN = window.ATLAS_SOFTWARE || {}, IMGS = (INDEX.images || {});
+    const head = $('.unit-head'); if (!head) return;
+    if (c.tone) { head.style.setProperty('--tc', c.tone); document.documentElement.style.setProperty('--tc', c.tone); }
+    const sw = (u.software || []).map(k => IMGS.software && IMGS.software[k] ? `<span class="sw img" title="${esc(SWN[k] || k)}"><img src="${ROOT}${IMGS.software[k]}" alt="${esc(SWN[k] || k)}"></span>` : `<span class="sw" title="${esc(SWN[k] || k)}">${{ any: 'ANY', unity: 'UNITY', unreal: 'UE', sd: 'SD', blender: 'BLENDER' }[k] || esc(k.toUpperCase())}</span>`).join('');
+    const box = document.createElement('div'); box.className = 'ubadges';
+    box.innerHTML = `<a class="topic" href="${ROOT}index.html?c=${c.id}" style="--tc:${c.tone}"><i class="dot"></i>${esc(c.name || '')}</a>${sw}<span class="kind ${u.type || 'unit'}">${u.type === 'workflow' ? 'Workflow' : 'Unit'}</span>`;
+    head.prepend(box);
+    const hero = IMGS.units && IMGS.units[slug] && IMGS.units[slug].hero, img = $('.keyart img');
+    if (hero && img) img.src = ROOT + hero;
+  }
   function boot() {
-    crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines(); files();
+    unitBadges(); crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines(); files();
     $$('.fx[data-fx]').forEach(fxQueue);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

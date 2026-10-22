@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Water · Tech Art Atlas</title>
+<meta name="description" content="How water shaders work: Fresnel at 2 %, waves from normals and Gerstner, depth from the depth buffer, colour from absorption and scattering, shore foam, refraction, caustics, the view from below, and cheap tiers, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="water">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Water</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 10 chapters</div>
+  <h1>Water</h1>
+  <p class="lede">How water shaders work: Fresnel at 2 %, waves from normals and Gerstner, depth from the depth buffer, colour from absorption and scattering, shore foam, refraction, caustics, the view from below, and cheap tiers, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Glass, Depth Buffer Effects and Faking Transparency with Screen Passes. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/water.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A shallow shore: sand fading into blue-green depth, foam at the edge and caustics on the bottom.</figcaption></figure>
+<div class="needs" data-needs="depth-effects#water"></div>
+
+<section class="chapter" id="layers" data-title="What you see in water" data-builds="glass#fresnel reflections#sources" data-summary="F0 = 0.02 for water; colour = F·reflection + (1 − F)·light from below. Mostly mirror at the horizon, clear at your feet.">
+  <div class="head"><div class="num"></div><h2>What you see in water</h2></div>
+
+  <div class="prose">
+    <p>Water is a <a class="x" href="../glass/index.html#fresnel">dielectric</a> with an IOR of 1.33, so its surface reflects only 2 % head-on (F0 = 0.02) and close to 100 % at grazing angles. Everything else you see comes from below: the bottom, seen through water that absorbs and scatters light. The balance between the two changes across every view of a lake:</p>
+  </div>
+  <div class="fx" data-fx="wfresnel"></div>
+  <div class="prose">
+    <p>A water shader is these three layers, and the rest of the unit builds each:</p>
+    <ol>
+      <li><strong>The surface</strong>: waves and normals that shape the reflection (<a class="x" href="#waves">waves</a>) and what reflects in it (<a class="x" href="../reflections/index.html#sources">reflections</a>).</li>
+      <li><strong>The body</strong>: how much water the light crosses (<a class="x" href="#depth">depth</a>) and what that does to its colour (<a class="x" href="#absorb">absorption</a>).</li>
+      <li><strong>The things in between</strong>: foam and shorelines, refraction, caustics, and the view from below.</li>
+    </ol>
+  </div>
+
+</section>
+<section class="chapter" id="waves" data-title="Waves: normals and Gerstner" data-builds="water#layers mapping#flow" data-summary="Scrolling normal maps for ripples; Gerstner waves for geometry: circular particle motion, ω = √(gk), Q·A·k &lt; 1.">
+  <div class="head"><div class="num"></div><h2>Waves: normals and Gerstner</h2></div>
+
+  <div class="prose">
+    <p>Most of what reads as "water" is the surface normal. Small ripples come from normal maps scrolling in two or three directions at different speeds (<a class="x" href="../mapping/index.html#flow">flow maps</a> steer them along rivers). Larger waves move the geometry. The classic shape is the <button type="button" class="term" data-term="gerstner">Gerstner wave</button>: each water particle moves in a circle, so crests sharpen and troughs flatten, as in real swell:</p>
+  </div>
+  <div class="fx" data-fx="gerstner"></div>
+  <div class="prose">
+    <p>Deep-water physics ties speed to wavelength: ω = √(g k), so long waves are fast. Sum three to eight waves with different directions and wavelengths and the pattern stops looking repetitive. Large oceans use a spectrum computed with an FFT instead (Tessendorf's method; HDRP's ocean and Unreal's water both build on spectra and wave sums), but the visual principles are the same.</p>
+    <p>Keep steepness below the loop limit: when Q · A · k exceeds 1, the crest folds over itself. That point is also where foam appears on real waves, so it doubles as a foam mask.</p>
+  </div>
+
+</section>
+<section class="chapter" id="depth" data-title="How much water is there?" data-builds="depth-effects#water depth-effects#linearize" data-summary="path = Δ linear depth / cos α; vertical depth = path · cos φ. Absorption uses the path; foam and fades use the depth.">
+  <div class="head"><div class="num"></div><h2>How much water is there?</h2></div>
+
+  <div class="prose">
+    <p>Colour, foam and refraction all depend on how much water lies between the surface and the ground. A transparent water surface can read the <a class="x" href="../depth-effects/index.html#water">depth buffer</a>, which holds the ground behind it. Subtract the surface's own depth and you get the distance the view ray travels through water, after <a class="x" href="../depth-effects/index.html#linearize">linearising</a> both:</p>
+  </div>
+  <div class="fx" data-fx="wdepth"></div>
+  <div class="prose"><p>Use the right one for each job. Absorption follows the <em>path</em>: looking across a shallow pool at a low angle, you see through a lot of water. Foam, shore fades and caustics follow the <em>vertical depth</em>: they belong to places, not to views. Divide by the cosine of the angle to the camera axis when the pixel is far from the screen centre, because the depth buffer stores distance along the view axis.</p></div>
+
+</section>
+<section class="chapter" id="absorb" data-title="Colour: absorption and scattering" data-builds="glass#colour water#depth" data-summary="Pure water a ≈ (0.35, 0.06, 0.01)/m; colour = bottom·e^(−aL) + scatter·(1 − e^(−aL)).">
+  <div class="head"><div class="num"></div><h2>Colour: absorption and scattering</h2></div>
+
+  <div class="prose">
+    <p>Pure water absorbs red light far more than blue: measured absorption is roughly 0.35 per metre for red (650 nm), 0.06 for green and about 0.01 for blue (Pope and Fry, 1997). After a few metres, red is gone; after tens of metres, green too. That is why clear water is blue-green, and it is the same <a class="x" href="../glass/index.html#colour">Beer–Lambert law</a> as for glass, per channel. Particles and plankton add <em>scattering</em>: light that bounces back towards you from inside the water, which gives lagoons their turquoise and rivers their brown:</p>
+  </div>
+  <div class="fx" data-fx="wabs"></div>
+  <div class="prose">
+    <p>The model in one line: colour = bottom · T + scatter · (1 − T). Deep water converges to the scatter colour; shallow water shows the bottom. Engines expose the same two parts: HDRP's water has a refraction (absorption) colour and distance and a scattering colour; Unreal's Single Layer Water has absorption and scattering coefficients; OpenPBR's volume parameters split them the same way.</p>
+    <p>Authoring tip: choose absorption first, from a reference photo of the bottom fading with depth, then add scattering until deep areas reach the right colour. Doing it the other way round tends to give milky water.</p>
+  </div>
+
+</section>
+<section class="chapter" id="shore" data-title="Shorelines, foam and soft edges" data-builds="depth-effects#soft-particles water#depth" data-summary="edge alpha = saturate(d/f); foam = 1 − saturate(d/w), broken by noise; foam raises alpha, lowers smoothness.">
+  <div class="head"><div class="num"></div><h2>Shorelines, foam and soft edges</h2></div>
+
+  <div class="prose">
+    <p>Where water meets ground, the depth goes to zero, and an unprocessed water plane shows a hard line. The vertical depth fixes it: fade the surface in over the first few centimetres (the <a class="x" href="../depth-effects/index.html#soft-particles">soft-particle trick</a>), and draw foam where the water is shallow:</p>
+  </div>
+  <div class="fx" data-fx="shore"></div>
+  <div class="prose">
+    <p>A plain band looks like a stripe painted along the coast. Break it up: subtract a scrolling noise from the band, use a foam texture as the threshold so foam appears as patches, and let it pulse with the waves (foam where Gerstner steepness peaks). Foam is opaque and white-ish, rough and sits on top, so it raises the alpha and lowers the smoothness where it appears.</p>
+  </div>
+
+</section>
+<section class="chapter" id="refract" data-title="Refraction below the surface" data-builds="glass#realtime screen-transparency#leaks" data-summary="offset = N.xz · k · saturate(d/d₀): weak at the shore, full in deep water; plus depth rejection.">
+  <div class="head"><div class="num"></div><h2>Refraction below the surface</h2></div>
+
+  <div class="prose">
+    <p>Water refracts what lies below it, which real-time renderers do with the <a class="x" href="../glass/index.html#realtime">screen copy</a>: offset the UV by the surface normal and read the scene behind. Two water-specific rules:</p>
+    <ul>
+      <li>Scale the offset by depth. In real water, the bottom right at the shoreline barely moves; deep water distorts strongly. It also hides the worst leaks.</li>
+      <li>Reject samples in front of the water, as in <a class="x" href="../screen-transparency/index.html#leaks">depth rejection</a>: a pier, a leg, a boat at the waterline would otherwise smear into the water.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="refroff"></div>
+  <div class="prose"><p>For large flat water, physically accurate IOR-based refraction offsets too much at a distance; that is why Unreal recommends <em>Pixel Normal Offset</em> refraction for water and HDRP clamps it with a maximum refraction distance.</p></div>
+
+</section>
+<section class="chapter" id="caustics" data-title="Caustics" data-builds="glass#snell water#waves" data-summary="Crests focus sunlight at f ≈ 4 · crest radius; cheap caustics: animated texture by world XZ, on sunlight only, faded by depth.">
+  <div class="head"><div class="num"></div><h2>Caustics</h2></div>
+
+  <div class="prose">
+    <p>The bright net on a pool floor is sunlight focused by the waves. Each crest is a weak lens: light passing through it converges at a certain depth and spreads out again. Trace sunlight through a wavy surface and count how many rays reach each part of the floor:</p>
+  </div>
+  <div class="fx" data-fx="caustic"></div>
+  <div class="prose">
+    <p>The pattern is sharpest at the focal depth of the crests and blurs above and below it, which is why caustics in a shallow pool look different from those on a deep reef. Games rarely simulate this. The usual cheap version projects an animated caustics texture from above onto underwater geometry (by world XZ position or as a light cookie), multiplies it into the sunlight only, and fades it with depth and with the absorption of the water above. HDRP's water system simulates them from its own waves at a virtual plane distance; Unreal uses light functions, decals or the water plugin's options.</p>
+  </div>
+
+</section>
+<section class="chapter" id="underwater" data-title="Under the surface" data-builds="glass#snell water#absorb" data-summary="θc = asin(1/1.33) ≈ 48.6°: the sky fits in a 97° cone; outside, total reflection. Underwater = absorption fog.">
+  <div class="head"><div class="num"></div><h2>Under the surface</h2></div>
+
+  <div class="prose">
+    <p>Seen from below, the surface behaves differently. Light from the whole sky enters only within a cone, because of <a class="x" href="../glass/index.html#snell">refraction</a>: the sky appears as a bright circle overhead, <button type="button" class="term" data-term="snellwindow">Snell's window</button>, and outside it the surface is a mirror of the water below (total internal reflection):</p>
+  </div>
+  <div class="fx" data-fx="snellwin"></div>
+  <div class="prose">
+    <p>The rest of the underwater look is the same absorption and scattering applied to everything the camera sees, as a fog: colour = object · T(distance) + scatter · (1 − T). Renderers do it as a full-screen pass when the camera is below the surface, plus a <em>waterline</em> effect where the camera cuts the surface. Make the surface shader two-sided and switch to the total-reflection look from below, or the sky shows through everywhere.</p>
+  </div>
+
+</section>
+<section class="chapter" id="budget" data-title="Water on a budget" data-builds="water#shore water#absorb" data-summary="Hero, mid, low and stylised tiers; bake depth into vertex colours where there is no depth buffer.">
+  <div class="head"><div class="num"></div><h2>Water on a budget</h2></div>
+
+  <div class="prose"><p>Every layer of this unit has a cheaper stand-in. Pick per platform and per water body:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Tier</th><th>Surface</th><th>Below the surface</th><th>Edges</th><th>Typical cost</th></tr></thead>
+    <tbody>
+      <tr><td>Hero (PC, console)</td><td>simulated or Gerstner waves, detail normals, SSR or ray-traced reflections</td><td>screen copy with refraction, depth-based absorption and scattering, caustics</td><td>depth-based foam, soft edges, underwater fog and waterline</td><td>several full-screen reads, a dense mesh</td></tr>
+      <tr><td>Mid</td><td>scrolling normal maps, a couple of Gerstner waves</td><td>screen copy, absorption by depth, no caustics or a projected texture</td><td>depth fade, foam texture by depth</td><td>one screen copy, depth reads</td></tr>
+      <tr><td>Low (mobile, VR)</td><td>normal maps, a probe or gradient reflection, Fresnel</td><td>no copy: alpha blending with a colour that darkens with baked or vertex-painted depth</td><td>vertex colour or a baked depth texture for foam and fade</td><td>a single transparent pass</td></tr>
+      <tr><td>Stylised</td><td>flat colour bands, toon highlights</td><td>depth bands from the depth buffer, or nothing</td><td>foam lines from depth</td><td>cheap; depth buffer optional</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Without a depth buffer (some mobile paths), bake the water depth into vertex colours or a texture when the level is built. It is static, but foam, fades and colour by depth then cost nothing at runtime.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A lake looks like a flat blue sheet with a hard line along the shore. Two cheapest fixes?", ["Raise smoothness and add bloom", "Fade alpha with vertical depth near the shore and colour the water by depth (absorption)", "Add caustics", "Use ray-traced reflections"], 1, "Both need only the depth buffer, and both are what makes the shore read as water."], ["Mobile, no depth texture available. How do you still get shore foam?", ["Not possible", "Bake the depth into vertex colours or a texture and use it as the depth", "Use SSR", "Read the depth in a compute shader"], 1, "Static water depth can be baked once."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Water System for oceans, rivers and pools; or a transparent Lit graph with Gerstner vertices, depth-based thickness and shore foam.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP has a full water system (simulation, scattering, caustics, foam, underwater) and also lets you build water as a transparent Lit graph. The steps cover both: the system for oceans, rivers and pools, and a custom graph for ponds, stylised water or when you need full control. The custom graph lets HDRP do the refraction and absorption and feeds it a thickness computed from the depth buffer. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Water System: enable it, add the Water Rendering override and a Water Surface.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A transparent Lit graph with refraction: Gerstner vertices, depth-based thickness, shore foam.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Water.hlsl: Gerstner waves, water depth, shore foam and colour functions.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Caustics for the custom route: an animated light cookie on a light layer.</span></div></div>
+<ol class="impl-steps"><li><div>Water System: in <em>Project Settings &gt; Quality &gt; HDRP</em>, open <em>Rendering</em> and enable <em>Water</em>. In <em>Graphics &gt; Pipeline Specific Settings &gt; HDRP &gt; Frame Settings</em>, enable Water for Camera, Realtime Reflection and Custom or Baked Reflection.</div></li><li><div>Select the global Volume, <em>Add Override &gt; Lighting &gt; Water Rendering</em>, set <em>State</em> to Enabled. Then <em>GameObject &gt; Water Surface &gt; Pool</em>, <em>River</em> or <em>Ocean</em>.</div></li><li><div>Appearance in the Water Surface inspector, in this unit's terms: <em>Refraction &gt; Color</em> and <em>Absorption Distance</em> set the absorption (a short distance is murky water), <em>Maximum Distance</em> limits the refraction depth, <em>Scattering &gt; Color</em> is the scattered colour. <em>Caustics</em> projects simulated caustics at the <em>Virtual Plane Distance</em> (set it to the pool depth). Enable <em>Underwater</em> for the fog and colour shift below the surface, with <em>Volume Bounds</em> or <em>Volume Depth</em>.</div></li><li><div>Custom water graph: put <code>Water.hlsl</code> in <code>Assets/Shaders/</code>. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>: Surface Type <code>Transparent</code>, Rendering Pass <code>Default</code>, Refraction Model <code>Planar</code>. Add the blocks <em>Index of Refraction</em> (1.333), <em>Thickness</em>, <em>Transmittance Color</em> and <em>Absorption Distance</em>.</div></li><li><div>Waves: in the vertex stage, add two or three <code>GerstnerWave</code> Custom Function nodes with different directions and wavelengths (for example 18 m, 7 m, 3 m). In the vertex stage, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Water.hlsl</code> and <em>Name</em> to <code>GerstnerWave</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionWS (Vector 3), Time (Float), Amplitude (Float), Wavelength (Float), Steepness (Float), Direction (Vector 2)</b> and the outputs <b>Offset (Vector 3), NormalTerm (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Add the offsets to the <em>Position</em> (Absolute World, converted back to Object for the Vertex Position block), and build the vertex normal from the sum of the NormalTerms. Use a dense mesh.</div></li><li><div>Detail normals: two normal maps scrolling in different directions, blended with <em>Normal Blend</em>, into <em>Normal (Tangent Space)</em>. Smoothness 0.9–0.97, Base Color dark (the scattered colour), Metallic 0.</div></li><li><div>Depth: an <em>HD Scene Depth</em> node in <code>Eye</code> mode gives the ground behind; <em>Screen Position</em> in <code>Raw</code> mode, component W, gives the water surface. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Water.hlsl</code> and <em>Name</em> to <code>WaterDepth</code> (without the <code>_float</code> suffix). Add the inputs <b>SceneEyeDepth (Float), SurfaceEyeDepth (Float), ViewDirWS (Vector 3), CameraForwardWS (Vector 3)</b> and the outputs <b>PathLength (Float), VerticalDepth (Float)</b>, in that order and with those types: they must match the function's parameters. Camera forward comes from the <em>Camera</em> node (Direction). Connect <em>PathLength</em> to <em>Thickness</em>: HDRP then absorbs exactly the water the view crosses, using Transmittance Color and Absorption Distance (for clear water a light cyan reached at 5–10 m).</div></li><li><div>Shore: In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Water.hlsl</code> and <em>Name</em> to <code>ShoreFoam</code> (without the <code>_float</code> suffix). Add the inputs <b>VerticalDepth (Float), FoamWidth (Float), EdgeFade (Float), Noise (Float)</b> and the outputs <b>Foam (Float), EdgeAlpha (Float)</b>, in that order and with those types: they must match the function's parameters. Lerp Base Color towards white and Smoothness towards 0.4 by Foam; set <em>Alpha</em> to max(EdgeAlpha · 0.15, Foam) so the shoreline fades in and foam sits on the surface.</div></li><li><div>Caustics for the custom route: give the sun a <em>Cookie</em> with a tiling caustics texture (animate its offset or swap between two with a script), enable <em>Light Layers</em> in the HDRP Asset and put the cookie on a layer only the underwater geometry receives. Fade it with depth in the underwater materials if needed.</div></li></ol>
+<div class="files"><div class="file" data-name="Water.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_WATER_INCLUDED
+#define ATLAS_WATER_INCLUDED
+
+// ---- Gerstner wave (GPU Gems 1, ch. 1). Chain several: add the Offsets, add the NormalTerms,
+// then Normal = normalize(float3(0, 1, 0) + sum of NormalTerms). Y is up.
+// PositionWS: absolute world position. Direction: 2D wave direction (normalised in here).
+void GerstnerWave_float(float3 PositionWS, float Time, float Amplitude, float Wavelength, float Steepness,
+                        float2 Direction, out float3 Offset, out float3 NormalTerm)
+{
+    const float g = 9.81;
+    float2 D = normalize(Direction);
+    float  k = 6.2831853 / max(Wavelength, 1e-3);
+    float  w = sqrt(g * k);                              // deep-water dispersion
+    float  QA = saturate(Steepness) / k * 0.999;         // Q*A; Steepness 1 = the loop limit Q*A*k = 1
+    float  ph = k * dot(D, PositionWS.xz) - w * Time;
+    float  c = cos(ph), s = sin(ph);
+    Offset     = float3(QA * D.x * c, Amplitude * s, QA * D.y * c);
+    NormalTerm = float3(-D.x * k * Amplitude * c, -QA * k * s, -D.y * k * Amplitude * c);
+}
+
+// ---- Path length and vertical depth from two linear depths (metres).
+// SceneEyeDepth: HD Scene Depth node in Eye mode. SurfaceEyeDepth: Screen Position (Raw) .w.
+// ViewDirWS: from the surface to the camera, normalised.
+void WaterDepth_float(float SceneEyeDepth, float SurfaceEyeDepth, float3 ViewDirWS, float3 CameraForwardWS,
+                      out float PathLength, out float VerticalDepth)
+{
+    float cosA = max(dot(-ViewDirWS, CameraForwardWS), 1e-3);   // eye depth is along the camera axis
+    PathLength    = max(SceneEyeDepth - SurfaceEyeDepth, 0.0) / cosA;
+    VerticalDepth = PathLength * saturate(ViewDirWS.y);           // Y up
+}
+
+// ---- Shore: foam band and soft edge from the vertical depth. Noise: 0..1 (a scrolling texture).
+void ShoreFoam_float(float VerticalDepth, float FoamWidth, float EdgeFade, float Noise,
+                     out float Foam, out float EdgeAlpha)
+{
+    float band = 1.0 - saturate(VerticalDepth / max(FoamWidth, 1e-3));
+    Foam      = saturate((band - Noise * 0.9) * 4.0);              // noise breaks the band into patches
+    EdgeAlpha = saturate(VerticalDepth / max(EdgeFade, 1e-3));
+}
+
+// ---- Absorption per channel (per metre) and scattered colour, for a custom colour path or for checks.
+void WaterColor_float(float3 Bottom, float3 Absorption, float3 Scatter, float PathLength, out float3 Color)
+{
+    float3 T = exp(-Absorption * PathLength);
+    Color = Bottom * T + Scatter * (1.0 - T);
+}
+#endif</pre></div></div>
+<p class="note">For transparent water, turn on <em>Receive SSR Transparent</em> in the graph settings and in the Screen Space Reflection override (<em>State (Transparent)</em>), or the surface shows only probe reflections. The water system does this for its own surfaces.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: enable <em>Depth Texture</em> and <em>Opaque Texture</em> on the URP Asset. Use the <em>Scene Depth</em> node (Eye) and the <em>Scene Color</em> node with an offset UV, compute the absorption yourself with <code>WaterColor</code>, and the rest of Water.hlsl unchanged.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Water plugin for big bodies; Single Layer Water with absorption, scattering, Phase G, Specular 0.25; Gerstner WPO; SceneDepthWithoutWater foam.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal has the <em>Water</em> plugin (oceans, lakes, rivers with a shared water zone) built on the <em>Single Layer Water</em> shading model. Single Layer Water renders the surface as opaque and integrates absorption and scattering through the depth behind it in its own pass, so most of this unit's theory maps onto its four extra inputs. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Water plugin for large water bodies.</span></div><div class="rt" data-k="mat"><b>Material</b><span>M_Water: Single Layer Water shading model with absorption, scattering and Opacity.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>GerstnerWave.ush for World Position Offset, ShoreFoam.ush for the shoreline.</span></div><div class="rt" data-k="actor"><b>Level actor</b><span>Caustics and underwater: a light function or decal, and a post process volume.</span></div></div>
+<ol class="impl-steps"><li><div>Large water: enable the <em>Water</em> plugin (Edit &gt; Plugins), restart, and place a <em>Water Body Ocean</em>, <em>Lake</em> or <em>River</em>. A <em>Water Zone</em> is created to render them together; the bodies come with Single Layer Water materials you can duplicate and edit.</div></li><li><div>Custom water: create <code>M_Water</code> with <em>Shading Model</em> <code>Single Layer Water</code> and <em>Blend Mode</em> <code>Opaque</code>, then add a <em>Single Layer Water Material</em> output node. On the main node: Metallic 0, <em>Specular</em> 0.25 (F0 = 0.08 · 0.25 = 0.02, water's value), Roughness 0.02–0.08, Normal from two scrolling normal maps.</div></li><li><div>Absorption and scattering on the output node: <em>Absorption Coefficients</em> per channel, red highest, blue lowest. Epic's documentation describes them as one over a distance and gives moderate example values of R 0.0033, G 0.0016, B 0.0011; start there and scale. <em>Scattering Coefficients</em> make the water milky and hide the bottom; <em>Phase G</em> pushes scattered light towards (positive) or away from the sun; <em>Color Scale Behind Water</em> darkens or brightens what is below.</div></li><li><div><em>Opacity</em> on the main node is the share of the surface BRDF against the volume: 0 for clear water you can see far into, higher for foam or murk. Drive it with the foam mask so foam reads as an opaque layer on top.</div></li><li><div>Waves: a Custom node with <code>GerstnerWave.ush</code> per wave (inputs from <em>Absolute World Position</em>, <em>Time</em> and scalar parameters, in centimetres). Add the offsets into <em>World Position Offset</em>; add the NormalTerm outputs and normalise for the vertex normal. Use a dense mesh or the Water plugin's own wave system.</div></li><li><div>Shore foam: in a Single Layer Water material, the <em>SceneDepthWithoutWater</em> node gives the ground behind the water. Feed it, <em>PixelDepth</em>, the Z of <em>CameraVector</em> and a scrolling noise texture into a Custom node with <code>ShoreFoam.ush</code>; lerp Base Color and Roughness towards foam values and raise Opacity by the result.</div></li><li><div>Caustics: a <em>Light Function</em> material on the directional light with a scrolling caustics texture masked by world height, or a <em>Deferred Decal</em> over the pool floor. Underwater: the Water plugin includes an underwater post process; for custom water, a <em>Post Process Volume</em> covering the water body with fog colour and a post process material that applies the absorption by scene depth.</div></li></ol>
+<div class="files"><div class="file" data-name="GerstnerWave.ush" data-lang="hlsl"><pre>// Custom node &quot;GerstnerWave&quot; for World Position Offset. Unreal is Z-up and in centimetres.
+// Inputs: P (float3, Absolute World Position), Time (float), Amplitude (float, cm), Wavelength (float, cm),
+// Steepness (float 0..1), Direction (float2). Output Type: CMOT Float 3 (offset).
+// Additional Output: NormalTerm (CMOT Float 3); normal = normalize(float3(0,0,1) + sum of NormalTerms).
+const float g = 981.0;                                  // cm/s^2
+float2 D = normalize(Direction);
+float k = 6.2831853 / max(Wavelength, 0.1);
+float w = sqrt(g * k);
+float QA = saturate(Steepness) / max(k, 1e-4) * 0.999;  // Q*A, capped at the loop limit 1/k
+float ph = k * dot(D, P.xy) - w * Time;
+float c = cos(ph), s = sin(ph);
+NormalTerm = float3(-D.x * k * Amplitude * c, -D.y * k * Amplitude * c, -QA * k * s);
+return float3(QA * D.x * c, QA * D.y * c, Amplitude * s);</pre></div><div class="file" data-name="ShoreFoam.ush" data-lang="hlsl"><pre>// Custom node &quot;ShoreFoam&quot; (Single Layer Water material). Inputs: SceneDepthBehind (float, SceneDepthWithoutWater),
+// PixelDepth (float), CameraVectorZ (float, CameraVector.z), FoamWidth (float, cm), Noise (float 0..1).
+// Output Type: CMOT Float 1 (foam). Depths in cm.
+float path = max(SceneDepthBehind - PixelDepth, 0.0);
+float vertical = path * saturate(CameraVectorZ);        // Z up
+float band = 1.0 - saturate(vertical / max(FoamWidth, 1e-3));
+return saturate((band - Noise * 0.9) * 4.0);</pre></div></div>
+<p class="note">Single Layer Water gets screen-space and Lumen reflections (Lumen forces them to mirror quality on water). On mobile and low-end it falls back to a simpler translucent path without the volume integration, so check absorption values on the lowest target too.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Data</span><a href="https://omlc.org/spectra/water/abs/index.html" rel="noopener">Absorption spectrum of pure water (Pope and Fry, 1997)</a></span><span class="by">Oregon Medical Laser Center</span><span class="why">Measured absorption of pure water across the visible spectrum; the per-channel values here are approximate.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models" rel="noopener">GPU Gems, chapter 1: effective water simulation from physical models</a></span><span class="by">Mark Finch, Cyan Worlds · NVIDIA</span><span class="why">Gerstner waves and their normals.</span></li><li><span><span class="kind">Paper</span><a href="https://jtessen.people.clemson.edu/reports/papers_files/coursenotes2004.pdf" rel="noopener">Simulating ocean water</a></span><span class="by">Jerry Tessendorf</span><span class="why">FFT ocean spectra and deep-water dispersion.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/water.html" rel="noopener">HDRP water system</a></span><span class="by">Unity</span><span class="why">Enabling water, surface types, appearance properties, caustics and underwater.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/single-layer-water-shading-model-in-unreal-engine" rel="noopener">Single Layer Water shading model</a></span><span class="by">Epic Games</span><span class="why">Absorption and scattering coefficients, Phase G, Opacity and the render pass.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/refraction-using-pixel-normal-offset-in-unreal-engine" rel="noopener">Refraction using Pixel Normal Offset</a></span><span class="by">Epic Games</span><span class="why">Why IOR refraction misbehaves on large water surfaces.</span></li><li><span><span class="kind">Spec</span><a href="https://academysoftwarefoundation.github.io/OpenPBR/" rel="noopener">OpenPBR: transmission and volume</a></span><span class="by">Academy Software Foundation</span><span class="why">Transmission colour, depth and scatter as renderer-neutral parameters.</span></li></ul>
+</section>
+
+<div class="next" data-next="screen-transparency glass reflections"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"gerstner": [
+"Gerstner wave",
+"A wave whose particles move in circles: x = x₀ − QA sin(kx₀ − ωt), y = A cos(kx₀ − ωt).",
+"#waves"
+],
+"dispersion": [
+"Deep-water dispersion",
+"ω = √(g k): long waves travel faster than short ones.",
+"#waves"
+],
+"absorption": [
+"Absorption coefficient",
+"Fraction of light lost per unit length; per channel for water, red highest.",
+"#absorb"
+],
+"scatter": [
+"Scattering",
+"Light redirected by particles in the water, some of it towards the viewer; sets the colour of deep water.",
+"#absorb"
+],
+"caustics": [
+"Caustics",
+"Bright patterns where a curved surface focuses light.",
+"#caustics"
+],
+"snellwindow": [
+"Snell's window",
+"The circle overhead through which an underwater viewer sees the sky; outside it, total internal reflection.",
+"#underwater"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="water.js?v=6520fc56"></script>
+</body>
+</html>

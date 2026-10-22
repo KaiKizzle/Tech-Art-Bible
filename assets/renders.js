@@ -1007,6 +1007,185 @@ vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (id < 1.5) 
 vec3 emit(float id, vec3 p, vec3 n){ return id > 2.5 ? ORANGE * .35 : vec3(0.0); }
 vec3 render(vec2 frag){ return scene(vec3(.5, 2.0, 3.0), vec3(0.0, .25, .1), 2.3, frag); }`
   });
+  /* Surfaces units: analytic spheres, panes and water. Shared shading in SURF. */
+  const SURF = `
+vec3 KS = normalize(vec3(-.55, .7, .5));
+float Dg2(float noh, float a){ float a2 = a*a; float d = noh*noh*(a2 - 1.0) + 1.0; return a2/(PI*d*d); }
+vec3 schl(vec3 f0, float mu){ return f0 + (1.0 - f0)*pow(1.0 - mu, 5.0); }
+vec3 f82t(vec3 f0, vec3 tint, float mu){ float mb = 1.0/7.0; vec3 sb = schl(f0, mb); return max(schl(f0, mu) - mu*pow(1.0 - mu, 6.0)*(1.0 - tint)*sb/(mb*pow(1.0 - mb, 6.0)), vec3(0.0)); }
+float fresD(float ci, float n){ ci = clamp(ci, 0.0, 1.0); float s2 = 1.0 - ci*ci; float t = 1.0 - s2/(n*n); if (t <= 0.0) return 1.0; float ct = sqrt(t); float rs = (ci - n*ct)/(ci + n*ct), rp = (n*ci - ct)/(n*ci + ct); return .5*(rs*rs + rp*rp); }
+vec3 envS(vec3 r, float rough){ vec3 c = studio(r)*3.0 + vec3(.5, .55, .65)*smoothstep(.1, 1.0, r.y)*(1.0 - rough*.6);
+  c += vec3(3.4)*smoothstep(.965 - rough*.45, 1.0, dot(r, normalize(vec3(.5, .55, .7))))*(1.0 - rough*.7);
+  c += vec3(1.5, 1.4, 1.3)*smoothstep(.975 - rough*.45, 1.0, dot(r, normalize(vec3(-.85, .25, .45))))*(1.0 - rough*.7);
+  return c; }
+vec3 shadeS(vec3 rd, vec3 n, float rough, float metal, vec3 base, vec3 tint){
+  vec3 v = -rd, l = KS, h = normalize(l + v); float nol = max(dot(n, l), 0.0), nov = max(dot(n, v), 1e-3), noh = max(dot(n, h), 0.0), voh = max(dot(v, h), 0.0);
+  float a = max(rough*rough, .002);
+  vec3 F = mix(schl(vec3(.04), voh), f82t(base, tint, voh), metal);
+  float k = (rough + 1.0)*(rough + 1.0)/8.0; float G = (nol/(nol*(1.0 - k) + k))*(nov/(nov*(1.0 - k) + k));
+  vec3 spec = Dg2(noh, a)*F*G/(4.0*nol*nov + 1e-3); vec3 kd = (1.0 - F)*(1.0 - metal);
+  vec3 c = (kd*base/PI + spec)*vec3(3.2, 3.0, 2.8)*nol;
+  vec3 Fe = mix(vec3(.04) + (max(vec3(1.0 - rough), vec3(.04)) - .04)*pow(1.0 - nov, 5.0), f82t(base, tint, nov), metal);
+  return c + envS(reflect(rd, n), rough)*Fe*mix(.4, .9, metal) + kd*base*mix(vec3(.04), vec3(.12, .14, .18), n.y*.5 + .5); }
+vec3 floorS(vec3 p, vec3 rd, float sh){ vec3 c = vec3(.035)*(vec3(2.6)*max(KS.y, 0.0)*sh + vec3(.12)); return mix(c, studio(rd), smoothstep(3.5, 9.0, length(p.xz))); }
+mat3 rotY(float a){ float c = cos(a), s = sin(a); return mat3(c, 0, -s, 0, 1, 0, s, 0, c); }
+`;
+  Object.assign(SCENES, {
+    /* Three spheres: a diffuse map with light painted in, an albedo, a metal base colour. */
+    'pbr-terms': SURF + `
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.0, 5.2); mat3 cam = lookAt(ro, vec3(0.0, .5, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.6));
+  vec3 alb = vec3(.55, .22, .08); float tb = 1e9; vec3 col = vec3(0.0); bool hit = false;
+  for (int i = 0; i < 3; i++){ vec4 s = vec4(-1.35 + float(i)*1.35, .56, 0.0, .56); vec2 q = sphIntersect(ro, rd, s);
+    if (q.x > 0.0 && q.x < tb){ tb = q.x; hit = true; vec3 n = normalize(ro + rd*q.x - s.xyz);
+      if (i == 0){ float baked = .22 + .78*max(dot(n, normalize(vec3(.75, .55, .35))), 0.0); float hl = pow(max(dot(n, normalize(vec3(.45, .55, .7))), 0.0), 40.0)*.5;
+        col = (alb*baked + hl)*(max(dot(n, KS), 0.0)*2.4 + .12); }
+      else if (i == 1) col = shadeS(rd, n, .7, 0.0, alb, vec3(1.0));
+      else col = shadeS(rd, n, .22, 1.0, vec3(1.0, .71, .31), vec3(.94, .97, .91)); } }
+  if (hit) return col;
+  if (rd.y < 0.0){ float t = -ro.y/rd.y; vec3 p = ro + rd*t; float sh = 1.0;
+    for (int i = 0; i < 3; i++) sh = min(sh, sphSoftShadow(p, KS, vec4(-1.35 + float(i)*1.35, .56, 0.0, .56), 4.0));
+    return floorS(p, rd, sh); }
+  return studio(rd); }`,
+
+    /* Gold, copper, brushed aluminium and rusted iron. */
+    metals: SURF + `
+vec3 brushed(vec3 rd, vec3 n){ vec3 t = normalize(cross(n, vec3(0.0, 1.0, 0.0)) + vec3(1e-4)); vec3 r = reflect(rd, n); vec3 e = vec3(0.0);
+  for (int i = 0; i < 9; i++){ float o = (float(i) - 4.0)*.07; e += envS(normalize(r + t*o), .12); } e /= 9.0;
+  vec3 base = vec3(.92, .92, .93); float nov = max(dot(n, -rd), 1e-3);
+  vec3 c = shadeS(rd, n, .38, 1.0, base, vec3(.96, .97, .98)); return c*.55 + e*f82t(base, vec3(.96, .97, .98), nov)*.45; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.0, 5.6); mat3 cam = lookAt(ro, vec3(0.0, .52, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.6));
+  float tb = 1e9; vec3 col = vec3(0.0); bool hit = false;
+  for (int i = 0; i < 4; i++){ vec4 s = vec4(-1.8 + float(i)*1.2, .52, 0.0, .5); vec2 q = sphIntersect(ro, rd, s);
+    if (q.x > 0.0 && q.x < tb){ tb = q.x; hit = true; vec3 p = ro + rd*q.x, n = normalize(p - s.xyz);
+      if (i == 0) col = shadeS(rd, n, .14, 1.0, vec3(1.0, .71, .31), vec3(.94, .97, .91));
+      else if (i == 1) col = shadeS(rd, n, .3, 1.0, vec3(1.0, .65, .53), vec3(.97, .94, .93));
+      else if (i == 2) col = brushed(rd, n);
+      else { float m = smoothstep(.48, .56, fbm(p*5.0 + 2.0)); col = mix(shadeS(rd, n, .85, 0.0, vec3(.22, .07, .03), vec3(1.0)), shadeS(rd, n, .32, 1.0, vec3(.9, .88, .82), vec3(.93, .95, .95)), m); } } }
+  if (hit) return col;
+  if (rd.y < 0.0){ float t = -ro.y/rd.y; vec3 p = ro + rd*t; float sh = 1.0;
+    for (int i = 0; i < 4; i++) sh = min(sh, sphSoftShadow(p, KS, vec4(-1.8 + float(i)*1.2, .52, 0.0, .5), 4.0));
+    return floorS(p, rd, sh); }
+  return studio(rd); }`,
+
+    /* A chrome sphere and a red ball on a glossy tiled floor that reflects them. */
+    reflections: SURF + `
+vec4 S1 = vec4(-.35, .75, 0.0, .75), S2 = vec4(1.25, .38, .7, .38);
+vec3 tileCol(vec3 p){ vec2 g = floor(p.xz*1.6); float c = mod(g.x + g.y, 2.0); return mix(vec3(.025), vec3(.07, .072, .08), c); }
+float tileGap(vec3 p){ vec2 f = abs(fract(p.xz*1.6) - .5); return smoothstep(.47, .5, max(f.x, f.y)); }
+vec3 floorDiffuse(vec3 p){ float sh = min(sphSoftShadow(p, KS, S1, 4.0), sphSoftShadow(p, KS, S2, 4.0)); return tileCol(p)*(1.0 - tileGap(p)*.7)*(vec3(2.6)*max(KS.y, 0.0)*sh + vec3(.15)); }
+vec3 ballCol(vec3 ro, vec3 rd, int which, float t){ vec3 p = ro + rd*t;
+  if (which == 2) { vec3 n = normalize(p - S2.xyz); return shadeS(rd, n, .3, 0.0, vec3(.6, .05, .04), vec3(1.0)); }
+  vec3 n = normalize(p - S1.xyz); vec3 r = reflect(rd, n); vec3 e;
+  vec2 q2 = sphIntersect(p, r, S2);
+  if (q2.x > 0.0) e = shadeS(r, normalize(p + r*q2.x - S2.xyz), .3, 0.0, vec3(.6, .05, .04), vec3(1.0));
+  else if (r.y < 0.0) { float tf = -p.y/r.y; e = floorDiffuse(p + r*tf); }
+  else e = envS(r, .03);
+  vec3 F = f82t(vec3(.95), vec3(.97), max(dot(n, -rd), 0.0));
+  return e*F + shadeS(rd, n, .05, 1.0, vec3(.95), vec3(.97))*.15; }
+vec3 trace(vec3 ro, vec3 rd, out float tOut, out int which){ which = 0; tOut = 1e9;
+  vec2 a = sphIntersect(ro, rd, S1); if (a.x > 0.0) { tOut = a.x; which = 1; }
+  vec2 b = sphIntersect(ro, rd, S2); if (b.x > 0.0 && b.x < tOut) { tOut = b.x; which = 2; }
+  return vec3(0.0); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(.3, 1.25, 5.4); mat3 cam = lookAt(ro, vec3(.2, .45, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.5));
+  float t; int w; trace(ro, rd, t, w);
+  float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (w > 0 && t < tf) return ballCol(ro, rd, w, t);
+  if (rd.y < 0.0){ vec3 p = ro + rd*tf; vec3 n = vec3(0.0, 1.0, 0.0);
+    vec3 nn = normalize(n + vec3(noise3(p*9.0) - .5, 0.0, noise3(p*9.0 + 3.0) - .5)*.015);
+    vec3 r = reflect(rd, nn); float t2; int w2; trace(p + nn*.001, r, t2, w2);
+    vec3 refl = w2 > 0 ? ballCol(p, r, w2, t2) : envS(r, .06);
+    float F = fresD(dot(-rd, n), 1.5)*(1.0 - tileGap(p));
+    vec3 c = floorDiffuse(p)*(1.0 - F) + refl*mix(F, .35, .25);
+    return mix(c, studio(rd), smoothstep(4.0, 10.0, length(p.xz))); }
+  return studio(rd); }`,
+
+    /* A solid glass ball, a hollow bulb and a green-edged pane in front of a checker wall. */
+    glass: SURF + `
+vec3 bg(vec3 ro, vec3 rd){
+  float tw = rd.z < 0.0 ? (-2.2 - ro.z)/rd.z : 1e9; float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (tw < tf){ vec3 p = ro + rd*tw; vec2 g = floor(p.xy*2.2); float c = mod(g.x + g.y, 2.0); vec3 a = mix(vec3(.05, .06, .08), vec3(.42, .44, .46), c);
+    return a*(1.1 - .35*smoothstep(1.5, 3.5, p.y)); }
+  if (tf < 1e8){ vec3 p = ro + rd*tf; vec2 g = floor(p.xz*1.4); float c = mod(g.x + g.y, 2.0); return mix(vec3(.03), vec3(.16, .15, .14), c)*mix(1.0, .2, smoothstep(2.0, 7.0, length(p.xz))); }
+  return studio(rd); }
+vec3 ball(vec3 ro, vec3 rd, vec4 s, float t){ vec3 p = ro + rd*t, n = normalize(p - s.xyz);
+  float F = fresD(dot(-rd, n), 1.5); vec3 refl = envS(reflect(rd, n), .02);
+  vec3 r1 = refract(rd, n, 1.0/1.5); vec2 q = sphIntersect(p + r1*.002, r1, s); vec3 p2 = p + r1*(q.y + .002); vec3 n2 = normalize(p2 - s.xyz);
+  vec3 r2 = refract(r1, -n2, 1.5); if (dot(r2, r2) < .01) r2 = reflect(r1, -n2);
+  vec3 tr = bg(p2, r2)*vec3(.92, .96, .95); return refl*F + tr*(1.0 - F) + shadeS(rd, n, .03, 0.0, vec3(0.0), vec3(1.0))*.6; }
+vec3 bulb(vec3 ro, vec3 rd, vec4 s, float t){ vec3 p = ro + rd*t, n = normalize(p - s.xyz);
+  float F = fresD(dot(-rd, n), 1.5); vec2 q = sphIntersect(ro, rd, s); vec3 pb = ro + rd*q.y, nb = normalize(pb - s.xyz); float F2 = fresD(dot(rd, nb), 1.5);
+  vec3 tr = bg(pb, rd)*(1.0 - F2); return envS(reflect(rd, n), .02)*F + envS(reflect(rd, -nb), .05)*F2*.6 + tr*(1.0 - F) + shadeS(rd, n, .03, 0.0, vec3(0.0), vec3(1.0))*.6; }
+vec3 pane(vec3 ro, vec3 rd, out float tHit){ mat3 m = rotY(.75); vec3 c = vec3(1.65, .72, -.2); vec3 lo = (ro - c)*m, ld = rd*m; vec3 nl; vec3 h = vec3(.62, .7, .045);
+  float t = boxIntersect(lo, ld, h, nl); tHit = t; if (t < 0.0) return vec3(0.0);
+  vec3 dummy; vec3 m2 = 1.0/ld; vec3 k = abs(m2)*h; vec3 t2 = -m2*lo + k; float tF = min(min(t2.x, t2.y), t2.z);
+  float L = max(tF - t, 0.0); vec3 T = exp(-vec3(2.2, .32, 1.3)*L*1.6);
+  vec3 n = m*nl; float F = fresD(abs(dot(-rd, n)), 1.5); vec3 p = ro + rd*t;
+  return envS(reflect(rd, n), .02)*F*1.6 + bg(ro + rd*(tF + .001), rd)*T*(1.0 - F); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.05, 5.0); mat3 cam = lookAt(ro, vec3(0.0, .6, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.5));
+  vec4 sA = vec4(-1.55, .62, .1, .62), sB = vec4(.0, .62, .1, .62);
+  float tp; vec3 pc = pane(ro, rd, tp);
+  vec2 qa = sphIntersect(ro, rd, sA), qb = sphIntersect(ro, rd, sB);
+  float best = 1e9; int w = 0;
+  if (qa.x > 0.0) { best = qa.x; w = 1; } if (qb.x > 0.0 && qb.x < best) { best = qb.x; w = 2; } if (tp > 0.0 && tp < best) { best = tp; w = 3; }
+  if (w == 1) return ball(ro, rd, sA, best);
+  if (w == 2) return bulb(ro, rd, sB, best);
+  if (w == 3) return pc;
+  return bg(ro, rd); }`,
+
+    /* A frosted, tinted panel in front of a striped wall, with a pillar in front of it. */
+    'screen-transparency': SURF + `
+vec3 wall(vec2 xy, float blur){ float s = smoothstep(-blur, blur, sin(xy.x*6.0)); vec3 c = mix(vec3(.08, .2, .38), vec3(.62, .48, .2), s);
+  float d = length(xy - vec2(.55, .95)); c = mix(c, vec3(.6, .07, .05), smoothstep(.36 + blur*.2, .33 - blur*.2, d)); return c*(1.0 - .3*smoothstep(1.4, 2.6, xy.y)); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(-.2, 1.0, 4.6); mat3 cam = lookAt(ro, vec3(-.1, .95, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.4));
+  vec3 nb; float tpil = boxIntersect(ro - vec3(.55, 1.0, .9), rd, vec3(.16, 1.0, .16), nb);
+  float tpan = rd.z < 0.0 ? (0.0 - ro.z)/rd.z : -1.0; vec3 pp = ro + rd*tpan; bool inPanel = tpan > 0.0 && pp.x > -1.75 && pp.x < 1.35 && pp.y > .2 && pp.y < 1.85;
+  float twall = (-1.4 - ro.z)/rd.z; float tfl = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (tpil > 0.0){ vec3 p = ro + rd*tpil; return shadeS(rd, nb, .6, 0.0, vec3(.35, .34, .33), vec3(1.0)); }
+  vec3 back;
+  if (tfl < twall){ vec3 p = ro + rd*tfl; back = vec3(.04)*(vec3(2.4)*KS.y + .15); back = mix(back, studio(rd), smoothstep(3.0, 8.0, length(p.xz))); }
+  else { vec3 p = ro + rd*twall; back = wall(p.xy, .02)*1.4; }
+  if (!inPanel || tfl < tpan) return back;
+  vec2 nn = vec2(noise3(vec3(pp.xy*7.0, 1.0)), noise3(vec3(pp.xy*7.0, 4.0))) - .5;
+  vec3 pw = ro + rd*twall; vec3 behind = wall(pw.xy + nn*.12, .9)*1.4;
+  float edge = smoothstep(.0, .03, min(min(pp.x + 1.75, 1.35 - pp.x), min(pp.y - .2, 1.85 - pp.y)));
+  float F = fresD(abs(rd.z), 1.5);
+  vec3 c = behind*vec3(.62, .82, .9) + vec3(.035, .045, .05) + envS(reflect(rd, vec3(0.0, 0.0, 1.0)), .25)*F*.8;
+  return mix(vec3(.75, .85, .9)*.9, c, edge); }`,
+
+    /* A shallow shore: sand fading into blue-green depth, foam at the edge, caustics on the bottom. */
+    water: SURF + `
+vec3 SUN = normalize(vec3(.35, .55, -.75));
+vec3 sky(vec3 rd){ float y = max(rd.y, 0.0); vec3 c = mix(vec3(.85, .9, .98)*.85, vec3(.16, .34, .75)*.8, pow(y, .45)); c += vec3(14.0, 12.0, 9.0)*pow(max(dot(rd, SUN), 0.0), 900.0) + vec3(.6, .5, .35)*pow(max(dot(rd, SUN), 0.0), 12.0); return c; }
+float shoreZ(float x){ return 1.2 + .35*sin(x*.9) + .15*sin(x*2.3 + 1.0); }
+float bed(vec2 xz){ return (xz.y - shoreZ(xz.x))*.2 + .03*sin(xz.x*3.0 + xz.y*2.0); }
+vec2 wgrad(vec2 xz){ vec2 g = vec2(0.0); vec2 d[4]; d[0] = vec2(.8, .6); d[1] = vec2(-.4, .9); d[2] = vec2(.95, -.3); d[3] = vec2(.2, 1.0);
+  for (int i = 0; i < 4; i++){ float k = 2.0 + float(i)*2.3, a = .012/(1.0 + float(i)*.6); g += d[i]*k*a*cos(dot(d[i], xz)*k + float(i)*1.7); } return g; }
+float caustic(vec2 p){ float c = 0.0; for (int i = 0; i < 3; i++){ vec2 q = p*(2.4 + float(i)*1.3) + float(i)*3.1; c += abs(sin(q.x + sin(q.y*1.3))*sin(q.y + sin(q.x*1.1))); } return pow(1.0 - c/3.0, 5.0)*5.0; }
+vec3 sand(vec3 p, float lightT){ float n = noise3(p*14.0)*.15 + noise3(p*3.0)*.1; vec3 a = vec3(.62, .52, .36)*(.85 + n); return a*(vec3(1.5, 1.4, 1.25)*max(SUN.y, 0.0)*lightT + vec3(.16, .2, .27)); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.55, 4.4); mat3 cam = lookAt(ro, vec3(0.0, -.15, -.6)); vec3 rd = cam*normalize(vec3(uv, 2.2));
+  float tw = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  float t = .1, tb = -1.0; for (int i = 0; i < 90; i++){ vec3 p = ro + rd*t; float h = p.y - bed(p.xz); if (h < .002){ tb = t; break; } t += max(h*.5, .01); if (t > 40.0) break; }
+  if (tb > 0.0 && tb < tw){ vec3 p = ro + rd*tb; float wet = smoothstep(.12, 0.0, p.y); return sand(p, 1.0)*mix(1.0, .62, wet); }
+  if (tw > 1e8) return sky(rd);
+  vec3 p = ro + rd*tw; vec2 g = wgrad(p.xz); vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+  float F = fresD(dot(-rd, n), 1.333); vec3 refl = sky(reflect(rd, n));
+  vec3 r = refract(rd, n, 1.0/1.333); float s = .02, L = 30.0; for (int i = 0; i < 70; i++){ vec3 q = p + r*s; float h = q.y - bed(q.xz); if (h < .002){ L = s; break; } s += max(h*.6, .01); if (s > 30.0) break; }
+  vec3 pb = p + r*L; float depth = max(-bed(p.xz), 0.0);
+  vec3 a = vec3(.45, .09, .03)*1.6, T = exp(-a*L), Tsun = exp(-a*max(-pb.y, 0.0)/max(SUN.y, .2));
+  vec3 bottom = sand(pb, 1.0)*Tsun*(1.0 + caustic(pb.xz)*exp(-max(-pb.y, 0.0)*.8)*.7);
+  vec3 scat = vec3(.01, .07, .1);
+  vec3 under = bottom*T + scat*(1.0 - T);
+  vec3 c = mix(under, refl, F);
+  float foam = smoothstep(.06, .0, depth)*smoothstep(.35, .6, noise3(vec3(p.xz*9.0, 2.0)) + .3*smoothstep(.04, .0, depth));
+  c = mix(c, vec3(1.9, 1.95, 2.0)*max(SUN.y, 0.0) + .3, foam*.85);
+  return mix(c, sky(rd)*.9, smoothstep(14.0, 40.0, tw))*.85; }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

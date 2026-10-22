@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diffuse, Albedo, Base Colour · Tech Art Atlas</title>
+<meta name="description" content="Why one material input has five names, what each name meant when it was coined, and how to translate maps and values between renderers, with OpenPBR as the reference and the conversion built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="pbr-terms">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Diffuse, Albedo, Base Colour</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 9 chapters</div>
+  <h1>Diffuse, Albedo, Base Colour</h1>
+  <p class="lede">Why one material input has five names, what each name meant when it was coined, and how to translate maps and values between renderers, with OpenPBR as the reference and the conversion built in Unity HDRP and Unreal.</p>
+  <p class="meta">No prerequisites. PBR Materials: the Basics is a good companion. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/pbr-terms.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The same material under three names: a painted diffuse map, an albedo and a base colour.</figcaption></figure>
+
+
+<section class="chapter" id="names" data-title="One input, many names" data-summary="Diffuse (lighting baked in), albedo (physical fraction), base colour (albedo or metal F0). A table translates the inputs between renderers.">
+  <div class="head"><div class="num"></div><h2>One input, many names</h2></div>
+
+  <div class="prose">
+    <p>Open a material in four programs and the first input is called four things: <em>Diffuse</em> in an old engine, <em>Albedo</em> in Unity's built-in Standard shader, <em>Base Color</em> in Unreal, Substance and Blender, <code>base_color</code> in OpenPBR. They are not quite synonyms. Each name comes from a period with its own idea of what the number means, and the meaning changed twice:</p>
+    <ol>
+      <li><strong>Diffuse</strong>: how a texture looked on screen, lighting included (<a class="x" href="#diffuse">next chapter</a>).</li>
+      <li><strong>Albedo</strong>: how much light the surface sends back, a physical fraction with no lighting in it (<a class="x" href="#albedo">albedo</a>).</li>
+      <li><strong>Base colour</strong>: albedo for non-metals and the reflection colour for metals, one map for both (<a class="x" href="#basecolor">base colour</a>).</li>
+    </ol>
+    <p>The same happens to every other input. This table translates the most common ones. Read it by row: each row is one physical property under its local names.</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>What it describes</th><th>OpenPBR</th><th>glTF 2.0</th><th>Unity HDRP Lit</th><th>Unreal</th><th>Blender</th><th>Old spec/gloss</th></tr></thead>
+    <tbody>
+      <tr><td>Colour of the surface</td><td><code>base_color</code> × <code>base_weight</code></td><td>baseColor</td><td>Base Map</td><td>Base Color<br><small>Substrate: Diffuse Albedo, F0</small></td><td>Base Color</td><td>Diffuse (non-metals), Specular (metals)</td></tr>
+      <tr><td>Metal or not</td><td><code>base_metalness</code></td><td>metallic (B of metallicRoughness)</td><td>Metallic (R of Mask Map)</td><td>Metallic</td><td>Metallic</td><td>none: hidden in the specular colour</td></tr>
+      <tr><td>Blur of reflections</td><td><code>specular_roughness</code></td><td>roughness (G of metallicRoughness)</td><td>Smoothness = 1 − roughness (A of Mask Map)</td><td>Roughness</td><td>Roughness</td><td>Glossiness = 1 − roughness</td></tr>
+      <tr><td>Strength of a non-metal reflection</td><td><code>specular_ior</code> (1.5), <code>specular_weight</code></td><td>KHR_materials_ior, KHR_materials_specular</td><td>fixed F0 0.04 (Specular Color type for others)</td><td>Specular (0.5 = F0 0.04)</td><td>IOR, Specular IOR Level</td><td>Specular colour</td></tr>
+      <tr><td>Small shapes</td><td><code>geometry_normal</code></td><td>normalTexture</td><td>Normal Map</td><td>Normal</td><td>Normal</td><td>Normal</td></tr>
+      <tr><td>Hidden from ambient light</td><td>none: the renderer computes it</td><td>occlusionTexture (R)</td><td>G of Mask Map</td><td>Ambient Occlusion</td><td>none: the renderer computes it</td><td>AO</td></tr>
+      <tr><td>See-through</td><td><code>transmission_weight</code>, <code>geometry_opacity</code></td><td>KHR_materials_transmission, alpha</td><td>Surface Type Transparent, Alpha, Refraction Model</td><td>Opacity, Translucent blend mode</td><td>Transmission Weight, Alpha</td><td>Opacity</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>This unit uses <button type="button" class="term" data-term="openpbr">OpenPBR</button> names as the reference, because OpenPBR is written to be renderer-neutral and documents what each parameter means physically. Engines then map onto it.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A texture set has Diffuse, Specular and Glossiness maps. Which workflow is it?", ["Metal/roughness", "Specular/glossiness", "OpenPBR", "It cannot be told"], 1, "Diffuse plus a specular colour plus gloss is the spec/gloss workflow. Its diffuse map is close to an albedo, but metals have black diffuse and coloured specular."], ["Unity's Mask Map stores smoothness. Unreal wants roughness. What do you do?", ["Use it as it is", "Invert it: roughness = 1 − smoothness", "Square it", "Take the square root"], 1, "Smoothness is defined as 1 − perceptual roughness."]]</script></details>
+
+</section>
+<section class="chapter" id="diffuse" data-title="Diffuse: the map that held the lighting" data-builds="pbr-terms#names" data-summary="Phong: kd · N·L + ks · (R·V)ⁿ, two free colours. Diffuse maps once held painted light, which breaks under new lights.">
+  <div class="head"><div class="num"></div><h2>Diffuse: the map that held the lighting</h2></div>
+
+  <div class="prose">
+    <p>Real-time shading started with the <button type="button" class="term" data-term="phong">Phong</button> model (1975) and Blinn's variant (1977). It has two independent colours: a <em>diffuse</em> colour scaled by how much the surface faces the light, and a <em>specular</em> colour for a highlight whose size is set by an exponent. Nothing ties them together:</p>
+  </div>
+  <div class="fx" data-fx="phong"></div>
+  <div class="prose">
+    <p>With one or two lights, no shadows from the environment and no bounce light, a texture lit only by the shader looked flat. So artists did what painters do: they painted the missing light into the diffuse map. Shadows under ledges, ambient occlusion, a soft top light, even highlights on rivets went into the texture. That map was called <em>diffuse</em> because it was plugged into the diffuse slot, but it held a picture of a lit surface.</p>
+    <p>The trouble shows as soon as the lighting changes. A lamp that moves, a time of day, a flashlight: the painted light stays where it was painted.</p>
+  </div>
+  <div class="fx" data-fx="baked"></div>
+  <div class="prose"><p>That is the core reason for the later names. A map that holds only the surface, without any light, works under every light. Modern engines still accept a map in a slot called diffuse (Substrate has a <em>Diffuse Albedo</em> input, glTF's old spec/gloss extension a <em>diffuseFactor</em>), but there it means the albedo of the next chapter.</p></div>
+
+</section>
+<section class="chapter" id="albedo" data-title="Albedo: a word from astronomy" data-builds="pbr-brdf#diffuse pbr-basics#basecolor" data-summary="Albedo ρ is a fraction 0–1 of light sent back; Lambert BRDF = ρ/π. No light in the map.">
+  <div class="head"><div class="num"></div><h2>Albedo: a word from astronomy</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="albedo">Albedo</button> is Latin for whiteness. Johann Heinrich Lambert used it in 1760 for the share of light a surface sends back, and astronomers still use it for planets: the Moon sends back about 12 % of the sunlight it gets, Earth about 30 %. It is a ratio between 0 and 1, with no lighting in it.</p>
+    <p>In shading, albedo appears in the simplest physical surface, the <a class="x" href="../pbr-brdf/index.html#diffuse">Lambertian diffuser</a>. Its BRDF is the albedo divided by π, which makes sure the total light sent back over all directions is exactly the albedo times the light that arrived:</p>
+  </div>
+  <div class="fx" data-fx="albedo"></div>
+  <div class="prose">
+    <p>When physically based shading reached games around 2010, the word moved into the engines: the map is the albedo, the fraction of light that comes back diffusely, and it must not contain light. Unity's built-in Standard shader (2015) calls its colour input <em>Albedo</em> for that reason. The rules in <a class="x" href="../pbr-basics/index.html#basecolor">base colour ranges</a> are albedo rules: no real non-metal reflects much less than 3 % or much more than 90 % of the light.</p>
+    <p>Strictly, albedo covers the diffuse part only. The few percent a non-metal reflects at its surface (the specular part) come on top. For metals, which have no diffuse part, an albedo map would be black, and that is where the word stops fitting.</p>
+  </div>
+
+</section>
+<section class="chapter" id="basecolor" data-title="Base colour: one map for two meanings" data-builds="pbr-basics#metallic pbr-terms#albedo" data-summary="Base colour = albedo when metalness is 0, F0 (reflection colour) when metalness is 1.">
+  <div class="head"><div class="num"></div><h2>Base colour: one map for two meanings</h2></div>
+
+  <div class="prose">
+    <p>Metals reflect strongly and in colour, and send back nothing diffusely (<a class="x" href="../metals/index.html#electrons">why</a>). In the spec/gloss workflow that meant a black diffuse map and a coloured specular map for gold, and a coloured diffuse map with a grey 4 % specular map for paint. Two colour maps where one would do.</p>
+    <p>Brent Burley's 2012 Disney shading model, and Unreal Engine 4 after it, replaced the pair with one <button type="button" class="term" data-term="basecolor">base colour</button> and a <em>metallic</em> switch. For a non-metal the base colour is the albedo; for a metal it is F0, the colour of the reflection head-on. The number is the same, its meaning depends on metalness:</p>
+  </div>
+  <div class="fx" data-fx="base"></div>
+  <div class="prose">
+    <p>The name says what it is: the colour you base the material on, not a physical quantity. That is why base colour and albedo are not interchangeable in documentation. When a renderer says <em>albedo</em> it usually means the diffuse part only; when it says <em>base colour</em> it means the metalness-dependent map.</p>
+    <p>OpenPBR keeps this model and says what metalness between 0 and 1 means: the fraction of the surface area that is metal, blended linearly (<a class="x" href="../metals/index.html#oxide">metals</a> uses that for rust and dust). Its <code>base_weight</code> multiplies the base colour, so a material can be darkened without editing the colour.</p>
+  </div>
+
+</section>
+<section class="chapter" id="roughness" data-title="Roughness, smoothness, gloss and α" data-builds="pbr-brdf#ndf texture-settings#packing" data-summary="Roughness r; smoothness = gloss = 1 − r; α = r²; Blinn-Phong n ≈ 2/α² − 2.">
+  <div class="head"><div class="num"></div><h2>Roughness, smoothness, gloss and α</h2></div>
+
+  <div class="prose">
+    <p>Roughness has the most names, because three of them are the same slider in different directions and one is what the shader really uses:</p>
+    <ul>
+      <li><strong>Roughness</strong> (Unreal, OpenPBR, glTF, Blender, Substance): what you paint, 0 is a mirror. Also called <em>perceptual roughness</em>.</li>
+      <li><strong>Smoothness</strong> (Unity) and <strong>glossiness</strong> (spec/gloss): 1 − roughness.</li>
+      <li><strong>α</strong> (alpha): roughness squared, the width of the <a class="x" href="../pbr-brdf/index.html#ndf">microfacet distribution</a>. Squaring makes the painted value feel even; without it, most of the slider would be very rough.</li>
+      <li><strong>Specular power</strong> or <em>exponent</em>: the Phong and Blinn-Phong shininess of old materials, roughly 2 / α² − 2.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="rough"></div>
+  <div class="prose"><p>When a material looks too shiny or too dull after moving between programs, check this first: an inverted smoothness map, or a roughness stored as α, are the two common slips. A packed texture does not say which one it holds, so name the channels in the file name (<a class="x" href="../texture-settings/index.html#packing">packing layouts</a>).</p></div>
+
+</section>
+<section class="chapter" id="specular" data-title="IOR, F0, specular and reflectance" data-builds="pbr-brdf#fresnel pbr-basics#workflows" data-summary="F0 = ((n − 1)/(n + 1))²; Unreal specular = F0/0.08; Filament reflectance = √(F0/0.16); OpenPBR specular_weight scales it.">
+  <div class="head"><div class="num"></div><h2>IOR, F0, specular and reflectance</h2></div>
+
+  <div class="prose">
+    <p>A non-metal reflects a few percent of the light at its surface. How many is set by its <button type="button" class="term" data-term="ior">index of refraction</button> (IOR), and the reflection head-on is <button type="button" class="term" data-term="f0">F0</button>. Every renderer has its own handle for the same value:</p>
+    <ul>
+      <li><strong>IOR</strong> (OpenPBR <code>specular_ior</code>, glTF KHR_materials_ior, Blender): physical, 1.5 for most plastics and glass.</li>
+      <li><strong>F0</strong> directly, as a grey specular colour (spec/gloss workflow).</li>
+      <li><strong>Specular</strong> (Unreal): F0 = 0.08 · specular, so the default 0.5 is F0 = 0.04.</li>
+      <li><strong>Reflectance</strong> (Filament): F0 = 0.16 · reflectance², default 0.5.</li>
+      <li><strong>Specular weight</strong> (OpenPBR <code>specular_weight</code>, glTF KHR_materials_specular): a multiplier on top, for artistic control and for things like a dusty layer that reflects less.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="f0"></div>
+  <div class="prose"><p>Most materials are fine at the default (IOR 1.5, F0 0.04). Change it for water (1.33), gemstones and for skin or hair, which sit a little lower. Metals do not use this input at all; their reflection comes from the base colour (<a class="x" href="../metals/index.html#fresnel">metal Fresnel</a>).</p></div>
+
+</section>
+<section class="chapter" id="maps" data-title="Normal, bump, height, AO and cavity" data-builds="texture-memory#normals parallax#heightmap" data-summary="Normal maps: OpenGL green up (Unity), DirectX green down (Unreal). Bump, height, displacement; AO vs cavity.">
+  <div class="head"><div class="num"></div><h2>Normal, bump, height, AO and cavity</h2></div>
+
+  <div class="prose">
+    <p>The detail maps have their own naming muddle:</p>
+    <ul>
+      <li><strong>Normal map</strong>: the direction the surface faces, per pixel, in tangent space. Two conventions exist for the green channel: OpenGL (green up; Unity, Blender, Substance by default) and DirectX (green down; Unreal). A map in the wrong one lights bumps from the wrong side.</li>
+      <li><strong>Bump map</strong>: a greyscale height used only to tilt the shading normal, computed from its slopes. Old name, still used in offline renderers.</li>
+      <li><strong>Height</strong> and <strong>displacement</strong>: the same greyscale, used to move geometry (displacement, tessellation) or to fake depth (<a class="x" href="../parallax/index.html#heightmap">parallax</a>).</li>
+      <li><strong>Ambient occlusion</strong> (AO, occlusion): how hidden a point is from ambient light. A separate input, never multiplied into the base colour (<a class="x" href="../pbr-basics/index.html#maps">why</a>).</li>
+      <li><strong>Cavity</strong>: occlusion of the tiniest crevices, from the high-poly bake, often used to dampen the specular. In Unreal, a cavity map can drive the <em>Specular</em> input to darken reflections in tiny cracks.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="normal"></div>
+  <div class="prose"><p>Flip the green channel at import rather than in the texture: Unity has <em>Flip Green Channel</em> in the importer, Unreal <em>Flip Green Channel</em> on the texture asset, Substance exports both.</p></div>
+
+</section>
+<section class="chapter" id="openpbr" data-title="OpenPBR: the reference model" data-builds="pbr-terms#names" data-summary="OpenPBR: fuzz over coat over base (metal + dielectric: specular, transmission, subsurface, diffuse), with weights. Engines implement subsets.">
+  <div class="head"><div class="num"></div><h2>OpenPBR: the reference model</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="openpbr">OpenPBR Surface</button> is an open specification for one physically based surface, maintained by the Academy Software Foundation. It merges Autodesk Standard Surface and Adobe Standard Material, so content moves between Arnold, Substance, MaterialX-based tools and renderers that adopt it with the same look. Version 1.0 came out in 2024; this unit follows 1.1.</p>
+    <p>It describes a surface as a stack of layers, each with a weight. From the top: <em>fuzz</em> (a dusty sheen), <em>coat</em> (a clear varnish), then the <em>base</em>, which is a mix of metal and dielectric. The dielectric part splits further into specular reflection, then transmission, subsurface or diffuse below it. A <em>thin film</em> can sit on the base, and <em>emission</em> adds light. Light that a layer reflects does not reach the layers below:</p>
+  </div>
+  <div class="fx" data-fx="coat"></div>
+  <div class="prose">
+    <p>Game engines implement simpler versions of the same stack: HDRP's Lit has a coat mask, StackLit adds a second specular lobe and iridescence; Unreal's legacy shading models pick one feature at a time, Substrate builds stacks of <em>Slabs</em>. The theory chapters of these units use OpenPBR names and then show where each engine stores the value.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A car paint has a clear coat. The coat reflects more at grazing angles. What happens to the colour of the paint there?", ["It gets brighter", "It shows less, because more light is reflected by the coat before it reaches the paint", "Nothing", "It turns metallic"], 1, "Energy that the coat reflects does not reach the base, so the paint is dimmer at the edges and the coat reflection dominates."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Convert offline with the script, import base colour (sRGB) and mask map (linear), compare with a live graph.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Converting an old specular/gloss material is the practical side of this unit. The route has an offline converter that works for any renderer, the HDRP import settings for its output, and the same conversion live in a Shader Graph so you can compare it with the original while you tune. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="py"><b>Python script</b><span>specgloss_to_metalrough.py: converts the three maps offline and packs an HDRP mask map.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Import settings for the new maps and an HDRP/Lit material.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>SpecGlossToMetalRough.hlsl: the same conversion live in a Lit Shader Graph, for side-by-side checks.</span></div></div>
+<ol class="impl-steps"><li><div>Install Python 3 with <code>pip install numpy pillow</code>. Save <code>specgloss_to_metalrough.py</code> anywhere outside <code>Assets</code>.</div></li><li><div>Run it on the diffuse, specular and gloss maps of one material: <code>python specgloss_to_metalrough.py Crate_Diffuse.png Crate_Spec.png Crate_Gloss.png Crate --pack hdrp</code>. It writes <code>Crate_BaseColor.png</code> and <code>Crate_MaskMap.png</code>.</div></li><li><div>Import both into the project. <code>Crate_BaseColor</code>: Texture Type <em>Default</em>, <em>sRGB (Color Texture)</em> on. <code>Crate_MaskMap</code>: sRGB <em>off</em>; it holds R metallic, G occlusion (1, none), B detail mask (0), A smoothness.</div></li><li><div>Create a material with <em>HDRP/Lit</em>. Assign <em>Base Map</em> and <em>Mask Map</em>, keep the Metallic and Smoothness <em>Remapping</em> at 0 to 1, assign the old normal map unchanged.</div></li><li><div>For a side-by-side check, put <code>SpecGlossToMetalRough.hlsl</code> in <code>Assets/Shaders/</code>. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Sample the old diffuse and specular maps (textures imported with sRGB on) and the gloss map (sRGB off). In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>SpecGlossToMetalRough.hlsl</code> and <em>Name</em> to <code>SpecGlossToMetalRough</code> (without the <code>_float</code> suffix). Add the inputs <b>Diffuse (Vector 3), Specular (Vector 3), Gloss (Float)</b> and the outputs <b>BaseColor (Vector 3), Metallic (Float), Smoothness (Float)</b>, in that order and with those types: they must match the function's parameters. Connect the outputs to <em>Base Color</em>, <em>Metallic</em> and <em>Smoothness</em>.</div></li><li><div>Place both versions next to the original under neutral light and fixed exposure. Look at areas the heuristic gets wrong: dark metals (read as non-metal) and coloured, very bright non-metals (read as partly metal). Paint fixes into the metallic channel of the mask map.</div></li><li><div>Open <em>Window &gt; Analysis &gt; Rendering Debugger &gt; Material</em> and run the <em>Material Validator</em> on the result: converted metals that ended up too dark show at once.</div></li></ol>
+<div class="files"><div class="file" data-name="specgloss_to_metalrough.py" data-lang="py"><pre>&quot;&quot;&quot;Convert a specular/glossiness material to metal/roughness.
+
+usage: python specgloss_to_metalrough.py diffuse.png specular.png gloss.png out_prefix [--pack hdrp|ue|none]
+needs: pip install numpy pillow
+
+The metallic value is solved with the heuristic from Khronos&#x27; glTF spec/gloss conversion sample: it is a
+good guess, not a lossless conversion. Check the result next to the original under neutral light.
+&quot;&quot;&quot;
+import argparse
+import numpy as np
+from PIL import Image
+
+DIELECTRIC_F0 = 0.04
+
+
+def srgb_to_linear(c):
+    return np.where(c &lt;= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def linear_to_srgb(c):
+    c = np.clip(c, 0.0, 1.0)
+    return np.where(c &lt;= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
+
+
+def load(path, srgb, channels=&#x27;RGB&#x27;):
+    a = np.asarray(Image.open(path).convert(channels), dtype=np.float32) / 255.0
+    return srgb_to_linear(a) if srgb else a
+
+
+def perceived(c):
+    &quot;&quot;&quot;Perceived brightness used by the heuristic (not luminance).&quot;&quot;&quot;
+    return np.sqrt(0.299 * c[..., 0] ** 2 + 0.587 * c[..., 1] ** 2 + 0.114 * c[..., 2] ** 2)
+
+
+def solve_metallic(diffuse, specular, one_minus_spec):
+    a = DIELECTRIC_F0
+    b = diffuse * one_minus_spec / (1 - DIELECTRIC_F0) + specular - 2 * DIELECTRIC_F0
+    c = DIELECTRIC_F0 - specular
+    d = np.maximum(b * b - 4 * a * c, 0.0)
+    m = np.clip((-b + np.sqrt(d)) / (2 * a), 0.0, 1.0)
+    return np.where(specular &lt; DIELECTRIC_F0, 0.0, m)
+
+
+def convert(diffuse, specular, gloss):
+    &quot;&quot;&quot;All inputs linear. Returns base colour (linear RGB), metallic, roughness.&quot;&quot;&quot;
+    one_minus = 1.0 - specular.max(axis=-1)
+    m = solve_metallic(perceived(diffuse), perceived(specular), one_minus)
+    eps = 1e-6
+    from_diffuse = diffuse * (one_minus / (1 - DIELECTRIC_F0) / np.maximum(1 - m, eps))[..., None]
+    from_specular = (specular - DIELECTRIC_F0 * (1 - m)[..., None]) / np.maximum(m, eps)[..., None]
+    t = (m * m)[..., None]
+    base = np.clip(from_diffuse + (from_specular - from_diffuse) * t, 0.0, 1.0)
+    return base, m, 1.0 - gloss
+
+
+def save(path, data):
+    Image.fromarray(np.round(np.clip(data, 0, 1) * 255).astype(np.uint8)).save(path)
+    print(&#x27;wrote&#x27;, path)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&#x27;diffuse&#x27;); ap.add_argument(&#x27;specular&#x27;); ap.add_argument(&#x27;gloss&#x27;); ap.add_argument(&#x27;out&#x27;)
+    ap.add_argument(&#x27;--pack&#x27;, choices=[&#x27;hdrp&#x27;, &#x27;ue&#x27;, &#x27;none&#x27;], default=&#x27;none&#x27;)
+    a = ap.parse_args()
+    diffuse = load(a.diffuse, srgb=True)
+    specular = load(a.specular, srgb=True)          # specular colour maps are colour data
+    gloss = load(a.gloss, srgb=False, channels=&#x27;L&#x27;)  # glossiness is plain data
+    if not (diffuse.shape[:2] == specular.shape[:2] == gloss.shape[:2]):
+        raise SystemExit(&#x27;the three maps must have the same size&#x27;)
+    base, metal, rough = convert(diffuse, specular, gloss)
+    save(a.out + &#x27;_BaseColor.png&#x27;, linear_to_srgb(base))
+    one, zero = np.ones_like(metal), np.zeros_like(metal)
+    if a.pack == &#x27;hdrp&#x27;:      # HDRP mask map: R metallic, G occlusion, B detail mask, A smoothness
+        Image.fromarray(np.round(np.stack([metal, one, zero, 1 - rough], -1) * 255).astype(np.uint8), &#x27;RGBA&#x27;).save(a.out + &#x27;_MaskMap.png&#x27;)
+        print(&#x27;wrote&#x27;, a.out + &#x27;_MaskMap.png&#x27;)
+    elif a.pack == &#x27;ue&#x27;:      # Unreal ORM: R occlusion, G roughness, B metallic
+        save(a.out + &#x27;_ORM.png&#x27;, np.stack([one, rough, metal], -1))
+    else:
+        save(a.out + &#x27;_Metallic.png&#x27;, metal)
+        save(a.out + &#x27;_Roughness.png&#x27;, rough)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()</pre></div><div class="file" data-name="SpecGlossToMetalRough.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_SPECGLOSS_INCLUDED
+#define ATLAS_SPECGLOSS_INCLUDED
+
+// Specular/glossiness to metal/roughness, live in a graph. Inputs are linear: sample the diffuse and
+// specular maps with sRGB on, the gloss map with sRGB off. Heuristic, see the unit.
+float Atlas_Perceived(float3 c) { return sqrt(dot(c * c, float3(0.299, 0.587, 0.114))); }
+
+void SpecGlossToMetalRough_float(float3 Diffuse, float3 Specular, float Gloss,
+                                 out float3 BaseColor, out float Metallic, out float Smoothness)
+{
+    const float d0 = 0.04;                       // F0 of a typical dielectric
+    float pd = Atlas_Perceived(Diffuse);
+    float ps = Atlas_Perceived(Specular);
+    float oneMinusSpec = 1.0 - max(Specular.r, max(Specular.g, Specular.b));
+
+    float b = pd * oneMinusSpec / (1.0 - d0) + ps - 2.0 * d0;
+    float c = d0 - ps;
+    float D = max(b * b - 4.0 * d0 * c, 0.0);
+    float m = ps &lt; d0 ? 0.0 : saturate((-b + sqrt(D)) / (2.0 * d0));
+
+    float3 fromDiffuse  = Diffuse * (oneMinusSpec / (1.0 - d0) / max(1.0 - m, 1e-4));
+    float3 fromSpecular = (Specular - d0 * (1.0 - m)) / max(m, 1e-4);
+
+    BaseColor  = saturate(lerp(fromDiffuse, fromSpecular, m * m));
+    Metallic   = m;
+    Smoothness = Gloss;                          // Unity smoothness is glossiness; roughness = 1 - gloss
+}
+#endif</pre></div></div>
+<p class="note">glTF files can skip the heuristic: with the <code>KHR_materials_specular</code> and <code>KHR_materials_ior</code> extensions, a converter can keep metallic at 0 and store the old specular colour directly, which is lossless. glTF Transform's <code>metalRough()</code> does this.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP Lit uses the same metal/roughness inputs, with smoothness in the alpha of the metallic map (or of the base map). Pack R metallic and A smoothness with the script (use <code>--pack hdrp</code> and ignore G and B), and the same Custom Function works in a URP Lit graph.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="ORM from the script, Masks compression, legacy inputs or a Substrate Slab, and a live Material Function to compare.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>The same converter writes Unreal's usual ORM packing. The chapter wires the result into a material, shows the conversion live in a Material Function, and maps the names onto Substrate, which describes materials with diffuse albedo, F0 and F90 instead of base colour and metallic. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="py"><b>Python script</b><span>specgloss_to_metalrough.py with --pack ue: base colour and ORM textures.</span></div><div class="rt" data-k="mat"><b>Material</b><span>A material wired from the converted textures.</span></div><div class="rt" data-k="mf"><b>Material Function</b><span>MF_SpecGlossToMetalRough: the conversion live, with a Custom node.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Substrate: how the same inputs appear as a Slab.</span></div></div>
+<ol class="impl-steps"><li><div>Run the converter with <code>--pack ue</code>: <code>python specgloss_to_metalrough.py Crate_Diffuse.png Crate_Spec.png Crate_Gloss.png T_Crate --pack ue</code>. It writes <code>T_Crate_BaseColor.png</code> and <code>T_Crate_ORM.png</code> (R occlusion, G roughness, B metallic).</div></li><li><div>Import both. Open <code>T_Crate_ORM</code> and set <em>Compression Settings</em> to <code>Masks (no sRGB)</code>, which also turns sRGB off. Keep <code>T_Crate_BaseColor</code> at <code>Default</code> with sRGB on.</div></li><li><div>Create a material. Connect <code>T_Crate_BaseColor</code> RGB to <em>Base Color</em>. Sample <code>T_Crate_ORM</code> once (Sampler Type <code>Masks</code>) and connect R to <em>Ambient Occlusion</em>, G to <em>Roughness</em>, B to <em>Metallic</em>. Leave <em>Specular</em> unconnected: its default 0.5 means F0 = 0.04.</div></li><li><div>For a live comparison, create a Material Function <code>MF_SpecGlossToMetalRough</code> with three <em>Function Input</em> nodes: Diffuse (Vector 3), Specular (Vector 3), Gloss (Scalar). Add a <em>Custom</em> node, paste <code>SpecGlossToMetalRough.ush</code> into <em>Code</em>, set <em>Output Type</em> to <code>CMOT Float 3</code>, add the inputs <code>Diffuse</code>, <code>Specular</code>, <code>Gloss</code> and the <em>Additional Outputs</em> <code>Metallic</code> and <code>Roughness</code> (both <code>CMOT Float 1</code>). Expose the three results with <em>Function Output</em> nodes.</div></li><li><div>In a second material, sample the old diffuse and specular maps with Sampler Type <code>Color</code> and the gloss map with <code>Linear Color</code>, run them through the function and connect the outputs. Place both materials on copies of the asset in a level with neutral lighting.</div></li><li><div>With Substrate on, the legacy inputs above are converted for you. When you author a <em>Substrate Slab BSDF</em> directly, base colour and metallic become <em>Diffuse Albedo</em> and <em>F0</em>: the <em>Substrate Metalness-To-DiffuseAlbedo-F0</em> node does that step, and <em>F90</em> is the colour at grazing angles (keep it white for most materials).</div></li></ol>
+<div class="files"><div class="file" data-name="specgloss_to_metalrough.py" data-lang="py"><pre>&quot;&quot;&quot;Convert a specular/glossiness material to metal/roughness.
+
+usage: python specgloss_to_metalrough.py diffuse.png specular.png gloss.png out_prefix [--pack hdrp|ue|none]
+needs: pip install numpy pillow
+
+The metallic value is solved with the heuristic from Khronos&#x27; glTF spec/gloss conversion sample: it is a
+good guess, not a lossless conversion. Check the result next to the original under neutral light.
+&quot;&quot;&quot;
+import argparse
+import numpy as np
+from PIL import Image
+
+DIELECTRIC_F0 = 0.04
+
+
+def srgb_to_linear(c):
+    return np.where(c &lt;= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def linear_to_srgb(c):
+    c = np.clip(c, 0.0, 1.0)
+    return np.where(c &lt;= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
+
+
+def load(path, srgb, channels=&#x27;RGB&#x27;):
+    a = np.asarray(Image.open(path).convert(channels), dtype=np.float32) / 255.0
+    return srgb_to_linear(a) if srgb else a
+
+
+def perceived(c):
+    &quot;&quot;&quot;Perceived brightness used by the heuristic (not luminance).&quot;&quot;&quot;
+    return np.sqrt(0.299 * c[..., 0] ** 2 + 0.587 * c[..., 1] ** 2 + 0.114 * c[..., 2] ** 2)
+
+
+def solve_metallic(diffuse, specular, one_minus_spec):
+    a = DIELECTRIC_F0
+    b = diffuse * one_minus_spec / (1 - DIELECTRIC_F0) + specular - 2 * DIELECTRIC_F0
+    c = DIELECTRIC_F0 - specular
+    d = np.maximum(b * b - 4 * a * c, 0.0)
+    m = np.clip((-b + np.sqrt(d)) / (2 * a), 0.0, 1.0)
+    return np.where(specular &lt; DIELECTRIC_F0, 0.0, m)
+
+
+def convert(diffuse, specular, gloss):
+    &quot;&quot;&quot;All inputs linear. Returns base colour (linear RGB), metallic, roughness.&quot;&quot;&quot;
+    one_minus = 1.0 - specular.max(axis=-1)
+    m = solve_metallic(perceived(diffuse), perceived(specular), one_minus)
+    eps = 1e-6
+    from_diffuse = diffuse * (one_minus / (1 - DIELECTRIC_F0) / np.maximum(1 - m, eps))[..., None]
+    from_specular = (specular - DIELECTRIC_F0 * (1 - m)[..., None]) / np.maximum(m, eps)[..., None]
+    t = (m * m)[..., None]
+    base = np.clip(from_diffuse + (from_specular - from_diffuse) * t, 0.0, 1.0)
+    return base, m, 1.0 - gloss
+
+
+def save(path, data):
+    Image.fromarray(np.round(np.clip(data, 0, 1) * 255).astype(np.uint8)).save(path)
+    print(&#x27;wrote&#x27;, path)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&#x27;diffuse&#x27;); ap.add_argument(&#x27;specular&#x27;); ap.add_argument(&#x27;gloss&#x27;); ap.add_argument(&#x27;out&#x27;)
+    ap.add_argument(&#x27;--pack&#x27;, choices=[&#x27;hdrp&#x27;, &#x27;ue&#x27;, &#x27;none&#x27;], default=&#x27;none&#x27;)
+    a = ap.parse_args()
+    diffuse = load(a.diffuse, srgb=True)
+    specular = load(a.specular, srgb=True)          # specular colour maps are colour data
+    gloss = load(a.gloss, srgb=False, channels=&#x27;L&#x27;)  # glossiness is plain data
+    if not (diffuse.shape[:2] == specular.shape[:2] == gloss.shape[:2]):
+        raise SystemExit(&#x27;the three maps must have the same size&#x27;)
+    base, metal, rough = convert(diffuse, specular, gloss)
+    save(a.out + &#x27;_BaseColor.png&#x27;, linear_to_srgb(base))
+    one, zero = np.ones_like(metal), np.zeros_like(metal)
+    if a.pack == &#x27;hdrp&#x27;:      # HDRP mask map: R metallic, G occlusion, B detail mask, A smoothness
+        Image.fromarray(np.round(np.stack([metal, one, zero, 1 - rough], -1) * 255).astype(np.uint8), &#x27;RGBA&#x27;).save(a.out + &#x27;_MaskMap.png&#x27;)
+        print(&#x27;wrote&#x27;, a.out + &#x27;_MaskMap.png&#x27;)
+    elif a.pack == &#x27;ue&#x27;:      # Unreal ORM: R occlusion, G roughness, B metallic
+        save(a.out + &#x27;_ORM.png&#x27;, np.stack([one, rough, metal], -1))
+    else:
+        save(a.out + &#x27;_Metallic.png&#x27;, metal)
+        save(a.out + &#x27;_Roughness.png&#x27;, rough)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()</pre></div><div class="file" data-name="SpecGlossToMetalRough.ush" data-lang="hlsl"><pre>// Custom node &quot;SpecGlossToMetalRough&quot;. Inputs: Diffuse (float3), Specular (float3), Gloss (float).
+// Output Type: CMOT Float 3 (base colour). Additional Outputs: Metallic (CMOT Float 1), Roughness (CMOT Float 1).
+// Sample Diffuse and Specular with Sampler Type Color (sRGB on), Gloss with Linear Color or Masks.
+const float d0 = 0.04;
+float pd = sqrt(dot(Diffuse * Diffuse, float3(0.299, 0.587, 0.114)));
+float ps = sqrt(dot(Specular * Specular, float3(0.299, 0.587, 0.114)));
+float oneMinusSpec = 1.0 - max(Specular.r, max(Specular.g, Specular.b));
+float b = pd * oneMinusSpec / (1.0 - d0) + ps - 2.0 * d0;
+float c = d0 - ps;
+float D = max(b * b - 4.0 * d0 * c, 0.0);
+float m = ps &lt; d0 ? 0.0 : saturate((-b + sqrt(D)) / (2.0 * d0));
+float3 fromDiffuse  = Diffuse * (oneMinusSpec / (1.0 - d0) / max(1.0 - m, 1e-4));
+float3 fromSpecular = (Specular - d0 * (1.0 - m)) / max(m, 1e-4);
+Metallic  = m;
+Roughness = 1.0 - Gloss;
+return saturate(lerp(fromDiffuse, fromSpecular, m * m));</pre></div></div>
+<p class="note">Unreal's <em>Specular</em> input (default 0.5) is not a colour: it scales the dielectric F0 as F0 = 0.08 · Specular. Old specular maps do not go there; the converter folds them into base colour and metallic.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Spec</span><a href="https://academysoftwarefoundation.github.io/OpenPBR/" rel="noopener">OpenPBR Surface specification</a></span><span class="by">Academy Software Foundation</span><span class="why">Parameter names, defaults and the layer model used as the reference here.</span></li><li><span><span class="kind">Paper</span><a href="https://media.disneyanimation.com/uploads/production/publication_asset/48/asset/s2012_pbs_disney_brdf_notes_v3.pdf" rel="noopener">Physically Based Shading at Disney</a></span><span class="by">Brent Burley · SIGGRAPH 2012</span><span class="why">Where base colour and metallic as one parameter set come from.</span></li><li><span><span class="kind">Paper</span><a href="https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf" rel="noopener">Real Shading in Unreal Engine 4</a></span><span class="by">Brian Karis · SIGGRAPH 2013</span><span class="why">Base Color, Metallic, Roughness and Specular in a game engine; α = roughness².</span></li><li><span><span class="kind">Spec</span><a href="https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0" rel="noopener">glTF 2.0 and the KHR_materials extensions</a></span><span class="by">Khronos Group</span><span class="why">glTF names, the specular and IOR extensions, and the archived spec/gloss extension with its conversion sample.</span></li><li><span><span class="kind">Article</span><a href="https://www.donmccurdy.com/2022/11/28/converting-gltf-pbr-materials-from-specgloss-to-metalrough/" rel="noopener">Converting glTF PBR materials from spec/gloss to metal/rough</a></span><span class="by">Don McCurdy</span><span class="why">Why the conversion is lossless with KHR_materials_specular and KHR_materials_ior.</span></li><li><span><span class="kind">Docs</span><a href="https://google.github.io/filament/Filament.html" rel="noopener">Filament: material parameterization</a></span><span class="by">Google</span><span class="why">Reflectance mapping F0 = 0.16 · reflectance² and the remapping of roughness.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/lit-material-inspector-reference.html" rel="noopener">HDRP Lit material inspector reference</a></span><span class="by">Unity</span><span class="why">Base Map, Mask Map layout and the material types.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-substrate-materials-in-unreal-engine" rel="noopener">Substrate materials overview</a></span><span class="by">Epic Games</span><span class="why">Slab inputs: Diffuse Albedo, F0, F90 and how legacy materials are converted.</span></li><li><span><span class="kind">History</span><a href="https://en.wikipedia.org/wiki/Albedo" rel="noopener">Albedo</a></span><span class="by">Wikipedia</span><span class="why">Origin of the term (Lambert, 1760) and planetary albedos.</span></li></ul>
+</section>
+
+<div class="next" data-next="pbr-basics metals reflections"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"phong": [
+"Phong / Blinn-Phong",
+"The classic shading model: diffuse colour · N·L plus specular colour · a highlight raised to an exponent; not energy conserving.",
+"#diffuse"
+],
+"albedo": [
+"Albedo",
+"The fraction of light a surface sends back diffusely, 0 to 1, with no lighting in it.",
+"#albedo"
+],
+"basecolor": [
+"Base colour",
+"Albedo for non-metals, F0 (reflection colour) for metals, selected by metalness.",
+"#basecolor"
+],
+"f0": [
+"F0",
+"Reflectance at normal incidence: how much light reflects when you look straight at the surface.",
+"#specular"
+],
+"ior": [
+"IOR",
+"Index of refraction: the ratio of the speed of light in vacuum to that in the material; sets F0 for non-metals.",
+"#specular"
+],
+"openpbr": [
+"OpenPBR Surface",
+"An open, renderer-neutral uber-surface specification (Academy Software Foundation), merging Autodesk Standard Surface and Adobe Standard Material.",
+"#openpbr"
+],
+"smoothness": [
+"Smoothness / glossiness",
+"1 − perceptual roughness; Unity and the spec/gloss workflow use it.",
+"#roughness"
+],
+"alpha": [
+"α (alpha roughness)",
+"Perceptual roughness squared, the actual width parameter of the GGX distribution.",
+"#roughness"
+],
+"cavity": [
+"Cavity",
+"Occlusion of the smallest crevices, usually baked from the high-poly mesh and used to darken specular.",
+"#maps"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="terms.js?v=a0e3bce4"></script>
+</body>
+</html>

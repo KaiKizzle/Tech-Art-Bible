@@ -13,27 +13,33 @@
   };
 
   window.ATLAS_CATEGORIES = [
-    { id: 'found', name: 'Foundations', color: 'cat-found', blurb: 'Short lessons from zero: what a GPU does, vectors, spaces, textures, buffers. Every other unit links back here.' },
-    { id: 'shade', name: 'Shaders & rendering', color: 'cat-shade', blurb: 'What the GPU computes per pixel, and the maths that makes cheap tricks look expensive.' },
-    { id: 'light', name: 'Lighting & GI', color: 'cat-light', blurb: 'Physical light, exposure and the path from scene light to display pixels.' },
-    { id: 'tex', name: 'Materials & texture pipeline', color: 'cat-tex', blurb: 'How textures are authored, packed, compressed and budgeted for the GPU.' },
-    { id: 'char', name: 'Characters', color: 'cat-char', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
-    { id: 'perf', name: 'Performance & tools', color: 'cat-perf', blurb: 'Finding what is slow in a frame and the tools that show it.' },
-    { id: 'sd', name: 'Substance Designer', color: 'cat-sd', blurb: 'Procedural materials in Substance 3D Designer: what the numbers in a graph mean, how the core nodes combine them, how to keep graphs fast, and how to ship the result.' },
-    { id: 'proj', name: 'Unity projects & assets', color: 'cat-proj', blurb: 'How a Unity project keeps track of its files: GUIDs and .meta files, prefabs and variants, scenes and Addressables, and why references break.' }
+    { id: 'found', name: 'Foundations', tone: '#8a97ab', blurb: 'Short lessons from zero: what a GPU does, vectors, spaces, textures, buffers. Every other unit links back here.' },
+    { id: 'shade', name: 'Shaders & rendering', tone: '#b07ce8', blurb: 'What the GPU computes per pixel, and the maths that makes cheap tricks look expensive.' },
+    { id: 'light', name: 'Lighting & GI', tone: '#e3b341', blurb: 'Physical light, exposure and the path from scene light to display pixels.' },
+    { id: 'surf', name: 'Surfaces', tone: '#4aa3f0', blurb: 'How real surfaces reflect and transmit light, renderer-agnostic first (with OpenPBR as the reference), then built in HDRP and Unreal, with cheap fallbacks for each.' },
+    { id: 'tex', name: 'Materials & texture pipeline', tone: '#2fb3b3', blurb: 'How textures are authored, packed, compressed and budgeted for the GPU.' },
+    { id: 'char', name: 'Characters', tone: '#e06cae', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
+    { id: 'perf', name: 'Performance & tools', tone: '#e05a4f', blurb: 'Finding what is slow in a frame and the tools that show it.' },
+    { id: 'sd', name: 'Substance Designer', tone: '#d9822b', blurb: 'Procedural materials in Substance 3D Designer: what the numbers in a graph mean, how the core nodes combine them, how to keep graphs fast, and how to ship the result.' },
+    { id: 'proj', name: 'Unity projects & assets', tone: '#5b6ee8', blurb: 'How a Unity project keeps track of its files: GUIDs and .meta files, prefabs and variants, scenes and Addressables, and why references break.' }
   ];
 
   /* Suggested orders for newcomers. Shown on the hub. */
   window.ATLAS_PATHS = [
-    { name: 'Shader basics from zero', units: ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'compute-shaders', 'color-values', 'rays-math'] },
-    { name: 'Ray-traced effects in shaders', units: ['vectors', 'spaces', 'rays-math', 'ray-sphere', 'cloud-march', 'parallax', 'interior-mapping'] },
-    { name: 'Light for artists', units: ['color-values', 'exposure', 'light-types', 'pbr-brdf', 'shadow-maps', 'baked-gi'] },
-    { name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] },
-    { name: 'Materials from scratch', units: ['color-values', 'pbr-basics', 'texturing', 'texture-settings', 'texture-memory', 'mapping', 'pbr-brdf'] },
-    { name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] },
-    { name: 'Substance Designer from zero', units: ['color-values', 'sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'texture-settings'] },
-    { name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] }
+    { id: 'shader-basics', name: 'Shader basics from zero', units: ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'compute-shaders', 'color-values', 'rays-math'] },
+    { id: 'ray-traced', name: 'Ray-traced effects in shaders', units: ['vectors', 'spaces', 'rays-math', 'ray-sphere', 'cloud-march', 'parallax', 'interior-mapping'] },
+    { id: 'light-for-artists', name: 'Light for artists', units: ['color-values', 'exposure', 'light-types', 'pbr-brdf', 'shadow-maps', 'baked-gi'] },
+    { id: 'screen-effects', name: 'Screen effects and cost', units: ['buffers', 'depth-effects', 'transparency', 'texture-memory', 'reading-a-frame'] },
+    { id: 'materials', name: 'Materials from scratch', units: ['color-values', 'pbr-basics', 'texturing', 'texture-settings', 'texture-memory', 'mapping', 'pbr-brdf'] },
+    { id: 'character-shading', name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] },
+    { id: 'substance-designer', name: 'Substance Designer from zero', units: ['color-values', 'sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'texture-settings'] },
+    { id: 'unity-hygiene', name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] },
+    { id: 'surfaces', name: 'Surfaces: metal, glass and water', units: ['pbr-terms', 'pbr-basics', 'metals', 'reflections', 'glass', 'screen-transparency', 'depth-effects', 'water'] }
   ];
+
+  /* The banner at the top of the hub. kind 'path' (id from ATLAS_PATHS) or 'unit' (a slug).
+     Its picture is assets/img/paths/<id>.webp (or the unit's hero image); a placeholder is drawn until one exists. */
+  window.ATLAS_FEATURED = { kind: 'path', id: 'surfaces', date: '2026-10-22', title: 'Surfaces: metal, glass, water', subtitle: 'Why metals have coloured reflections, how glass bends light, and every trick for water.', button: 'Go to path' };
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
   window.ATLAS_UNITS = [
@@ -123,6 +129,26 @@
       summary: 'Texturing without (or beyond) UVs: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals.',
       tags: ['triplanar', 'planar mapping', 'world space uv', 'detail map', 'overlay', 'flow map', 'uv scrolling', 'matcap', 'equirectangular', 'decal'] },
 
+    /* Surfaces */
+    { slug: 'pbr-terms', cat: 'surf', title: 'Diffuse, Albedo, Base Colour', topic: 'Why one map has many names', minutes: 35, level: 'Start here', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Where the names come from: diffuse maps with baked light, albedo as physics, base colour from the metallic workflow, and every other pair of names for the same map, across OpenPBR, Unity, Unreal, Substance and Blender.',
+      tags: ['terminology', 'diffuse', 'albedo', 'base color', 'base colour', 'specular', 'gloss', 'smoothness', 'roughness', 'f0', 'reflectance', 'bump', 'normal', 'height', 'displacement', 'openpbr', 'standard surface', 'gltf'] },
+    { slug: 'metals', cat: 'surf', title: 'Metals', topic: 'Conductors, F0, edge tint, rust', minutes: 55, level: 'Beginner', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Why metals reflect in colour and have no diffuse, complex IOR, measured F0 values, edge tint (F82), roughness and energy loss, brushed metal, coatings, rust and patina, and when metallic may sit between 0 and 1.',
+      tags: ['metal', 'metallic', 'conductor', 'f0', 'f82', 'edge tint', 'complex ior', 'fresnel', 'anisotropy', 'brushed metal', 'clear coat', 'rust', 'patina', 'openpbr', 'gold', 'copper'] },
+    { slug: 'reflections', cat: 'surf', title: 'Reflections, Mirrors and Cheap Metal', topic: 'Probes, SSR, planar, ray tracing, fakes', minutes: 60, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Where reflections come from in real time: prefiltered cubemaps and roughness mips, box projection, screen-space reflections and their holes, planar mirrors, ray tracing, and the cheap fallbacks that still read as metal.',
+      tags: ['reflection', 'reflection probe', 'cubemap', 'box projection', 'ssr', 'planar reflection', 'mirror', 'ray tracing', 'lumen', 'specular occlusion', 'matcap', 'mobile', 'cheap metal'] },
+    { slug: 'glass', cat: 'surf', title: 'Glass', topic: 'Fresnel, refraction, absorption, frost', minutes: 55, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'How glass reflects and transmits: Fresnel from 4 % to 100 %, IOR and Snell, thin and thick glass, coloured glass by absorption, screen-space refraction, frosted glass, sorting and dirt.',
+      tags: ['glass', 'refraction', 'ior', 'snell', 'fresnel', 'transmission', 'beer lambert', 'absorption', 'frosted glass', 'thin walled', 'color pyramid', 'scene color', 'transparency'] },
+    { slug: 'screen-transparency', cat: 'surf', title: 'Faking Transparency with Screen Passes', topic: 'Blending versus sampling the screen', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Real alpha blending against sampling the opaque colour buffer: grab pass, opaque texture, colour pyramid and scene colour, full-screen passes with stencil masks, and the artefacts each one brings.',
+      tags: ['transparency', 'grab pass', 'opaque texture', 'color pyramid', 'scene color', 'custom pass', 'full screen pass', 'stencil', 'distortion', 'refraction', 'dither'] },
+    { slug: 'water', cat: 'surf', title: 'Water', topic: 'Surfaces, depth, absorption, foam', minutes: 70, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'A water material from the ground up: Fresnel between reflection and refraction, normals and waves, depth from the depth buffer, per-channel absorption, shoreline foam, refraction without leaks, caustics and underwater fog.',
+      tags: ['water', 'ocean', 'river', 'fresnel', 'gerstner', 'waves', 'flow map', 'depth', 'absorption', 'beer lambert', 'foam', 'caustics', 'underwater', 'single layer water', 'hdrp water'] },
+
     /* Characters */
     { slug: 'skin', cat: 'char', title: 'Skin: Light Under the Surface', topic: 'Subsurface scattering', minutes: 60, level: 'Intermediate', engines: ALL,
       summary: 'Why skin is not Lambert: wrap lighting, diffusion profiles, screen-space and pre-integrated scattering, transmission through ears, and a dual-lobe specular.',
@@ -176,5 +202,22 @@
       summary: 'Why direct references load everything, groups and labels, loading and releasing, reference counts, duplicated dependencies, catalogs and content builds, addressable scenes and why builds break.',
       tags: ['unity', 'addressables', 'assetbundle', 'asset reference', 'loadassetasync', 'release', 'reference count', 'groups', 'labels', 'catalog', 'duplicate dependencies', 'analyze', 'content update', 'resources'] }
   ];
-  window.ATLAS_UNITS.forEach(u => { u.path = 'units/' + u.slug + '/index.html'; });
+  /* When each unit was added (newest first on the hub). */
+  const ADDED = {
+    '2026-10-14': ['gpu-basics', 'shader-anatomy', 'vectors', 'dot-cross', 'spaces', 'textures-sampling', 'buffers', 'color-values', 'rays-math', 'ray-sphere', 'interior-mapping', 'depth-effects', 'transparency', 'cloud-march', 'parallax', 'exposure', 'pbr-brdf', 'shadow-maps', 'baked-gi', 'light-types', 'texture-memory', 'reading-a-frame'],
+    '2026-10-17': ['skin', 'hair', 'cloth', 'fabric-folds', 'mapping'],
+    '2026-10-18': ['compute-shaders', 'pbr-basics', 'texturing', 'texture-settings'],
+    '2026-10-21': ['sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables'],
+    '2026-10-22': ['pbr-terms', 'metals', 'reflections', 'glass', 'screen-transparency', 'water']
+  };
+  /* Defaults for the tile badges.
+     type: 'unit' (a lesson) or 'workflow' (a step-by-step production recipe).
+     software: which tools the unit is built in — 'any' (renderer-agnostic), 'unity', 'unreal', 'sd' (Substance Designer), 'blender'. */
+  window.ATLAS_SOFTWARE = { any: 'Any renderer', unity: 'Unity', unreal: 'Unreal Engine', sd: 'Substance Designer', blender: 'Blender' };
+  window.ATLAS_UNITS.forEach(u => {
+    u.path = 'units/' + u.slug + '/index.html';
+    u.type = u.type || 'unit';
+    u.software = u.software || (u.cat === 'sd' ? ['sd'] : u.cat === 'proj' ? ['unity'] : u.engines.length < 3 ? ['unity'] : ['unity', 'unreal']);
+    u.added = u.added || Object.keys(ADDED).find(d => ADDED[d].includes(u.slug)) || '2026-10-14';
+  });
 })();

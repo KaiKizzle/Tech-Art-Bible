@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Metals · Tech Art Atlas</title>
+<meta name="description" content="Why metals have coloured reflections and no diffuse light, how their Fresnel differs from glass, what the edge tint is, measured base colours, rough and brushed metal, coatings, rust and patina, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+</head>
+<body data-unit="metals">
+<header class="hubtop">
+  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
+  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
+  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
+  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+  <a class="brand" href="#top">Metals</a>
+  <ol id="rail-list"></ol>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<header class="unit-head">
+  <div class="eyebrow">Surfaces · 10 chapters</div>
+  <h1>Metals</h1>
+  <p class="lede">Why metals have coloured reflections and no diffuse light, how their Fresnel differs from glass, what the edge tint is, measured base colours, rough and brushed metal, coatings, rust and patina, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on PBR Materials: the Basics and Diffuse, Albedo, Base Colour. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/metals.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Gold, copper, brushed aluminium and rusted iron under the same light.</figcaption></figure>
+<div class="needs" data-needs="pbr-basics#metallic"></div>
+
+<section class="chapter" id="electrons" data-title="Why metals look different" data-builds="pbr-basics#metallic pbr-terms#basecolor" data-summary="Free electrons reflect most light; the rest dies within nanometres (δ = λ/4πk). Metals: no diffuse, coloured reflection.">
+  <div class="head"><div class="num"></div><h2>Why metals look different</h2></div>
+
+  <div class="prose">
+    <p>In a metal, some electrons are not bound to single atoms. When light arrives, these free electrons move with its electric field and send almost all of it straight back. The little that enters is absorbed within a few nanometres. So a metal has a strong reflection and nothing that comes out from below the surface: <strong>no diffuse light</strong>. Everything you see on bare metal is reflection.</p>
+    <p>Physics describes this with a complex <button type="button" class="term" data-term="ior">index of refraction</button> n + ik. The real part <em>n</em> bends light as in glass; the imaginary part <em>k</em>, the <button type="button" class="term" data-term="extinction">extinction coefficient</button>, makes it die out. How deep it gets:</p>
+  </div>
+  <div class="fx" data-fx="skin"></div>
+  <div class="prose">
+    <p>Two consequences for authoring follow directly. The <a class="x" href="../pbr-terms/index.html#basecolor">base colour</a> of a metal is the colour of its reflection, and it is bright: a metal that reflects less than about half the light is rare. And the colour of gold or copper exists only in the reflection, so it changes with what the metal reflects.</p>
+    <p>Non-metals (dielectrics) work the other way: light enters, scatters around under the surface and comes back out coloured. That is the diffuse part, and the reason for <a class="x" href="../pbr-basics/index.html#metallic">the metallic switch</a>.</p>
+  </div>
+
+</section>
+<section class="chapter" id="fresnel" data-title="Fresnel for metals" data-builds="pbr-brdf#fresnel metals#electrons" data-summary="Exact conductor Fresnel needs n and k; Schlick needs only F0 and goes to white. They differ near 70–85°.">
+  <div class="head"><div class="num"></div><h2>Fresnel for metals</h2></div>
+
+  <div class="prose">
+    <p>All surfaces reflect more at grazing angles (<a class="x" href="../pbr-brdf/index.html#fresnel">Fresnel</a>). For a dielectric the change is dramatic, from 4 % head-on to 100 % at the edge. A metal starts high, so the change is smaller, and with a complex IOR the exact curve has a shape of its own: for many metals it <em>dips</em> slightly before it rises to 1.</p>
+    <p>Real-time shaders use <button type="button" class="term" data-term="schlick">Schlick's approximation</button>: F0 plus a rise towards white with (1 − cos θ)⁵. It is cheap and needs only F0, which is exactly what the base colour stores. Compare it with the exact formula:</p>
+  </div>
+  <div class="fx" data-fx="cfresnel"></div>
+  <div class="prose"><p>Head-on both agree, by construction. Near 70–85° Schlick is too bright for metals with a pronounced dip, and its edge colour always goes to white, while some real metals keep a tint. The difference is small on a sphere and large on objects seen at grazing angles: a long brushed panel, a car body, cutlery on a table.</p></div>
+
+</section>
+<section class="chapter" id="edge" data-title="Edge tint and the 82° fix" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Edge tint = F_exact(82°) / Schlick(82°). OpenPBR F82: Schlick minus a correction peaking near 82°.">
+  <div class="head"><div class="num"></div><h2>Edge tint and the 82° fix</h2></div>
+
+  <div class="prose">
+    <p>Artists do not want to type complex IORs per colour channel. Ole Gulbrandsen (2014) showed a metal can be described by two colours instead: the reflectivity head-on (F0) and an <button type="button" class="term" data-term="edgetint">edge tint</button> that shapes the curve near the edge. Naty Hoffman (2019) then proposed a cheaper variant, and that is what <a class="x" href="../pbr-terms/index.html#openpbr">OpenPBR</a> uses: keep Schlick, but pull it down near 82° so that it passes through the measured value there.</p>
+    <p>The edge tint is the ratio between the measured reflectance at 82° and what Schlick predicts there. Plug in n and k of a real metal and see how well the corrected curve follows the exact one:</p>
+  </div>
+  <div class="fx" data-fx="f82"></div>
+  <div class="prose">
+    <p>In OpenPBR the edge tint is <code>specular_color</code>: on the metal part of the base it is the F82 tint, on the dielectric part it tints the reflection. Adobe Standard Material and Substance call it <em>Specular Edge Color</em>, Unreal's Substrate has an <em>F90</em> input that fills a similar role. Unity HDRP Lit and Unreal's legacy model have no such input; they use plain Schlick.</p>
+  </div>
+
+</section>
+<section class="chapter" id="library" data-title="Measured metals" data-builds="metals#edge pbr-basics#metallic" data-summary="Measured F0 and edge tint per metal (Adobe table). Metals are bright: titanium, the darkest, is still above 160 sRGB.">
+  <div class="head"><div class="num"></div><h2>Measured metals</h2></div>
+
+  <div class="prose">
+    <p>The fitted pairs of F0 and edge tint for common metals are published as part of Adobe Standard Material. They are the best starting point for a metal base colour: use the F0 as the base colour (it is sRGB, so it goes straight into a colour picker) and the tint wherever an edge-tint input exists.</p>
+  </div>
+  <div class="fx" data-fx="library"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Metal</th><th>F0 / base colour (sRGB)</th><th>Edge tint (sRGB)</th><th>F0 linear</th></tr></thead>
+    <tbody><tr><td>Silver</td><td><span class="chip-c" style="background:rgb(254, 253, 251)"></span>254, 253, 251</td><td><span class="chip-c" style="background:rgb(254, 255, 255)"></span>254, 255, 255</td><td>0.991, 0.982, 0.965</td></tr><tr><td>Aluminium</td><td><span class="chip-c" style="background:rgb(245, 246, 246)"></span>245, 246, 246</td><td><span class="chip-c" style="background:rgb(245, 248, 250)"></span>245, 248, 250</td><td>0.913, 0.922, 0.922</td></tr><tr><td>Gold</td><td><span class="chip-c" style="background:rgb(255, 219, 152)"></span>255, 219, 152</td><td><span class="chip-c" style="background:rgb(248, 251, 245)"></span>248, 251, 245</td><td>1.000, 0.708, 0.314</td></tr><tr><td>Chromium</td><td><span class="chip-c" style="background:rgb(196, 197, 196)"></span>196, 197, 196</td><td><span class="chip-c" style="background:rgb(223, 225, 233)"></span>223, 225, 233</td><td>0.552, 0.558, 0.552</td></tr><tr><td>Copper</td><td><span class="chip-c" style="background:rgb(255, 211, 192)"></span>255, 211, 192</td><td><span class="chip-c" style="background:rgb(252, 248, 247)"></span>252, 248, 247</td><td>1.000, 0.651, 0.527</td></tr><tr><td>Iron</td><td><span class="chip-c" style="background:rgb(243, 241, 233)"></span>243, 241, 233</td><td><span class="chip-c" style="background:rgb(238, 241, 243)"></span>238, 241, 243</td><td>0.896, 0.880, 0.815</td></tr><tr><td>Mercury</td><td><span class="chip-c" style="background:rgb(229, 228, 228)"></span>229, 228, 228</td><td><span class="chip-c" style="background:rgb(232, 238, 244)"></span>232, 238, 244</td><td>0.784, 0.776, 0.776</td></tr><tr><td>Magnesium</td><td><span class="chip-c" style="background:rgb(242, 241, 243)"></span>242, 241, 243</td><td><span class="chip-c" style="background:rgb(243, 245, 249)"></span>243, 245, 249</td><td>0.888, 0.880, 0.896</td></tr><tr><td>Nickel</td><td><span class="chip-c" style="background:rgb(218, 209, 197)"></span>218, 209, 197</td><td><span class="chip-c" style="background:rgb(233, 236, 240)"></span>233, 236, 240</td><td>0.701, 0.638, 0.558</td></tr><tr><td>Palladium</td><td><span class="chip-c" style="background:rgb(223, 218, 212)"></span>223, 218, 212</td><td><span class="chip-c" style="background:rgb(232, 236, 240)"></span>232, 236, 240</td><td>0.738, 0.701, 0.658</td></tr><tr><td>Platinum</td><td><span class="chip-c" style="background:rgb(250, 247, 234)"></span>250, 247, 234</td><td><span class="chip-c" style="background:rgb(249, 249, 248)"></span>249, 249, 248</td><td>0.956, 0.930, 0.823</td></tr><tr><td>Titanium</td><td><span class="chip-c" style="background:rgb(178, 169, 162)"></span>178, 169, 162</td><td><span class="chip-c" style="background:rgb(239, 244, 249)"></span>239, 244, 249</td><td>0.445, 0.397, 0.361</td></tr><tr><td>Zinc</td><td><span class="chip-c" style="background:rgb(241, 240, 238)"></span>241, 240, 238</td><td><span class="chip-c" style="background:rgb(241, 244, 247)"></span>241, 244, 247</td><td>0.880, 0.871, 0.855</td></tr></tbody>
+  </table></div>
+  <div class="prose">
+    <p>Note how bright they are. The darkest, titanium, is still above 160 sRGB. Real metal surfaces are rarely this clean: oxide layers, grease and dust darken and roughen them. Add that as roughness variation and as a dielectric layer (dirt, oxide) in the <a class="x" href="#oxide">metalness mask</a>, not by darkening the metal colour.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A steel prop looks too dark and plasticky. The base colour is 90, 90, 92 sRGB with metallic 1. What is the fix?", ["Raise roughness", "Brighten the base colour to measured iron or steel values (about 190–240 sRGB) and put the dirt in a mask", "Set metallic to 0.5", "Add specular 1"], 1, "A metal F0 below about 50 % does not exist in clean metals; darkness comes from coverings that are not metal."]]</script></details>
+
+</section>
+<section class="chapter" id="roughness" data-title="Rough metals and lost energy" data-builds="pbr-brdf#geometry pbr-brdf#ndf" data-summary="Single-scattering GGX loses up to ~40 % on rough surfaces; multiply specular by 1 + F0·(1 − E)/E.">
+  <div class="head"><div class="num"></div><h2>Rough metals and lost energy</h2></div>
+
+  <div class="prose">
+    <p>Roughness spreads the reflection (<a class="x" href="../pbr-basics/index.html#roughness">roughness</a>). In theory the total stays the same. In the standard microfacet model it does not quite: light that bounces off one microfacet into another is simply dropped, because the model counts only single bounces. On smooth surfaces that is negligible, on rough metals it is not:</p>
+  </div>
+  <div class="fx" data-fx="energy"></div>
+  <div class="prose">
+    <p>A rough white metal can lose over a third of its light at grazing angles. The usual fix multiplies the specular result by 1 + F0 · (1 − E) / E, with E read from a small precomputed table (Kulla and Conty 2017, Fdez-Agüera 2019). HDRP does this in its Lit shader; OpenPBR's specification asks renderers to conserve energy across all its lobes. If a rough metal looks dull and dark in an engine without it, the base colour is not the problem.</p>
+  </div>
+
+</section>
+<section class="chapter" id="aniso" data-title="Brushed metal" data-builds="metals#roughness spaces#tangent" data-summary="α_t = α(1 + a), α_b = α(1 − a); direction from the tangent (UVs or a tangent map).">
+  <div class="head"><div class="num"></div><h2>Brushed metal</h2></div>
+
+  <div class="prose">
+    <p>Brushing, turning on a lathe or rolling leaves tiny parallel grooves. Across the grooves the surface is rough, along them it is smooth, so highlights stretch across the grooves. <button type="button" class="term" data-term="aniso">Anisotropic</button> shading models this with two roughness values, one along the <a class="x" href="../spaces/index.html#tangent">tangent</a> and one along the bitangent, derived from a single roughness and an anisotropy value:</p>
+  </div>
+  <div class="fx" data-fx="aniso"></div>
+  <div class="prose">
+    <p>The direction comes from the tangent of the mesh, so the UV layout decides how the brushing runs: U along the grooves for straight brushing. For circular brushing (a pan, a watch face) a <em>tangent map</em> stores the direction per pixel. A normal map alone cannot do this; it tilts the surface but does not make it anisotropic.</p>
+    <p>OpenPBR has <code>specular_roughness_anisotropy</code> (0 to 1) and a tangent input; HDRP Lit has the <em>Anisotropy</em> material type, Unreal an <em>Anisotropy</em> input (−1 to 1) once enabled. The cheap fallback, used on mobile and by many older games, is a roughness map with fine streaks in the brushing direction: no stretched highlight, but the right texture.</p>
+  </div>
+
+</section>
+<section class="chapter" id="coat" data-title="Lacquer, paint and coatings" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Clear coat: own Fresnel reflection on top; the metal below is seen through (1 − F_coat)². Thin films give angle-dependent colour.">
+  <div class="head"><div class="num"></div><h2>Lacquer, paint and coatings</h2></div>
+
+  <div class="prose">
+    <p>Many metal objects are not bare: brass with lacquer, car paint with metal flakes under a clear coat, anodised aluminium. A clear coat is a thin dielectric layer on top. It adds its own sharp reflection, which follows <a class="x" href="../glass/index.html#fresnel">dielectric Fresnel</a> (4 % head-on, strong at the edges), and it takes that light away from the metal below, which is seen through the coat twice, in and out:</p>
+  </div>
+  <div class="fx" data-fx="coat"></div>
+  <div class="prose">
+    <p>This produces the typical look of a lacquered or wet surface: a sharp highlight over a blurry one. HDRP's Lit shader offers it as <em>Coat Mask</em>, Unreal as the <em>Clear Coat</em> shading model or a Substrate layer, OpenPBR as the <code>coat_*</code> parameters with their own roughness, IOR and colour.</p>
+    <p>Coloured transparent coatings (anodising, a tinted lacquer) are the coat colour in OpenPBR terms. Thin coatings of a few hundred nanometres, such as heat tint on titanium or exhaust pipes, are <em>thin-film interference</em>: the colour changes with angle. OpenPBR's <code>thin_film_*</code> parameters and HDRP's <em>Iridescence</em> material type handle it.</p>
+  </div>
+
+</section>
+<section class="chapter" id="oxide" data-title="Rust, patina and metalness in between" data-builds="pbr-basics#metallic metals#library" data-summary="Rust, patina, tarnish, dust: dielectrics. Metalness between 0 and 1 = share of bare metal, blended linearly.">
+  <div class="head"><div class="num"></div><h2>Rust, patina and metalness in between</h2></div>
+
+  <div class="prose">
+    <p>Rust (iron oxide) and the green patina on copper are not metals. They are dielectrics: diffuse, rough, with a 4 % reflection. Tarnish and dust are the same. So an old metal object is a mix of two materials, and the <a class="x" href="../pbr-basics/index.html#metallic">metallic</a> map says which is where.</p>
+    <p>OpenPBR defines what a value between 0 and 1 means: the share of the surface that is bare metal, with both materials blended linearly. That is what a texel containing a rust border holds, and what a mip level averages to. It also explains why a metalness of 0.5 everywhere looks wrong: no real surface is half metal in every spot.</p>
+  </div>
+  <div class="fx" data-fx="mix"></div>
+  <div class="prose"><p>Author rust in three places at once: metallic 0 where it covers, a dark reddish base colour there (roughly 40–90 sRGB), and high roughness. Edges and scratches through the rust are bare metal again. The same holds for paint over metal: the paint is what you see, metallic 0, until it chips.</p></div>
+
+</section>
+<section class="chapter" id="mistakes" data-title="Five common metal mistakes" data-builds="metals#library metals#oxide" data-summary="Bright base colours, 0 or 1 metalness with masks, no painted shading, no specular on metals, something to reflect.">
+  <div class="head"><div class="num"></div><h2>Five common metal mistakes</h2></div>
+
+  <div class="prose">
+    <ol>
+      <li><strong>Dark base colour on a metal.</strong> Clean metals are bright (<a class="x" href="#library">measured values</a>). Darkness comes from dirt, oxide or roughness.</li>
+      <li><strong>Metallic 0.5 as a look.</strong> Use 0 or 1 and a mask; values in between only at borders (<a class="x" href="#oxide">why</a>).</li>
+      <li><strong>Diffuse shading painted into a metal.</strong> A metal has no diffuse part; painted shadows end up as a dark reflection colour.</li>
+      <li><strong>Specular input on metals.</strong> Unreal's Specular, Unity's specular colour of non-metals: metals ignore them. The reflection colour is the base colour.</li>
+      <li><strong>No environment to reflect.</strong> A metal shows its surroundings. In a scene without reflection probes or a sky, every metal turns black or flat grey. That is the topic of <a class="x" href="../reflections/index.html#sources">reflections</a>.</li>
+    </ol>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A gold ring renders almost black in an empty test scene with one directional light. Why?", ["Wrong base colour", "Nothing to reflect: metals show their environment, and the scene has only one small light", "Metallic must be 0.5", "Gold needs subsurface scattering"], 1, "Add a sky or HDRI and a reflection probe. A metal lit by one light shows one highlight and black elsewhere."], ["Where does the green of an old copper roof go in the material?", ["Base colour with metallic 1", "Base colour with metallic 0: patina is a dielectric", "Edge tint", "Emission"], 1, "Patina is copper carbonate, a non-metal."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Base colour = measured F0, metallic 1; Anisotropy material type with tangents; Coat Mask for lacquer; an Unlit graph to compare Fresnel models.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Lit shader covers most metals directly: base colour as F0, metallic 1, an anisotropic material type for brushed metal and a coat mask for lacquer. It uses Schlick Fresnel with energy compensation for rough metals and has no edge-tint input. The route adds a metal library window and a look-dev graph that shows exact, Schlick and F82 Fresnel side by side. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>MetalLibrary.cs: a window that applies the measured metals to selected materials.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Lit material types: Standard with Coat Mask, Anisotropy with a tangent map.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>ConductorFresnel.hlsl in an Unlit graph: compare Fresnel models on a sphere.</span></div></div>
+<ol class="impl-steps"><li><div>Put <code>MetalLibrary.cs</code> in an <code>Editor</code> folder. Open <em>Window &gt; Atlas &gt; Metal Library</em>, select one or more HDRP/Lit materials in the Project window, set <em>Smoothness</em> and click a metal. It writes the measured F0 into <em>Base Color</em> and sets metallic to 1 (or the metallic remap range to 1 when a mask map is assigned).</div></li><li><div>Textured metal: keep the metal colour in the base map, painted bright (the darkest bare metal is titanium at about 160–180 sRGB). Variation belongs in smoothness and in the metallic channel where dirt or rust covers it.</div></li><li><div>Rust and paint on metal: in the mask map, metallic (R) is 0 where rust or paint covers the metal, 1 where it is bare; the base colour holds the rust colour there (dark, about 40–90 sRGB, reddish). Partial values only at the borders.</div></li><li><div>Brushed metal: set <em>Material Type</em> to <code>Anisotropy</code>. Set <em>Anisotropy</em> (−1 to 1; positive stretches highlights along the tangent) and optionally a <em>Tangent Map</em>. Without one, the mesh tangents are used, so lay out UVs with U along the brushing direction. For round brushing (a pan bottom), bake a tangent map that circles the centre.</div></li><li><div>Lacquered or painted metal: in <em>Surface Inputs</em>, set <em>Coat Mask</em> to 1. HDRP's coat is a fixed smooth layer (smoothness 0.9, IOR 1.5). Rough the metal underneath to get the look of a lacquered brushed surface.</div></li><li><div>Look-dev comparison: put <code>ConductorFresnel.hlsl</code> in <code>Assets/Shaders/</code>. Create <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Compute NdotV with a <em>Dot Product</em> of <em>Normal Vector</em> (World) and <em>View Direction</em> (World, normalised). Add Color properties <code>F0</code> and <code>EdgeTint</code> and a Float <code>Mode</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>ConductorFresnel.hlsl</code> and <em>Name</em> to <code>ConductorFresnel</code> (without the <code>_float</code> suffix). Add the inputs <b>F0 (Vector 3), EdgeTint (Vector 3), NdotV (Float), Mode (Float)</b> and the outputs <b>Fresnel (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Connect Fresnel to <em>Base Color</em>. Two spheres with Mode 0 and 1 show what the edge tint changes; it is most visible on titanium, chromium and nickel.</div></li></ol>
+<div class="files"><div class="file" data-name="MetalLibrary.cs" data-lang="cs"><pre>using UnityEditor;
+using UnityEngine;
+
+// Window &gt; Atlas &gt; Metal Library. Select HDRP/Lit materials, pick a metal: sets the base colour to the
+// measured F0, metallic to 1 and the smoothness you choose. Values: Adobe Standard Material metal table (sRGB).
+public class MetalLibrary : EditorWindow
+{
+    static readonly (string name, Color32 f0, Color32 edgeTint)[] Metals =
+    {
+        (&quot;Silver&quot;, new Color32(254, 253, 251, 255), new Color32(254, 255, 255, 255)),
+        (&quot;Aluminium&quot;, new Color32(245, 246, 246, 255), new Color32(245, 248, 250, 255)),
+        (&quot;Gold&quot;, new Color32(255, 219, 152, 255), new Color32(248, 251, 245, 255)),
+        (&quot;Chromium&quot;, new Color32(196, 197, 196, 255), new Color32(223, 225, 233, 255)),
+        (&quot;Copper&quot;, new Color32(255, 211, 192, 255), new Color32(252, 248, 247, 255)),
+        (&quot;Iron&quot;, new Color32(243, 241, 233, 255), new Color32(238, 241, 243, 255)),
+        (&quot;Mercury&quot;, new Color32(229, 228, 228, 255), new Color32(232, 238, 244, 255)),
+        (&quot;Magnesium&quot;, new Color32(242, 241, 243, 255), new Color32(243, 245, 249, 255)),
+        (&quot;Nickel&quot;, new Color32(218, 209, 197, 255), new Color32(233, 236, 240, 255)),
+        (&quot;Palladium&quot;, new Color32(223, 218, 212, 255), new Color32(232, 236, 240, 255)),
+        (&quot;Platinum&quot;, new Color32(250, 247, 234, 255), new Color32(249, 249, 248, 255)),
+        (&quot;Titanium&quot;, new Color32(178, 169, 162, 255), new Color32(239, 244, 249, 255)),
+        (&quot;Zinc&quot;, new Color32(241, 240, 238, 255), new Color32(241, 244, 247, 255))
+    };
+
+    float smoothness = 0.75f;
+    Vector2 scroll;
+
+    [MenuItem(&quot;Window/Atlas/Metal Library&quot;)]
+    static void Open() =&gt; GetWindow&lt;MetalLibrary&gt;(&quot;Metal Library&quot;);
+
+    void OnGUI()
+    {
+        EditorGUILayout.HelpBox(&quot;Select HDRP/Lit materials in the Project window, then click a metal. &quot; +
+            &quot;The edge tint is shown for reference: HDRP Lit has no input for it.&quot;, MessageType.Info);
+        smoothness = EditorGUILayout.Slider(&quot;Smoothness&quot;, smoothness, 0f, 1f);
+        scroll = EditorGUILayout.BeginScrollView(scroll);
+        foreach (var m in Metals)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.ColorField(GUIContent.none, m.f0, false, false, false, GUILayout.Width(44));
+                EditorGUILayout.ColorField(GUIContent.none, m.edgeTint, false, false, false, GUILayout.Width(22));
+                if (GUILayout.Button(m.name)) Apply(m.f0);
+            }
+        }
+        EditorGUILayout.EndScrollView();
+    }
+
+    void Apply(Color f0)
+    {
+        int count = 0;
+        foreach (var o in Selection.objects)
+        {
+            if (!(o is Material mat) || !mat.HasProperty(&quot;_BaseColor&quot;)) continue;
+            Undo.RecordObject(mat, &quot;Apply metal preset&quot;);
+            mat.SetColor(&quot;_BaseColor&quot;, f0);          // a Color is sRGB-space; Unity converts it for the shader
+            if (mat.HasProperty(&quot;_MaskMap&quot;) &amp;&amp; mat.GetTexture(&quot;_MaskMap&quot;) != null)
+            {
+                // with a mask map, metallic and smoothness come from the texture through the remap ranges
+                mat.SetFloat(&quot;_MetallicRemapMin&quot;, 1f); mat.SetFloat(&quot;_MetallicRemapMax&quot;, 1f);
+                mat.SetFloat(&quot;_SmoothnessRemapMin&quot;, smoothness); mat.SetFloat(&quot;_SmoothnessRemapMax&quot;, smoothness);
+            }
+            else
+            {
+                mat.SetFloat(&quot;_Metallic&quot;, 1f);
+                mat.SetFloat(&quot;_Smoothness&quot;, smoothness);
+            }
+            EditorUtility.SetDirty(mat);
+            count++;
+        }
+        Debug.Log($&quot;Metal preset applied to {count} material(s).&quot;);
+    }
+}</pre></div><div class="file" data-name="ConductorFresnel.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_CONDUCTOR_FRESNEL_INCLUDED
+#define ATLAS_CONDUCTOR_FRESNEL_INCLUDED
+
+float3 Atlas_Schlick(float3 f0, float mu)
+{
+    return f0 + (1.0 - f0) * pow(1.0 - mu, 5.0);
+}
+
+// OpenPBR F82-tint: Schlick, pulled down near 82 degrees so that F(mu = 1/7) = tint * Schlick(1/7)
+float3 Atlas_F82(float3 f0, float3 tint, float mu)
+{
+    const float muBar = 1.0 / 7.0;
+    const float denom = muBar * pow(1.0 - muBar, 6.0);
+    float3 schlickBar = Atlas_Schlick(f0, muBar);
+    return saturate(Atlas_Schlick(f0, mu) - mu * pow(1.0 - mu, 6.0) * (1.0 - tint) * schlickBar / denom);
+}
+
+// Exact unpolarised Fresnel of a conductor with complex IOR n + ik, per channel
+float3 Atlas_Conductor(float3 n, float3 k, float mu)
+{
+    float c2 = mu * mu, s2 = 1.0 - c2;
+    float3 t0   = n * n - k * k - s2;
+    float3 a2b2 = sqrt(t0 * t0 + 4.0 * n * n * k * k);
+    float3 a    = sqrt(max(0.5 * (a2b2 + t0), 0.0));
+    float3 rs = (a2b2 - 2.0 * a * mu + c2) / (a2b2 + 2.0 * a * mu + c2);
+    float3 rp = rs * (a2b2 * c2 - 2.0 * a * mu * s2 + s2 * s2) / (a2b2 * c2 + 2.0 * a * mu * s2 + s2 * s2);
+    return 0.5 * (rs + rp);
+}
+
+// Mode 0: Schlick (what Lit uses), 1: F82 edge tint (OpenPBR)
+void ConductorFresnel_float(float3 F0, float3 EdgeTint, float NdotV, float Mode, out float3 Fresnel)
+{
+    float mu = saturate(NdotV);
+    Fresnel = Mode &lt; 0.5 ? Atlas_Schlick(F0, mu) : Atlas_F82(F0, EdgeTint, mu);
+}
+
+void ConductorFresnelNK_float(float3 N, float3 K, float NdotV, out float3 Fresnel)
+{
+    Fresnel = Atlas_Conductor(N, K, max(saturate(NdotV), 1e-4));
+}
+#endif</pre></div></div>
+<p class="note">HDRP Lit already multiplies specular light by 1 + F0 · (1/E − 1), the energy compensation from the roughness chapter, so rough metals do not need brightening by hand. StackLit offers a second specular lobe and iridescence for hero metals (oil films, heat tint).</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP Lit: same base colour and metallic convention, no anisotropy or coat in the stock shader. Brushed metal needs a custom lit Shader Graph or a stretched-highlight trick in the roughness map.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="One parent, Python-generated instances per metal, anisotropy and clear coat settings, Substrate F0/F90 for the edge tint.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal's legacy material model treats a metal the same way: Base Color is F0 when Metallic is 1, and Specular is ignored. Substrate adds an explicit F90, the place for the edge tint. The route builds one parent material, generates an instance per measured metal with Python, and adds brushing, coat and rust. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>M_Metal: parent material with BaseColor, EdgeTint, Roughness, Anisotropy.</span></div><div class="rt" data-k="py"><b>Python script</b><span>create_metal_instances.py: one material instance per measured metal.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Anisotropic BRDF and Clear Coat settings.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>F82EdgeTint.ush: the edge-tint curve in a look-dev material.</span></div></div>
+<ol class="impl-steps"><li><div>Create <code>/Game/Materials/M_Metal</code>. Add a Vector Parameter <code>BaseColor</code> into <em>Base Color</em>, a constant 1 into <em>Metallic</em>, a Scalar Parameter <code>Roughness</code> into <em>Roughness</em>. Add a Vector Parameter <code>EdgeTint</code> (default white); the legacy model ignores it, Substrate uses it below.</div></li><li><div>Enable <em>Python Editor Script Plugin</em> (Edit &gt; Plugins), restart, then run <code>create_metal_instances.py</code> with <em>File &gt; Execute Python Script</em>. It creates <code>MI_Metal_Gold</code>, <code>MI_Metal_Copper</code> and the rest in <code>/Game/Materials/Metals</code>, with linear colours from the measured table.</div></li><li><div>Brushed metal: in <em>Project Settings &gt; Rendering</em>, enable the anisotropic BRDF (<em>Anisotropic Materials</em>; older versions call it <em>Use anisotropic BRDF</em>) and restart. The main material node gains <em>Anisotropy</em> (−1 to 1) and <em>Tangent</em>. Drive Tangent with a tangent map, or leave it for the mesh tangents (U along the brushing).</div></li><li><div>Lacquer: duplicate the parent as <code>M_MetalCoated</code> and set <em>Shading Model</em> to <code>Clear Coat</code>. <em>Clear Coat</em> 1 and <em>Clear Coat Roughness</em> about 0.05 give a varnish; Base Color and Roughness describe the metal below. Anisotropy also works with Clear Coat.</div></li><li><div>Rust: blend two sets of inputs with a mask: <em>Lerp</em> Base Color between the metal and a dark rust colour, Metallic between 1 and 0, Roughness between the metal's and about 0.8. Keep the mask mostly 0 or 1.</div></li><li><div>With Substrate: use a <em>Substrate Slab BSDF</em> with <em>Diffuse Albedo</em> black, <em>F0</em> = BaseColor, <em>F90</em> = EdgeTint, plus Roughness and Anisotropy. Substrate blends F0 to F90 with its own curve, close to but not the same as OpenPBR's F82. For a coat, stack a thin, smooth Slab on top with <em>Substrate Vertical Layer</em>; for rust, mix a rust Slab with <em>Substrate Horizontal Mixing</em> and the mask.</div></li><li><div>To see the edge tint on its own, make an Unlit look-dev material: a Custom node with <code>F82EdgeTint.ush</code>, inputs F0, Tint and NdotV (<em>Dot</em> of <em>PixelNormalWS</em> and <em>CameraVector</em>, saturated), into <em>Emissive Color</em>.</div></li></ol>
+<div class="files"><div class="file" data-name="create_metal_instances.py" data-lang="py"><pre>&quot;&quot;&quot;Create a material instance per measured metal from a parent material.
+
+Run in the Unreal Editor: enable the Python Editor Script Plugin, then File &gt; Execute Python Script.
+The parent needs Vector Parameters named BaseColor and EdgeTint and a Scalar Parameter named Roughness.
+Values: Adobe Standard Material metal table (sRGB 0-255), converted to linear here.
+&quot;&quot;&quot;
+import unreal
+
+PARENT = &#x27;/Game/Materials/M_Metal&#x27;
+FOLDER = &#x27;/Game/Materials/Metals&#x27;
+ROUGHNESS = 0.25
+
+METALS = {
+    &#x27;Silver&#x27;: ((254, 253, 251), (254, 255, 255)),
+    &#x27;Aluminium&#x27;: ((245, 246, 246), (245, 248, 250)),
+    &#x27;Gold&#x27;: ((255, 219, 152), (248, 251, 245)),
+    &#x27;Chromium&#x27;: ((196, 197, 196), (223, 225, 233)),
+    &#x27;Copper&#x27;: ((255, 211, 192), (252, 248, 247)),
+    &#x27;Iron&#x27;: ((243, 241, 233), (238, 241, 243)),
+    &#x27;Mercury&#x27;: ((229, 228, 228), (232, 238, 244)),
+    &#x27;Magnesium&#x27;: ((242, 241, 243), (243, 245, 249)),
+    &#x27;Nickel&#x27;: ((218, 209, 197), (233, 236, 240)),
+    &#x27;Palladium&#x27;: ((223, 218, 212), (232, 236, 240)),
+    &#x27;Platinum&#x27;: ((250, 247, 234), (249, 249, 248)),
+    &#x27;Titanium&#x27;: ((178, 169, 162), (239, 244, 249)),
+    &#x27;Zinc&#x27;: ((241, 240, 238), (241, 244, 247))
+}
+
+
+def srgb_to_linear(v):
+    c = v / 255.0
+    return c / 12.92 if c &lt;= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def linear_color(rgb):
+    return unreal.LinearColor(*[srgb_to_linear(c) for c in rgb], 1.0)
+
+
+assets = unreal.EditorAssetLibrary
+mel = unreal.MaterialEditingLibrary
+tools = unreal.AssetToolsHelpers.get_asset_tools()
+
+parent = assets.load_asset(PARENT)
+if parent is None:
+    raise RuntimeError(&#x27;Create the parent material first: &#x27; + PARENT)
+
+for name, (f0, tint) in METALS.items():
+    asset_name = &#x27;MI_Metal_&#x27; + name
+    path = FOLDER + &#x27;/&#x27; + asset_name
+    if assets.does_asset_exist(path):
+        mi = assets.load_asset(path)
+    else:
+        mi = tools.create_asset(asset_name, FOLDER, unreal.MaterialInstanceConstant,
+                                unreal.MaterialInstanceConstantFactoryNew())
+    mel.set_material_instance_parent(mi, parent)
+    mel.set_material_instance_vector_parameter_value(mi, &#x27;BaseColor&#x27;, linear_color(f0))
+    mel.set_material_instance_vector_parameter_value(mi, &#x27;EdgeTint&#x27;, linear_color(tint))
+    mel.set_material_instance_scalar_parameter_value(mi, &#x27;Roughness&#x27;, ROUGHNESS)
+    mel.update_material_instance(mi)
+    assets.save_loaded_asset(mi)
+    unreal.log(&#x27;metal instance ready: &#x27; + path)</pre></div><div class="file" data-name="F82EdgeTint.ush" data-lang="hlsl"><pre>// Custom node &quot;F82EdgeTint&quot; for a look-dev material (Unlit or Emissive). Inputs: F0 (float3), Tint (float3), NdotV (float).
+// Output Type: CMOT Float 3. NdotV: dot(PixelNormalWS, CameraVector), saturated.
+const float muBar = 1.0 / 7.0;
+const float denom = muBar * pow(1.0 - muBar, 6.0);
+float mu = saturate(NdotV);
+float3 schlick    = F0 + (1.0 - F0) * pow(1.0 - mu, 5.0);
+float3 schlickBar = F0 + (1.0 - F0) * pow(1.0 - muBar, 5.0);
+return saturate(schlick - mu * pow(1.0 - mu, 6.0) * (1.0 - Tint) * schlickBar / denom);</pre></div></div>
+<p class="note">Substrate compensates the energy that single-scattering specular loses on rough surfaces. With legacy materials, compare rough metals against a reference: if they look a little dark, that is the loss from the roughness chapter, not a wrong base colour.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Spec</span><a href="https://academysoftwarefoundation.github.io/OpenPBR/" rel="noopener">OpenPBR Surface: metal and F82-tint model</a></span><span class="by">Academy Software Foundation</span><span class="why">base_metalness as an area fraction, the F82 formula and specular_color as edge tint.</span></li><li><span><span class="kind">Paper</span><a href="https://jcgt.org/published/0003/04/03/" rel="noopener">Artist Friendly Metallic Fresnel</a></span><span class="by">Ole Gulbrandsen · JCGT 2014</span><span class="why">Reflectivity and edge tint instead of n and k.</span></li><li><span><span class="kind">Talk</span><a href="https://diglib.eg.org/handle/10.2312/mam20191305" rel="noopener">Fresnel equations considered harmful</a></span><span class="by">Naty Hoffman · Material Appearance Modeling 2019</span><span class="why">The case for Schlick with a tint correction near 82°.</span></li><li><span><span class="kind">Spec</span><a href="https://experienceleague.adobe.com/en/docs/substance-3d/general-knowledge/asm/metal-material-references" rel="noopener">Adobe Standard Material: metal material references</a></span><span class="by">Adobe</span><span class="why">Measured F0 and edge-tint colours of metals.</span></li><li><span><span class="kind">Talk</span><a href="https://blog.selfshadow.com/publications/s2017-shading-course/" rel="noopener">Revisiting physically based shading at Imageworks</a></span><span class="by">Christopher Kulla, Alejandro Conty · SIGGRAPH 2017</span><span class="why">Energy compensation for multiple scattering on rough microfacets.</span></li><li><span><span class="kind">Paper</span><a href="https://jcgt.org/published/0008/01/03/" rel="noopener">A multiple-scattering microfacet model for real-time image-based lighting</a></span><span class="by">Carmelo J. Fdez-Agüera · JCGT 2019</span><span class="why">The real-time version of the compensation.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/lit-material-inspector-reference.html" rel="noopener">HDRP Lit: anisotropy and coat mask</a></span><span class="by">Unity</span><span class="why">Material types, Coat Mask and the mask map.</span></li><li><span><span class="kind">Article</span><a href="https://www.unrealengine.com/en-US/tech-blog/improved-shading-models-in-unreal-engine-4-25-and-beyond" rel="noopener">Improved shading models in Unreal Engine 4.25 and beyond</a></span><span class="by">Epic Games</span><span class="why">Anisotropy and Clear Coat inputs.</span></li><li><span><span class="kind">Data</span><a href="https://refractiveindex.info/" rel="noopener">Refractive index database</a></span><span class="by">M. Polyanskiy</span><span class="why">Measured n and k of metals across wavelengths, to try in the Fresnel widgets.</span></li></ul>
+</section>
+
+<div class="next" data-next="reflections glass pbr-brdf"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"ior": [
+"Complex IOR (n + ik)",
+"Index of refraction of a conductor: n bends light, k (extinction) absorbs it.",
+"#electrons"
+],
+"extinction": [
+"Extinction coefficient k",
+"Imaginary part of the IOR; sets how quickly light dies inside the material.",
+"#electrons"
+],
+"schlick": [
+"Schlick's approximation",
+"F = F0 + (1 − F0)(1 − cos θ)⁵: cheap Fresnel from F0 alone.",
+"#fresnel"
+],
+"edgetint": [
+"Edge tint / F82 tint",
+"A second metal colour that shapes Fresnel near grazing angles; OpenPBR's specular_color on metals.",
+"#edge"
+],
+"aniso": [
+"Anisotropy",
+"Different roughness along and across a direction, for brushed or turned surfaces.",
+"#aniso"
+],
+"coat": [
+"Clear coat",
+"A thin smooth dielectric layer on top of a material, with its own reflection.",
+"#coat"
+],
+"patina": [
+"Rust, patina, tarnish",
+"Oxide and corrosion layers: dielectrics, authored with metallic 0.",
+"#oxide"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+<script src="../../assets/catalog.js?v=61a152e5"></script>
+<script src="../../assets/index.js?v=e04e6fb6"></script>
+<script src="../../assets/atlas.js?v=76ca92fc"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="../../assets/surf.js?v=ea5431d2"></script>
+<script src="metals.js?v=df92b97d"></script>
+</body>
+</html>
