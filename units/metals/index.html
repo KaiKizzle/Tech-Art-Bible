@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="metals" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,14 +42,14 @@
   <div class="eyebrow">Surfaces · 10 chapters</div>
   <h1>Metals</h1>
   <p class="lede">Why metals have coloured reflections and no diffuse light, how their Fresnel differs from glass, what the edge tint is, measured base colours, rough and brushed metal, coatings, rust and patina, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on PBR Materials: the Basics and Diffuse, Albedo, Base Colour. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on PBR Material Inputs and PBR Terminology. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/metals.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Gold, copper, brushed aluminium and rusted iron under the same light.</figcaption></figure>
 </div>
 <div class="needs" data-needs="pbr-basics#metallic"></div>
 
-<section class="chapter" id="electrons" data-title="Why metals look different" data-builds="pbr-basics#metallic pbr-terms#basecolor" data-summary="Free electrons reflect most light; the rest dies within nanometres (δ = λ/4πk). Metals: no diffuse, coloured reflection.">
-  <div class="head"><div class="num"></div><h2>Why metals look different</h2></div>
+<section class="chapter" id="electrons" data-title="Metal reflectance" data-builds="pbr-basics#metallic pbr-terms#basecolor" data-summary="Free electrons reflect most light; the rest dies within nanometres (δ = λ/4πk). Metals: no diffuse, coloured reflection.">
+  <div class="head"><div class="num"></div><h2>Metal reflectance</h2></div>
 
   <div class="prose">
     <p>In a metal, some electrons are not bound to single atoms. When light arrives, these free electrons move with its electric field and send almost all of it straight back. The little that enters is absorbed within a few nanometres. So a metal has a strong reflection and nothing that comes out from below the surface: <strong>no diffuse light</strong>. Everything you see on bare metal is reflection.</p>
@@ -73,8 +73,8 @@
   <div class="prose"><p>Head-on both agree, by construction. Near 70–85° Schlick is too bright for metals with a pronounced dip, and its edge colour always goes to white, while some real metals keep a tint. The difference is small on a sphere and large on objects seen at grazing angles: a long brushed panel, a car body, cutlery on a table.</p></div>
 
 </section>
-<section class="chapter" id="edge" data-title="Edge tint and the 82° fix" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Edge tint = F_exact(82°) / Schlick(82°). OpenPBR F82: Schlick minus a correction peaking near 82°.">
-  <div class="head"><div class="num"></div><h2>Edge tint and the 82° fix</h2></div>
+<section class="chapter" id="edge" data-title="Edge tint and F82" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Edge tint = F_exact(82°) / Schlick(82°). OpenPBR F82: Schlick minus a correction peaking near 82°.">
+  <div class="head"><div class="num"></div><h2>Edge tint and F82</h2></div>
 
   <div class="prose">
     <p>Artists do not want to type complex IORs per colour channel. Ole Gulbrandsen (2014) showed a metal can be described by two colours instead: the reflectivity head-on (F0) and an <button type="button" class="term" data-term="edgetint">edge tint</button> that shapes the curve near the edge. Naty Hoffman (2019) then proposed a cheaper variant, and that is what <a class="x" href="../pbr-terms/index.html#openpbr">OpenPBR</a> uses: keep Schlick, but pull it down near 82° so that it passes through the measured value there.</p>
@@ -86,8 +86,8 @@
   </div>
 
 </section>
-<section class="chapter" id="library" data-title="Measured metals" data-builds="metals#edge pbr-basics#metallic" data-summary="Measured F0 and edge tint per metal (Adobe table). Metals are bright: titanium, the darkest, is still above 160 sRGB.">
-  <div class="head"><div class="num"></div><h2>Measured metals</h2></div>
+<section class="chapter" id="library" data-title="Measured metal values" data-builds="metals#edge pbr-basics#metallic" data-summary="Measured F0 and edge tint per metal (Adobe table). Metals are bright: titanium, the darkest, is still above 160 sRGB.">
+  <div class="head"><div class="num"></div><h2>Measured metal values</h2></div>
 
   <div class="prose">
     <p>The fitted pairs of F0 and edge tint for common metals are published as part of Adobe Standard Material. They are the best starting point for a metal base colour: use the F0 as the base colour (it is sRGB, so it goes straight into a colour picker) and the tint wherever an edge-tint input exists.</p>
@@ -104,8 +104,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A steel prop looks too dark and plasticky. The base colour is 90, 90, 92 sRGB with metallic 1. What is the fix?", ["Raise roughness", "Brighten the base colour to measured iron or steel values (about 190–240 sRGB) and put the dirt in a mask", "Set metallic to 0.5", "Add specular 1"], 1, "A metal F0 below about 50 % does not exist in clean metals; darkness comes from coverings that are not metal."]]</script></details>
 
 </section>
-<section class="chapter" id="roughness" data-title="Rough metals and lost energy" data-builds="pbr-brdf#geometry pbr-brdf#ndf" data-summary="Single-scattering GGX loses up to ~40 % on rough surfaces; multiply specular by 1 + F0·(1 − E)/E.">
-  <div class="head"><div class="num"></div><h2>Rough metals and lost energy</h2></div>
+<section class="chapter" id="roughness" data-title="Multiple scattering on rough metals" data-builds="pbr-brdf#geometry pbr-brdf#ndf" data-summary="Single-scattering GGX loses up to ~40 % on rough surfaces; multiply specular by 1 + F0·(1 − E)/E.">
+  <div class="head"><div class="num"></div><h2>Multiple scattering on rough metals</h2></div>
 
   <div class="prose">
     <p>Roughness spreads the reflection (<a class="x" href="../pbr-basics/index.html#roughness">roughness</a>). In theory the total stays the same. In the standard microfacet model it does not quite: light that bounces off one microfacet into another is simply dropped, because the model counts only single bounces. On smooth surfaces that is negligible, on rough metals it is not:</p>
@@ -116,11 +116,11 @@
   </div>
 
 </section>
-<section class="chapter" id="aniso" data-title="Brushed metal" data-builds="metals#roughness spaces#tangent" data-summary="α_t = α(1 + a), α_b = α(1 − a); direction from the tangent (UVs or a tangent map).">
-  <div class="head"><div class="num"></div><h2>Brushed metal</h2></div>
+<section class="chapter" id="aniso" data-title="Anisotropy (brushed metal)" data-builds="metals#roughness spaces#tangent" data-summary="α_t = α(1 + a), α_b = α(1 − a); anisotropic GGX D uses T·H and B·H; direction from the tangent (UVs or a tangent map).">
+  <div class="head"><div class="num"></div><h2>Anisotropy (brushed metal)</h2></div>
 
   <div class="prose">
-    <p>Brushing, turning on a lathe or rolling leaves tiny parallel grooves. Across the grooves the surface is rough, along them it is smooth, so highlights stretch across the grooves. <button type="button" class="term" data-term="aniso">Anisotropic</button> shading models this with two roughness values, one along the <a class="x" href="../spaces/index.html#tangent">tangent</a> and one along the bitangent, derived from a single roughness and an anisotropy value:</p>
+    <p>Brushing, turning on a lathe or rolling leaves tiny parallel grooves. Across the grooves the surface is rough, along them it is smooth, so highlights stretch across the grooves. <button type="button" class="term" data-term="aniso">Anisotropic</button> shading models this with two roughness values, one along the <a class="x" href="../spaces/index.html#tangent">tangent</a> and one along the bitangent, derived from a single roughness and an anisotropy value. Anisotropic GGX then measures the half vector against both: D = 1 / (π α<sub>t</sub> α<sub>b</sub> ((T·H / α<sub>t</sub>)² + (B·H / α<sub>b</sub>)² + (N·H)²)²). The same term drives satin and silk (<a class="x" href="../cloth/index.html#silk">cloth</a>):</p>
   </div>
   <div class="fx" data-fx="aniso"></div>
   <div class="prose">
@@ -129,8 +129,8 @@
   </div>
 
 </section>
-<section class="chapter" id="coat" data-title="Lacquer, paint and coatings" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Clear coat: own Fresnel reflection on top; the metal below is seen through (1 − F_coat)². Thin films give angle-dependent colour.">
-  <div class="head"><div class="num"></div><h2>Lacquer, paint and coatings</h2></div>
+<section class="chapter" id="coat" data-title="Clear coat and thin films" data-builds="metals#fresnel pbr-terms#openpbr" data-summary="Clear coat: own Fresnel reflection on top; the metal below is seen through (1 − F_coat)². Thin films give angle-dependent colour.">
+  <div class="head"><div class="num"></div><h2>Clear coat and thin films</h2></div>
 
   <div class="prose">
     <p>Many metal objects are not bare: brass with lacquer, car paint with metal flakes under a clear coat, anodised aluminium. A clear coat is a thin dielectric layer on top. It adds its own sharp reflection, which follows <a class="x" href="../glass/index.html#fresnel">dielectric Fresnel</a> (4 % head-on, strong at the edges), and it takes that light away from the metal below, which is seen through the coat twice, in and out:</p>
@@ -142,8 +142,8 @@
   </div>
 
 </section>
-<section class="chapter" id="oxide" data-title="Rust, patina and metalness in between" data-builds="pbr-basics#metallic metals#library" data-summary="Rust, patina, tarnish, dust: dielectrics. Metalness between 0 and 1 = share of bare metal, blended linearly.">
-  <div class="head"><div class="num"></div><h2>Rust, patina and metalness in between</h2></div>
+<section class="chapter" id="oxide" data-title="Rust, patina and partial metalness" data-builds="pbr-basics#metallic metals#library" data-summary="Rust, patina, tarnish, dust: dielectrics. Metalness between 0 and 1 = share of bare metal, blended linearly.">
+  <div class="head"><div class="num"></div><h2>Rust, patina and partial metalness</h2></div>
 
   <div class="prose">
     <p>Rust (iron oxide) and the green patina on copper are not metals. They are dielectrics: diffuse, rough, with a 4 % reflection. Tarnish and dust are the same. So an old metal object is a mix of two materials, and the <a class="x" href="../pbr-basics/index.html#metallic">metallic</a> map says which is where.</p>
@@ -153,8 +153,8 @@
   <div class="prose"><p>Author rust in three places at once: metallic 0 where it covers, a dark reddish base colour there (roughly 40–90 sRGB), and high roughness. Edges and scratches through the rust are bare metal again. The same holds for paint over metal: the paint is what you see, metallic 0, until it chips.</p></div>
 
 </section>
-<section class="chapter" id="mistakes" data-title="Five common metal mistakes" data-builds="metals#library metals#oxide" data-summary="Bright base colours, 0 or 1 metalness with masks, no painted shading, no specular on metals, something to reflect.">
-  <div class="head"><div class="num"></div><h2>Five common metal mistakes</h2></div>
+<section class="chapter" id="mistakes" data-title="Common metal mistakes" data-builds="metals#library metals#oxide" data-summary="Bright base colours, 0 or 1 metalness with masks, no painted shading, no specular on metals, something to reflect.">
+  <div class="head"><div class="num"></div><h2>Common metal mistakes</h2></div>
 
   <div class="prose">
     <ol>
@@ -417,11 +417,11 @@ return saturate(schlick - mu * pow(1.0 - mu, 6.0) * (1.0 - Tint) * schlickBar / 
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="metals.js?v=df92b97d"></script>
+<script src="metals.js?v=ef9ddbf5"></script>
 </body>
 </html>

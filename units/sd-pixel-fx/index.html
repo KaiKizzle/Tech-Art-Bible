@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="sd-pixel-fx" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,14 +42,14 @@
   <div class="eyebrow">Substance Designer · 8 chapters</div>
   <h1>Pixel Processor and FX-Maps</h1>
   <p class="lede">The two programmable nodes of Substance Designer: function graphs, the Pixel Processor as a pixel shader, sampling neighbours, and FX-Maps that draw patterns through quadtrees and Iterate nodes, with random values per pattern.</p>
-  <p class="meta">Builds on How a GPU Draws a Frame and Blend Modes. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">Builds on GPU Rendering Basics and Blend Modes. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/sd-pixel-fx.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Stones scattered by a seeded loop and merged with Max.</figcaption></figure>
 </div>
 <div class="needs" data-needs="gpu-basics#per-pixel sd-blend#minmax"></div>
 
-<section class="chapter" id="functions" data-title="Function graphs: small programs for values" data-builds="shader-anatomy#functions shader-anatomy#types" data-summary="Function graphs compute values, not images: parameter functions, Value Processor, Pixel Processor, FX-Map.">
-  <div class="head"><div class="num"></div><h2>Function graphs: small programs for values</h2></div>
+<section class="chapter" id="functions" data-title="Function graphs" data-builds="shader-anatomy#functions shader-anatomy#types" data-summary="Function graphs compute values, not images: parameter functions, Value Processor, Pixel Processor, FX-Map.">
+  <div class="head"><div class="num"></div><h2>Function graphs</h2></div>
 
   <div class="prose">
     <p>Image nodes are not the only graphs in Designer. Almost any parameter can be driven by a <button type="button" class="term" data-term="fn">function graph</button>: a small graph whose nodes are maths on single values (floats, vectors, integers, booleans) instead of images. It ends in one output value and is evaluated whenever that value is needed.</p>
@@ -65,8 +65,8 @@
   </div>
 
 </section>
-<section class="chapter" id="pixel" data-title="The Pixel Processor: a pixel shader" data-builds="gpu-basics#per-pixel sd-pixel-fx#functions" data-summary="One function per output pixel, $pos in 0–1, no pixel sees another: a pixel shader.">
-  <div class="head"><div class="num"></div><h2>The Pixel Processor: a pixel shader</h2></div>
+<section class="chapter" id="pixel" data-title="Pixel Processor" data-builds="gpu-basics#per-pixel sd-pixel-fx#functions" data-summary="One function per output pixel, $pos in 0–1, no pixel sees another: a pixel shader.">
+  <div class="head"><div class="num"></div><h2>Pixel Processor</h2></div>
 
   <div class="prose">
     <p>A <em>Pixel Processor</em> runs its function once for every pixel of its output, with <code>$pos</code> set to that pixel's position from 0 to 1. Whatever the function returns becomes the pixel. It is the same model as a <a class="x" href="../gpu-basics/index.html#per-pixel">pixel shader</a>: one small program, run for every pixel in parallel, and no pixel can see what the others computed.</p>
@@ -77,8 +77,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A Pixel Processor at 1024 × 1024 contains a function with 20 nodes. Roughly how often is the function evaluated per render?", ["Once", "20 times", "1 048 576 times, once per pixel", "Once per input image"], 2, "Once per output pixel. That is why it runs on the GPU, and why every extra sample inside it is multiplied by the pixel count."]]</script></details>
 
 </section>
-<section class="chapter" id="sampling" data-title="Reading inputs and neighbours" data-builds="textures-sampling#filter sd-pixel-fx#pixel" data-summary="Sample input n at $pos + k / $size for neighbours; wrap with frac; no reading its own output.">
-  <div class="head"><div class="num"></div><h2>Reading inputs and neighbours</h2></div>
+<section class="chapter" id="sampling" data-title="Sampling inputs and neighbours" data-builds="textures-sampling#filter sd-pixel-fx#pixel" data-summary="Sample input n at $pos + k / $size for neighbours; wrap with frac; no reading its own output.">
+  <div class="head"><div class="num"></div><h2>Sampling inputs and neighbours</h2></div>
 
   <div class="prose">
     <p>A Pixel Processor can take input images. Inside the function, <em>Sample Grayscale</em> and <em>Sample Color</em> nodes read input number <em>n</em> at a position you compute, with nearest or bilinear filtering. Read at <code>$pos</code> and you get the input pixel under the current one; read at <code>$pos</code> plus an offset and you get a neighbour.</p>
@@ -90,8 +90,8 @@
   </div>
 
 </section>
-<section class="chapter" id="fxmap" data-title="FX-Maps: drawing patterns" data-builds="sd-pixel-fx#functions" data-summary="Quadrant splits cells (4^d patterns at level d), Iterate repeats a branch, Switch chooses one.">
-  <div class="head"><div class="num"></div><h2>FX-Maps: drawing patterns</h2></div>
+<section class="chapter" id="fxmap" data-title="FX-Maps" data-builds="sd-pixel-fx#functions" data-summary="Quadrant splits cells (4^d patterns at level d), Iterate repeats a branch, Switch chooses one.">
+  <div class="head"><div class="num"></div><h2>FX-Maps</h2></div>
 
   <div class="prose">
     <p>An <em>FX-Map</em> works the other way round. Instead of computing every pixel, it <em>draws</em> patterns into the image: squares, discs, gaussian spots, or an input image, each placed, scaled, rotated and coloured. Inside, it is a small graph of three node types:</p>
@@ -106,8 +106,8 @@
   <div class="prose"><p>This is how the classic Substance noises and tile patterns are built: one pattern per cell at some level, with a little randomness in position and size. Six levels already mean 4096 patterns in the deepest level, and every one is drawn separately.</p></div>
 
 </section>
-<section class="chapter" id="dynamic" data-title="Random values and blending per pattern" data-builds="sd-pixel-fx#fxmap sd-blend#minmax" data-summary="Per-pattern functions with $number, $depth, $pos and seeded Random; Max for heights, Add piles up and clips.">
-  <div class="head"><div class="num"></div><h2>Random values and blending per pattern</h2></div>
+<section class="chapter" id="dynamic" data-title="Per-pattern values and blending" data-builds="sd-pixel-fx#fxmap sd-blend#minmax" data-summary="Per-pattern functions with $number, $depth, $pos and seeded Random; Max for heights, Add piles up and clips.">
+  <div class="head"><div class="num"></div><h2>Per-pattern values and blending</h2></div>
 
   <div class="prose">
     <p>An FX-Map that drew identical patterns would be a stamp. Its parameters (offset, size, rotation, colour) accept functions that are evaluated for every pattern drawn, with <code>$number</code> (which copy this is, from 0), <code>$depth</code> (the Quadrant level) and <code>$pos</code> (the pattern's birth position) available. A <em>Random</em> node returns a value between 0 and a maximum that is different for every pattern but the same every time the graph renders, because it is driven by a <em>random seed</em>. Change the seed and you get a new layout; keep it and the result is stable.</p>
@@ -118,8 +118,8 @@
   <details class="check"><summary></summary><script type="application/json">[["You render the same FX-Map twice without changing anything. The scattered stones are…", ["in new random positions each time", "in the same positions, because the random values come from the seed", "sorted by size", "missing"], 1, "Random nodes are deterministic for a given seed. Only a new seed changes the layout."]]</script></details>
 
 </section>
-<section class="chapter" id="tools" data-title="Ready-made scattering tools" data-summary="Tile Sampler, Tile Generator and Shape Splatter cover most scattering; open them to learn.">
-  <div class="head"><div class="num"></div><h2>Ready-made scattering tools</h2></div>
+<section class="chapter" id="tools" data-title="Scattering nodes" data-summary="Tile Sampler, Tile Generator and Shape Splatter cover most scattering; open them to learn.">
+  <div class="head"><div class="num"></div><h2>Scattering nodes</h2></div>
 
   <div class="prose">
     <p>Writing FX-Maps by hand is rarely necessary. The library has scattering nodes with dozens of exposed controls, and they are the first thing to reach for:</p>
@@ -132,8 +132,8 @@
   </div>
 
 </section>
-<section class="chapter" id="which" data-title="Pixel Processor or FX-Map?" data-builds="sd-pixel-fx#pixel sd-pixel-fx#fxmap compute-shaders#when" data-summary="Pixel Processor: size² · reads. FX-Map: patterns · pattern area. Gather for per-position maths, scatter for many objects.">
-  <div class="head"><div class="num"></div><h2>Pixel Processor or FX-Map?</h2></div>
+<section class="chapter" id="which" data-title="Pixel Processor versus FX-Map" data-builds="sd-pixel-fx#pixel sd-pixel-fx#fxmap compute-shaders#when" data-summary="Pixel Processor: size² · reads. FX-Map: patterns · pattern area. Gather for per-position maths, scatter for many objects.">
+  <div class="head"><div class="num"></div><h2>Pixel Processor versus FX-Map</h2></div>
 
   <div class="prose">
     <p>The two nodes split the same job differently. A Pixel Processor <em>gathers</em>: every pixel asks "what am I?", so its cost is fixed by the number of pixels times the reads per pixel. An FX-Map <em>scatters</em>: every pattern paints the pixels it covers, so its cost depends on how many patterns there are and how large they are:</p>
@@ -310,10 +310,10 @@ public static class ProceduralBaker
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdpixfx.js?v=a05f2702"></script>
+<script src="sdpixfx.js?v=c6cf38eb"></script>
 </body>
 </html>

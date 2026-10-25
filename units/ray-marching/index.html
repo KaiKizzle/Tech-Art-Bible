@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="ray-marching" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="rays-math#ray"></div>
 
-<section class="chapter" id="idea" data-title="Marching a ray" data-builds="rays-math#ray" data-summary="P(t) = O + t·D; step, test, stop. Fixed steps: error up to one step, thin features can be skipped.">
-  <div class="head"><div class="num"></div><h2>Marching a ray</h2></div>
+<section class="chapter" id="idea" data-title="Fixed-step marching" data-builds="rays-math#ray" data-summary="P(t) = O + t·D; step, test, stop. Fixed steps: error up to one step, thin features can be skipped.">
+  <div class="head"><div class="num"></div><h2>Fixed-step marching</h2></div>
 
   <div class="prose">
     <p>Many effects need to know where a ray first meets something that has no triangles: a height map under a flat polygon, an iris inside an eyeball, a cloud, a distance field. When there is no formula for the intersection, the shader <button type="button" class="term" data-term="raymarch">marches</button>: it walks along the ray <a class="x" href="../rays-math/index.html#ray">P(t) = O + t·D</a> in steps, tests each point, and stops when the point is inside the surface.</p>
@@ -61,8 +61,8 @@
   </div>
 
 </section>
-<section class="chapter" id="find" data-title="Finding the surface between two steps" data-builds="ray-marching#idea" data-summary="Two points with opposite sign bracket the hit. Bisection halves the error per step; secant (linear interpolation) converges faster on smooth surfaces.">
-  <div class="head"><div class="num"></div><h2>Finding the surface between two steps</h2></div>
+<section class="chapter" id="find" data-title="Bisection and secant refinement" data-builds="ray-marching#idea" data-summary="Two points with opposite sign bracket the hit. Bisection halves the error per step; secant (linear interpolation) converges faster on smooth surfaces.">
+  <div class="head"><div class="num"></div><h2>Bisection and secant refinement</h2></div>
 
   <div class="prose">
     <p>When a step lands below the surface, the previous one was above it. The surface lies between them: the two points <em>bracket</em> it. Instead of marching on with tiny steps, the shader can narrow that bracket. Write d(t) for the height of the ray above the surface: positive before the hit, negative after.</p>
@@ -75,8 +75,8 @@
   <div class="prose"><p>The usual recipe is coarse steps to find a bracket, then one to three secant steps. Parallax occlusion mapping uses exactly this (<a class="x" href="../fpom/index.html#coarse">fast POM</a>), and so does the <a class="x" href="../eyes/index.html#march">raymarched iris</a>. Secant steps need the surface to be smooth between the two points; on noisy height maps, bisection is the safer choice.</p></div>
 
 </section>
-<section class="chapter" id="sdf" data-title="Sphere tracing distance fields" data-builds="ray-marching#idea ray-sphere#hit" data-summary="t += sdf(p): the biggest safe step. Few steps in open space, many when grazing. Union = min, blends = smooth min.">
-  <div class="head"><div class="num"></div><h2>Sphere tracing distance fields</h2></div>
+<section class="chapter" id="sdf" data-title="Sphere tracing" data-builds="ray-marching#idea ray-sphere#hit" data-summary="t += sdf(p): the biggest safe step. Few steps in open space, many when grazing. Union = min, blends = smooth min.">
+  <div class="head"><div class="num"></div><h2>Sphere tracing</h2></div>
 
   <div class="prose">
     <p>If the scene can tell how far the nearest surface is from any point, the march can take the largest safe step every time. That function is a <button type="button" class="term" data-term="sdf">signed distance field</button> (SDF): negative inside, positive outside, and its value is a distance you can step without hitting anything. Marching by it is <em>sphere tracing</em> (Hart, 1996):</p>
@@ -101,11 +101,16 @@
   </div>
 
 </section>
-<section class="chapter" id="volumes" data-title="Volumes: integrate instead of stopping" data-builds="glass#colour ray-marching#idea" data-summary="Volumes accumulate: T ∏ e^(−σΔt); midpoint samples beat start-of-step; stop early when T ≈ 0.">
-  <div class="head"><div class="num"></div><h2>Volumes: integrate instead of stopping</h2></div>
+<section class="chapter" id="volumes" data-title="Absorption and volumes" data-builds="ray-marching#idea" data-summary="Beer–Lambert T = e^(−μd) per channel, μ = −ln(colour)/distance; through varying density T = ∏ e^(−σΔt); midpoint samples; stop when T ≈ 0.">
+  <div class="head"><div class="num"></div><h2>Absorption and volumes</h2></div>
 
   <div class="prose">
-    <p>Fog, clouds and smoke have no surface to hit. Light is absorbed a little at every point, so the march does not stop: it adds up density along the way and multiplies the transmittance by e<sup>−σΔt</sup> for each step (<a class="x" href="../glass/index.html#colour">Beer–Lambert</a>). The result is how much of the background comes through:</p>
+    <p>Fog, clouds, smoke, coloured glass and water have no single surface that decides their look. Light is absorbed a little at every point it passes, and the fraction that survives a distance d follows <button type="button" class="term" data-term="beer">Beer–Lambert's law</button>: T = e<sup>−μd</sup>, with μ the absorption per unit length. Each colour channel has its own μ, which is why coloured media get deeper in colour with distance: a window is clear face-on and green along its edge, shallow water shows the bottom and deep water turns blue.</p>
+    <p>Nobody types μ by hand, so renderers ask for the colour reached at a reference distance and compute μ = −ln(colour) / distance (HDRP <em>Transmittance Color</em> and <em>Absorption Distance</em>, OpenPBR <code>transmission_color</code> and <code>transmission_depth</code>):</p>
+  </div>
+  <div class="fx" data-fx="beer"></div>
+  <div class="prose">
+    <p>The distance is whatever the light crosses: a pane's thickness / cos θ, the depth difference under a water surface, the gap between a back face and a front face, a baked thickness map. When the density varies along the way, as in clouds, the march cannot use one exponent. It steps through, and multiplies the transmittance by e<sup>−σΔt</sup> per step; the product of all the factors is how much of the background comes through:</p>
   </div>
   <div class="fx" data-fx="volume"></div>
   <div class="prose"><p>Sampling at the start of each step is biased; sampling in the middle is much more accurate for the same count. Real volume renderers add lighting at each sample, which is where most of the cost goes (<a class="x" href="../cloud-march/index.html#transmittance">marching a cloud layer</a>). Two shortcuts carry over from surfaces: stop early once the transmittance is close to zero, and skip empty space with a coarse bound.</p></div>
@@ -129,14 +134,14 @@
   </div>
 
 </section>
-<section class="chapter" id="gpu" data-title="Loops on a GPU" data-builds="compute-shaders#waves reading-a-frame#quads" data-summary="Divergence costs the slowest pixel; derivatives are undefined in loops (use SampleGrad); constant loop bounds with break; march in the data&#x27;s space.">
-  <div class="head"><div class="num"></div><h2>Loops on a GPU</h2></div>
+<section class="chapter" id="gpu" data-title="GPU loops: divergence, derivatives, bounds" data-builds="compute-shaders#waves reading-a-frame#quads" data-summary="Divergence costs the slowest pixel; derivatives are undefined in loops (use SampleGrad); constant loop bounds with break; march in the data&#x27;s space.">
+  <div class="head"><div class="num"></div><h2>GPU loops: divergence, derivatives, bounds</h2></div>
 
   <div class="prose">
     <p>Three GPU details decide whether a marcher works and how fast it runs:</p>
     <ul>
       <li><strong>Divergence.</strong> Pixels run in groups (<a class="x" href="../compute-shaders/index.html#waves">waves</a>) that execute the same instruction. If one pixel needs 30 steps and its neighbours 4, the whole group waits for 30. Coherent step counts (smooth surfaces, adaptive counts from the view angle) keep groups efficient.</li>
-      <li><strong>Derivatives.</strong> Texture mip selection uses ddx and ddy across a 2×2 pixel quad (<a class="x" href="../reading-a-frame/index.html#quads">quads</a>). Inside a loop or branch, neighbours may be in different iterations, and the derivatives become undefined: flickering mips or seams. Take the UV gradients once before the loop and sample with explicit gradients (SampleGrad).</li>
+      <li><strong>Derivatives.</strong> Inside a loop or branch, neighbouring pixels may be in different iterations, so the ddx/ddy that pick the mip become undefined: flickering mips or seams. Take the UV gradients once before the loop and sample with explicit gradients (<a class="x" href="../textures-sampling/index.html#mips">mips and SampleGrad</a>).</li>
       <li><strong>Loop bounds.</strong> Give the loop a constant maximum and break early. A loop with a material property as its bound may be unrolled or rejected by some compilers; a constant bound with a break compiles everywhere.</li>
     </ul>
     <p>And one space detail: march in the space where the data lives. Height fields in tangent space, an eye in object space, a volume in its own box. Transform the ray once, not the data per step.</p>
@@ -286,6 +291,11 @@ return hit;</pre></div></div>
 "The range between a height field's lowest and highest value; the only place a hit can be.",
 "#heightfield"
 ],
+"beer": [
+"Beer–Lambert law",
+"Transmittance falls exponentially with the distance through a medium: T = e^(−μd), per colour channel.",
+"#volumes"
+],
 "jitter": [
 "Jitter",
 "A random per-pixel offset of the sample positions that turns banding into noise.",
@@ -296,10 +306,10 @@ return hit;</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="raymarch.js?v=4020f25c"></script>
+<script src="raymarch.js?v=ff0df180"></script>
 </body>
 </html>

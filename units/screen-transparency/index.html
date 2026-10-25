@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Faking Transparency with Screen Passes · Tech Art Atlas</title>
+<title>Screen-Space Transparency · Tech Art Atlas</title>
 <meta name="description" content="Blending versus reading a copy of the screen: what the copy contains in each engine, full-screen passes driven by a mask, foreground leaks and depth rejection, thickness from depth, and the artefacts to hide, built in Unity HDRP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="screen-transparency" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Faking Transparency with Screen Passes</a>
+  <a class="brand" href="#top">Screen-Space Transparency</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Surfaces · 7 chapters</div>
-  <h1>Faking Transparency with Screen Passes</h1>
+  <h1>Screen-Space Transparency</h1>
   <p class="lede">Blending versus reading a copy of the screen: what the copy contains in each engine, full-screen passes driven by a mask, foreground leaks and depth rejection, thickness from depth, and the artefacts to hide, built in Unity HDRP and Unreal.</p>
   <p class="meta">Builds on Transparency and Depth Buffer Effects. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="transparency#alpha"></div>
 
-<section class="chapter" id="two-ways" data-title="Two ways to see through a surface" data-builds="transparency#alpha glass#colour" data-summary="Blending: out = c·α + bg·(1 − α), fixed. Screen reads: shader computes bg·T, refraction, blur from a copy.">
-  <div class="head"><div class="num"></div><h2>Two ways to see through a surface</h2></div>
+<section class="chapter" id="two-ways" data-title="Blending versus screen reads" data-builds="transparency#alpha glass#colour" data-summary="Blending: out = c·α + bg·(1 − α), fixed. Screen reads: shader computes bg·T, refraction, blur from a copy.">
+  <div class="head"><div class="num"></div><h2>Blending versus screen reads</h2></div>
 
   <div class="prose">
     <p>There are two fundamentally different ways to draw something you can see through:</p>
@@ -63,8 +63,8 @@
   <div class="prose"><p>Reading the screen allows everything blending cannot: per-channel absorption, refraction (reading somewhere else), blur (reading a blurred copy), absorption by depth (<a class="x" href="#thickness">reading depth too</a>). The price is the copy and its limits, which the rest of this unit is about.</p></div>
 
 </section>
-<section class="chapter" id="copies" data-title="Where the copy comes from" data-builds="screen-transparency#two-ways buffers#render-targets" data-summary="URP Opaque Texture, HDRP colour pyramid, Unreal SceneColor; one copy per frame, made after opaques.">
-  <div class="head"><div class="num"></div><h2>Where the copy comes from</h2></div>
+<section class="chapter" id="copies" data-title="Screen colour copies" data-builds="screen-transparency#two-ways buffers#render-targets" data-summary="URP Opaque Texture, HDRP colour pyramid, Unreal SceneColor; one copy per frame, made after opaques.">
+  <div class="head"><div class="num"></div><h2>Screen colour copies</h2></div>
 
   <div class="prose"><p>Every renderer makes a copy of the frame at a fixed point, usually after the opaque objects and the sky, before transparent objects. Shaders that run later read it:</p></div>
   
@@ -84,8 +84,8 @@
   </div>
 
 </section>
-<section class="chapter" id="fullscreen" data-title="A full-screen pass with a mask" data-builds="screen-transparency#copies transparency#order" data-summary="Mask the objects into stencil/custom buffer, then one full-screen pass: out = lerp(scene, effect(scene), mask).">
-  <div class="head"><div class="num"></div><h2>A full-screen pass with a mask</h2></div>
+<section class="chapter" id="fullscreen" data-title="Masked full-screen pass" data-builds="screen-transparency#copies transparency#order" data-summary="Mask the objects into stencil/custom buffer, then one full-screen pass: out = lerp(scene, effect(scene), mask).">
+  <div class="head"><div class="num"></div><h2>Masked full-screen pass</h2></div>
 
   <div class="prose">
     <p>Each glass object reading the copy works, but each one is a separate transparent draw with its own sorting. A different structure turns it around:</p>
@@ -114,7 +114,7 @@
   </div>
 
 </section>
-<section class="chapter" id="thickness" data-title="Thickness from depth" data-builds="depth-effects#water glass#colour" data-summary="thickness = back depth − front depth (linear); T = e^(−μ·thickness) per channel.">
+<section class="chapter" id="thickness" data-title="Thickness from depth" data-builds="depth-effects#water ray-marching#volumes" data-summary="thickness = back depth − front depth (linear); T = e^(−μ·thickness) per channel.">
   <div class="head"><div class="num"></div><h2>Thickness from depth</h2></div>
 
   <div class="prose">
@@ -125,11 +125,12 @@
     </ul>
   </div>
   <div class="fx" data-fx="thick"></div>
-  <div class="prose"><p>Feed the thickness into <a class="x" href="../glass/index.html#colour">Beer–Lambert absorption</a> per channel and the object gets darker and more saturated where it is thick, the strongest cue that it is a volume and not a coloured film. Linearise both depths before subtracting.</p></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Beer–Lambert: T = e^(−μ · thickness) per channel.</p></div><a class="x refto" href="../ray-marching/index.html#volumes">Open the full explanation</a></aside>
+  <div class="prose"><p>Feed the thickness into the absorption per channel and the object gets darker and more saturated where it is thick, the strongest cue that it is a volume and not a coloured film. Linearise both depths before subtracting.</p></div>
 
 </section>
-<section class="chapter" id="artefacts" data-title="Artefacts and how to hide them" data-builds="screen-transparency#copies screen-transparency#leaks" data-summary="Missing transparents, border fade w = saturate(min(u, 1−u)/f), mip shimmer, TAA smear, double refraction, injection point.">
-  <div class="head"><div class="num"></div><h2>Artefacts and how to hide them</h2></div>
+<section class="chapter" id="artefacts" data-title="Artefacts" data-builds="screen-transparency#copies screen-transparency#leaks" data-summary="Missing transparents, border fade w = saturate(min(u, 1−u)/f), mip shimmer, TAA smear, double refraction, injection point.">
+  <div class="head"><div class="num"></div><h2>Artefacts</h2></div>
 
   <div class="prose">
     <ul>
@@ -350,11 +351,11 @@ return DepthAtOffset &lt; GlassDepth ? UV : OffsetUV;</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="screen.js?v=05dad3e1"></script>
+<script src="screen.js?v=fdd7fda1"></script>
 </body>
 </html>

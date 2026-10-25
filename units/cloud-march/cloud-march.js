@@ -15,7 +15,7 @@
   const profile = (h, a, b) => ss(0, a, h) * (1 - ss(b, 1, h));
 
   A.fx('steps', {
-    title: 'Steps along the ray through the layer',
+    title: 'Sample steps through the layer',
     expr: 'Δ = ({t1} − {t0}) / {n},   t<sub>i</sub> = {t0} + (i + {j}) · Δ',
     vars: { t0: { sym: 't<sub>enter</sub>', name: 'where the ray enters the layer', unit: 'km', min: 0, max: 20, value: 2, step: 0.1 },
             t1: { sym: 't<sub>exit</sub>', name: 'where it leaves', unit: 'km', min: 1, max: 60, value: 14, step: 0.1 },
@@ -51,7 +51,7 @@
   });
 
   A.fx('fbm', {
-    title: 'Fractal noise: octaves added up',
+    title: 'Fractal noise octaves',
     expr: 'n({x}) = Σ<sub>k&lt;{oct}</sub> {p}<sup>k</sup> · noise(2<sup>k</sup> · {x}) / Σ {p}<sup>k</sup>',
     vars: { x: { name: 'position', min: 0, max: 8, value: 2.3, step: 0.01 }, oct: { sym: 'octaves', name: 'number of octaves', min: 1, max: 6, value: 4, step: 1 },
             p: { name: 'persistence (strength of each finer octave)', min: 0.2, max: 0.8, value: 0.5, step: 0.01 } },
@@ -67,7 +67,7 @@
   });
 
   A.fx('coverage', {
-    title: 'Coverage: keeping only the peaks',
+    title: 'Coverage threshold',
     expr: 'density = saturate(({n} − (1 − {c})) / {c})',
     vars: { n: { name: 'noise value', min: 0, max: 1, value: 0.62, step: 0.01 }, c: { name: 'coverage', min: 0.05, max: 1, value: 0.5, step: 0.01 } },
     out: { sym: 'density', f: v => remap(v.n, v.c) },
@@ -104,7 +104,7 @@
   });
 
   A.fx('scatter', {
-    title: 'Light one sample sends to the camera',
+    title: 'Light scattered toward the camera per sample',
     expr: 'L<sub>i</sub> = T · σρΔ · T<sub>sun</sub> · phase,   T = e<sup>−{dv}</sup>,   T<sub>sun</sub> = e<sup>−{ds}</sup>',
     vars: { dv: { sym: 'τ<sub>view</sub>', name: 'optical depth between camera and sample (σ·Σρ·Δ)', min: 0, max: 6, value: 0.8, step: 0.01 },
             ds: { sym: 'τ<sub>sun</sub>', name: 'optical depth between sample and sun', min: 0, max: 6, value: 1.5, step: 0.01 },
@@ -164,7 +164,7 @@
     return { T, L, pts, stopped };
   }
   A.fx('march2d', {
-    title: 'A complete march through a slice of the layer',
+    title: 'Complete march through a layer slice',
     expr: 'elevation {el},   {n} steps,   σ = {s}',
     vars: { el: { sym: 'θ', name: 'ray elevation', unit: '°', min: 12, max: 80, value: 26, step: 0.5 }, n: { name: 'steps', min: 4, max: 64, value: 24, step: 1 }, s: { sym: 'σ', name: 'extinction', min: 0.5, max: 12, value: 4, step: 0.1 } },
     out: [{ sym: 'T', name: 'transmittance at the end', f: v => march(v).T, color: 'ax-y' }, { sym: 'L', name: 'light gathered', f: v => march(v).L, color: 'accent' }],

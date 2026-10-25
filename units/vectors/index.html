@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="vectors" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="shader-anatomy#types"></div>
 
-<section class="chapter" id="what" data-title="Arrows made of numbers" data-builds="shader-anatomy#types" data-summary="A vector is a list of numbers; it can mean a position or a direction, and both are drawn as arrows.">
-  <div class="head"><div class="num"></div><h2>Arrows made of numbers</h2></div>
+<section class="chapter" id="what" data-title="Vectors" data-builds="shader-anatomy#types" data-summary="A vector is a list of numbers; it can mean a position or a direction, and both are drawn as arrows.">
+  <div class="head"><div class="num"></div><h2>Vectors</h2></div>
 
   <div class="prose">
     <p>A <button type="button" class="term" data-term="vector">vector</button> is a short list of numbers, written in brackets: (3, 2) in 2D, (3, 2, 1) in 3D. The numbers are its <em>components</em>, named x, y and z.</p>
@@ -65,8 +65,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A shader has float3 lightDir = (0, 1, 0). What is it most likely?", ["A position one unit above the origin", "A direction pointing straight up", "A colour", "It cannot be told from the numbers alone; the name says it is a direction"], 3, "Positions and directions are both float3; only the meaning differs. The name tells you it is used as a direction."]]</script></details>
 
 </section>
-<section class="chapter" id="add-sub" data-title="Adding and subtracting" data-builds="vectors#what" data-summary="Add component by component; B − A is the arrow from A to B.">
-  <div class="head"><div class="num"></div><h2>Adding and subtracting</h2></div>
+<section class="chapter" id="add-sub" data-title="Addition and subtraction" data-builds="vectors#what" data-summary="Add component by component; B − A is the arrow from A to B.">
+  <div class="head"><div class="num"></div><h2>Addition and subtraction</h2></div>
 
   <div class="prose">
     <p>To add two vectors, add their components: (1, 2) + (3, −1) = (4, 1). As arrows, put the second one at the tip of the first; the sum points to where you end up.</p>
@@ -103,8 +103,8 @@
   <details class="check"><summary></summary><script type="application/json">[["What is the length of (6, 8)?", ["14", "10", "48", "100"], 1, "√(36 + 64) = √100 = 10."], ["Which is cheaper and gives the same yes/no answer to 'is |v| < 5'?", ["|v|² < 25", "|v| < 25", "v.x < 5", "normalize(v) < 5"], 0, "Both sides are positive, so squaring keeps the comparison and avoids the root."]]</script></details>
 
 </section>
-<section class="chapter" id="normalize" data-title="Normalizing: keeping only the direction" data-builds="vectors#length vectors#scale" data-summary="v̂ = v / |v| has length 1 and keeps the direction.">
-  <div class="head"><div class="num"></div><h2>Normalizing: keeping only the direction</h2></div>
+<section class="chapter" id="normalize" data-title="Normalization" data-builds="vectors#length vectors#scale" data-summary="v̂ = v / |v| has length 1 and keeps the direction.">
+  <div class="head"><div class="num"></div><h2>Normalization</h2></div>
 
   <div class="prose">
     <p>Often only the direction matters, not the length: which way the light comes from, which way a surface faces. Dividing a vector by its own length gives a vector of length exactly 1 pointing the same way. This is called <button type="button" class="term" data-term="normalize">normalizing</button>, and a length-1 vector is a <em>unit vector</em>, often written with a hat: v̂.</p>
@@ -117,8 +117,8 @@
   <details class="check"><summary></summary><script type="application/json">[["normalize((0, 5)) = ?", ["(0, 5)", "(0, 1)", "(1, 0)", "(0, 0.2)"], 1, "Length 5; (0, 5) / 5 = (0, 1)."], ["Why do surface normals and light directions get normalized before lighting?", ["To save memory", "So their dot product is the cosine of the angle, independent of length", "Because GPUs require it", "To make them positive"], 1, "With unit vectors, a·b = cos θ."]]</script></details>
 
 </section>
-<section class="chapter" id="axes" data-title="Which way is up" data-summary="Unity is Y-up left-handed in metres, Unreal Z-up left-handed in centimetres, Blender Z-up right-handed.">
-  <div class="head"><div class="num"></div><h2>Which way is up</h2></div>
+<section class="chapter" id="axes" data-title="Axis conventions" data-summary="Unity is Y-up left-handed in metres, Unreal Z-up left-handed in centimetres, Blender Z-up right-handed.">
+  <div class="head"><div class="num"></div><h2>Axis conventions</h2></div>
 
   <div class="prose">
     <p>A vector's numbers only mean something once you know which axis points where. Engines disagree, and every asset that moves between Blender, Unity and Unreal crosses these conventions:</p>
@@ -204,10 +204,10 @@ public class MaskCenter : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="vectors.js?v=54b37fa8"></script>
+<script src="vectors.js?v=1f75e004"></script>
 </body>
 </html>

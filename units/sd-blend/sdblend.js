@@ -27,7 +27,7 @@
   const blend = (m, F, B, o) => { const r = sat(MODES[m][1](F, B)); return B + (r - B) * o; };
 
   A.fx('blendmode', {
-    title: 'The Blend node, one channel at a time',
+    title: 'Blend node per channel',
     expr: 'result = lerp({B}, mode<sub>{m}</sub>({F}, {B}), {o})',
     vars: { m: { sym: 'mode', name: 'blending mode', values: MODES.map((_, i) => i), labels: MODES.map(x => x[0]), index: 3 },
             F: { sym: 'F', name: 'foreground value', min: 0, max: 1, value: 0.7, step: 0.01 }, B: { sym: 'B', name: 'background value', min: 0, max: 1, value: 0.4, step: 0.01 },
@@ -53,7 +53,7 @@
   const ridge = (x, c, w, h) => h * clamp((w - Math.abs(x - c)) / 0.04, 0, 1);
   const comb = (m, a, b) => [Math.max(a, b), Math.min(a, b), a + b, a * b, b > 0 ? b : a][m];
   A.fx('heightunion', {
-    title: 'Two height shapes, one Blend',
+    title: 'Max and Min on heights',
     expr: 'height = mode<sub>{m}</sub>(dome, block),   block at {c}, height {h}',
     vars: { m: { sym: 'mode', name: 'blending mode', values: [0, 1, 2, 3, 4], labels: HM, index: 0 }, c: { sym: 'x', name: 'block position', min: 0.15, max: 0.85, value: 0.62, step: 0.01 },
             h: { sym: 'h', name: 'block height', min: 0.1, max: 1, value: 0.55, step: 0.01 } },
@@ -82,7 +82,7 @@
   function noise1(t, s) { let v = 0, a = 0.5, f = 9; for (let k = 0; k < 4; k++) { v += a * Math.sin(t * f * 6.283 + s * (k + 1) * 1.7 + Math.sin(t * f * 2.1 + k)); a *= 0.5; f *= 2.1; } return v; }
   const detMode = (m, F, B) => m === 0 ? B + (F - 0.5) : m === 1 ? (B < 0.5 ? 2 * B * F : 1 - 2 * (1 - B) * (1 - F)) : m === 2 ? B * F : B + F;
   A.fx('detail', {
-    title: 'Small detail on a large shape',
+    title: 'Add Sub and Overlay detail',
     expr: 'height = lerp(base, mode<sub>{m}</sub>(detail, base), {o}),   detail = 0.5 + {a} · noise',
     vars: { m: { sym: 'mode', name: 'blending mode', values: [0, 1, 2, 3], labels: DM, index: 0 }, a: { sym: 'amp', name: 'detail amplitude around 0.5', min: 0, max: 0.5, value: 0.25, step: 0.01 },
             o: { sym: 'opacity', name: 'strength of the blend', min: 0, max: 1, value: 0.6, step: 0.01 } },
@@ -105,7 +105,7 @@
 
   /* ---------- a threshold mask ---------- */
   A.fx('mask', {
-    title: 'Turning a height into a mask',
+    title: 'Height to mask',
     expr: 'mask = saturate((h − ({p} − {w}/2)) / {w})',
     vars: { p: { sym: 'position', name: 'where the cut is', min: 0, max: 1, value: 0.55, step: 0.01 }, w: { sym: 'width', name: 'softness of the edge (1 − contrast)', min: 0.005, max: 0.6, value: 0.08, step: 0.005 },
             h: { sym: 'h', name: 'a height value', min: 0, max: 1, value: 0.6, step: 0.01 } },
@@ -123,7 +123,7 @@
 
   /* ---------- height blend between two materials ---------- */
   A.fx('heightblend', {
-    title: 'Which material shows: compare heights',
+    title: 'Height blend',
     expr: 'mask = saturate(0.5 + (h<sub>top</sub> + {o} − h<sub>bottom</sub>) / {c})',
     vars: { o: { sym: 'offset', name: 'height offset of the top material', min: -0.6, max: 0.6, value: 0, step: 0.01 }, c: { sym: 'contrast', name: 'transition width', min: 0.01, max: 0.5, value: 0.06, step: 0.005 } },
     out: { sym: 'top material coverage', f: v => { let s = 0; for (let i = 0; i < 400; i++) { const t = i / 399; s += sat(0.5 + (topH(t) + v.o - botH(t)) / v.c); } return s / 400; }, color: 'accent', fmt: x => num(x * 100) + ' %' },

@@ -8,7 +8,7 @@
   /* ---------- reflection versus what is below ---------- */
   const SKY = [0.55, 0.68, 0.9], DEEP = [0.01, 0.06, 0.09];
   A.fx('wfresnel', {
-    title: 'Water is a mirror at the horizon and clear at your feet',
+    title: 'Water Fresnel by view angle',
     expr: 'F({th}) for n = 1.33,   colour = F · sky + (1 − F) · below',
     vars: { th: { sym: 'θ', name: 'angle between the view and the vertical', unit: '°', min: 0, max: 89.5, value: 60, step: 0.5 } },
     out: [{ sym: 'F', f: v => S.dielectric(Math.cos(rad(v.th)), 1.333), color: 'accent', fmt: x => num(x * 100) + ' %' }, { sym: 'from below', f: v => 1 - S.dielectric(Math.cos(rad(v.th)), 1.333), color: 'ray', fmt: x => num(x * 100) + ' %' }],
@@ -24,7 +24,7 @@
   /* ---------- Gerstner waves ---------- */
   const wv = v => { const k = 2 * PI / v.L, w = Math.sqrt(G * k); return { k, w, c: w / k, T: 2 * PI / w }; };
   A.fx('gerstner', {
-    title: 'A Gerstner wave: points move in circles',
+    title: 'Gerstner wave',
     expr: 'x = x₀ − {Q} · {A} · sin(k x₀ − ω{t}),   y = {A} · cos(k x₀ − ω{t}),   k = 2π / {L},   ω = √(g k)',
     vars: { A: { sym: 'A', name: 'amplitude', unit: 'm', min: 0.05, max: 2, value: 0.6, step: 0.01 },
             L: { sym: 'λ', name: 'wavelength', unit: 'm', min: 2, max: 60, value: 20, step: 0.5 },
@@ -48,7 +48,7 @@
 
   /* ---------- water depth from the depth buffer ---------- */
   A.fx('wdepth', {
-    title: 'How much water the view ray crosses',
+    title: 'Water path length',
     expr: 'path = ({zs} − {zw}) / cos α,   vertical depth = path · cos {phi}',
     vars: { zw: { sym: 'z<sub>water</sub>', name: 'linear depth of the water surface pixel', unit: 'm', min: 1, max: 40, value: 12, step: 0.1 },
             zs: { sym: 'z<sub>scene</sub>', name: 'linear depth of the ground behind it (from the depth buffer)', unit: 'm', min: 1, max: 60, value: 15, step: 0.1 },
@@ -77,7 +77,7 @@
     ['silty river', [0.9, 1.1, 1.6], [0.12, 0.09, 0.05]]];
   const SAND = [0.62, 0.52, 0.36];
   A.fx('wabs', {
-    title: 'Water colour: absorption per channel, plus scattered light',
+    title: 'Water absorption and scattering',
     expr: 'T = e<sup>−a · {L}</sup>,   colour = bottom · T + scatter · (1 − T),   water = {w}',
     vars: { L: { sym: 'L', name: 'path length through water', unit: 'm', min: 0, max: 40, value: 5, step: 0.1 },
             w: { sym: 'water', name: 'water type', values: [0, 1, 2, 3, 4], labels: WATERS.map(x => x[0]), index: 1 } },
@@ -96,7 +96,7 @@
 
   /* ---------- shore foam and soft edge ---------- */
   A.fx('shore', {
-    title: 'Foam and soft edges from water depth',
+    title: 'Depth-based foam and edges',
     expr: 'foam = 1 − saturate({d} / {w}),   edge alpha = saturate({d} / {f})',
     vars: { d: { sym: 'd', name: 'vertical water depth at the pixel', unit: 'm', min: 0, max: 2, value: 0.15, step: 0.01 },
             w: { sym: 'w', name: 'foam width (depth where foam ends)', unit: 'm', min: 0.05, max: 1.5, value: 0.4, step: 0.01 },
@@ -117,7 +117,7 @@
 
   /* ---------- refraction scaled by depth ---------- */
   A.fx('refroff', {
-    title: 'Less distortion in shallow water',
+    title: 'Refraction offset by depth',
     expr: 'offset = N<sub>xz</sub> · {k} · saturate({d} / {d0})',
     vars: { k: { sym: 'k', name: 'distortion strength', min: 0, max: 0.05, value: 0.02, step: 0.001 },
             d: { sym: 'd', name: 'vertical water depth', unit: 'm', min: 0, max: 3, value: 0.3, step: 0.01 },
@@ -137,7 +137,7 @@
     const mean = N / bins; return h.map(c => c / mean);
   }
   A.fx('caustic', {
-    title: 'Caustics: waves focus sunlight on the bottom',
+    title: 'Caustics',
     expr: 'each ray: refract(sun, N(x), 1/1.33) to the floor at depth {d},   brightness = rays per area',
     vars: { d: { sym: 'd', name: 'depth of the floor', unit: 'm', min: 0.1, max: 8, value: 1.6, step: 0.05 },
             A: { sym: 'A', name: 'wave amplitude', unit: 'm', min: 0.005, max: 0.15, value: 0.04, step: 0.005 },
@@ -158,7 +158,7 @@
 
   /* ---------- Snell's window ---------- */
   A.fx('snellwin', {
-    title: 'From below, the sky shrinks into a circle',
+    title: 'Snell\'s window',
     expr: 'θ<sub>c</sub> = asin(1 / {n}),   window radius = {h} · tan θ<sub>c</sub>',
     vars: { n: { sym: 'n', name: 'index of refraction', min: 1.0, max: 1.6, value: 1.333, step: 0.001 },
             h: { sym: 'h', name: 'depth of the eye below the surface', unit: 'm', min: 0.2, max: 10, value: 2, step: 0.05 } },

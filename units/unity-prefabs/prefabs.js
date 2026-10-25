@@ -11,7 +11,7 @@
   const UNIT = [['centimetres', 0.01], ['metres', 1], ['millimetres', 0.001], ['inches', 0.0254]];
   const metres = v => v.L * (v.c ? UNIT[v.u][1] : 1) * v.f;
   A.fx('units', {
-    title: 'How big an imported model ends up',
+    title: 'Imported model size',
     expr: 'size in Unity = {L} · ({c} ? unit({u}) : 1) · {f}',
     vars: { L: { sym: 'L', name: 'object height in file units', min: 0.5, max: 300, value: 180, log: true }, u: { sym: 'unit', name: 'unit stored in the FBX', values: [0, 1, 2, 3], labels: UNIT.map(u => u[0]), index: 0 },
             c: { sym: 'convert', name: 'Convert Units', values: [1, 0], labels: ['on', 'off'], index: 0 }, f: { sym: 'scale', name: 'Scale Factor', min: 0.01, max: 100, value: 1, log: true } },
@@ -31,7 +31,7 @@
   /* ---------- which override wins ---------- */
   const LAY = ['Door.prefab (base)', 'Door_Red (variant)', 'House.prefab (nests Door_Red)', 'House instance in the scene'];
   A.fx('override', {
-    title: 'Which value wins: the outermost override',
+    title: 'Override priority',
     expr: 'winner = scene {s} ▸ house {h} ▸ variant {r} ▸ base',
     vars: { r: { sym: 'variant', name: 'Door_Red overrides the colour', values: [0, 1], labels: ['no', 'yes'], index: 1 }, h: { sym: 'house', name: 'House overrides it on its nested door', values: [0, 1], labels: ['no', 'yes'], index: 0 },
             s: { sym: 'scene', name: 'the scene instance overrides it', values: [0, 1], labels: ['no', 'yes'], index: 0 } },
@@ -50,7 +50,7 @@
   /* ---------- where a change propagates ---------- */
   const EDITS = ['Door.prefab (base)', 'Door_Red (variant)', 'House_A.prefab', 'one House_A in the scene'];
   A.fx('propagate', {
-    title: 'Where to make a change: what it reaches',
+    title: 'Edit reach per level',
     expr: 'reach({e}) = copies below it without an override',
     vars: { e: { sym: 'edit', name: 'where you change the door\'s hinge', values: [0, 1, 2, 3], labels: EDITS, index: 0 } },
     out: { sym: 'doors changed', f: v => [8, 5, 3, 1][v.e], color: 'accent' },
@@ -86,7 +86,7 @@
     ['two children with the same name', 'warn', 'The names no longer identify the objects uniquely. References can swap or break on the next reimport; give every child a unique name.']
   ];
   A.fx('reimport', {
-    title: 'Lab: re-export the model after you…',
+    title: 'Reimport behaviour per change',
     expr: 'change in the DCC tool: {d}',
     vars: { d: { sym: 'change', name: 'what changed in Robot.fbx', values: DCC.map((_, i) => i), labels: DCC.map(x => x[0]), index: 3 } },
     out: { sym: 'safe', f: v => DCC[v.d][1] === 'ok' ? 1 : 0, color: 'accent' },

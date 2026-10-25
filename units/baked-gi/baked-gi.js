@@ -34,7 +34,7 @@
 
   const hemi = (t, s, g) => PI * (s * (1 + Math.cos(t)) / 2 + g * (1 - Math.cos(t)) / 2);
   A.fx('hemi', {
-    title: 'Hemisphere light: a sky above, the ground below',
+    title: 'Hemisphere lighting (sky and ground)',
     expr: 'E = π · ({Ls} · (1 + cos {th}) / 2 + {Lg} · (1 − cos {th}) / 2)',
     vars: { th: { sym: 'θ', name: 'normal tilt from straight up', unit: '°', min: 0, max: 180, value: 60, step: 1 }, Ls: { sym: 'L<sub>sky</sub>', name: 'sky luminance', unit: 'cd/m²', min: 100, max: 10000, value: 3000, log: true },
             Lg: { sym: 'L<sub>ground</sub>', name: 'ground luminance', unit: 'cd/m²', min: 10, max: 3000, value: 300, log: true } },
@@ -63,7 +63,7 @@
     return s * (PI / NT) * (2 * PI / NP);
   }
   A.fx('sh', {
-    title: 'A sky window, its SH bands, and the irradiance',
+    title: 'SH bands of a sky window and its irradiance',
     expr: 'E(θ<sub>n</sub>) ≈ Σ<sub>l&lt;{b}</sub> 2π · λ<sub>l</sub> · a<sub>l</sub> · P<sub>l</sub>(cos {tn}),   window {w}',
     vars: { tn: { sym: 'θ<sub>n</sub>', name: 'tilt of the surface normal from the zenith', unit: '°', min: 0, max: 180, value: 60, step: 1 }, b: { name: 'SH bands used', min: 1, max: 3, value: 3, step: 1 },
             w: { sym: 'window', name: 'angular radius of the bright sky window', unit: '°', min: 10, max: 120, value: 40, step: 1, fmt: x => num(x) + '°' } },
@@ -81,7 +81,7 @@
   });
 
   A.fx('leak', {
-    title: 'Interpolating through a wall',
+    title: 'Probe interpolation through a wall',
     expr: 'E(x) = lerp({Eo}, {Ei}, x / 4),   wall at x = {w}',
     vars: { x: { name: 'object position', unit: 'm', min: 0, max: 4, value: 2.8, step: 0.01 }, w: { name: 'wall position', unit: 'm', min: 0.3, max: 3.7, value: 1.5, step: 0.05 },
             Eo: { sym: 'E<sub>out</sub>', name: 'light at the outside probe', unit: 'lx', min: 1000, max: 50000, value: 20000, log: true }, Ei: { sym: 'E<sub>in</sub>', name: 'light at the inside probe', unit: 'lx', min: 5, max: 500, value: 30, log: true } },

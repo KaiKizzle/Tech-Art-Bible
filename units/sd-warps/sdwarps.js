@@ -28,7 +28,7 @@
 
   /* ---------- the idea in one dimension ---------- */
   A.fx('warpidea', {
-    title: 'A warp moves where each pixel reads from',
+    title: 'Warp read offset',
     expr: 'out(x) = in(x + {k} · d(x))',
     vars: { k: { sym: 'intensity', name: 'how far pixels read', min: 0, max: 0.12, value: 0.05, step: 0.001 } },
     out: { sym: 'largest shift', f: v => v.k, color: 'accent', fmt: x => num(x * 1024) + ' px at 1k' },
@@ -67,7 +67,7 @@
   const blob = (x, y) => { const d = Math.hypot(x - 0.5, y - 0.5); return Math.exp(-d * d / 0.03); };
   const G = (t, x, y) => t === 0 ? blob(x, y) : fbm(x, y, 3, 9);
   A.fx('gradwarp', {
-    title: 'Warp: read uphill along the gradient',
+    title: 'Gradient warp',
     expr: 'out(p) = in(p + {k} · ∇G(p))',
     vars: { k: { sym: 'intensity', name: 'intensity', min: 0, max: 0.03, value: 0.012, step: 0.0005 }, t: { sym: 'G', name: 'gradient input', values: [0, 1], labels: ['one soft dot', 'noise'], index: 0 } },
     out: { sym: 'largest shift', f: v => { let m = 0; for (let i = 1; i < 40; i++) for (let j = 1; j < 40; j++) { const x = i / 40, y = j / 40, e = 1 / 256; const gx = (G(v.t, x + e, y) - G(v.t, x - e, y)) / (2 * e), gy = (G(v.t, x, y + e) - G(v.t, x, y - e)) / (2 * e); m = Math.max(m, Math.hypot(gx, gy)); } return m * v.k; }, color: 'accent', fmt: x => num(x * 1024) + ' px at 1k' },
@@ -82,7 +82,7 @@
 
   /* ---------- vector warp: directions stored as colours ---------- */
   A.fx('vecwarp', {
-    title: 'A direction stored in a colour',
+    title: 'Vector map direction',
     expr: 'shift = {k} · (2·{R} − 1, ±(2·{G} − 1))   (sign of G: {f})',
     vars: { R: { sym: 'R', name: 'red channel', min: 0, max: 1, value: 0.8, step: 0.01 }, G: { sym: 'G', name: 'green channel', min: 0, max: 1, value: 0.35, step: 0.01 },
             k: { sym: 'intensity', name: 'intensity', min: 0, max: 0.2, value: 0.08, step: 0.005 }, f: { sym: 'format', name: 'vector format', values: [0, 1], labels: ['DirectX (Y down)', 'OpenGL (Y up)'], index: 0 } },
@@ -105,7 +105,7 @@
   const shape = (x, y) => { const dx = Math.max(Math.abs(x - 0.5) - 0.2, 0), dy = Math.max(Math.abs(y - 0.5) - 0.2, 0); return Math.hypot(dx, dy) < 0.06 ? 1 : 0; };
   const SM = ['Blur', 'Min', 'Max'];
   A.fx('slopeblur', {
-    title: 'Slope Blur: many reads along the slope of a noise',
+    title: 'Slope Blur reads',
     expr: 'out(p) = {m} of in(p + {k} · t · slope dir),   t = 0, 1/{n}, …, 1',
     vars: { m: { sym: 'mode', name: 'mode', values: [0, 1, 2], labels: SM, index: 1 }, k: { sym: 'intensity', name: 'distance read along the slope', min: 0, max: 0.12, value: 0.05, step: 0.002 },
             n: { sym: 'samples', name: 'samples', values: [1, 2, 4, 8, 16, 32], index: 3 } },
@@ -122,7 +122,7 @@
 
   /* ---------- what warps cost ---------- */
   A.fx('warpcost', {
-    title: 'Texture reads of a warp-heavy chain',
+    title: 'Read count of a warp chain',
     expr: 'reads = {s}² · ({r} reads per pixel) · {w} nodes',
     vars: { s: { sym: 'size', name: 'output size', values: [512, 1024, 2048, 4096], labels: ['512', '1k', '2k', '4k'], index: 2 }, r: { sym: 'reads', name: 'reads per pixel (Warp 1–2, Slope Blur: samples + 1)', values: [1, 2, 5, 9, 17, 33], index: 3 },
             w: { sym: 'nodes', name: 'warp or blur nodes in the chain', min: 1, max: 30, value: 6, step: 1 } },

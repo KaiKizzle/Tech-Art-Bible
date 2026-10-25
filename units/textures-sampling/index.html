@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="textures-sampling" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,25 +42,25 @@
   <div class="eyebrow">Foundations · 6 chapters</div>
   <h1>Textures and Sampling</h1>
   <p class="lede">A texture is a lookup table the GPU can read anywhere, fast. This unit covers how a shader asks for a value and what the hardware does between the texels.</p>
-  <p class="meta">Builds on How a GPU Draws a Frame and the functions in Reading a Shader.</p>
+  <p class="meta">Builds on GPU Rendering Basics and the functions in Shader Anatomy.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/textures-sampling.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A checkerboard tinted by the mip level its distance would pick.</figcaption></figure>
 </div>
 <div class="needs" data-needs="gpu-basics shader-anatomy#functions"></div>
 
-<section class="chapter" id="texture" data-title="A texture is a grid of values" data-builds="gpu-basics#screen" data-summary="A texture is a grid of texels in GPU memory, each holding up to four numbers.">
-  <div class="head"><div class="num"></div><h2>A texture is a grid of values</h2></div>
+<section class="chapter" id="texture" data-title="Textures and texels" data-builds="gpu-basics#screen" data-summary="A texture is a grid of texels in GPU memory, each holding up to four numbers.">
+  <div class="head"><div class="num"></div><h2>Textures and texels</h2></div>
 
   <div class="prose">
     <p>A <button type="button" class="term" data-term="texture">texture</button> is an image stored in GPU memory, a grid of small cells like the <a class="x" href="../gpu-basics/index.html#screen">pixels of the screen</a>. To keep the two apart, the cells of a texture are called <button type="button" class="term" data-term="texel">texels</button>. A 1024 × 1024 texture has a little over a million of them.</p>
-    <p>Each texel holds up to four numbers (red, green, blue, alpha). They do not have to be a colour: a normal map stores a direction, a mask map stores roughness and metallic values, a height map stores one height. A texture is just a fast lookup table that a shader can read at any position. How much memory one costs, and how compression shrinks it, is the subject of <a class="x" href="../texture-memory/index.html#cost">Texels on a Budget</a>.</p>
+    <p>Each texel holds up to four numbers (red, green, blue, alpha). They do not have to be a colour: a normal map stores a direction, a mask map stores roughness and metallic values, a height map stores one height. A texture is just a fast lookup table that a shader can read at any position. How much memory one costs, and how compression shrinks it, is the subject of <a class="x" href="../texture-memory/index.html#cost">Texture Memory</a>.</p>
   </div>
   <div class="fx" data-fx="texbytes"></div>
   <details class="check"><summary></summary><script type="application/json">[["What is a texel?", ["A screen pixel", "One cell of a texture", "A texture coordinate", "A shader instruction"], 1, "Texture element: one cell of the texture's grid."], ["Can a texture store something other than colour?", ["No", "Yes, any numbers: directions, masks, heights", "Only alpha", "Only on PC"], 1, "A texture is a grid of numbers; their meaning is up to the shader."]]</script></details>
 
 </section>
-<section class="chapter" id="uv" data-title="UV coordinates: where to read" data-builds="textures-sampling#texture shader-anatomy#interpolation" data-summary="UV runs from 0 to 1 across the texture; texel position = uv × size, with centres at half-texels.">
-  <div class="head"><div class="num"></div><h2>UV coordinates: where to read</h2></div>
+<section class="chapter" id="uv" data-title="UV coordinates" data-builds="textures-sampling#texture shader-anatomy#interpolation" data-summary="UV runs from 0 to 1 across the texture; texel position = uv × size, with centres at half-texels.">
+  <div class="head"><div class="num"></div><h2>UV coordinates</h2></div>
 
   <div class="prose">
     <p>Shaders do not ask for "texel 37". They ask for a position given as two numbers between 0 and 1, called <button type="button" class="term" data-term="uv">UV</button>: u across, v up. (0, 0) is one corner of the texture, (1, 1) the opposite one. The same UV works for a 256 or a 4096 texture, the same way <code>uv</code> made <a class="x" href="../gpu-basics/index.html#per-pixel">a shader independent of the screen size</a>.</p>
@@ -71,8 +71,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A 512 px wide texture is read at u = 0.5. Which texel column is it?", ["Column 255", "Column 256 (its left edge)", "Column 0.5", "Column 512"], 1, "0.5 × 512 = 256: the boundary between texels 255 and 256."]]</script></details>
 
 </section>
-<section class="chapter" id="wrap" data-title="Outside 0 to 1: repeat, clamp, mirror" data-builds="textures-sampling#uv shader-anatomy#functions" data-summary="Repeat = frac(u), clamp = saturate(u), mirror alternates direction.">
-  <div class="head"><div class="num"></div><h2>Outside 0 to 1: repeat, clamp, mirror</h2></div>
+<section class="chapter" id="wrap" data-title="Wrap modes" data-builds="textures-sampling#uv shader-anatomy#functions" data-summary="Repeat = frac(u), clamp = saturate(u), mirror alternates direction.">
+  <div class="head"><div class="num"></div><h2>Wrap modes</h2></div>
 
   <div class="prose">
     <p>A UV can leave the 0–1 range: tiling a floor texture ten times means UVs up to 10. The texture's <button type="button" class="term" data-term="wrap">wrap mode</button> decides what happens. Each mode is one of the <a class="x" href="../shader-anatomy/index.html#functions">built-in functions</a> applied to the UV before the lookup:</p>
@@ -82,8 +82,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A floor uses u up to 4 with Repeat. How often does the texture appear across it?", ["Once", "Four times", "Sixteen times", "It stretches"], 1, "frac(u) restarts at every whole number."], ["Which mode stops a decal's edge pixels from smearing across a whole wall?", ["Repeat", "Clamp", "Mirror", "Bilinear"], 1, "Clamp keeps the last texel at the edge, which for a decal with a transparent border is transparent."]]</script></details>
 
 </section>
-<section class="chapter" id="filter" data-title="Between texels: filtering" data-builds="textures-sampling#uv shader-anatomy#functions" data-summary="Bilinear filtering lerps the four nearest texels: across, across, then up.">
-  <div class="head"><div class="num"></div><h2>Between texels: filtering</h2></div>
+<section class="chapter" id="filter" data-title="Filtering" data-builds="textures-sampling#uv shader-anatomy#functions" data-summary="Bilinear filtering lerps the four nearest texels: across, across, then up.">
+  <div class="head"><div class="num"></div><h2>Filtering</h2></div>
 
   <div class="prose">
     <p>A UV almost never lands exactly on a texel centre. The texture's <button type="button" class="term" data-term="filter">filter mode</button> decides the value in between:</p>
@@ -93,18 +93,27 @@
     </ul>
   </div>
   <div class="fx" data-fx="bilinear"></div>
-  <div class="prose"><p>Trilinear filtering adds a blend between two <a href="#mips">mipmap levels</a>; anisotropic filtering takes several such samples along a stretched footprint. Both are covered in <a class="x" href="../texture-memory/index.html#mips">Texels on a Budget</a>.</p></div>
+  <div class="prose"><p>Trilinear filtering adds a blend between two <a href="#mips">mipmap levels</a>; anisotropic filtering takes several such samples along a stretched footprint. Both follow below in <a href="#mips">mipmaps</a>.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["A sample lands exactly halfway between four texels with values 0, 1, 0 and 1 (left column 0, right column 1). Bilinear result?", ["0", "0.25", "0.5", "1"], 2, "Both rows blend 0 and 1 at 0.5, giving 0.5, and blending 0.5 with 0.5 gives 0.5."]]</script></details>
 
 </section>
-<section class="chapter" id="mips" data-title="Smaller copies: mipmaps" data-builds="textures-sampling#filter" data-summary="Mipmaps are pre-shrunk copies; level ≈ log₂(texels per pixel).">
-  <div class="head"><div class="num"></div><h2>Smaller copies: mipmaps</h2></div>
+<section class="chapter" id="mips" data-title="Mipmaps and mip selection" data-builds="textures-sampling#filter reading-a-frame#quads" data-summary="Mipmaps are pre-shrunk copies; level = log₂(texels per pixel), measured from ddx/ddy across 2×2 quads. Jumping or looped UVs need explicit gradients (SampleGrad).">
+  <div class="head"><div class="num"></div><h2>Mipmaps and mip selection</h2></div>
 
   <div class="prose">
     <p>When a textured surface is far away, one screen pixel covers many texels. Reading just one of them gives a different texel every frame as the camera moves, and the surface shimmers. The fix is to store pre-shrunk copies of the texture, each half the size of the previous one. These are <button type="button" class="term" data-term="mip">mipmaps</button>, and the GPU picks the level whose texels are about the size of a pixel:</p>
   </div>
   <div class="fx" data-fx="mip"></div>
-  <div class="prose"><p>The GPU measures "texels per pixel" itself from how fast the UV changes between neighbouring pixels. How that measurement works, what mips cost in memory and how distance and texel density decide the level are all in <a class="x" href="../texture-memory/index.html#mips">Texels on a Budget: Mipmaps</a>.</p></div>
+  <div class="prose">
+    <p>The GPU measures "texels per pixel" by itself. Pixels are shaded in 2×2 quads (<a class="x" href="../reading-a-frame/index.html#quads">quads</a>), so it can compare the UV of neighbouring pixels: the screen-space derivatives <code>ddx(uv)</code> and <code>ddy(uv)</code>. Multiplied by the texture size, the larger of the two says how many texels one pixel spans, and its log₂ is the mip level:</p>
+  </div>
+  <div class="fx" data-fx="miplevel"></div>
+  <div class="prose">
+    <p>With anisotropic filtering, the GPU takes several samples along the long side of the pixel's footprint and picks the mip from the short side, so floors at a grazing angle stay sharp (<a class="x" href="../texture-settings/index.html#filtering">anisotropy settings</a>). A full mip chain costs a third more memory than the top level alone (<a class="x" href="../texture-memory/index.html#cost">what a texture costs</a>), and how far away a texture switches levels depends on its <a class="x" href="../texture-memory/index.html#density">texel density on screen</a>.</p>
+    <h3>When the measurement breaks: jumps and loops</h3>
+    <p>The derivatives assume the UV changes smoothly from pixel to pixel. Two common cases break that. UVs that <em>jump</em>: atlas cells, per-room UVs, wrapped coordinates. And UVs computed <em>in a loop or branch</em>, where neighbouring pixels stop at different iterations: parallax occlusion mapping, ray marching. A jump looks like a huge UV change, the GPU picks a tiny mip, and a seam or a line of blurred texels appears.</p>
+    <p>The fix is always the same: compute the gradients from something continuous (the original UV before the loop, or the world position) and pass them to the sampler explicitly. That is <code>SampleGrad</code> in HLSL, <code>SAMPLE_TEXTURE2D_GRAD</code> in Unity, and <code>Texture2DSampleGrad</code> or a sampler with <em>Derivative</em> mip mode in Unreal. Do it for every texture read at the shifted UV, not only inside the loop.</p>
+  </div>
   <details class="check"><summary></summary><script type="application/json">[["A 1024-texel-wide texture covers 256 pixels on screen. Which mip level is used?", ["0", "1", "2", "4"], 2, "4 texels per pixel; log₂ 4 = 2: the 256-texel level."]]</script></details>
 
 </section>
@@ -175,17 +184,17 @@ void ManualBilinear_float(UnityTexture2D Tex, float2 UV, out float4 Out)
 "mip": [
 "Mipmap",
 "A pre-filtered copy of a texture at half, quarter… size, used for distant or small surfaces.",
-"../texture-memory/index.html#mips"
+"../textures-sampling/index.html#mips"
 ]
 }</script>
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="textures-sampling.js?v=fe8202c6"></script>
+<script src="textures-sampling.js?v=59070313"></script>
 </body>
 </html>

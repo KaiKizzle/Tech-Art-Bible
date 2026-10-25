@@ -21,7 +21,7 @@
   });
 
   A.fx('mesh', {
-    title: 'A grid mesh with and without an index buffer',
+    title: 'Grid mesh with and without an index buffer',
     expr: 'indexed = ({n}+1)²·{s} + 6{n}²·{ib},   not indexed = 6{n}²·{s}',
     vars: { n: { name: 'quads per side', min: 1, max: 200, value: 50, step: 1 }, s: { name: 'vertex stride', unit: 'bytes', values: [12, 24, 32, 48, 64], index: 2 },
             ib: { name: 'bytes per index', values: [2, 4], labels: ['2 (16-bit)', '4 (32-bit)'], index: 0 } },

@@ -22,7 +22,7 @@
   }
 
   A.fx('stops', {
-    title: 'Counting stops between two brightnesses',
+    title: 'Stops between two brightnesses',
     expr: 'stops = log₂({a} / {b})',
     vars: { a: { name: 'brighter luminance', unit: 'cd/m²', min: 0.01, max: 100000, value: 7000, log: true },
             b: { name: 'darker luminance', unit: 'cd/m²', min: 0.001, max: 1000, value: 2, log: true } },
@@ -43,7 +43,7 @@
   });
 
   A.fx('lm2cd', {
-    title: 'Lumens to candela for a bulb that shines everywhere',
+    title: 'Lumens to candela (isotropic bulb)',
     expr: 'I = {Phi} / 4π',
     vars: { Phi: { sym: 'Φ', name: 'luminous flux of the bulb', unit: 'lm', min: 50, max: 5000, value: 800, step: 10 } },
     out: { sym: 'I', unit: 'cd', f: v => v.Phi / (4 * Math.PI) },
@@ -60,7 +60,7 @@
   });
 
   A.fx('invsq', {
-    title: 'Candela to lux: the inverse-square law',
+    title: 'Candela to lux (inverse-square law)',
     expr: 'E = {I} · cos {th} / {d}²',
     vars: { I: { name: 'intensity toward the wall', unit: 'cd', min: 1, max: 500, value: 64, step: 1 },
             th: { sym: 'θ', name: 'tilt of the wall', unit: '°', min: 0, max: 85, value: 0, step: 1 },
@@ -85,7 +85,7 @@
   });
 
   A.fx('lambert', {
-    title: 'Lux to nits on a matte surface',
+    title: 'Lux to nits (matte surface)',
     expr: 'L = {rho} · {E} / π',
     vars: { rho: { sym: 'ρ', name: 'albedo (fraction reflected)', min: 0.02, max: 0.95, value: 0.6, step: 0.01 },
             E: { name: 'illuminance arriving', unit: 'lx', min: 1, max: 100000, value: 16, log: true } },
@@ -105,7 +105,7 @@
   const Ns = [1, 1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22], Ts = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 15, 1 / 30, 1 / 60, 1 / 125, 1 / 250, 1 / 500, 1 / 1000, 1 / 2000, 1 / 4000], Ss = [100, 200, 400, 800, 1600, 3200, 6400];
   const evOf = v => L2(v.N * v.N / v.t) - L2(v.S / 100);
   A.fx('ev', {
-    title: 'Three camera settings, one number',
+    title: 'EV100 from aperture, shutter and ISO',
     expr: 'EV100 = log₂({N}² / {t}) − log₂({S} / 100)',
     vars: { N: { name: 'aperture (f-number)', values: Ns, index: 6, labels: Ns.map(n => 'f/' + n), log: true },
             t: { name: 'shutter time', values: Ts, index: 7, labels: Ts.map(t => t >= 1 ? t + ' s' : '1/' + Math.round(1 / t) + ' s'), log: true },
@@ -126,7 +126,7 @@
   });
 
   A.fx('expo', {
-    title: 'EV100 to the multiplier a shader uses',
+    title: 'EV100 to exposure multiplier',
     expr: 'exposure = 1 / (1.2 · 2<sup>{ev}</sup>),   pixel = {L} · exposure',
     vars: { ev: { sym: 'EV100', name: 'exposure value', min: -2, max: 17, value: 8, step: 0.1 },
             L: { name: 'scene luminance of a surface', unit: 'cd/m²', min: 0.01, max: 100000, value: 20, log: true } },
@@ -146,7 +146,7 @@
   });
 
   A.fx('meter', {
-    title: 'What a light meter (and auto exposure) computes',
+    title: 'Metered EV100',
     expr: 'EV100 = log₂({La} · 100 / 12.5) = log₂(8 · {La})',
     vars: { La: { sym: 'L<sub>avg</sub>', name: 'average scene luminance', unit: 'cd/m²', min: 0.001, max: 100000, value: 25, log: true } },
     out: { sym: 'EV100', f: v => L2(8 * v.La) },
@@ -157,7 +157,7 @@
 
   const logavg = v => { const n = v.n, m = 100; return { ar: (n * v.Lb + (m - n) * v.Ld) / m, ge: Math.exp((n * Math.log(v.Lb) + (m - n) * Math.log(v.Ld)) / m) }; };
   A.fx('logavg', {
-    title: 'Arithmetic mean against log average',
+    title: 'Arithmetic mean versus log average',
     expr: 'L<sub>avg</sub> = exp(mean(ln L)),   {n} sky pixels at {Lb}, the rest at {Ld}',
     vars: { n: { name: 'sky pixels out of 100', min: 0, max: 50, value: 3, step: 1 },
             Lb: { sym: 'L<sub>sky</sub>', name: 'sky luminance', unit: 'cd/m²', min: 100, max: 100000, value: 7000, log: true },
@@ -179,7 +179,7 @@
   });
 
   A.fx('adapt', {
-    title: 'Adapting toward the target over time',
+    title: 'Exposure adaptation over time',
     expr: 'EV({time}) = {tg} + ({e0} − {tg}) · e<sup>−{k} · {time}</sup>',
     vars: { time: { sym: 'time', name: 'seconds since the change', unit: 's', min: 0, max: 5, value: 1, step: 0.02 },
             k: { name: 'adaptation speed', min: 0.2, max: 10, value: 1.5, step: 0.1 },
@@ -205,7 +205,7 @@
   });
 
   A.fx('tmc', {
-    title: 'Four tonemapping curves',
+    title: 'Tonemapping curves',
     expr: 'x = 0.18 · 2<sup>{s}</sup>,   Reinhard: x / (1 + x)',
     vars: { s: { sym: 'stops', name: 'stops above middle grey', min: -6, max: 8, value: 2, step: 0.05 } },
     out: [{ sym: 'clip', f: v => TM.clip(0.18 * Math.pow(2, v.s)), color: 'muted' }, { sym: 'Reinhard', f: v => TM.reinhard(0.18 * Math.pow(2, v.s)), color: 'ax-y' },
@@ -227,7 +227,7 @@
   });
 
   A.fx('codes', {
-    title: 'Where the 8-bit codes go',
+    title: '8-bit code distribution',
     expr: 'code = round(f({x}) · (2<sup>{bits}</sup> − 1))',
     vars: { x: { name: 'display-linear value', min: 0, max: 0.25, value: 0.02, step: 0.001 },
             bits: { name: 'bits per channel', values: [3, 4, 5, 6, 7, 8, 10], index: 5 } },

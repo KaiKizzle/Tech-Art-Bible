@@ -8,7 +8,7 @@
   const zOf = (d, n, f) => n * f / (f - d * (f - n));
 
   A.fx('ztest', {
-    title: 'The depth test',
+    title: 'Depth test',
     expr: 'keep the new pixel if {dn} ≤ {ds}',
     vars: { dn: { sym: 'd<sub>new</sub>', name: 'depth of the new fragment (0 near, 1 far)', min: 0, max: 1, value: 0.35, step: 0.01 },
             ds: { sym: 'd<sub>stored</sub>', name: 'depth already in the buffer', min: 0, max: 1, value: 0.6, step: 0.01 } },
@@ -29,7 +29,7 @@
   });
 
   A.fx('devdepth', {
-    title: 'Distance to stored depth',
+    title: 'Stored depth versus distance',
     expr: 'd = {f} / ({f} − {n}) · (1 − {n} / {z})',
     vars: { z: { name: 'distance from the camera', unit: 'm', min: 0.1, max: 1000, value: 2, log: true },
             n: { name: 'near plane', unit: 'm', min: 0.01, max: 1, value: 0.1, log: true },
@@ -52,7 +52,7 @@
   });
 
   A.fx('zprec', {
-    title: 'The smallest distance step the buffer can store',
+    title: 'Depth precision by distance',
     expr: 'Δz ≈ {z}² · ({f} − {n}) / ({n} · {f}) · 2<sup>−24</sup>',
     vars: { z: { name: 'distance', unit: 'm', min: 1, max: 1000, value: 100, log: true },
             n: { name: 'near plane', unit: 'm', min: 0.01, max: 1, value: 0.1, log: true },
@@ -75,7 +75,7 @@
   });
 
   A.fx('reconstruct', {
-    title: 'From a pixel and its depth to a position (side view)',
+    title: 'Position from pixel and depth (side view)',
     expr: 'y = {ny} · tan({fov} / 2) · {z},   z = {z}',
     vars: { ny: { sym: 'ndc.y', name: 'vertical NDC of the pixel', min: -1, max: 1, value: 0.4, step: 0.01 },
             fov: { name: 'vertical field of view', unit: '°', min: 20, max: 110, value: 60, step: 1 },
@@ -97,7 +97,7 @@
   });
 
   A.fx('softfade', {
-    title: 'Fading a particle near the scene',
+    title: 'Soft particle fade',
     expr: 'fade = saturate(({zs} − {zp}) / {dist})',
     vars: { zs: { sym: 'z<sub>scene</sub>', name: 'scene depth behind the particle pixel', unit: 'm', min: 0, max: 10, value: 5.2, step: 0.01 },
             zp: { sym: 'z<sub>particle</sub>', name: 'particle depth at that pixel', unit: 'm', min: 0, max: 10, value: 5, step: 0.01 },
@@ -117,7 +117,7 @@
   });
 
   A.fx('waterdepth', {
-    title: 'How much of the ground shows through water',
+    title: 'Water transmittance by depth',
     expr: 'T = e<sup>−{s} · ({zs} − {zw})</sup>',
     vars: { s: { sym: 'σ', name: 'absorption per metre (red absorbs most)', min: 0.05, max: 3, value: 0.6, step: 0.01 },
             zs: { sym: 'z<sub>ground</sub>', name: 'scene depth behind the water', unit: 'm', min: 5, max: 25, value: 9, step: 0.05 },
@@ -149,7 +149,7 @@
     return { ao: 1 - occ / v.n, occ, pts, p: [px, py], n };
   }
   A.fx('ssao', {
-    title: 'Counting blocked samples (2D)',
+    title: 'AO sample occlusion (2D)',
     expr: 'AO = 1 − blocked / {n},   radius {r}',
     vars: { x: { name: 'point on the surface', min: -2.4, max: 2.4, value: 0.9, step: 0.01 }, r: { name: 'sample radius', unit: 'm', min: 0.1, max: 1.5, value: 0.6, step: 0.01 },
             n: { name: 'samples', min: 4, max: 32, value: 16, step: 1 }, rc: { name: 'range check', values: [1, 0], labels: ['on', 'off'] } },
@@ -170,7 +170,7 @@
   });
 
   A.fx('edge', {
-    title: 'Is there an edge between two pixels?',
+    title: 'Depth edge test',
     expr: 'edge if |{z1} − {z2}| / {z1} > {th}',
     vars: { z1: { name: 'depth of this pixel', unit: 'm', min: 1, max: 200, value: 10, log: true }, z2: { name: 'depth of the neighbour', unit: 'm', min: 1, max: 200, value: 10.6, log: true },
             th: { name: 'threshold (fraction of the depth)', min: 0.005, max: 0.3, value: 0.05, step: 0.005 } },

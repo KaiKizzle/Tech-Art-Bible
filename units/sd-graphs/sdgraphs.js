@@ -17,7 +17,7 @@
   const FMT = ['8-bit', '16-bit', '16F', '32F'], BYTES = [1, 2, 2, 4];
   const nodeMB = v => v.s * v.s * v.c * BYTES[v.f] / 1048576;
   A.fx('nodemem', {
-    title: 'Memory of one node\'s image',
+    title: 'Node image memory',
     expr: 'MB = {s}² · {c} channels · bytes({f}) / 1 048 576,   cache = MB · {n} nodes',
     vars: { s: { sym: 'size', name: 'output size', values: SIZES, labels: SL, index: 3 }, c: { sym: 'ch', name: 'greyscale (1) or colour (4)', values: [1, 4], labels: ['L', 'C'], index: 1 },
             f: { sym: 'format', name: 'output format', values: [0, 1, 2, 3], labels: FMT, index: 0 }, n: { sym: 'N', name: 'nodes in the graph', min: 10, max: 300, value: 80, step: 1 } },
@@ -28,7 +28,7 @@
 
   /* ---------- output size from inheritance ---------- */
   A.fx('relsize', {
-    title: 'Relative to parent: sizes as powers of two',
+    title: 'Relative output size',
     expr: 'width = 2<sup>{p} + {dx}</sup>,   height = 2<sup>{p} + {dy}</sup>',
     vars: { p: { sym: 'parent', name: 'parent size (log2)', values: [8, 9, 10, 11, 12, 13], labels: SL, index: 2 },
             dx: { sym: 'Δx', name: 'width offset', min: -4, max: 3, value: 0, step: 1 }, dy: { sym: 'Δy', name: 'height offset', min: -4, max: 3, value: -1, step: 1 } },
@@ -47,7 +47,7 @@
 
   /* ---------- levels per bit depth ---------- */
   A.fx('levels', {
-    title: 'How many levels an integer format stores',
+    title: 'Integer format levels',
     expr: 'levels = 2<sup>{n}</sup>,   step = 1 / (2<sup>{n}</sup> − 1);   showing {r} of the 0–1 range',
     vars: { n: { sym: 'n', name: 'bits per channel', min: 1, max: 16, value: 8, step: 1 }, r: { sym: 'zoom', name: 'part of the range shown', values: [1, 0.25, 0.05, 0.01], labels: ['all of 0–1', '0.4–0.65', '0.5–0.55', '0.5–0.51'], index: 2 } },
     out: [{ sym: 'levels', f: v => Math.pow(2, v.n), color: 'accent' }, { sym: 'step', f: v => 1 / (Math.pow(2, v.n) - 1), color: 'ray' }],
@@ -67,7 +67,7 @@
 
   /* ---------- banding in a shallow height ramp ---------- */
   A.fx('banding', {
-    title: 'A gentle height ramp, stored as integers',
+    title: 'Quantized height ramp',
     expr: 'pixels per level = {s} / ({r} · (2<sup>{n}</sup> − 1))',
     vars: { n: { sym: 'n', name: 'bits per channel', values: [8, 16], index: 0 }, r: { sym: 'Δh', name: 'height change across the image', min: 0.01, max: 1, value: 0.06, log: true },
             s: { sym: 'size', name: 'image width', values: SIZES, labels: SL, index: 3 } },
@@ -94,7 +94,7 @@
   const halfStep = x => Math.pow(2, Math.max(Math.floor(Math.log2(x)), -14) - 10);
   const floatStep = x => Math.pow(2, Math.floor(Math.log2(x)) - 23);
   A.fx('precision', {
-    title: 'The smallest change each format can store near a value',
+    title: 'Format precision near a value',
     expr: '8-bit: 1/255,   16-bit: 1/65 535,   16F: 2<sup>⌊log₂ {x}⌋ − 10</sup>,   32F: 2<sup>⌊log₂ {x}⌋ − 23</sup>',
     vars: { x: { sym: 'x', name: 'stored value', min: 0.0005, max: 4, value: 0.5, log: true } },
     out: [{ sym: '8-bit', f: v => v.x <= 1 ? 1 / 255 : NaN, color: 'bad' }, { sym: '16-bit', f: v => v.x <= 1 ? 1 / 65535 : NaN, color: 'accent' }, { sym: '16F', f: v => halfStep(v.x), color: 'ray' }, { sym: '32F', f: v => floatStep(v.x), color: 'good' }],
@@ -104,7 +104,7 @@
 
   /* ---------- clamping between nodes ---------- */
   A.fx('clampmath', {
-    title: 'Subtract, then add back: integer versus float',
+    title: 'Integer versus float round trip',
     expr: 'result = ({a} − {b}) + {b}',
     vars: { a: { sym: 'a', name: 'input value', min: 0, max: 1, value: 0.3, step: 0.01 }, b: { sym: 'b', name: 'value subtracted and added back', min: 0, max: 1, value: 0.6, step: 0.01 } },
     out: [{ sym: 'integer formats', f: v => clamp(clamp(v.a - v.b, 0, 1) + v.b, 0, 1), color: 'bad' }, { sym: 'float formats', f: v => v.a - v.b + v.b, color: 'good' }],
@@ -114,7 +114,7 @@
 
   /* ---------- dark codes: why linear needs more bits ---------- */
   A.fx('darkcodes', {
-    title: 'How many 8-bit codes describe the darks',
+    title: '8-bit codes in the darks',
     expr: 'codes below {L}:   linear = {L} · 255,   sRGB-encoded = encode({L}) · 255',
     vars: { L: { sym: 'L', name: 'linear brightness', min: 0.001, max: 1, value: 0.05, log: true } },
     out: [{ sym: 'stored linear', f: v => v.L * 255, color: 'bad' }, { sym: 'stored sRGB', f: v => l2s(v.L) * 255, color: 'good' }],
@@ -128,7 +128,7 @@
   const mixL = (a, b, t) => a.map((x, i) => l2s(s2l(x) + (s2l(b[i]) - s2l(x)) * t));
   const lum = c => 0.2126 * s2l(c[0]) + 0.7152 * s2l(c[1]) + 0.0722 * s2l(c[2]);
   A.fx('mixspace', {
-    title: 'A 50 % blend: on encoded values or on linear values',
+    title: '50 % blend: encoded versus linear',
     expr: 'encoded: lerp(a, b, {t}),   linear: encode(lerp(decode(a), decode(b), {t}));   colours {p}',
     vars: { t: { sym: 't', name: 'opacity of the blend', min: 0, max: 1, value: 0.5, step: 0.01 }, p: { sym: 'pair', name: 'colour pair', values: [0, 1, 2, 3], labels: PAIRS.map(p => p[0]), index: 0 } },
     out: [{ sym: 'encoded mix', f: v => lum(mixE(PAIRS[v.p][1], PAIRS[v.p][2], v.t)), color: 'bad' }, { sym: 'linear mix', f: v => lum(mixL(PAIRS[v.p][1], PAIRS[v.p][2], v.t)), color: 'good' }],

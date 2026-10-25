@@ -71,8 +71,8 @@ Topic colours appear only as the tile bar, the dot, the unit header's left borde
   Inside live formulas and labs, colors carry meaning (one per variable, axis colors for X/Y/Z) and stay.
 - Layout: the hub and the unit pages share the icon rail and the top search bar. A unit page is a centred grid of two
   columns: a sticky **rail card** (268 px) and the content column (`--col`, up to 1180 px). The rail card holds the breadcrumbs
-  as pill chips ("All units", then the topic with its colour dot), the unit name and the chapter list; the current chapter gets
-  the accent tint and a bar. The unit header and key art sit side by side on wide screens. Every chapter is a framed card;
+  as pill chips ("All units", then the topic with its colour dot), the unit name in plain body type and the chapter list,
+  without numbers; the current chapter gets the accent tint and a bar. The unit header and key art sit side by side on wide screens. Every chapter is a framed card;
   live formulas with a drawing put the canvases left and the sliders right once the chapter is wider than 860 px (container
   queries), so a widget fits on one screen. Under 980 px the rail card hides and everything is one column.
   Widgets, labs, code and tables inside a chapter are framed again with 1 px lines. Panels have small radii and no shadows.
@@ -80,6 +80,15 @@ Topic colours appear only as the tile bar, the dot, the unit header's left borde
   so they follow both.
 
 ## Writing
+
+Titles state facts. Units, chapters and live formulas are named by the technique, quantity or setting they cover
+("Snell's law", "Mip level from derivatives", "Channel packing layouts"), as noun phrases in sentence case. No questions,
+no slogans, no "the trick", no chapter numbers. Unit titles use title case.
+
+Each principle is explained once. If a chapter needs a principle another unit owns (Fresnel, Beer–Lambert absorption,
+linear and sRGB, mip selection, the slab test and so on), it gives a one-line recap with `ref('unit#chapter', 'recap')`
+instead of explaining it again, and keeps only what is specific to its own topic. The reference card links to the full
+chapter, and the owning chapter lists every unit that uses it under "Used in".
 
 Plain, direct sentences. Name things by what readers know from their engine. No marketing adjectives, no emoji.
 

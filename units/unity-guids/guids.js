@@ -19,7 +19,7 @@
     ['object in the same scene', '1843…27', '(none)', '', 'Within one file, only the fileID is stored: the object\'s local ID.']
   ];
   A.fx('reftriple', {
-    title: 'What a serialized reference stores',
+    title: 'Serialized reference',
     expr: 'ref({o}) = { fileID, guid, type }',
     vars: { o: { sym: 'target', name: 'what is referenced', values: REF.map((_, i) => i), labels: REF.map(r => r[0]), index: 0 } },
     out: { sym: 'type', f: v => +REF[v.o][3] || 0, color: 'accent' },
@@ -40,7 +40,7 @@
   function toyHash(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
   const NAMES = ['Body', 'body', 'Body_LOD0', 'Body.001'];
   A.fx('fileid', {
-    title: 'A sub-object\'s fileID follows its name',
+    title: 'FBX sub-object fileIDs',
     expr: 'fileID = hash(type, "Robot/{n}")',
     vars: { n: { sym: 'name', name: 'the child object\'s name in the next export', values: [0, 1, 2, 3], labels: NAMES, index: 0 } },
     out: { sym: 'still found', f: v => v.n === 0 ? 1 : 0, color: 'accent' },
@@ -66,7 +66,7 @@
     ['Delete Library folder', 'ok', 'Library is a cache. Unity reimports everything from Assets and the .meta files; references survive. Slow, but safe.']
   ];
   A.fx('guidlab', {
-    title: 'Lab: what happens to references when you…',
+    title: 'Reference behaviour per action',
     expr: 'action: {a}',
     vars: { a: { sym: 'action', name: 'what you do with Rock.png', values: ACTS.map((_, i) => i), labels: ACTS.map(x => x[0]), index: 2 } },
     out: { sym: 'references intact', f: v => ACTS[v.a][1] === 'ok' ? 1 : 0, color: 'accent' },
@@ -84,7 +84,7 @@
 
   /* ---------- GUID collisions ---------- */
   A.fx('collision', {
-    title: 'Could two assets get the same GUID by chance?',
+    title: 'GUID collision probability',
     expr: 'p ≈ 1 − exp(−{n}² / 2<sup>129</sup>)',
     vars: { n: { sym: 'n', name: 'assets ever created', min: 10, max: 1e12, value: 1e6, log: true } },
     out: { sym: 'log₁₀ p', f: v => { const x = v.n * v.n / Math.pow(2, 129); return Math.log10(x < 1e-8 ? x : 1 - Math.exp(-x)); }, color: 'accent' },

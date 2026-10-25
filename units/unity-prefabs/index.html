@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -55,8 +55,8 @@
 </div>
 <div class="needs" data-needs="unity-guids#refs unity-guids#fileid"></div>
 
-<section class="chapter" id="fbx" data-title="What importing an FBX creates" data-builds="spaces#transform" data-summary="The Model Importer turns an FBX into meshes, a read-only model prefab, materials, clips and an avatar; Unity works in metres.">
-  <div class="head"><div class="num"></div><h2>What importing an FBX creates</h2></div>
+<section class="chapter" id="fbx" data-title="FBX import results" data-builds="spaces#transform" data-summary="The Model Importer turns an FBX into meshes, a read-only model prefab, materials, clips and an avatar; Unity works in metres.">
+  <div class="head"><div class="num"></div><h2>FBX import results</h2></div>
 
   <div class="prose">
     <p>An FBX file is not used directly. Unity's <em>Model Importer</em> reads it and produces a set of assets inside it: the <strong>meshes</strong>, a hierarchy of <strong>GameObjects</strong>, <strong>materials</strong> (unless you supply your own), <strong>animation clips</strong> and, for characters, an <strong>avatar</strong>. Its importer has four tabs, Model, Rig, Animation and Materials, and every setting is stored in the FBX's .meta file (<a class="x" href="../unity-guids/index.html#meta">.meta files</a>).</p>
@@ -67,8 +67,8 @@
   <div class="prose"><p><em>Convert Units</em> applies the file's unit, and <em>Scale Factor</em> multiplies on top. Export at real size in metres, or in centimetres with Convert Units on, and leave Scale Factor at 1; a model that needs a scale factor of 100 or 0.01 has a unit mismatch that will resurface in every tool that reads the file.</p></div>
 
 </section>
-<section class="chapter" id="importer" data-title="Import settings that matter" data-builds="unity-prefabs#fbx" data-summary="Bake Axis Conversion, Read/Write off, normals Import, lightmap UVs only for static meshes, remap materials by name.">
-  <div class="head"><div class="num"></div><h2>Import settings that matter</h2></div>
+<section class="chapter" id="importer" data-title="Model import settings" data-builds="unity-prefabs#fbx" data-summary="Bake Axis Conversion, Read/Write off, normals Import, lightmap UVs only for static meshes, remap materials by name.">
+  <div class="head"><div class="num"></div><h2>Model import settings</h2></div>
 
   <div class="prose">
     <ul>
@@ -128,16 +128,16 @@ PrefabInstance:
   <details class="check"><summary></summary><script type="application/json">[["Door_Red overrides the colour to red. You change the base Door's colour to brown. What colour are the Door_Red instances?", ["Brown", "Red", "Half brown, half red", "Grey"], 1, "The variant overrides the colour, so base changes to that property no longer reach it. Other base properties still do."]]</script></details>
 
 </section>
-<section class="chapter" id="where" data-title="Where to make a change" data-builds="unity-prefabs#variants" data-summary="An edit reaches everything below it without an override: base → all, variant → its instances, nesting prefab → its nested copies, scene → one.">
-  <div class="head"><div class="num"></div><h2>Where to make a change</h2></div>
+<section class="chapter" id="where" data-title="Where to edit" data-builds="unity-prefabs#variants" data-summary="An edit reaches everything below it without an override: base → all, variant → its instances, nesting prefab → its nested copies, scene → one.">
+  <div class="head"><div class="num"></div><h2>Where to edit</h2></div>
 
   <div class="prose"><p>Every edit has a reach: it changes everything below it in the chain that does not override the property. Before editing, ask how many objects should change, and edit at the level that matches:</p></div>
   <div class="fx" data-fx="propagate"></div>
   <div class="prose"><p>A common mistake is fixing something on a scene instance (it looks right, the task is done) when the bug is in the prefab: the next level that uses the prefab has the bug again. Scene overrides are for placement and genuine one-offs; everything else belongs in a prefab or variant.</p></div>
 
 </section>
-<section class="chapter" id="wrap" data-title="Wrapping models: variant, nested or unpacked" data-builds="unity-prefabs#variants" data-summary="Variant of the model prefab (usual), prefab with the model nested (own root), never unpack.">
-  <div class="head"><div class="num"></div><h2>Wrapping models: variant, nested or unpacked</h2></div>
+<section class="chapter" id="wrap" data-title="Wrapping imported models" data-builds="unity-prefabs#variants" data-summary="Variant of the model prefab (usual), prefab with the model nested (own root), never unpack.">
+  <div class="head"><div class="num"></div><h2>Wrapping imported models</h2></div>
 
   <div class="prose"><p>Since the model prefab cannot hold components, a game asset (a crate with a collider and a script, an enemy with LODs) needs a prefab of its own. There are three ways to make one, and they behave very differently when the FBX changes:</p></div>
   
@@ -155,8 +155,8 @@ PrefabInstance:
   </div>
 
 </section>
-<section class="chapter" id="breaks" data-title="Why reimports break prefabs" data-builds="unity-guids#fileid unity-prefabs#prefab" data-summary="Overrides target model objects by fileID; renamed or deleted children orphan them. Stable, unique names prevent it.">
-  <div class="head"><div class="num"></div><h2>Why reimports break prefabs</h2></div>
+<section class="chapter" id="breaks" data-title="Reimport breakage" data-builds="unity-guids#fileid unity-prefabs#prefab" data-summary="Overrides target model objects by fileID; renamed or deleted children orphan them. Stable, unique names prevent it.">
+  <div class="head"><div class="num"></div><h2>Reimport breakage</h2></div>
 
   <div class="prose"><p>A variant of a model stores its overrides and added components against the model's objects, by fileID, and those fileIDs come from object names in the FBX (<a class="x" href="../unity-guids/index.html#fileid">fileIDs inside files</a>). Some changes in the DCC tool are harmless, some silently orphan your work:</p></div>
   <div class="fx" data-fx="reimport"></div>
@@ -326,10 +326,10 @@ public static class OverrideReport
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="prefabs.js?v=7e12c7fa"></script>
+<script src="prefabs.js?v=3554a590"></script>
 </body>
 </html>

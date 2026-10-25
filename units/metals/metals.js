@@ -8,7 +8,7 @@
 
   /* ---------- skin depth ---------- */
   A.fx('skin', {
-    title: 'How far light gets into a metal',
+    title: 'Penetration depth in metals',
     expr: 'δ = {lam} / (4π · {k})',
     vars: { lam: { sym: 'λ', name: 'wavelength', unit: 'nm', min: 380, max: 750, value: 550, step: 1 },
             k: { sym: 'k', name: 'extinction coefficient (imaginary part of the IOR)', min: 0.5, max: 10, value: 3, step: 0.05 } },
@@ -30,7 +30,7 @@
 
   /* ---------- exact conductor Fresnel versus Schlick ---------- */
   A.fx('cfresnel', {
-    title: 'Fresnel for a metal: exact and Schlick',
+    title: 'Metal Fresnel: exact versus Schlick',
     expr: 'F0 = (({n} − 1)² + {k}²) / (({n} + 1)² + {k}²),   F({th}) exact vs F0 + (1 − F0)(1 − cos {th})<sup>5</sup>',
     vars: { n: { sym: 'n', name: 'real part of the IOR', min: 0.05, max: 3.5, value: 1.37, step: 0.01 },
             k: { sym: 'k', name: 'extinction coefficient', min: 0, max: 8, value: 7.62, step: 0.01 },
@@ -43,7 +43,7 @@
 
   /* ---------- F82: fitting the edge tint ---------- */
   A.fx('f82', {
-    title: 'Edge tint: matching the measured curve at 82°',
+    title: 'Edge tint fit at 82°',
     expr: 'tint = F<sub>exact</sub>(82°) / Schlick(82°),   F<sub>82</sub>({th}) = Schlick({th}) − c · cos {th} · (1 − cos {th})<sup>6</sup>,   c sets F<sub>82</sub>(82°) = tint · Schlick(82°)',
     sub: (v, n) => { const f0 = S.f0Conductor(v.n, v.k), t = S.conductor(S.MU82, v.n, v.k) / S.schlick(f0, S.MU82), mu = Math.cos(rad(v.th)); return `at ${n(v.th)}°: exact <b>${n(S.conductor(mu, v.n, v.k))}</b>, F82 fit <b>${n(S.f82(f0, t, mu))}</b>, plain Schlick ${n(S.schlick(f0, mu))}`; },
     vars: { n: { sym: 'n', name: 'real part of the IOR', min: 0.05, max: 3.5, value: 2.9, step: 0.01 },
@@ -60,7 +60,7 @@
   /* ---------- metal library ---------- */
   const M = S.METALS;
   A.fx('library', {
-    title: 'Measured metals as base colour and edge tint',
+    title: 'Measured base colour and edge tint',
     expr: 'F0 = {i},   roughness {r}',
     vars: { i: { sym: 'metal', name: 'metal', values: M.map((_, j) => j), labels: M.map(m => m[0]), index: 2 },
             r: { sym: 'r', name: 'roughness', min: 0.03, max: 1, value: 0.25, step: 0.01 },
@@ -93,7 +93,7 @@
     const e = Math.min(sum / (N * N), 1); cache.set(key, e); return e;
   }
   A.fx('energy', {
-    title: 'Rough metals lose light that should bounce again',
+    title: 'Energy loss on rough metals',
     expr: 'E = ∫ D · G · F / (4 μ<sub>i</sub> μ<sub>o</sub>) · μ<sub>i</sub> dω  (F = 1, roughness {r}, view {th}),   compensation = 1 + {f0} · (1 − E) / E',
     vars: { r: { sym: 'r', name: 'roughness', min: 0.02, max: 1, value: 0.8, step: 0.01 },
             th: { sym: 'θ', name: 'view angle from the normal', unit: '°', min: 0, max: 85, value: 30, step: 1 },
@@ -108,7 +108,7 @@
   /* ---------- anisotropy ---------- */
   function dAniso(h, t, b, n, at, ab) { const x = dot(h, t) / at, y = dot(h, b) / ab, z = dot(h, n); const d = x * x + y * y + z * z; return 1 / (PI * at * ab * d * d); }
   A.fx('aniso', {
-    title: 'Brushed metal: two roughnesses',
+    title: 'Anisotropic roughness',
     expr: 'α<sub>t</sub> = α · (1 + {an}),   α<sub>b</sub> = α · (1 − {an}),   α = {r}²',
     vars: { r: { sym: 'r', name: 'roughness', min: 0.05, max: 1, value: 0.45, step: 0.01 },
             an: { sym: 'aniso', name: 'anisotropy', min: -0.95, max: 0.95, value: 0.8, step: 0.01 } },
@@ -129,7 +129,7 @@
 
   /* ---------- clear coat over metal ---------- */
   A.fx('coat', {
-    title: 'Lacquer over metal',
+    title: 'Clear coat over metal',
     expr: 'F<sub>coat</sub>({th}) = Fresnel(1.5),   metal seen through the coat ≈ F<sub>metal</sub> · (1 − {c} · F<sub>coat</sub>)²',
     vars: { c: { sym: 'coat', name: 'coat weight', min: 0, max: 1, value: 1, step: 0.01 },
             th: { sym: 'θ', name: 'view angle from the normal', unit: '°', min: 0, max: 89, value: 60, step: 1 },
@@ -150,7 +150,7 @@
     return S.lerp(S.lerp(hash(xi, yi), hash(xi + 1, yi), u), S.lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), w); }
   const fbm = (x, y) => noise(x, y) * 0.55 + noise(x * 2.1, y * 2.1) * 0.3 + noise(x * 4.3, y * 4.3) * 0.15;
   A.fx('mix', {
-    title: 'Rust on iron: metalness as the share of bare metal',
+    title: 'Partial metalness (rust on iron)',
     expr: 'F0 = lerp(0.04, F0<sub>iron</sub>, {m}),   diffuse = (1 − {m}) · albedo<sub>rust</sub>',
     vars: { m: { sym: 'm', name: 'share of bare metal (metalness)', min: 0, max: 1, value: 0.5, step: 0.01 } },
     out: [{ sym: 'F0 (red)', f: v => S.lerp(0.04, 0.9, v.m), color: 'ray' }, { sym: 'diffuse (red)', f: v => (1 - v.m) * 0.25, color: 'accent' }],

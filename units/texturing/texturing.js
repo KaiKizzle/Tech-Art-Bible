@@ -5,7 +5,7 @@
 
   /* ---------- UV stretch ---------- */
   A.fx('stretch', {
-    title: 'Stretching an island',
+    title: 'UV island stretch',
     expr: 'aspect = {su} / {sv},   density = √({su} · {sv}) × the target',
     vars: { su: { sym: 's<sub>u</sub>', name: 'island scale along U (1 = correct)', min: 0.25, max: 4, value: 1.6, log: true }, sv: { sym: 's<sub>v</sub>', name: 'island scale along V', min: 0.25, max: 4, value: 1, log: true } },
     out: [{ sym: 'aspect', f: v => v.su / v.sv, color: 'accent' }, { sym: 'density', f: v => Math.sqrt(v.su * v.sv), color: 'ray', fmt: x => num(x) + '×' }],
@@ -20,7 +20,7 @@
 
   /* ---------- padding ---------- */
   A.fx('padding', {
-    title: 'How far padding protects the mip chain',
+    title: 'Padding per mip level',
     expr: 'clean down to mip ⌊log₂ {p}⌋ of a {t} texture',
     vars: { p: { sym: 'p', name: 'padding in texels', min: 1, max: 64, value: 8, step: 1 }, t: { sym: 'T', name: 'texture size', values: [512, 1024, 2048, 4096], index: 2 } },
     out: { sym: 'last clean mip', f: v => Math.floor(Math.log2(v.p)) },
@@ -47,7 +47,7 @@
 
   /* ---------- baking rays ---------- */
   A.fx('cage', {
-    title: 'Ray distance when baking',
+    title: 'Bake ray distance',
     expr: 'captured if {h} ≤ {d} < {g}',
     vars: { h: { sym: 'h', name: 'how far the high-poly detail sticks out', unit: 'cm', min: 0, max: 5, value: 1.5, step: 0.1 }, d: { sym: 'd', name: 'maximum ray distance (cage)', unit: 'cm', min: 0.1, max: 10, value: 3, step: 0.1 }, g: { sym: 'g', name: 'distance to the nearest other surface', unit: 'cm', min: 0.5, max: 10, value: 4, step: 0.1 } },
     out: { sym: 'captured', f: v => (v.h <= v.d && v.d < v.g) ? 1 : 0, fmt: x => x ? 'yes' : 'no' },
@@ -64,7 +64,7 @@
 
   /* ---------- vertex splits ---------- */
   A.fx('splits', {
-    title: 'Vertices the GPU actually draws',
+    title: 'GPU vertex count',
     expr: 'GPU vertices ≈ {n} · (1 + {s} + {e})',
     vars: { n: { sym: 'n', name: 'vertex positions in the modelling tool', min: 500, max: 100000, value: 8000, log: true }, s: { sym: 'seams', name: 'share of vertices on UV seams', unit: '%', min: 0, max: 40, value: 18, step: 1 }, e: { sym: 'hard', name: 'share on hard edges that are not seams', unit: '%', min: 0, max: 40, value: 6, step: 1 } },
     out: { sym: 'GPU vertices', f: v => v.n * (1 + v.s / 100 + v.e / 100) },
@@ -75,7 +75,7 @@
   /* ---------- memory of strategies ---------- */
   const mb = (res, maps) => res * res * 1 * maps * 4 / 3 / 1048576;   /* BC7: 1 byte per texel */
   A.fx('texmem', {
-    title: 'Memory: unique textures against shared trims',
+    title: 'Unique textures versus trim sheets',
     expr: 'unique = {n} · {r}² · 3 maps,   trims = {k} · 2048² · 3 maps   (BC7, with mips)',
     vars: { n: { sym: 'assets', name: 'number of props', min: 1, max: 200, value: 40, step: 1 }, r: { sym: 'size', name: 'unique texture size per prop', values: [512, 1024, 2048, 4096], index: 1 }, k: { sym: 'trims', name: 'trim sheets shared by all props', min: 1, max: 10, value: 3, step: 1 } },
     out: [{ sym: 'unique', unit: 'MB', f: v => v.n * mb(v.r, 3), color: 'bad' }, { sym: 'trim sheets', unit: 'MB', f: v => v.k * mb(2048, 3), color: 'good' }],

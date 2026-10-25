@@ -7,7 +7,7 @@
   const css = c => `rgb(${c.map(enc).join(',')})`;
 
   A.fx('strands', {
-    title: 'Triangles: strands against cards',
+    title: 'Triangle count: strands versus cards',
     expr: 'strands = {n} · {seg} · 2,   cards = {c} · {cs} · 2',
     vars: { n: { name: 'hair strands', min: 5000, max: 150000, value: 100000, log: true }, seg: { name: 'segments per strand (as ribbons)', min: 4, max: 32, value: 16, step: 1 },
             c: { name: 'hair cards', min: 100, max: 5000, value: 1200, log: true }, cs: { name: 'quads per card', min: 2, max: 12, value: 6, step: 1 } },
@@ -50,7 +50,7 @@
     return { c, R };
   }
   A.fx('kkspec', {
-    title: 'The highlight band along a head (side view)',
+    title: 'Highlight band along the head (side view)',
     expr: 'spec = sin(T, H)<sup>{p}</sup>,   light at {la} above the view direction',
     vars: { p: { name: 'exponent (sharpness)', min: 4, max: 400, value: 80, log: true }, la: { sym: 'θ<sub>L</sub>', name: 'light elevation above the view direction', unit: '°', min: 0, max: 90, value: 50, step: 1 },
             ph: { sym: 'φ', name: 'position on the head (0° top, 90° side)', unit: '°', min: 0, max: 90, value: 62, step: 0.5 } },

@@ -126,7 +126,7 @@
   /* ---------- NDC → view ray (side view: y and z) ---------- */
   const vray = v => { const k = Math.tan(v.fov / 2 * DEG), y = v.ny * k, l = Math.hypot(y, 1); return { k, y, l, dy: y / l, dz: 1 / l, ang: Math.atan(y) / DEG }; };
   A.fx('viewray', {
-    title: 'The pixel\'s direction relative to the camera',
+    title: 'View-space ray direction',
     expr: 'd = normalize(0, {ny} · tan({fov} / 2), 1)',
     vars: { ny: { sym: 'ndc.y', name: 'vertical NDC of the pixel', min: -1, max: 1, value: 0.6, step: 0.01 },
             fov: { sym: 'fov', name: 'vertical field of view', unit: '°', min: 10, max: 150, value: 60, step: 1 } },
@@ -153,7 +153,7 @@
 
   /* ---------- world elevation ---------- */
   A.fx('worldray', {
-    title: 'Adding the camera\'s pitch',
+    title: 'Camera pitch rotation',
     expr: 'elevation = {pitch} + {a},   D<sub>y</sub> = sin(elevation)',
     vars: { pitch: { sym: 'pitch', name: 'camera pitch (up is positive)', unit: '°', min: -60, max: 80, value: 10, step: 1 },
             a: { sym: 'α', name: 'pixel angle inside the view (previous widget)', unit: '°', min: -45, max: 45, value: 25, step: 1 } },
@@ -177,7 +177,7 @@
   /* ---------- float precision ---------- */
   const spacing = x => Math.pow(2, Math.floor(Math.log2(Math.max(x, 1e-30))) - 23);
   A.fx('fprec', {
-    title: 'How far apart neighbouring 32-bit floats are',
+    title: '32-bit float spacing',
     expr: 'gap = 2<sup>floor(log₂ {x}) − 23</sup>',
     vars: { x: { name: 'size of the number (e.g. metres from the origin)', min: 1, max: 1e8, value: 6371000, log: true, fmt: x => num(x) } },
     out: { sym: 'gap', f: v => spacing(v.x), fmt: x => x >= 0.01 ? num(x) + ' m' : num(x * 1000) + ' mm' },
@@ -199,7 +199,7 @@
 
   /* ---------- altitude along the ray ---------- */
   A.fx('alt', {
-    title: 'Altitude along a straight ray over a round planet',
+    title: 'Altitude along a ray over a planet',
     expr: 'alt = √({t}² + 2·{t}·(R + {h})·sin {el} + (R + {h})²) − R',
     vars: { t: { name: 'distance along the ray', min: 0, max: 300000, value: 100000, step: 500, fmt: km },
             el: { sym: 'θ', name: 'elevation of the ray', unit: '°', min: -2, max: 30, value: 0, step: 0.1 },
@@ -219,7 +219,7 @@
 
   /* ---------- entering and leaving the layer ---------- */
   A.fx('layer', {
-    title: 'Where the ray enters and leaves the layer (camera below it)',
+    title: 'Layer entry and exit (camera below)',
     expr: 'b = (R + {h})·sin {el},   t<sub>enter</sub> = −b + √(b² − c<sub>lo</sub>),   t<sub>exit</sub> = −b + √(b² − c<sub>hi</sub>)',
     vars: { el: { sym: 'θ', name: 'elevation of the ray', unit: '°', min: 0, max: 90, value: 90, step: 0.5 },
             h: { name: 'camera height', unit: 'm', min: 2, max: 1400, value: 2, step: 1, fmt: x => num(x) } },
@@ -248,7 +248,7 @@
 
   /* ---------- Beer–Lambert ---------- */
   A.fx('beer', {
-    title: 'Transmittance: how much background shows through',
+    title: 'Transmittance',
     expr: 'T = e<sup>−{s} · {d}</sup>',
     vars: { s: { sym: 'σ', name: 'density (extinction per metre)', min: 0.00001, max: 0.01, value: 0.001, log: true },
             d: { name: 'distance through the cloud', unit: 'm', min: 0, max: 5000, value: 1000, step: 10 } },

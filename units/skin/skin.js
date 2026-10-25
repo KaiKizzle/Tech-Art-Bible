@@ -12,7 +12,7 @@
   const ELL = [3.7, 1.4, 0.7];
 
   A.fx('mfp', {
-    title: 'How far each colour gets under the skin',
+    title: 'Scattering distance per colour',
     expr: 'I(d) = e<sup>−{d} / ℓ</sup>,   ℓ = ({lr}, 1.4, 0.7) mm',
     vars: { d: { name: 'distance travelled under the skin', unit: 'mm', min: 0, max: 8, value: 2, step: 0.05 }, lr: { sym: 'ℓ<sub>red</sub>', name: 'red scattering distance', unit: 'mm', min: 1, max: 8, value: 3.7, step: 0.1 } },
     out: [{ sym: 'red', f: v => Math.exp(-v.d / v.lr), color: 'bad' }, { sym: 'green', f: v => Math.exp(-v.d / ELL[1]), color: 'good' }, { sym: 'blue', f: v => Math.exp(-v.d / ELL[2]), color: 'ray' }],
@@ -28,7 +28,7 @@
 
   const wrap = (nl, w) => clamp((nl + w) / (1 + w), 0, 1);
   A.fx('wrap', {
-    title: 'Wrap lighting, separate for red and blue',
+    title: 'Wrap lighting per channel',
     expr: 'diffuse = saturate((cos {th} + w) / (1 + w)),   w<sub>red</sub> = {wr},   w<sub>blue</sub> = {wb}',
     vars: { th: { sym: 'θ', name: 'angle between normal and light', unit: '°', min: 0, max: 180, value: 80, step: 1 }, wr: { sym: 'w<sub>r</sub>', name: 'wrap for red', min: 0, max: 1, value: 0.5, step: 0.01 },
             wb: { sym: 'w<sub>b</sub>', name: 'wrap for green and blue', min: 0, max: 1, value: 0.2, step: 0.01 } },
@@ -43,7 +43,7 @@
   });
 
   A.fx('profile', {
-    title: 'The skin diffusion profile (six Gaussians)',
+    title: 'Skin diffusion profile (six Gaussians)',
     expr: 'R(r) = Σ<sub>i</sub> w<sub>i</sub> · e<sup>−{r}² / 2v<sub>i</sub></sup> / (2π v<sub>i</sub>)',
     vars: { r: { name: 'distance from the point where light entered', unit: 'mm', min: 0.05, max: 6, value: 1, step: 0.01 } },
     out: [{ sym: 'R<sub>red</sub>', f: v => R(v.r, 0), color: 'bad' }, { sym: 'R<sub>green</sub>', f: v => R(v.r, 1), color: 'good' }, { sym: 'R<sub>blue</sub>', f: v => R(v.r, 2), color: 'ray' }],
@@ -57,7 +57,7 @@
   });
 
   A.fx('ssswidth', {
-    title: 'How wide the blur is on screen',
+    title: 'Screen-space blur width',
     expr: 'pixels = ({rad} / 1000) · {Hs} / (2 · {d} · tan({fov} / 2))',
     vars: { rad: { sym: 'radius', name: 'scattering radius', unit: 'mm', min: 1, max: 20, value: 6, step: 0.1 }, d: { name: 'distance to the face', unit: 'm', min: 0.2, max: 20, value: 1, log: true },
             Hs: { sym: 'H', name: 'screen height', values: [1080, 1440, 2160], index: 0 }, fov: { name: 'vertical field of view', unit: '°', min: 10, max: 90, value: 40, step: 1 } },
@@ -73,7 +73,7 @@
     return num_ / den;
   }
   A.fx('preint', {
-    title: 'Pre-integrated diffuse for a curved surface',
+    title: 'Pre-integrated diffuse',
     expr: 'D(θ, r) = ∫ cos⁺({th} + x) · R(2{r} · sin(x/2) / {k}) dx / ∫ R(2{r} · sin(x/2) / {k}) dx',
     vars: { th: { sym: 'θ', name: 'angle between normal and light', unit: '°', min: 0, max: 180, value: 90, step: 1 }, r: { name: 'radius of the surface curve', unit: 'mm', min: 1, max: 200, value: 8, log: true }, k: { name: 'profile width scale (1 = measured skin)', min: 1, max: 8, value: 3, step: 0.1 } },
     out: [{ sym: 'red', f: v => preint(v.th * DEG, v.r / v.k, 0), color: 'bad' }, { sym: 'blue', f: v => preint(v.th * DEG, v.r / v.k, 2), color: 'ray' }, { sym: 'Lambert', f: v => Math.max(0, Math.cos(v.th * DEG)), color: 'muted' }],
@@ -88,7 +88,7 @@
   });
 
   A.fx('trans', {
-    title: 'Light through thin tissue',
+    title: 'Transmission through thin tissue',
     expr: 'T = e<sup>−{t} / ℓ</sup> · max(0, −cos {th}),   ℓ = (3.7, 1.4, 0.7) mm',
     vars: { t: { name: 'thickness', unit: 'mm', min: 0.5, max: 20, value: 4, step: 0.1 }, th: { sym: 'θ', name: 'angle between normal and light (180° = light right behind)', unit: '°', min: 90, max: 180, value: 160, step: 1 } },
     out: [0, 1, 2].map(c => ({ sym: ['red', 'green', 'blue'][c], f: v => Math.exp(-v.t / ELL[c]) * Math.max(0, -Math.cos(v.th * DEG)), color: ['bad', 'good', 'ray'][c] })),
@@ -103,7 +103,7 @@
 
   const D = (noh, r) => { const a = r * r, a2 = a * a, d = noh * noh * (a2 - 1) + 1; return a2 / (PI * d * d); };
   A.fx('dualspec', {
-    title: 'Two specular lobes',
+    title: 'Dual specular lobes',
     expr: 'D = lerp(D({r1}), D({r2}), {mix}),   N·H = cos {th}',
     vars: { th: { sym: 'θ<sub>H</sub>', name: 'angle between N and H', unit: '°', min: 0, max: 60, value: 8, step: 0.5 }, r1: { sym: 'r₁', name: 'sharp lobe roughness', min: 0.1, max: 0.6, value: 0.3, step: 0.01 },
             r2: { sym: 'r₂', name: 'broad lobe roughness', min: 0.3, max: 1, value: 0.65, step: 0.01 }, mix: { name: 'share of the broad lobe', min: 0, max: 1, value: 0.15, step: 0.01 } },

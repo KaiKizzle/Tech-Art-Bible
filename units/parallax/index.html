@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Parallax and POM · Tech Art Atlas</title>
+<title>Parallax Mapping and POM · Tech Art Atlas</title>
 <meta name="description" content="Bricks that hide their mortar, cobbles that cover each other: depth on a flat surface, computed per pixel from a height map. From a one-sample guess to parallax occlusion mapping with shadows.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="parallax" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Parallax and POM</a>
+  <a class="brand" href="#top">Parallax Mapping and POM</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Shaders & rendering · 9 chapters</div>
-  <h1>Parallax and POM</h1>
+  <h1>Parallax Mapping and POM</h1>
   <p class="lede">Bricks that hide their mortar, cobbles that cover each other: depth on a flat surface, computed per pixel from a height map. From a one-sample guess to parallax occlusion mapping with shadows.</p>
   <p class="meta">Builds on tangent space and the raymarching idea from the cloud unit. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="spaces#tangent textures-sampling#uv dot-cross#angle"></div>
 
-<section class="chapter" id="heightmap" data-title="What parallax fixes" data-builds="spaces#tangent textures-sampling#uv" data-summary="Going one unit deeper shifts the sightline by tan θ across the texture.">
-  <div class="head"><div class="num"></div><h2>What parallax fixes</h2></div>
+<section class="chapter" id="heightmap" data-title="Height maps and view shift" data-builds="spaces#tangent textures-sampling#uv" data-summary="Going one unit deeper shifts the sightline by tan θ across the texture.">
+  <div class="head"><div class="num"></div><h2>Height maps and view shift</h2></div>
 
   <div class="prose">
     <p>A normal map changes how light hits a flat surface, but every texel stays exactly where it is. Look at a brick wall at an angle and the bricks should hide the mortar behind them; with a normal map alone, they never do. <button type="button" class="term" data-term="parallax">Parallax mapping</button> fixes that by changing <em>which</em> texel a pixel shows, using a <button type="button" class="term" data-term="heightmap">height map</button> (stored here as depth: 0 at the surface, 1 at the deepest point).</p>
@@ -59,11 +59,11 @@
   <div class="prose"><p>That sideways shift is the whole effect. Near the normal it is tiny; at grazing angles it explodes, which is where all parallax techniques struggle. Every method in this unit is a way of finding where the sightline actually meets the height field.</p></div>
 
 </section>
-<section class="chapter" id="offset" data-title="Offset parallax: one guess" data-builds="parallax#heightmap" data-summary="uv′ = uv + V.xy / V.z · depth(uv) · scale; offset limiting drops the / V.z.">
-  <div class="head"><div class="num"></div><h2>Offset parallax: one guess</h2></div>
+<section class="chapter" id="offset" data-title="Offset parallax" data-builds="parallax#heightmap" data-summary="uv′ = uv + V.xy / V.z · depth(uv) · scale; offset limiting drops the / V.z.">
+  <div class="head"><div class="num"></div><h2>Offset parallax</h2></div>
 
   <div class="prose">
-    <p>The cheapest method reads the height once, at the pixel's own UV, and assumes the whole surface has that depth. It shifts the UV along the view direction by that depth, using the view vector in tangent space V (<a class="x" href="../interior-mapping/index.html#room-space">the same view vector as in Rooms Behind Glass</a>):</p>
+    <p>The cheapest method reads the height once, at the pixel's own UV, and assumes the whole surface has that depth. It shifts the UV along the view direction by that depth, using the view vector in tangent space V (<a class="x" href="../interior-mapping/index.html#room-space">the same view vector as in Interior Mapping</a>):</p>
   </div>
   <div class="fx" data-fx="offset"></div>
   <div class="prose">
@@ -72,8 +72,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Why does offset parallax fail on a brick wall seen at a grazing angle?", ["It needs more texture memory", "It reads the depth only at the starting UV, but the sightline crosses several bricks", "V.z is always 1", "The normal map is missing"], 1, "One sample assumes the depth is constant along the shift."]]</script></details>
 
 </section>
-<section class="chapter" id="steep" data-title="Steep parallax: marching in layers" data-builds="parallax#offset cloud-march#interval" data-summary="layer depth i/N, uvᵢ = uv + Δuv·i; stop at the first layer deeper than depth(uvᵢ).">
-  <div class="head"><div class="num"></div><h2>Steep parallax: marching in layers</h2></div>
+<section class="chapter" id="steep" data-title="Steep parallax" data-builds="parallax#offset cloud-march#interval" data-summary="layer depth i/N, uvᵢ = uv + Δuv·i; stop at the first layer deeper than depth(uvᵢ).">
+  <div class="head"><div class="num"></div><h2>Steep parallax</h2></div>
 
   <div class="prose">
     <p>To find the real intersection, march: slice the depth range into N layers, step the UV a little at each layer, and stop at the first layer that is deeper than the height map at that UV. It is the same kind of <a class="x" href="../cloud-march/index.html#interval">raymarch</a> as for clouds, but the stop condition is "below the surface":</p>
@@ -102,14 +102,14 @@ uv = lerp(uv, prevUV, w);</pre>
   <details class="check"><summary></summary><script type="application/json">[["Before the crossing the sightline is 0.1 above the surface; after it, 0.3 below. Where is the estimated hit, as a fraction of the way back from the second sample?", ["0.25", "0.5", "0.75", "0.1"], 2, "w = after / (after − before) = −0.3 / (−0.3 − 0.1) = 0.75 of the way back toward the previous sample."]]</script></details>
 
 </section>
-<section class="chapter" id="adaptive" data-title="How many layers?" data-builds="dot-cross#angle reading-a-frame#shader-cost" data-summary="N = lerp(maxLayers, minLayers, |N · V|); every layer is one texture fetch.">
-  <div class="head"><div class="num"></div><h2>How many layers?</h2></div>
+<section class="chapter" id="adaptive" data-title="Adaptive layer count" data-builds="dot-cross#angle reading-a-frame#shader-cost" data-summary="N = lerp(maxLayers, minLayers, |N · V|); every layer is one texture fetch.">
+  <div class="head"><div class="num"></div><h2>Adaptive layer count</h2></div>
 
   <div class="prose">
     <p>Seen straight on, the shift is tiny and a few layers are enough; at grazing angles the sightline crosses a long stretch of texture and needs many. So the layer count follows the angle, using the <a class="x" href="../dot-cross/index.html#angle">dot product</a> of normal and view direction:</p>
   </div>
   <div class="fx" data-fx="adaptive"></div>
-  <div class="prose"><p>Every layer is a texture fetch in a loop, the most expensive kind of shader work (<a class="x" href="../reading-a-frame/index.html#shader-cost">what a shader costs</a>). POM on a full-screen surface at 32 layers is 32 extra fetches per pixel, plus the shadow march in the next chapter. Fade POM out with distance, where the effect is invisible anyway.</p></div>
+  <div class="prose"><p>Every layer is a texture fetch in a loop, the most expensive kind of shader work (<a class="x" href="../reading-a-frame/index.html#shader-cost">what a shader costs</a>). POM on a full-screen surface at 32 layers is 32 extra fetches per pixel, plus the shadow march in the next chapter. Fade POM out with distance, where the effect is invisible anyway (<a class="x" href="../fpom/index.html#fade">distance fades</a>).</p></div>
 
 </section>
 <section class="chapter" id="shadow" data-title="Self-shadowing" data-builds="parallax#pom" data-summary="March from the hit toward the light; shadow = 1 − k · max(height above the ray).">
@@ -121,23 +121,24 @@ uv = lerp(uv, prevUV, w);</pre>
   <div class="fx" data-fx="pomshadow"></div>
 
 </section>
-<section class="chapter" id="details" data-title="Gradients, silhouettes and depth" data-builds="texture-memory#mips interior-mapping#mips depth-effects#what-depth" data-summary="Sample with gradients of the original UV; silhouettes stay flat; pixel depth offset moves the depth.">
-  <div class="head"><div class="num"></div><h2>Gradients, silhouettes and depth</h2></div>
+<section class="chapter" id="details" data-title="Gradients, silhouettes and pixel depth offset" data-builds="textures-sampling#mips depth-effects#what-depth" data-summary="Sample with gradients of the original UV; silhouettes stay flat; pixel depth offset moves the depth.">
+  <div class="head"><div class="num"></div><h2>Gradients, silhouettes and pixel depth offset</h2></div>
 
   <div class="prose">
     <p>Three details separate a usable POM shader from a demo:</p>
     <ul>
-      <li><strong>Gradients.</strong> The UV jumps between neighbouring pixels when they hit different layers, so the GPU's <a class="x" href="../texture-memory/index.html#mips">mip selection</a> picks tiny mips and draws seams. Sample inside the loop with <code>SampleGrad</code>, passing <code>ddx(uv0)</code> and <code>ddy(uv0)</code> of the original UV (the same fix as <a class="x" href="../interior-mapping/index.html#mips">in Rooms Behind Glass</a>).</li>
+      <li><strong>Gradients.</strong> Neighbouring pixels hit different layers, so their UVs jump and the hardware mip selection draws seams. Sample with <code>SampleGrad</code> and the gradients <code>ddx(uv0)</code>, <code>ddy(uv0)</code> of the original UV.</li>
       <li><strong>Silhouettes.</strong> POM never changes the outline of the mesh: the edge of a parallax wall is still a straight line. Hide edges with trims, or use real displacement where the silhouette is seen.</li>
       <li><strong>Depth.</strong> The depth buffer still holds the flat surface, so objects pushed into the wall intersect it in a straight line. <em>Pixel depth offset</em> writes the deeper hit into the depth buffer instead:</li>
     </ul>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Mip selection: the GPU takes the level from ddx/ddy of the UV across 2×2 quads; UVs that jump between neighbours need explicit gradients (SampleGrad).</p></div><a class="x refto" href="../textures-sampling/index.html#mips">Open the full explanation</a></aside>
   <div class="fx" data-fx="pdo"></div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p>The HDRP Lit shader has <em>Displacement Mode: Pixel Displacement</em> (POM) with <em>Minimum/Maximum Steps</em>, <em>Lock with object scale</em> and <em>Depth Offset</em>. In Shader Graph, the <em>Parallax Occlusion Mapping</em> node returns the offset UVs and a depth offset you can connect to the master stack.</p></div><div class="eng" data-engine="urp"><p>URP Lit supports a <em>Height Map</em> with simple offset parallax only. For POM, use Shader Graph's <em>Parallax Occlusion Mapping</em> node (it works in URP) or a custom function with the loop above.</p></div><div class="eng" data-engine="unreal"><p>Use the <em>ParallaxOcclusionMapping</em> material function (Engine content). It takes a height map, height ratio, min/max steps and a light vector for shadows, and outputs offset UVs and a <em>Pixel Depth Offset</em> to connect to the material output.</p></div></div>
 
 </section>
-<section class="chapter" id="alternatives" data-title="When to use something else" data-summary="Normal map, offset, POM, cone stepping, tessellation, real geometry: silhouette against cost.">
-  <div class="head"><div class="num"></div><h2>When to use something else</h2></div>
+<section class="chapter" id="alternatives" data-title="Alternatives" data-summary="Normal map, offset, POM, cone stepping, tessellation, real geometry: silhouette against cost.">
+  <div class="head"><div class="num"></div><h2>Alternatives</h2></div>
 
   <div class="prose">
     <p>POM shines on large flat surfaces with shallow relief seen from a moderate angle: walls, floors, cobblestones. Its alternatives trade memory or geometry for quality:</p>
@@ -245,10 +246,10 @@ void POMShadow_float(UnityTexture2D HeightTex, UnitySamplerState SS, float2 UV, 
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="parallax.js?v=bd49ad9f"></script>
+<script src="parallax.js?v=b04d7549"></script>
 </body>
 </html>

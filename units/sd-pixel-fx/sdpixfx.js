@@ -13,7 +13,7 @@
 
   /* ---------- a pixel processor: a function of $pos ---------- */
   A.fx('ppcircle', {
-    title: 'A Pixel Processor function: soft dots from $pos',
+    title: 'Pixel Processor soft dots',
     expr: 'q = frac($pos · {n}),   value = saturate(({r} − length(q − 0.5)) / {s})',
     vars: { n: { sym: 'n', name: 'repeats per tile', values: [1, 2, 3, 4, 6, 8], index: 2 }, r: { sym: 'r', name: 'radius', min: 0.05, max: 0.7, value: 0.3, step: 0.01 }, s: { sym: 'soft', name: 'edge softness', min: 0.005, max: 0.3, value: 0.05, step: 0.005 } },
     out: { sym: 'value at the centre of a cell', f: v => sat(v.r / v.s), color: 'accent' },
@@ -34,7 +34,7 @@
   const shape = (x, y) => { const d = Math.hypot(x - 0.42, y - 0.5); return (d < 0.28 ? 1 : 0) * (Math.abs(x - 0.66) < 0.07 && y > 0.3 && y < 0.7 ? 0 : 1) + (Math.abs(x - 0.82) < 0.06 && Math.abs(y - 0.5) < 0.25 ? 1 : 0); };
   const NB = ['edge detect', 'emboss', 'box blur'];
   A.fx('neighbours', {
-    title: 'Sampling neighbours: $pos plus an offset in pixels',
+    title: 'Neighbour sampling offset',
     expr: 'e = 1 / $size,   value = f(in($pos), in($pos ± {o}·e))   ({m})',
     vars: { o: { sym: 'k', name: 'offset in pixels', min: 1, max: 8, value: 2, step: 1 }, m: { sym: 'filter', name: 'what to compute', values: [0, 1, 2], labels: NB, index: 0 } },
     out: { sym: 'reads per pixel', f: v => [5, 3, 9][v.m], color: 'accent' },
@@ -60,7 +60,7 @@
 
   /* ---------- FX-Map quadtree ---------- */
   A.fx('quadtree', {
-    title: 'Quadrant nodes: each level splits every cell in four',
+    title: 'Quadrant subdivision',
     expr: 'patterns at level {d} = 4<sup>{d}</sup>,   pattern size = 1 / 2<sup>{d}</sup>;   random offset {j}, random size {z}',
     vars: { d: { sym: 'd', name: 'level ($depth)', min: 0, max: 6, value: 3, step: 1 }, j: { sym: 'jitter', name: 'random offset, in cells', min: 0, max: 1, value: 0.3, step: 0.01 },
             z: { sym: 'size var', name: 'random size', min: 0, max: 1, value: 0.4, step: 0.01 }, seed: { sym: 'seed', name: 'random seed', min: 0, max: 50, value: 7, step: 1 } },
@@ -83,7 +83,7 @@
   function scatter(v) { const r = rng(v.seed + 11), list = []; for (let i = 0; i < v.N; i++) list.push([r(), r(), v.sz * (1 - v.rz * r()), r()]); return list; }
   const clipped = v => { const L = scatter(v); let c = 0, t = 0; for (let i = 0; i < 40; i++) for (let j = 0; j < 40; j++) { const x = (i + 0.5) / 40, y = (j + 0.5) / 40; let a = 0, mx = 0; L.forEach(([px, py, s]) => { const dx = Math.abs(x - px), dy = Math.abs(y - py), d = Math.hypot(Math.min(dx, 1 - dx), Math.min(dy, 1 - dy)) / s; if (d < 1) { const h = Math.sqrt(1 - d * d) * 0.8; a += h; mx = Math.max(mx, h); } }); if ((v.m ? mx : a) > 0.001) t++; if (v.m === 0 && a > 1) c++; } return t ? c / t : 0; };
   A.fx('iterate', {
-    title: 'Iterate: the same pattern N times, random per copy',
+    title: 'Iterate with random per copy',
     expr: 'for $number = 0…{N} − 1:  pos = random,  size = {sz} · (1 − {rz} · random);   blending {m}',
     vars: { N: { sym: 'N', name: 'iterations', min: 1, max: 200, value: 40, step: 1 }, sz: { sym: 'size', name: 'pattern size', min: 0.03, max: 0.3, value: 0.12, step: 0.005 },
             rz: { sym: 'rand', name: 'random size amount', min: 0, max: 1, value: 0.5, step: 0.01 }, m: { sym: 'mode', name: 'blending of overlapping patterns', values: [0, 1], labels: BM, index: 1 }, seed: { sym: 'seed', name: 'random seed', min: 0, max: 99, value: 3, step: 1 } },
@@ -109,7 +109,7 @@
 
   /* ---------- gather versus scatter ---------- */
   A.fx('gatherscatter', {
-    title: 'Who does the work: every pixel, or every pattern',
+    title: 'Gather versus scatter cost',
     expr: 'Pixel Processor: {s}² · {t} reads,   FX-Map: {N} patterns · ({p} · {s})² pixels',
     vars: { s: { sym: 'size', name: 'output size', values: [512, 1024, 2048, 4096], labels: ['512', '1k', '2k', '4k'], index: 2 }, t: { sym: 'taps', name: 'reads per pixel in the function', values: [1, 2, 4, 8, 16], index: 0 },
             N: { sym: 'N', name: 'patterns drawn', min: 10, max: 20000, value: 400, log: true }, p: { sym: 'p', name: 'pattern size, fraction of the image', min: 0.01, max: 0.5, value: 0.06, log: true } },

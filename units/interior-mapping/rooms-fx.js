@@ -7,7 +7,7 @@
   const hash = n => frac(Math.sin(n * 12.9898 + 78.233) * 43758.5453);
 
   A.fx('roomuv', {
-    title: 'Where a window sits in its room rectangle',
+    title: 'Window position in the room rectangle',
     expr: 'u<sub>left</sub> = ({c} − {w} / 2) / {W},   u<sub>right</sub> = ({c} + {w} / 2) / {W}',
     vars: { W: { name: 'room width', unit: 'm', min: 1.5, max: 8, value: 4, step: 0.1 }, w: { name: 'window width', unit: 'm', min: 0.3, max: 4, value: 1, step: 0.05 },
             c: { name: 'window centre, from the room\'s left wall', unit: 'm', min: 0, max: 8, value: 2, step: 0.05 } },
@@ -26,7 +26,7 @@
   });
 
   A.fx('viewvec', {
-    title: 'The view vector, seen from above',
+    title: 'View vector (top view)',
     expr: 'V = P − C = ({px} − {cx}, 0 − ({cz}))',
     vars: { cx: { sym: 'C<sub>x</sub>', name: 'camera across the facade', unit: 'm', min: -6, max: 6, value: -2, step: 0.1 }, cz: { sym: 'C<sub>z</sub>', name: 'camera distance from the facade', unit: 'm', min: 1, max: 12, value: 6, step: 0.1 },
             px: { sym: 'P<sub>x</sub>', name: 'glass pixel across the facade', unit: 'm', min: -3, max: 3, value: 1, step: 0.05 } },
@@ -48,7 +48,7 @@
   });
 
   A.fx('viewts', {
-    title: 'The view vector in room space (top view)',
+    title: 'View vector in room space (top view)',
     expr: 'viewTS.x = dot(V, T),   viewTS.z = dot(V, N),   building turned by {yaw}',
     vars: { yaw: { sym: 'yaw', name: 'building rotation', unit: '°', min: -70, max: 70, value: 25, step: 1 }, a: { sym: 'α', name: 'direction of V in the world', unit: '°', min: -80, max: 80, value: 10, step: 1 } },
     out: [{ sym: 'viewTS.x', f: v => Math.sin((v.a - v.yaw) * DEG), color: 'ax-x' }, { sym: 'viewTS.z', f: v => -Math.cos((v.a - v.yaw) * DEG), color: 'ax-z' }],
@@ -74,7 +74,7 @@
 
   const ub = v => { const r = v.a * DEG, Vx = Math.sin(r), Vz = -Math.cos(r); return { ox: v.u * 2 - 1, dx: Vx / (v.W / 2), dz: -Vz / v.D, Vx, Vz }; };
   A.fx('unitbox', {
-    title: 'From metres to the unit box (top view)',
+    title: 'Metres to unit box (top view)',
     expr: 'o.x = {u} · 2 − 1,   d.x = viewTS.x / ({W} / 2),   d.z = −viewTS.z / {D}',
     vars: { u: { name: 'roomUV.x of the pixel', min: 0.02, max: 0.98, value: 0.3, step: 0.01 }, a: { sym: 'α', name: 'view angle from straight in', unit: '°', min: -75, max: 75, value: 40, step: 1 },
             W: { name: 'room width', unit: 'm', min: 1, max: 10, value: 6, step: 0.1 }, D: { name: 'room depth', unit: 'm', min: 1, max: 10, value: 3, step: 0.1 } },
@@ -104,7 +104,7 @@
 
   const slab = v => { const r = v.yaw * DEG; let dx = Math.sin(r), dz = Math.cos(r); dx = Math.abs(dx) < 1e-5 ? 1e-5 : dx; const tx = Math.abs(1 / dx) - v.ox / dx, tz = 1 / dz, t = Math.min(tx, tz); return { dx, dz, tx, tz, t, wall: tx < tz ? (dx > 0 ? 'right wall' : 'left wall') : 'back wall' }; };
   A.fx('slab2', {
-    title: 'Which wall does the ray hit? (top view)',
+    title: 'Wall hit (top view)',
     expr: 't<sub>x</sub> = |1/d.x| − {ox}/d.x,   t<sub>z</sub> = 1/d.z,   t = min(t<sub>x</sub>, t<sub>z</sub>),   d = (sin {yaw}, cos {yaw})',
     vars: { ox: { sym: 'o.x', name: 'start across the box', min: -0.98, max: 0.98, value: -0.4, step: 0.01 }, yaw: { sym: 'yaw', name: 'ray direction', unit: '°', min: -80, max: 80, value: 38, step: 1 } },
     out: [{ sym: 't<sub>x</sub>', f: v => slab(v).tx, color: 'ax-x' }, { sym: 't<sub>z</sub>', f: v => slab(v).tz, color: 'ax-z' }, { sym: 't', f: v => slab(v).t, color: 'accent' }],
@@ -124,7 +124,7 @@
   });
 
   A.fx('proj', {
-    title: 'From a wall point to the atlas cell',
+    title: 'Wall point to atlas cell',
     expr: 'k = 1/{b} − 1,   s = 1 / (1 + {z} · k),   cellUV = {x} · s · 0.5 + 0.5',
     vars: { b: { name: 'backWallFrac', min: 0.2, max: 0.8, value: 0.5, step: 0.01 }, z: { name: 'hit depth (0 glass, 1 back wall)', min: 0, max: 1, value: 0.5, step: 0.01 },
             x: { name: 'hit across the box (−1 to 1)', min: -1, max: 1, value: 1, step: 0.01 } },
@@ -165,7 +165,7 @@
   });
 
   A.fx('rendercam', {
-    title: 'Where the render camera stands',
+    title: 'Render camera position',
     expr: 'c = {b} · {D} / (1 − {b}),   fov = 2 · atan(({W} / 2) / c)',
     vars: { b: { name: 'backWallFrac', min: 0.2, max: 0.8, value: 0.5, step: 0.01 }, W: { name: 'room width', unit: 'm', min: 1, max: 10, value: 4, step: 0.1 }, D: { name: 'room depth', unit: 'm', min: 1, max: 10, value: 4, step: 0.1 } },
     out: [{ sym: 'c', unit: 'm', f: v => v.b * v.D / (1 - v.b), color: 'ax-y' }, { sym: 'fov', unit: '°', f: v => 2 * Math.atan(v.W / 2 / (v.b * v.D / (1 - v.b))) / DEG, color: 'accent' }],
@@ -174,7 +174,7 @@
   });
 
   A.fx('hash', {
-    title: 'A hash: smooth in, scattered out',
+    title: 'Hash function',
     expr: 'hash = frac(sin({n} · 12.9898 + 78.233) · {m})',
     vars: { n: { sym: 'seed', name: 'input', min: 0, max: 1, value: 0.318, step: 0.001 }, m: { name: 'scramble factor', values: [1, 10, 100, 1000, 43758.5453], index: 4, labels: ['1', '10', '100', '1000', '43758.5453'] } },
     out: { sym: 'hash', f: v => frac(Math.sin(v.n * 12.9898 + 78.233) * v.m) },
@@ -195,7 +195,7 @@
 
   const curt = v => { const r = v.yaw * DEG, dx = Math.sin(r) / (v.W / 2), dz = Math.cos(r) / 4; const tx = Math.abs(dx) > 1e-6 ? Math.abs(1 / dx) : Infinity, tz = 1 / dz, t = Math.min(tx, tz), tc = v.zc / dz; return { dx, dz, t, tc, vis: tc <= t }; };
   A.fx('curtain', {
-    title: 'Is the curtain reached before a wall?',
+    title: 'Curtain visibility test',
     expr: 't<sub>c</sub> = {zc} / d.z,   visible if t<sub>c</sub> ≤ t',
     vars: { zc: { sym: 'z<sub>c</sub>', name: 'curtain depth (fraction of the room)', min: 0.02, max: 0.6, value: 0.1, step: 0.01 }, yaw: { name: 'view angle', unit: '°', min: -80, max: 80, value: 58, step: 1 },
             W: { name: 'room width (depth 4 m)', unit: 'm', min: 1, max: 6, value: 1.4, step: 0.1 } },
@@ -206,7 +206,7 @@
   });
 
   A.fx('seam', {
-    title: 'Why a seam picks a tiny mip',
+    title: 'Mip level at an atlas seam',
     expr: 'mip = log₂(Δuv · {size}),   inside: Δuv = {du},   at the seam: Δuv = 1 / {cols}',
     vars: { du: { sym: 'Δuv', name: 'normal UV change per pixel', min: 0.0002, max: 0.01, value: 0.001, log: true }, size: { name: 'atlas size', values: [1024, 2048, 4096], index: 1 }, cols: { name: 'cells per atlas row', min: 2, max: 8, value: 4, step: 1 } },
     out: [{ sym: 'mip inside', f: v => Math.max(0, Math.log2(v.du * v.size)), color: 'good' }, { sym: 'mip at seam', f: v => Math.max(0, Math.log2(v.size / v.cols)), color: 'bad' }],

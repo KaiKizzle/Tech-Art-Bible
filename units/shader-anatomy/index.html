@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Reading a Shader · Tech Art Atlas</title>
+<title>Shader Anatomy · Tech Art Atlas</title>
 <meta name="description" content="Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="shader-anatomy" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Reading a Shader</a>
+  <a class="brand" href="#top">Shader Anatomy</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,16 +40,16 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Foundations · 7 chapters</div>
-  <h1>Reading a Shader</h1>
+  <h1>Shader Anatomy</h1>
   <p class="lede">Shader code and node graphs look dense until you know the handful of parts every shader is built from. This unit takes them one at a time.</p>
-  <p class="meta">Builds on How a GPU Draws a Frame. Every function is shown as a live graph.</p>
+  <p class="meta">Builds on GPU Rendering Basics. Every function is shown as a live graph.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/shader-anatomy.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Lerp from blue to orange, as five spheres, over a smoothstep ramp.</figcaption></figure>
 </div>
 <div class="needs" data-needs="gpu-basics"></div>
 
-<section class="chapter" id="types" data-title="Numbers and groups of numbers" data-builds="gpu-basics#per-pixel" data-summary="float, float2, float3, float4 and half; swizzles like c.bgr; maths works part by part.">
-  <div class="head"><div class="num"></div><h2>Numbers and groups of numbers</h2></div>
+<section class="chapter" id="types" data-title="Scalar and vector types" data-builds="gpu-basics#per-pixel" data-summary="float, float2, float3, float4 and half; swizzles like c.bgr; maths works part by part.">
+  <div class="head"><div class="num"></div><h2>Scalar and vector types</h2></div>
 
   <div class="prose">
     <p>A shader works almost only with numbers. The basic type is <code>float</code>, a number with a decimal point such as 0.5 or 1200.0. Because positions, directions and colours each need several numbers, shader languages also have small groups of floats built in:</p>
@@ -87,8 +87,8 @@
   <details class="check"><summary></summary><script type="application/json">[["c = float4(0.2, 0.4, 0.6, 1.0). What is c.zyx?", ["(0.2, 0.4, 0.6)", "(0.6, 0.4, 0.2)", "(0.6, 0.6, 0.6)", "(1.0, 0.6, 0.4)"], 1, "z = 0.6, y = 0.4, x = 0.2, in that order."], ["A white light (1, 1, 1) hits a red surface (0.8, 0.1, 0.1). What colour is reflected?", ["White", "(0.8, 0.1, 0.1)", "(1.8, 1.1, 1.1)", "Black"], 1, "Part by part: 1 × 0.8, 1 × 0.1, 1 × 0.1."]]</script></details>
 
 </section>
-<section class="chapter" id="stages" data-title="Two programs: vertex and pixel" data-builds="gpu-basics#pipeline" data-summary="The vertex shader runs per corner and outputs a screen position; the pixel shader runs per pixel and outputs a colour.">
-  <div class="head"><div class="num"></div><h2>Two programs: vertex and pixel</h2></div>
+<section class="chapter" id="stages" data-title="Vertex and pixel stages" data-builds="gpu-basics#pipeline" data-summary="The vertex shader runs per corner and outputs a screen position; the pixel shader runs per pixel and outputs a colour.">
+  <div class="head"><div class="num"></div><h2>Vertex and pixel stages</h2></div>
 
   <div class="prose">
     <p>A shader file usually holds two programs that run one after the other, as described in <a class="x" href="../gpu-basics/index.html#pipeline">From triangles to pixels</a>:</p>
@@ -129,8 +129,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Which output must every vertex shader produce?", ["A colour", "The clip-space position", "A UV", "A normal"], 1, "The rasterizer needs to know where the corner is on screen."], ["What does SV_Target on the pixel shader mean?", ["The texture to read", "The output colour goes into the render target", "The camera target", "A debug flag"], 1, "It labels the return value as the colour written to the current render target."]]</script></details>
 
 </section>
-<section class="chapter" id="interpolation" data-title="How values travel from corners to pixels" data-builds="gpu-basics#pipeline" data-summary="Pixels receive a weighted blend of the three corner values; the barycentric weights add up to 1.">
-  <div class="head"><div class="num"></div><h2>How values travel from corners to pixels</h2></div>
+<section class="chapter" id="interpolation" data-title="Interpolation" data-builds="gpu-basics#pipeline" data-summary="Pixels receive a weighted blend of the three corner values; the barycentric weights add up to 1.">
+  <div class="head"><div class="num"></div><h2>Interpolation</h2></div>
 
   <div class="prose">
     <p>The vertex shader only runs at the three corners, yet the pixel shader receives a value for every pixel in between. The GPU blends the three corner values for each pixel, giving more weight to the corners that are closer. The weights are called <button type="button" class="term" data-term="barycentric">barycentric coordinates</button>: three numbers that are each between 0 and 1 and always add up to 1.</p>
@@ -144,8 +144,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A pixel sits exactly on corner b. What are its weights (w<sub>a</sub>, w<sub>b</sub>, w<sub>c</sub>)?", ["(1, 0, 0)", "(0, 1, 0)", "(⅓, ⅓, ⅓)", "(0, 0, 1)"], 1, "All weight goes to the corner it sits on."], ["Which statement is always true for barycentric weights inside a triangle?", ["They add up to 1", "They are equal", "They add up to 3", "One of them is 0"], 0, "They are fractions of the whole triangle's area, so they sum to 1."]]</script></details>
 
 </section>
-<section class="chapter" id="properties" data-title="Values the same for every pixel: properties" data-builds="buffers#constant" data-summary="Properties (uniforms) are the same for every pixel of a draw and live in a constant buffer.">
-  <div class="head"><div class="num"></div><h2>Values the same for every pixel: properties</h2></div>
+<section class="chapter" id="properties" data-title="Properties (uniforms)" data-builds="buffers#constant" data-summary="Properties (uniforms) are the same for every pixel of a draw and live in a constant buffer.">
+  <div class="head"><div class="num"></div><h2>Properties (uniforms)</h2></div>
 
   <div class="prose">
     <p>Some inputs differ per vertex or per pixel. Others are the same for the whole draw: a tint colour, a roughness value, a texture, the time. These are <button type="button" class="term" data-term="property">material properties</button> (graphics programmers say uniforms). You set them in the material inspector or from a script, and every pixel of that draw reads the same value.</p>
@@ -164,8 +164,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Which of these is typically a material property rather than a per-vertex value?", ["The vertex position", "The UV of a corner", "A tint colour chosen in the inspector", "The interpolated normal"], 2, "A tint is the same for all pixels of the draw."]]</script></details>
 
 </section>
-<section class="chapter" id="functions" data-title="The built-in functions, as graphs" data-builds="shader-anatomy#interpolation" data-summary="saturate, lerp, inverse lerp, step, smoothstep, frac and pow, each with its graph.">
-  <div class="head"><div class="num"></div><h2>The built-in functions, as graphs</h2></div>
+<section class="chapter" id="functions" data-title="Built-in functions" data-builds="shader-anatomy#interpolation" data-summary="saturate, lerp, inverse lerp, step, smoothstep, frac and pow, each with its graph.">
+  <div class="head"><div class="num"></div><h2>Built-in functions</h2></div>
 
   <div class="prose">
     <p>Shaders are built from a small set of functions that shape numbers. Each one below is shown as a graph: the horizontal axis is the input, the vertical axis the output, and the strip under the graph shows what the function does to a gradient across a surface. Learn these by moving the sliders; they appear in nearly every shader you will read.</p>
@@ -189,8 +189,8 @@
   <details class="check"><summary></summary><script type="application/json">[["What does lerp(10, 20, 0.25) return?", ["12.5", "15", "2.5", "17.5"], 0, "10 + (20 − 10) × 0.25 = 12.5."], ["smoothstep(0.2, 0.4, x) for x = 0.3?", ["0", "0.3", "0.5", "1"], 2, "t = (0.3 − 0.2) / 0.2 = 0.5, and 0.5² × (3 − 2 × 0.5) = 0.5."], ["Which function turns 3.75 into 0.75?", ["saturate", "frac", "step", "pow"], 1, "frac keeps the fractional part."], ["You want a mask that is 0 below a height of 100 m and 1 above 150 m, smoothly. Which combination?", ["frac(height)", "smoothstep(100, 150, height)", "step(100, height) × 150", "lerp(100, 150, height)"], 1, "smoothstep(e0, e1, x) is exactly a soft 0-to-1 between two edges."]]</script></details>
 
 </section>
-<section class="chapter" id="nodes" data-title="The same functions as nodes" data-summary="HLSL functions mapped to Shader Graph and Unreal material nodes.">
-  <div class="head"><div class="num"></div><h2>The same functions as nodes</h2></div>
+<section class="chapter" id="nodes" data-title="Functions as nodes" data-summary="HLSL functions mapped to Shader Graph and Unreal material nodes.">
+  <div class="head"><div class="num"></div><h2>Functions as nodes</h2></div>
 
   <div class="prose">
     <p>Node editors use the same functions under similar names, so everything above applies directly to graphs. A node is one function call; a wire is a variable.</p>
@@ -306,10 +306,10 @@ public class PulseDriver : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="shader-anatomy.js?v=d1f15964"></script>
+<script src="shader-anatomy.js?v=97f1b071"></script>
 </body>
 </html>

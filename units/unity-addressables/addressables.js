@@ -9,7 +9,7 @@
 
   /* ---------- direct references load everything ---------- */
   A.fx('directref', {
-    title: 'A shop with 200 items: what is in memory when it opens',
+    title: 'Memory: direct references versus Addressables',
     expr: 'direct = {N} · {s} MB,   addressable = {u} · {s} MB',
     vars: { N: { sym: 'N', name: 'items the shop can show', min: 10, max: 500, value: 200, step: 1 }, s: { sym: 's', name: 'size of one item (mesh, textures)', unit: 'MB', min: 0.5, max: 40, value: 6, log: true },
             u: { sym: 'u', name: 'items on screen right now', min: 1, max: 50, value: 12, step: 1 } },
@@ -20,7 +20,7 @@
 
   /* ---------- pack together versus separately ---------- */
   A.fx('packmode', {
-    title: 'Bundle mode: one bundle per group, or one per asset',
+    title: 'Bundle mode',
     expr: 'update download: together = {N} · {s} MB,   separately = {k} · {s} MB',
     vars: { N: { sym: 'N', name: 'assets in the group', min: 2, max: 400, value: 60, step: 1 }, s: { sym: 's', name: 'size of one asset', unit: 'MB', min: 0.1, max: 20, value: 2, log: true },
             k: { sym: 'k', name: 'assets changed in a content update', min: 1, max: 60, value: 1, step: 1 } },
@@ -40,7 +40,7 @@
   ];
   const mem = v => { const [a, b] = STEPS[v.t][1], bundle = a + b > 0; return (bundle ? 1 : 0) + (bundle && v.t >= 1 ? 30 : 0) + (bundle && v.t >= 2 ? 20 : 0); };
   A.fx('refcount', {
-    title: 'Reference counts: assets, bundles and memory',
+    title: 'Reference counts',
     expr: '{t}:  a bundle stays while any asset from it is held',
     vars: { t: { sym: 'step', name: 'step', values: STEPS.map((_, i) => i), labels: STEPS.map(x => x[0]), index: 4 } },
     out: { sym: 'MB in memory', f: v => mem(v), color: 'accent' },
@@ -62,7 +62,7 @@
 
   /* ---------- duplicated dependencies ---------- */
   A.fx('dupes', {
-    title: 'One shared texture, pulled into several bundles',
+    title: 'Duplicated dependencies',
     expr: 'disk waste = ({k} − 1) · {S},   memory waste = ({m} − 1) · {S};   fixed: {f}',
     vars: { S: { sym: 'S', name: 'shared dependency (a texture atlas)', unit: 'MB', min: 1, max: 100, value: 21, log: true }, k: { sym: 'k', name: 'groups whose assets use it', min: 1, max: 12, value: 4, step: 1 },
             m: { sym: 'm', name: 'of those groups loaded at once', min: 1, max: 12, value: 2, step: 1 }, f: { sym: 'shared group', name: 'atlas made addressable in its own group', values: [0, 1], labels: ['no', 'yes'], index: 0 } },
@@ -87,7 +87,7 @@
     ['old content after an update', 'The player still uses the catalog it shipped with, or the update was built as a new build instead of an update of the previous one.', 'Use "Update a Previous Build" with the saved content state; call CheckForCatalogUpdates and UpdateCatalogs at startup.']
   ];
   A.fx('addrlab', {
-    title: 'Lab: symptom, cause, fix',
+    title: 'Symptoms, causes and fixes',
     expr: 'symptom: {s}',
     vars: { s: { sym: 'symptom', name: 'what you see', values: SYM.map((_, i) => i), labels: ['InvalidKeyException', 'editor OK, build fails', 'pink materials', 'duplicate manager', 'memory keeps growing', 'old content'], index: 0 } },
     out: { sym: 'n', f: v => v.s, color: 'accent' },

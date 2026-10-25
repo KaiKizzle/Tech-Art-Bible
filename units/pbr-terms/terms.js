@@ -6,7 +6,7 @@
 
   /* ---------- Phong: two independent knobs ---------- */
   A.fx('phong', {
-    title: 'The Phong model: diffuse and specular are separate knobs',
+    title: 'Phong diffuse and specular',
     expr: 'colour = {kd} · (N·L) + {ks} · (R·V)<sup>{n}</sup>',
     vars: { kd: { sym: 'k<sub>d</sub>', name: 'diffuse colour (one channel)', min: 0, max: 1, value: 0.8, step: 0.01 },
             ks: { sym: 'k<sub>s</sub>', name: 'specular colour', min: 0, max: 1, value: 0.6, step: 0.01 },
@@ -23,7 +23,7 @@
 
   /* ---------- light painted into a diffuse map ---------- */
   A.fx('baked', {
-    title: 'A diffuse map with light painted in, under a new light',
+    title: 'Painted-light diffuse map under new lighting',
     expr: 'old map = albedo · baked(top-left),   on screen = map · light({th}),   should be = albedo · light({th})',
     vars: { th: { sym: 'θ', name: 'direction of the new light', unit: '°', min: -180, max: 180, value: 120, step: 1 },
             b: { sym: 'bake', name: 'how much shading the artist painted in', min: 0, max: 1, value: 0.8, step: 0.01 } },
@@ -44,7 +44,7 @@
   /* ---------- albedo: the physics word ---------- */
   const REF = [[0.04, 'charcoal'], [0.12, 'the Moon'], [0.3, 'Earth'], [0.85, 'fresh snow']];
   A.fx('albedo', {
-    title: 'Albedo: the fraction of light a surface sends back',
+    title: 'Albedo',
     expr: 'f = {rho} / π,   L<sub>out</sub> = f · {E} = {rho} · {E} / π',
     vars: { rho: { sym: 'ρ', name: 'albedo (diffuse reflectance)', min: 0, max: 1, value: 0.3, step: 0.01 },
             E: { sym: 'E', name: 'light arriving (irradiance)', unit: 'W/m²', min: 0, max: 1000, value: 600, step: 10 } },
@@ -62,7 +62,7 @@
   /* ---------- base colour: one number, two meanings ---------- */
   const COLS = [[200, 40, 30], [255, 219, 152], [128, 128, 128], [255, 211, 192]], CN = ['red paint', 'gold', 'mid grey', 'copper'];
   A.fx('base', {
-    title: 'Base colour means albedo or F0, depending on metalness',
+    title: 'Base colour as albedo or F0',
     expr: 'diffuse albedo = base · (1 − {m}),   F0 = lerp(F0<sub>dielectric</sub>({ior}), base, {m}),   base = {c}',
     vars: { c: { sym: 'base', name: 'base colour', values: [0, 1, 2, 3], labels: CN, index: 0 },
             m: { sym: 'metalness', name: 'metalness', min: 0, max: 1, value: 0, step: 0.01 },
@@ -81,7 +81,7 @@
 
   /* ---------- roughness, smoothness, gloss ---------- */
   A.fx('rough', {
-    title: 'One property, four numbers',
+    title: 'Roughness conventions',
     expr: 'α = {r}²,   smoothness = gloss = 1 − {r},   Blinn-Phong n = 2 / α² − 2',
     vars: { r: { sym: 'r', name: 'perceptual roughness (what you paint)', min: 0.02, max: 1, value: 0.4, step: 0.01 } },
     out: [{ sym: 'α', f: v => v.r * v.r, color: 'accent' }, { sym: 'smoothness', f: v => 1 - v.r, color: 'ray' }, { sym: 'Blinn-Phong n', f: v => 2 / Math.pow(v.r, 4) - 2, color: 'ax-y' }],
@@ -92,7 +92,7 @@
 
   /* ---------- the many names of F0 ---------- */
   A.fx('f0', {
-    title: 'IOR, F0, specular, reflectance: one dielectric property',
+    title: 'IOR, F0, specular and reflectance conversion',
     expr: 'F0 = {w} · (({n} − 1) / ({n} + 1))²,   Unreal specular = F0 / 0.08,   Filament reflectance = √(F0 / 0.16)',
     vars: { n: { sym: 'IOR', name: 'index of refraction (OpenPBR specular_ior)', min: 1, max: 3, value: 1.5, step: 0.01 },
             w: { sym: 'weight', name: 'OpenPBR specular_weight', min: 0, max: 1, value: 1, step: 0.01 } },
@@ -112,7 +112,7 @@
 
   /* ---------- normal map green channel ---------- */
   A.fx('normal', {
-    title: 'Same texture, two conventions for the green channel',
+    title: 'Normal map green channel conventions',
     expr: 'n.y = {s} · (2 · {g} / 255 − 1)',
     vars: { g: { sym: 'G', name: 'green value in the texture (0–255)', min: 0, max: 255, value: 200, step: 1 },
             s: { sym: 'sign', name: 'how the engine reads green', values: [1, -1], labels: ['as authored', 'flipped (other convention)'], index: 0 } },
@@ -129,7 +129,7 @@
 
   /* ---------- OpenPBR coat over base ---------- */
   A.fx('coat', {
-    title: 'A layer on top changes what the base gets',
+    title: 'Layering: coat over base',
     expr: 'coat reflects {c} · F<sub>coat</sub>({th}),   base sees (1 − {c} · F<sub>coat</sub>) · lerp(1, {cc}², {c})',
     vars: { c: { sym: 'coat', name: 'OpenPBR coat_weight', min: 0, max: 1, value: 1, step: 0.01 },
             th: { sym: 'θ', name: 'viewing angle from the normal', unit: '°', min: 0, max: 89, value: 30, step: 1 },

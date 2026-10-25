@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="unity-addressables" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="unity-guids#refs unity-scenes#memory"></div>
 
-<section class="chapter" id="why" data-title="Why direct references are not enough" data-builds="unity-scenes#memory" data-summary="Direct references load everything with the scene; Resources loads an index of everything; Addressables load by address with refcounts.">
-  <div class="head"><div class="num"></div><h2>Why direct references are not enough</h2></div>
+<section class="chapter" id="why" data-title="Direct references, Resources and Addressables" data-builds="unity-scenes#memory" data-summary="Direct references load everything with the scene; Resources loads an index of everything; Addressables load by address with refcounts.">
+  <div class="head"><div class="num"></div><h2>Direct references, Resources and Addressables</h2></div>
 
   <div class="prose">
     <p>When a scene or prefab references an asset directly (a prefab in a list, a material in a field), Unity treats it as a hard dependency: loading the scene loads every asset it references, and everything those reference, before the first frame. That is simple and fast for what a level always needs. It breaks down for content that is only sometimes needed: a shop with 200 items, character skins, seasonal events, localised voice lines.</p>
@@ -151,8 +151,8 @@ Addressables.Release(all);</pre>
   </div>
 
 </section>
-<section class="chapter" id="breaks" data-title="Why things break" data-builds="unity-addressables#catalog unity-addressables#deps" data-summary="InvalidKeyException, editor-only success, pink bundles, duplicated singletons, growing memory, stale catalogs: causes and fixes.">
-  <div class="head"><div class="num"></div><h2>Why things break</h2></div>
+<section class="chapter" id="breaks" data-title="Common failures" data-builds="unity-addressables#catalog unity-addressables#deps" data-summary="InvalidKeyException, editor-only success, pink bundles, duplicated singletons, growing memory, stale catalogs: causes and fixes.">
+  <div class="head"><div class="num"></div><h2>Common failures</h2></div>
 
   <div class="prose"><p>Most Addressables bugs are one of six. Pick the symptom:</p></div>
   <div class="fx" data-fx="addrlab"></div>
@@ -331,10 +331,10 @@ public class AddressablesBuildGuard : IPreprocessBuildWithReport
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="addressables.js?v=5324c58c"></script>
+<script src="addressables.js?v=0eaefbf6"></script>
 </body>
 </html>

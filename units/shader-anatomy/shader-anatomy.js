@@ -26,7 +26,7 @@
   /* ---------- types: part-by-part multiply ---------- */
   const S = [0.8, 0.35, 0.1];
   A.fx('mulrgb', {
-    title: 'Colour times colour: part by part',
+    title: 'Component-wise multiply',
     expr: 'c = ({Lr}, {Lg}, {Lb}) × (0.80, 0.35, 0.10)',
     vars: {
       Lr: { sym: 'L<sub>r</sub>', name: 'light red', min: 0, max: 1, value: 1, step: 0.01 },

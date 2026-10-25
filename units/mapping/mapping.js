@@ -11,7 +11,7 @@
 
   /* ---------- planar ---------- */
   A.fx('planar', {
-    title: 'Planar projection stretches on slopes',
+    title: 'Planar projection stretch',
     expr: 'stretch = 1 / |cos {th}|',
     vars: { th: { sym: 'θ', name: 'angle between the surface normal and the projection axis', unit: '°', min: 0, max: 85, value: 60, step: 0.5 } },
     out: { sym: 'stretch', f: v => 1 / Math.cos(v.th * DEG), fmt: x => num(x) + '×' },
@@ -55,7 +55,7 @@
 
   /* ---------- triplanar normals ---------- */
   A.fx('trinormal', {
-    title: 'Why a projected normal map must be rotated',
+    title: 'Triplanar normal orientation',
     expr: 'correct = {ph} + {t},   naive = {t}',
     vars: { ph: { sym: 'φ', name: 'where on the object (surface normal, from up)', unit: '°', min: -90, max: 90, value: 60, step: 1 }, t: { sym: 'θ<sub>bump</sub>', name: 'tilt stored in the normal map', unit: '°', min: -40, max: 40, value: 20, step: 1 } },
     out: [{ sym: 'correct', f: v => v.ph + v.t, color: 'accent', fmt: x => num(x) + '°' }, { sym: 'naive', f: v => v.t, color: 'bad', fmt: x => num(x) + '°' }],
@@ -74,7 +74,7 @@
   const fade = v => 1 - clamp((v.d - v.f0) / Math.max(v.f1 - v.f0, 1e-3), 0, 1);
   const detail = (v, dv) => clamp(0.5 * (1 + (2 * dv - 1) * fade(v)), 0, 1);
   A.fx('detail', {
-    title: 'Overlay detail, faded with distance',
+    title: 'Detail overlay with distance fade',
     expr: 'colour = base · lerp(1, 2 · {dv}, fade),   fade = 1 − saturate(({d} − {f0}) / ({f1} − {f0}))',
     vars: { dv: { name: 'detail texel value (0.5 = neutral)', min: 0, max: 1, value: 0.3, step: 0.01 }, d: { name: 'distance to the camera', unit: 'm', min: 0.1, max: 20, value: 1.5, log: true },
             f0: { name: 'fade starts', unit: 'm', min: 0.5, max: 10, value: 2, step: 0.1 }, f1: { name: 'fade ends', unit: 'm', min: 1, max: 20, value: 6, step: 0.1 } },
@@ -92,7 +92,7 @@
   /* ---------- flow ---------- */
   const fw = t => Math.abs(1 - 2 * frac(t));
   A.fx('flow', {
-    title: 'Two phases hide the reset',
+    title: 'Two-phase flow blend',
     expr: 't₀ = frac({t}),   t₁ = frac({t} + 0.5),   w = |1 − 2 · t₀|,   strength {s}',
     vars: { t: { name: 'time × speed', min: 0, max: 2, value: 0.35, step: 0.005 }, s: { name: 'distortion strength', min: 0, max: 1, value: 0.6, step: 0.01 } },
     out: [{ sym: 'weight of copy b (w)', f: v => fw(v.t), color: 'accent' }, { sym: 't₀', f: v => frac(v.t), color: 'ray' }],
@@ -112,7 +112,7 @@
     return [0.55, 0.22, 0.16].map((b, i) => b * (0.08 + 0.95 * dif) + sp * 1.2 + rim * [0.25, 0.35, 0.6][i]); };
   const nOf = v => { const s = Math.sin(v.ph * DEG); return [s * Math.cos(v.th * DEG), s * Math.sin(v.th * DEG), Math.cos(v.ph * DEG)]; };
   A.fx('matcap', {
-    title: 'Looking up a matcap with the view-space normal',
+    title: 'Matcap lookup from the view-space normal',
     expr: 'uv = N<sub>view</sub>.xy · 0.5 + 0.5,   N<sub>view</sub> at {th} around, {ph} from the view axis',
     vars: { th: { sym: 'θ', name: 'direction around the view axis', unit: '°', min: 0, max: 360, value: 130, step: 1 }, ph: { sym: 'φ', name: 'angle away from the camera', unit: '°', min: 0, max: 89, value: 55, step: 0.5 } },
     out: [{ sym: 'u', f: v => nOf(v)[0] * 0.5 + 0.5, color: 'ray' }, { sym: 'v', f: v => nOf(v)[1] * 0.5 + 0.5, color: 'good' }],

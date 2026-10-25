@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Rooms Behind Glass · Tech Art Atlas</title>
+<title>Interior Mapping · Tech Art Atlas</title>
 <meta name="description" content="Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 <style>
 .bugnote{border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:.93rem;background:var(--bg)}
 .bugnote b{font-family:var(--font-display)}
@@ -49,7 +49,7 @@ figure.lab{margin-left:0;margin-right:0}
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Rooms Behind Glass</a>
+  <a class="brand" href="#top">Interior Mapping</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -60,7 +60,7 @@ figure.lab{margin-left:0;margin-right:0}
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Shaders & rendering · Unity HDRP · 15 chapters</div>
-  <h1>Rooms Behind Glass</h1>
+  <h1>Interior Mapping</h1>
   <p class="lede">Every window on a facade can be one flat quad. The rooms behind the glass are computed per pixel from a single picture and four lines of maths. Every formula here is live, and every lab traces real rays.</p>
   <p class="meta">Built for Unity HDRP; the maths transfers to URP and Unreal unchanged. Builds on the Foundations units for vectors, spaces, rays and textures.</p>
 </header>
@@ -68,8 +68,8 @@ figure.lab{margin-left:0;margin-right:0}
 </div>
 <div class="needs" data-needs="rays-math#box spaces#tangent dot-cross#projection textures-sampling#uv"></div>
 
-<section class="chapter" id="trick" data-title="The trick" data-builds="rays-math#ray gpu-basics#per-pixel" data-summary="One flat quad per window; a per-pixel ray against an imaginary box picks a point in a pre-rendered room picture.">
-  <div class="head"><div class="num"></div><h2>The trick</h2></div>
+<section class="chapter" id="trick" data-title="Method overview" data-builds="rays-math#ray gpu-basics#per-pixel" data-summary="One flat quad per window; a per-pixel ray against an imaginary box picks a point in a pre-rendered room picture.">
+  <div class="head"><div class="num"></div><h2>Method overview</h2></div>
 
   <div class="prose">
     <p>A city block has hundreds of windows. Modelling the rooms behind them costs geometry, draw calls, lights and memory, and most of it is seen for half a second from a moving camera. <button type="button" class="term" data-term="interior">Interior mapping</button> replaces all of that with one flat <button type="button" class="term" data-term="glass">glass quad</button> per window and a shader.</p>
@@ -95,8 +95,8 @@ figure.lab{margin-left:0;margin-right:0}
   <div class="prose"><p>Before the maths, one decision shapes everything else: what the shader treats as "the room".</p></div>
 
 </section>
-<section class="chapter" id="rooms" data-title="Rooms, not windows" data-builds="textures-sampling#uv buffers#vertex-index" data-summary="roomUV is the position inside the room rectangle, not the window; sizes travel in metres in spare UV channels.">
-  <div class="head"><div class="num"></div><h2>Rooms, not windows</h2></div>
+<section class="chapter" id="rooms" data-title="Room UVs" data-builds="textures-sampling#uv buffers#vertex-index" data-summary="roomUV is the position inside the room rectangle, not the window; sizes travel in metres in spare UV channels.">
+  <div class="head"><div class="num"></div><h2>Room UVs</h2></div>
 
   <div class="prose">
     <p>The <button type="button" class="term" data-term="roomrect">room rectangle</button> is the patch of facade one room occupies, seen from outside: from floor slab to floor slab and from party wall to party wall. The glass is a hole cut into it. One rectangle can hold one big window, two small ones or a tiny bathroom slot.</p>
@@ -138,8 +138,8 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["A 1 m wide window sits centered in a 4 m wide room. What range does its roomUV.x cover?", ["0 to 1", "0.375 to 0.625", "0.25 to 0.75", "0 to 0.25"], 1, "The window spans 1.5 m to 2.5 m of the 4 m rectangle: 1.5/4 = 0.375 and 2.5/4 = 0.625. It only shows the middle of the room."], ["Two windows of the same office show two different rooms. What is the most likely cause?", ["Per-window UVs", "Wrong backWallFrac", "Flipped tangent", "Too much depth jitter"], 0, "With 0 to 1 UVs per window, each window is its own complete room. Measure roomUV inside the room rectangle instead."]]</script></details>
 
 </section>
-<section class="chapter" id="rays" data-title="Rays from the camera" data-builds="rays-math#ray vectors#add-sub" data-summary="The view vector V = P − C from camera to glass is the ray the shader continues into the room.">
-  <div class="head"><div class="num"></div><h2>Rays from the camera</h2></div>
+<section class="chapter" id="rays" data-title="View rays" data-builds="rays-math#ray vectors#add-sub" data-summary="The view vector V = P − C from camera to glass is the ray the shader continues into the room.">
+  <div class="head"><div class="num"></div><h2>View rays</h2></div>
 
   <div class="prose">
     <p>A ray is a start point and a direction; every point along it is <code>p(t) = o + t·d</code>, explained step by step in <a class="x" href="../rays-math/index.html#ray">A ray is a formula</a>. <strong>Tracing</strong> means finding the smallest t at which the ray touches something. Interior mapping tests it against the planes of an imaginary box, which is why it is cheap.</p>
@@ -201,8 +201,8 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["You use Shader Graph's View Direction node as the view vector. What else must you do?", ["Nothing", "Negate it", "Transform it to object space", "Square it"], 1, "That node points from the surface to the camera. The ray needs camera to surface."]]</script></details>
 
 </section>
-<section class="chapter" id="unit-box" data-title="The unit box" data-builds="shader-anatomy#functions vectors#scale" data-summary="o = (u·2 − 1, v·2 − 1, 0); d = (V.x / (W/2), V.y / (H/2), −V.z / D).">
-  <div class="head"><div class="num"></div><h2>The unit box</h2></div>
+<section class="chapter" id="unit-box" data-title="Unit room box" data-builds="shader-anatomy#functions vectors#scale" data-summary="o = (u·2 − 1, v·2 − 1, 0); d = (V.x / (W/2), V.y / (H/2), −V.z / D).">
+  <div class="head"><div class="num"></div><h2>Unit room box</h2></div>
 
   <div class="prose">
     <p>Rooms come in every size. Rather than solve each room separately, the shader squashes every room into one standard <button type="button" class="term" data-term="unitbox">unit box</button>: x and y from −1 to 1, z from 0 at the glass to 1 at the back wall. The start point comes from roomUV (<a class="x" href="../shader-anatomy/index.html#functions">the ·2 − 1 remap</a>), and the direction is divided by the room's half width and depth. Here in the top view:</p>
@@ -229,11 +229,14 @@ figure.lab{margin-left:0;margin-right:0}
   </figure>
 
 </section>
-<section class="chapter" id="wall" data-title="Finding the wall" data-builds="rays-math#box rays-math#plane" data-summary="t_x = |1/d.x| − o.x/d.x, t_y likewise, t_z = 1/d.z; the smallest t is the wall that is hit.">
-  <div class="head"><div class="num"></div><h2>Finding the wall</h2></div>
+<section class="chapter" id="wall" data-title="Wall intersection" data-builds="rays-math#box rays-math#plane" data-summary="t_x = |1/d.x| − o.x/d.x, t_y likewise, t_z = 1/d.z; the smallest t is the wall that is hit.">
+  <div class="head"><div class="num"></div><h2>Wall intersection</h2></div>
 
   <div class="prose">
-    <p>The ray starts on the glass and moves inward, so it can only leave the box through three faces: the side wall it moves toward, the floor or ceiling it moves toward, or the back wall. For each, ask at what t the ray reaches that plane: the <a class="x" href="../rays-math/index.html#box">slab test</a>, simplified because the ray starts inside.</p>
+    <p>The ray starts on the glass and moves inward, so it can only leave the box through three faces: the side wall it moves toward, the floor or ceiling it moves toward, or the back wall. For each, ask at what t the ray reaches that plane: the slab test, simplified because the ray starts inside.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Slab test: per axis, the ray enters and leaves a slab; it is in the box from the latest entry to the earliest exit.</p></div><a class="x refto" href="../rays-math/index.html#box">Open the full explanation</a></aside>
+  <div class="prose">
     <p>The side wall it moves toward is at x = sign(d.x). Solving o.x + t·d.x = sign(d.x) gives t = (sign(d.x) − o.x) / d.x, and since sign(d.x) / d.x is always 1/|d.x|, the shader writes it with one <code>abs</code> instead of a branch:</p>
   </div>
   <div class="fx" data-fx="slab2"></div>
@@ -270,8 +273,8 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["Why does the slab test take the smallest of the three t values?", ["The box is convex and the ray starts inside, so the first plane crossed is where it leaves", "The largest t is always the back wall", "min avoids NaN values", "GPUs execute min faster than max"], 0, "The other crossings happen later, on plane extensions outside the box."], ["Why clamp tiny direction components to 1e-5?", ["To keep 1/d finite and avoid 0·∞ = NaN when looking straight on", "To add subtle noise", "To improve hash precision", "To keep t negative"], 0, "A component of exactly 0 makes 1/d infinite. 1e-5 turns it into 100 000, a t that never wins."]]</script></details>
 
 </section>
-<section class="chapter" id="picture" data-title="Into the picture" data-builds="spaces#perspective textures-sampling#uv" data-summary="k = 1/b − 1, s = 1 / (1 + z·k), cellUV = hit.xy · s · 0.5 + 0.5.">
-  <div class="head"><div class="num"></div><h2>Into the picture</h2></div>
+<section class="chapter" id="picture" data-title="Hit point to atlas UV" data-builds="spaces#perspective textures-sampling#uv" data-summary="k = 1/b − 1, s = 1 / (1 + z·k), cellUV = hit.xy · s · 0.5 + 0.5.">
+  <div class="head"><div class="num"></div><h2>Hit point to atlas UV</h2></div>
 
   <div class="prose">
     <p>We now know the 3D point the pixel sees; we need its colour. The <button type="button" class="term" data-term="atlas">atlas</button> holds pictures of rooms, each rendered by a camera standing outside the room, centred on the opening, with a field of view that exactly fits it: <button type="button" class="term" data-term="opp">one-point perspective</button>, every depth line running toward the centre.</p>
@@ -315,8 +318,8 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["The atlas was rendered with b = 0.5. What is k?", ["0.5", "1", "2", "4"], 1, "k = 1/b − 1 = 1/0.5 − 1 = 1. The render camera stood one room depth in front of the glass."], ["Where does a side-wall point at depth z = 0 land in the atlas cell?", ["At the center", "On the back-wall corner", "On the edge of the cell", "Outside the cell"], 2, "At z = 0, s = 1, so x = ±1 maps to cellUV 0 or 1: the edge of the image, exactly where the opening's edge was in the render."], ["You double a room's depth in the shader. What stays fixed in the atlas cell?", ["Nothing", "The back-wall corners", "The texels along the side walls", "The furniture positions"], 1, "hit.z is a fraction of depth. The back-wall corners (z = 1) always map to 0.5 ± 0.5·b. Only side-wall content slides."]]</script></details>
 
 </section>
-<section class="chapter" id="back-wall" data-title="Why the back wall gets half" data-summary="Back wall area b²; side-wall sharpness ratio 1/b². Render camera: c = b·D / (1 − b), fov = 2·atan((W/2) / c).">
-  <div class="head"><div class="num"></div><h2>Why the back wall gets half</h2></div>
+<section class="chapter" id="back-wall" data-title="Back wall size and render camera" data-summary="Back wall area b²; side-wall sharpness ratio 1/b². Render camera: c = b·D / (1 − b), fov = 2·atan((W/2) / c).">
+  <div class="head"><div class="num"></div><h2>Back wall size and render camera</h2></div>
 
   <div class="prose">
     <p>b decides how the texels of a cell are shared. The back wall is a square of side b, so it gets b² of the cell's area. Texels are also spread unevenly along the side walls: how fast the image position changes per unit of depth is the slope of s, k / (1 + z·k)²:</p>
@@ -346,8 +349,8 @@ figure.lab{margin-left:0;margin-right:0}
   </figure>
 
 </section>
-<section class="chapter" id="trace" data-title="Trace one pixel" data-summary="Every step of the shader for one clicked pixel, with real numbers.">
-  <div class="head"><div class="num"></div><h2>Trace one pixel</h2></div>
+<section class="chapter" id="trace" data-title="Single-pixel trace" data-summary="Every step of the shader for one clicked pixel, with real numbers.">
+  <div class="head"><div class="num"></div><h2>Single-pixel trace</h2></div>
 
   <div class="prose">
     <p>Here is the whole pipeline running on a real facade. Click any glass pixel and the panel walks through every step for that one pixel, with the actual numbers: <a href="#room-space">room space</a>, <a href="#unit-box">unit box</a>, <a href="#wall">wall</a>, <a href="#picture">picture</a>. The small diagrams show the same ray inside the unit box, and the spot it samples in the atlas cell.</p>
@@ -373,8 +376,8 @@ figure.lab{margin-left:0;margin-right:0}
   </figure>
 
 </section>
-<section class="chapter" id="variation" data-title="Variation from one number" data-builds="shader-anatomy#functions" data-summary="hash(n) = frac(sin(n·12.9898 + 78.233) · 43758.5453); a different multiplier per property.">
-  <div class="head"><div class="num"></div><h2>Variation from one number</h2></div>
+<section class="chapter" id="variation" data-title="Per-room variation" data-builds="shader-anatomy#functions" data-summary="hash(n) = frac(sin(n·12.9898 + 78.233) · 43758.5453); a different multiplier per property.">
+  <div class="head"><div class="num"></div><h2>Per-room variation</h2></div>
 
   <div class="prose">
     <p>Each room carries one random <button type="button" class="term" data-term="seed">seed</button> between 0 and 1. The shader turns it into as many independent-looking values as it needs with a <button type="button" class="term" data-term="hash">hash</button>, a function that scrambles its input:</p>
@@ -404,15 +407,15 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["Why does each property hash the seed with a different multiplier (17, 31, 47…)?", ["To decorrelate the properties", "To avoid negative numbers", "For speed", "To match the atlas size"], 0, "With the same input every property would get the same value: lit rooms would always be the mirrored ones."]]</script></details>
 
 </section>
-<section class="chapter" id="glass" data-title="Glass and light" data-builds="exposure#multiplier dot-cross#angle" data-summary="F0 = ((n₁ − n₂)/(n₁ + n₂))² ≈ 0.04; F = F0 + (1 − F0)(1 − cos θ)⁵; interior × (1 − F).">
-  <div class="head"><div class="num"></div><h2>Glass and light</h2></div>
+<section class="chapter" id="glass" data-title="Window glass and exposure" data-builds="pbr-brdf#fresnel exposure#multiplier" data-summary="Opaque glass material; interior × (1 − F) in emission, exposed like any other light.">
+  <div class="head"><div class="num"></div><h2>Window glass and exposure</h2></div>
 
   <div class="prose">
     <p>Render the glass as an <strong>opaque</strong> Lit material, not a transparent one. The interior is computed by the shader anyway, so nothing needs to show through, and opaque surfaces write depth, receive screen-space reflections and sort correctly. The interior goes into Emission; the glass gets a dark base colour and high smoothness, so reflection probes and SSR draw the reflection.</p>
     <h3>How much reflects: Fresnel</h3>
-    <p>Glass reflects more at grazing angles. The fraction reflected head-on, <button type="button" class="term" data-term="f0">F0</button>, comes from the refractive indices of air (1.0) and glass (about 1.5). Schlick's approximation bends it toward 1 at grazing angles (the same term every PBR material uses: <a class="x" href="../pbr-brdf/index.html#fresnel">Fresnel in a PBR shader</a>). Whatever does not reflect passes through, so the interior is multiplied by the <button type="button" class="term" data-term="trans">transmission</button> 1 − F:</p>
+    <p>The glass reflects more at grazing angles and lets less of the room through. Whatever does not reflect passes through, so the interior is multiplied by the <button type="button" class="term" data-term="trans">transmission</button> 1 − F:</p>
   </div>
-  <div class="fx" data-fx="fresnel"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Fresnel: F0 = ((n − 1)/(n + 1))² ≈ 0.04 for glass, F = F0 + (1 − F0)(1 − cos θ)⁵.</p></div><a class="x refto" href="../pbr-brdf/index.html#fresnel">Open the full explanation</a></aside>
   <figure class="lab" id="lab-fres">
     <figcaption class="lab-head"><span class="lab-tag">Lab</span> Fresnel on glass</figcaption>
     <div class="lab-body">
@@ -475,11 +478,12 @@ figure.lab{margin-left:0;margin-right:0}
   </figure>
 
 </section>
-<section class="chapter" id="mips" data-title="Mips and seams" data-builds="texture-memory#mips textures-sampling#filter" data-summary="Atlas UV jumps between rooms give huge derivatives and a seam; pass gradients from world position instead.">
-  <div class="head"><div class="num"></div><h2>Mips and seams</h2></div>
+<section class="chapter" id="mips" data-title="Atlas mip seams" data-builds="textures-sampling#mips textures-sampling#filter" data-summary="Atlas UV jumps between rooms give huge derivatives and a seam; pass gradients from world position instead.">
+  <div class="head"><div class="num"></div><h2>Atlas mip seams</h2></div>
 
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Mip selection: the GPU picks the level from how fast the UV changes across each 2×2 quad; a UV jump looks like a huge change and picks a tiny mip.</p></div><a class="x refto" href="../textures-sampling/index.html#mips">Open the full explanation</a></aside>
   <div class="prose">
-    <p>The GPU picks a <button type="button" class="term" data-term="mip">mip</button> level per pixel from how fast the UV changes between neighbouring pixels, measured across each 2×2 quad (<a class="x" href="../texture-memory/index.html#mips">how the GPU picks a mip</a>). Inside one room, cellUV is continuous, even across wall corners. But where two rooms share one strip of glass, the atlas UV leaps from one cell to another. A quad straddling that jump sees a huge change and picks a tiny mip:</p>
+    <p>Inside one room, cellUV is continuous, even across wall corners. But where two rooms share one strip of glass, the atlas UV leaps from one cell to another. A quad straddling that jump sees a huge change and picks a tiny mip:</p>
   </div>
   <div class="fx" data-fx="seam"></div>
   <div class="prose">
@@ -500,8 +504,8 @@ figure.lab{margin-left:0;margin-right:0}
   <details class="check"><summary></summary><script type="application/json">[["A one-pixel line of wrong color appears exactly where two rooms meet on one strip of glass. Why?", ["The atlas UV jumps, the 2×2 quad sees a huge derivative and picks a tiny mip", "Fresnel peaks at room borders", "The b values differ between rooms", "The rooms have different seeds"], 0, "Feed SampleGrad with gradients from world position, which is continuous across room borders."]]</script></details>
 
 </section>
-<section class="chapter" id="bugs" data-title="Bug lab" data-summary="Per-window UVs, flipped tangents, un-negated view vectors, mismatched b and ignored room sizes each have a signature.">
-  <div class="head"><div class="num"></div><h2>Bug lab</h2></div>
+<section class="chapter" id="bugs" data-title="Common bugs" data-summary="Per-window UVs, flipped tangents, un-negated view vectors, mismatched b and ignored room sizes each have a signature.">
+  <div class="head"><div class="num"></div><h2>Common bugs</h2></div>
 
   <div class="prose">
     <p>Most interior-mapping bugs come from a handful of sign and space mistakes, each with a recognisable symptom. Switch one on, orbit the building, and learn the look. Then switch the view to Hit xyz: a correct shader shows a clean box gradient, red growing to the right, green growing up, blue growing with depth (<a class="x" href="../color-values/index.html#rgb">colours as numbers</a>).</p>
@@ -936,11 +940,11 @@ public class FacadeRooms : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="rooms.js?v=09ab213f"></script>
-<script src="rooms-fx.js?v=f2ce39d8"></script>
+<script src="rooms-fx.js?v=e47ebb32"></script>
 </body>
 </html>

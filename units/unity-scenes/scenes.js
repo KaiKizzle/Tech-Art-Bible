@@ -10,7 +10,7 @@
   /* ---------- several scenes, one active ---------- */
   const SC = [['Bootstrap', 'managers, audio, save system', 40], ['UI', 'menus and HUD', 60], ['Level_A', 'geometry, lights, gameplay', 900], ['Level_B', 'the next area', 750]];
   A.fx('scenestack', {
-    title: 'Loaded scenes and the active one',
+    title: 'Loaded and active scenes',
     expr: 'loaded: Bootstrap, UI, Level_A {a}, Level_B {b};   active {s}',
     vars: { a: { sym: 'A', name: 'Level_A loaded', values: [0, 1], labels: ['no', 'yes'], index: 1 }, b: { sym: 'B', name: 'Level_B loaded', values: [0, 1], labels: ['no', 'yes'], index: 0 },
             s: { sym: 'active', name: 'active scene', values: [0, 1, 2, 3], labels: SC.map(x => x[0]), index: 2 } },
@@ -30,7 +30,7 @@
 
   /* ---------- async loading and the activation hitch ---------- */
   A.fx('asyncload', {
-    title: 'LoadSceneAsync: progress, then activation',
+    title: 'LoadSceneAsync progress and activation',
     expr: 'progress = 0.9 · min(1, t / {T});   activation frame ≈ {n} objects · {c} µs',
     vars: { T: { sym: 'T', name: 'time to load the data', unit: 's', min: 0.5, max: 10, value: 3, step: 0.1 }, n: { sym: 'n', name: 'objects in the scene', min: 100, max: 50000, value: 8000, log: true },
             c: { sym: 'c', name: 'Awake + OnEnable cost per object', unit: 'µs', min: 1, max: 100, value: 12, log: true }, w: { sym: 'allow', name: 'allowSceneActivation', values: [1, 0], labels: ['true', 'false (wait for the player)'], index: 0 } },
@@ -59,7 +59,7 @@
     if (v.m === 1) return [[0, base + v.A], [0.3, base + v.A], [0.35, base + T * 1000], [0.45, base + T * 1000], [0.75, base + v.B], [1, base + v.B]];
     return [[0, base + v.A], [0.3, base + v.A], [0.6, base + v.A + v.B], [0.7, base + v.A + v.B - (v.u ? 0 : 0)], [0.72, base + v.B + (v.u ? 0 : v.A * 0.6)], [1, base + v.B + (v.u ? 0 : v.A * 0.6)]]; };
   A.fx('peakmem', {
-    title: 'Peak memory when switching from level A to level B',
+    title: 'Peak memory during level switches',
     expr: 'peak = {m}: Single A + B,  transition max(A, B),  additive A + B',
     vars: { A: { sym: 'A', name: 'level A', unit: 'MB', min: 100, max: 2000, value: 900, step: 10 }, B: { sym: 'B', name: 'level B', unit: 'MB', min: 100, max: 2000, value: 1100, step: 10 },
             m: { sym: 'how', name: 'strategy', values: [0, 1, 2], labels: ['Single', 'transition scene', 'additive'], index: 0 }, u: { sym: 'unload', name: 'UnloadUnusedAssets after unloading', values: [1, 0], labels: ['yes', 'no'], index: 0 } },

@@ -17,7 +17,7 @@
     for (let i = 0; i < 6000; i++) { if (f(t + 0.001) <= 0) { let a = t, b = t + 0.001; for (let k = 0; k < 30; k++) { const m = (a + b) / 2; if (f(m) > 0) a = m; else b = m; } res = (a + b) / 2; break; } t += 0.001; }
     return (EX[ang] = res); }
   A.fx('fixed', {
-    title: 'Fixed steps along a ray',
+    title: 'Fixed-step ray march',
     expr: 'P(t) = O + t · D,   t += {dt},   stop when P.y < h(P.x),   ray {ang} below the horizon',
     vars: { dt: { sym: 'Δt', name: 'step length', min: 0.01, max: 0.5, value: 0.18, step: 0.01 },
             ang: { sym: 'θ', name: 'angle of the ray below the horizon', unit: '°', min: 5, max: 40, value: 21, step: 0.5 } },
@@ -43,7 +43,7 @@
   function bis(dt, k) { let [a, b] = bracket(dt); for (let i = 0; i < k; i++) { const m = (a + b) / 2; if (fr(m) > 0) a = m; else b = m; } return (a + b) / 2; }
   function sec(dt, k) { let [a, b] = bracket(dt), fa = fr(a), fb = fr(b); for (let i = 0; i < k; i++) { const m = a + (b - a) * fa / (fa - fb), fm = fr(m); if (fm > 0) { a = m; fa = fm; } else { b = m; fb = fm; } } return a + (b - a) * fa / (fa - fb); }
   A.fx('refine', {
-    title: 'Narrowing the hit: bisection or secant',
+    title: 'Bisection versus secant',
     expr: 'bisection: t = (t<sub>a</sub> + t<sub>b</sub>) / 2,   secant: t = t<sub>a</sub> + (t<sub>b</sub> − t<sub>a</sub>) · d<sub>a</sub> / (d<sub>a</sub> − d<sub>b</sub>),   {k} refinements after steps of {dt}',
     vars: { k: { sym: 'k', name: 'refinement steps', min: 0, max: 6, value: 2, step: 1 },
             dt: { sym: 'Δt', name: 'coarse step length', min: 0.05, max: 0.4, value: 0.25, step: 0.01 } },
@@ -67,7 +67,7 @@
   function trace(ang, eps, maxN) { const D = [Math.cos(rad(ang)), -Math.sin(rad(ang))], o = [0.1, 1.0], st = []; let t = 0, hit = false;
     for (let i = 0; i < maxN; i++) { const p = [o[0] + D[0] * t, o[1] + D[1] * t], d = sdf(p); st.push([p, d]); if (d < eps) { hit = true; break; } t += d; if (t > 5) break; } return { st, hit, D, o, t }; }
   A.fx('sphere', {
-    title: 'Sphere tracing: step by the distance to the nearest surface',
+    title: 'Sphere tracing',
     expr: 't += sdf(O + t · D),   stop when sdf < {eps},   at most {n} steps,   ray {ang} below the horizon',
     vars: { ang: { sym: 'θ', name: 'angle of the ray below the horizon', unit: '°', min: 0, max: 40, value: 12, step: 0.5 },
             eps: { sym: 'ε', name: 'hit threshold', min: 0.0005, max: 0.05, value: 0.005, log: true },
@@ -87,7 +87,7 @@
 
   /* ---------- bounding slab for height fields ---------- */
   A.fx('slab', {
-    title: 'March only where the surface can be',
+    title: 'Bounding slab',
     expr: 'steps = {H} / (cos {th} · {dt}),   instead of the whole path from the camera',
     vars: { H: { sym: 'H', name: 'thickness of the slab (highest minus lowest point)', min: 0.02, max: 1, value: 0.15, step: 0.01 },
             th: { sym: 'θ', name: 'view angle from the surface normal', unit: '°', min: 0, max: 85, value: 60, step: 1 },
@@ -107,11 +107,30 @@
     plot: { x: 'th', logY: true, y: [1, 1000] }, size: [440, 260]
   });
 
+  /* ---------- Beer–Lambert: the shared absorption law ---------- */
+  const MED = [[[0.80, 0.93, 0.86], 'green glass, colour at 1 cm', 'cm'], [[0.70, 0.94, 0.99], 'clear water, colour at 1 m', 'm'], [[0.55, 0.55, 0.55], 'grey smoke, colour at 1 m', 'm']];
+  const cssc = c => `rgb(${c.map(x => Math.round(255 * Math.pow(Math.max(0, Math.min(1, x)), 1 / 2.2))).join(',')})`;
+  A.fx('beer', {
+    title: 'Beer–Lambert transmittance per channel',
+    expr: 'μ = −ln(colour<sub>ref</sub>) / d<sub>ref</sub>,   T = e<sup>−μ · {d}</sup>,   medium {m}',
+    vars: { d: { sym: 'd', name: 'distance through the medium (× the reference distance)', min: 0, max: 12, value: 2, step: 0.1 },
+            m: { sym: 'medium', name: 'colour reached at the reference distance', values: [0, 1, 2], labels: ['green glass', 'water', 'smoke'], index: 0 } },
+    out: [0, 1, 2].map(i => ({ sym: 'T ' + 'RGB'[i], f: v => Math.pow(MED[v.m][0][i], v.d), color: ['bad', 'good', 'ray'][i] })),
+    sub: (v, n) => { const T = MED[v.m][0].map(c => Math.pow(c, v.d)); return `after ${n(v.d)} × the reference distance, T = (${T.map(x => n(x)).join(', ')}): each channel fades at its own rate, so the colour deepens with distance`; },
+    draw(ctx, W, H, v, X) {
+      const T0 = MED[v.m][0], bg = [0.85, 0.85, 0.85];
+      for (let i = 0; i < W - 40; i += 2) { const d = (i / (W - 40)) * 12, T = T0.map(c => Math.pow(c, d)); ctx.fillStyle = cssc(bg.map((b, k) => b * T[k])); ctx.fillRect(20 + i, 40, 2.5, H - 90); }
+      const xd = 20 + v.d / 12 * (W - 40); ctx.strokeStyle = col('accent'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xd, 34); ctx.lineTo(xd, H - 44); ctx.stroke();
+      X.label(ctx, 'white light after a distance d (' + MED[v.m][1] + ')', 20, 22, col('muted')); X.label(ctx, '0', 20, H - 26, col('muted')); X.label(ctx, '12 × ' + MED[v.m][2], W - 20, H - 26, col('muted'), 'right');
+    },
+    plot: { x: 'd', y: [0, 1.02] }, size: [440, 200]
+  });
+
   /* ---------- volumes: integrate instead of stopping ---------- */
   const dens = x => Math.exp(-Math.pow((x - 0.5) / 0.18, 2));
   const exactOD = s => { let o = 0; for (let i = 0; i < 2000; i++) o += dens((i + 0.5) / 2000) / 2000; return o * s; };
   A.fx('volume', {
-    title: 'Through a volume: add up density along the way',
+    title: 'Stepped transmittance through a volume',
     expr: 'T = Π e<sup>−σ(x<sub>i</sub>) Δt</sup>,   Δt = 1 / {N},   peak density {s}',
     vars: { N: { sym: 'N', name: 'number of steps through the volume', min: 1, max: 32, value: 4, step: 1 },
             s: { sym: 'σ', name: 'peak density', min: 0.5, max: 8, value: 4, step: 0.1 },
@@ -129,7 +148,7 @@
   /* ---------- banding versus jitter ---------- */
   function hash(x, y) { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); }
   A.fx('jitter', {
-    title: 'Too few steps: bands, or noise that TAA can clean up',
+    title: 'Banding versus jitter',
     expr: 'sample i at (i + {j}) · Δt,   {N} steps through a soft ball of fog',
     vars: { N: { sym: 'N', name: 'steps per ray', min: 2, max: 24, value: 5, step: 1 },
             j: { sym: 'offset', name: 'start offset', values: [0, 1], labels: ['fixed 0.5', 'per-pixel random'], index: 0 } },

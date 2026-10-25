@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Fabric and Folds in Real Time · Tech Art Atlas</title>
+<title>Fabric Folds and Wrinkles · Tech Art Atlas</title>
 <meta name="description" content="Where folds come from, and the three ways games make them: baked into normal maps, faded in by stretch or joint angles, and simulated with particles and constraints. Includes a live cloth simulation.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="fabric-folds" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Fabric and Folds in Real Time</a>
+  <a class="brand" href="#top">Fabric Folds and Wrinkles</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Characters · 7 chapters</div>
-  <h1>Fabric and Folds in Real Time</h1>
+  <h1>Fabric Folds and Wrinkles</h1>
   <p class="lede">Where folds come from, and the three ways games make them: baked into normal maps, faded in by stretch or joint angles, and simulated with particles and constraints. Includes a live cloth simulation.</p>
   <p class="meta">Builds on Vectors and Textures. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="texture-memory#normals spaces#tangent vectors#length"></div>
 
-<section class="chapter" id="why" data-title="Where folds come from" data-builds="vectors#length" data-summary="Compression c must go somewhere: fold height A ≈ λ · √c / π. Stiffer fabric, longer λ.">
-  <div class="head"><div class="num"></div><h2>Where folds come from</h2></div>
+<section class="chapter" id="why" data-title="Fold formation" data-builds="vectors#length" data-summary="Compression c must go somewhere: fold height A ≈ λ · √c / π. Stiffer fabric, longer λ.">
+  <div class="head"><div class="num"></div><h2>Fold formation</h2></div>
 
   <div class="prose">
     <p>Fabric barely stretches, but it bends with almost no effort. When a sleeve is pushed together, the extra length has to go somewhere, and the only way out is sideways: the cloth buckles into <button type="button" class="term" data-term="fold">folds</button>. For gentle, wave-like folds the geometry is simple. If the cloth is compressed by a fraction c and folds with wavelength λ, the folds must rise and fall by about A:</p>
@@ -58,8 +58,8 @@
   <div class="prose"><p>The wavelength is a property of the fabric. It grows with bending stiffness: silk and jersey make many small folds, denim, leather and wool coats a few large ones. That is why a fold pattern sculpted for one fabric looks wrong on another, and why the rest of this unit has two tools: <a href="#baked">folds stored in textures</a> for the small ones and <a href="#sim">simulation</a> for the large ones.</p></div>
 
 </section>
-<section class="chapter" id="baked" data-title="Folds in the normal map" data-builds="texture-memory#normals spaces#tangent" data-summary="Angles of base and detail should add: RNM does exactly that; linear averaging halves the detail.">
-  <div class="head"><div class="num"></div><h2>Folds in the normal map</h2></div>
+<section class="chapter" id="baked" data-title="Baked folds and normal blending" data-builds="texture-memory#normals spaces#tangent" data-summary="Angles of base and detail should add: RNM does exactly that; linear averaging halves the detail.">
+  <div class="head"><div class="num"></div><h2>Baked folds and normal blending</h2></div>
 
   <div class="prose">
     <p>Most folds you see on game characters are not geometry. They are sculpted on a high-resolution mesh, baked into a <a class="x" href="../texture-memory/index.html#normals">normal map</a> and rendered on a low-poly mesh. A garment usually has two normal maps: the folds, unique to the garment, and a tiling <a class="x" href="../cloth/index.html#fuzz">weave</a> or detail map. Combining the two normals is less obvious than it looks. In 2D a normal is just a tilt angle, and the correct result tilts the detail by the base's tilt: the angles add. Compare the common blends:</p>
@@ -76,8 +76,8 @@
   <div class="engines"><div class="eng" data-engine="hdrp"><p>Shader Graph's <em>Normal Blend</em> node has two modes: <em>Default</em> (whiteout) and <em>Reoriented</em> (RNM). The Lit shader's <em>Detail Map</em> adds a tiling detail normal on top of the main one.</p></div><div class="eng" data-engine="urp"><p>The same <em>Normal Blend</em> node with <em>Reoriented</em> mode. URP Lit has <em>Detail Inputs</em> (a detail normal map with its own tiling) for the weave.</p></div><div class="eng" data-engine="unreal"><p>Use the <em>BlendAngleCorrectedNormals</em> material function, which implements RNM. Make sure both textures use the <em>Normalmap</em> compression setting.</p></div></div>
 
 </section>
-<section class="chapter" id="tension" data-title="Wrinkles from stretch and squash" data-builds="fabric-folds#baked" data-summary="squash = saturate((1 − L / L₀) · k) fades a wrinkle map in; stretch = saturate((L / L₀ − 1) · k).">
-  <div class="head"><div class="num"></div><h2>Wrinkles from stretch and squash</h2></div>
+<section class="chapter" id="tension" data-title="Tension-driven wrinkle maps" data-builds="fabric-folds#baked" data-summary="squash = saturate((1 − L / L₀) · k) fades a wrinkle map in; stretch = saturate((L / L₀ − 1) · k).">
+  <div class="head"><div class="num"></div><h2>Tension-driven wrinkle maps</h2></div>
 
   <div class="prose">
     <p>Baked folds never move. To make wrinkles appear only when the cloth is pushed together, compare the current length of the mesh edges with their rest length. Each vertex stores its rest edge lengths (or the mesh is compared with its bind pose), and the ratio becomes two masks: one for <em>compression</em>, which fades in a <button type="button" class="term" data-term="wmap">wrinkle map</button>, and one for <em>stretch</em>, which flattens the folds and can show pulling lines:</p>
@@ -92,8 +92,8 @@
   <div class="prose"><p>Lerping toward the flat normal (0, 0, 1) and normalizing is a cheap way to scale a normal map's strength. The sensitivity is tuned per garment: about 3 to 5 makes a 20 to 30 % squash give full wrinkles.</p></div>
 
 </section>
-<section class="chapter" id="drivers" data-title="Wrinkles driven by joints" data-builds="fabric-folds#tension" data-summary="weight = smoothstep(θ₀, θ₁, joint angle); squash = dot(mask, weights).">
-  <div class="head"><div class="num"></div><h2>Wrinkles driven by joints</h2></div>
+<section class="chapter" id="drivers" data-title="Joint-driven wrinkle maps" data-builds="fabric-folds#tension" data-summary="weight = smoothstep(θ₀, θ₁, joint angle); squash = dot(mask, weights).">
+  <div class="head"><div class="num"></div><h2>Joint-driven wrinkle maps</h2></div>
 
   <div class="prose">
     <p>The cheapest dynamic wrinkles need no mesh comparison at all. The folds inside an elbow, behind a knee or across a stomach always appear at the same joint angles. Read the angle from the skeleton (on the CPU, or from an animation curve), turn it into a weight with a smoothstep, and send it to the material:</p>
@@ -103,8 +103,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Why use a mask texture with one channel per joint?", ["To save memory", "So the elbow's weight only shows folds at the elbow, and several joints can share one wrinkle map", "Masks make the normal map sharper", "Joints cannot send weights otherwise"], 1, "Each weight multiplies its own region of the mask."]]</script></details>
 
 </section>
-<section class="chapter" id="sim" data-title="Simulating cloth: particles and sticks" data-builds="vectors#add-sub vectors#length fabric-folds#why" data-summary="x_new = x + (x − x_prev) · (1 − damping) + a · Δt²; then pull neighbours back to their rest distance.">
-  <div class="head"><div class="num"></div><h2>Simulating cloth: particles and sticks</h2></div>
+<section class="chapter" id="sim" data-title="Verlet cloth simulation" data-builds="vectors#add-sub vectors#length fabric-folds#why" data-summary="x_new = x + (x − x_prev) · (1 − damping) + a · Δt²; then pull neighbours back to their rest distance.">
+  <div class="head"><div class="num"></div><h2>Verlet cloth simulation</h2></div>
 
   <div class="prose">
     <p>Large folds that swing, like a cape, a skirt or a curtain, need simulation. Almost every real-time cloth solver works the same way. The cloth is a grid of particles. Each particle remembers where it was last frame, and its velocity is simply the difference (<em>Verlet integration</em>, popularised for games by Thomas Jakobsen):</p>
@@ -135,8 +135,8 @@
   <div class="prose"><p>Bring the pins together and the cloth falls into vertical drape folds by itself. Switch to <em>Stretch and squash</em>: the blue areas are where a wrinkle map from the previous chapters would fade in. With few iterations the cloth stretches like rubber, which leads to the next chapter.</p></div>
 
 </section>
-<section class="chapter" id="solver" data-title="Stiffness, iterations and cost" data-builds="fabric-folds#sim reading-a-frame#budget" data-summary="After n passes: 1 − (1 − s)ⁿ of the error is fixed; cost = particles · constraints · iterations · substeps.">
-  <div class="head"><div class="num"></div><h2>Stiffness, iterations and cost</h2></div>
+<section class="chapter" id="solver" data-title="Solver stiffness and cost" data-builds="fabric-folds#sim reading-a-frame#budget" data-summary="After n passes: 1 − (1 − s)ⁿ of the error is fixed; cost = particles · constraints · iterations · substeps.">
+  <div class="head"><div class="num"></div><h2>Solver stiffness and cost</h2></div>
 
   <div class="prose">
     <p>One constraint step moves both particles a fraction s (the stiffness) of the way back to the rest distance. But each fix disturbs the neighbours, so the solver repeats the whole pass several times per frame. This is <button type="button" class="term" data-term="pbd">position-based dynamics</button>. After n passes, a single constraint has closed 1 − (1 − s)ⁿ of its error, so stiffness depends on the iteration count:</p>
@@ -570,10 +570,10 @@ void WriteMesh(uint3 id : SV_DispatchThreadID)
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="folds.js?v=5ada0c9b"></script>
+<script src="folds.js?v=8d9f97b2"></script>
 </body>
 </html>

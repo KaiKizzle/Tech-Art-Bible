@@ -29,7 +29,7 @@
   }
 
   A.fx('shadowtest', {
-    title: 'The shadow comparison',
+    title: 'Shadow comparison',
     expr: 'shadowed if d<sub>point</sub> > d<sub>map</sub>,   sun at {sun},   point at x = {x}',
     vars: { x: { name: 'point on the ground', unit: 'm', min: 0, max: 7, value: 3.4, step: 0.01 }, sun: { name: 'sun angle from straight down', unit: '°', min: 0, max: 70, value: 40, step: 1 } },
     out: [{ sym: 'd<sub>point</sub>', f: v => lightDepth([v.x, 0], v.sun * DEG) + 20, color: 'accent' }, { sym: 'd<sub>map</sub>', f: v => lightDepth(firstHit([v.x, 0], v.sun * DEG), v.sun * DEG) + 20, color: 'ray' }],
@@ -44,7 +44,7 @@
   });
 
   A.fx('lightuv', {
-    title: 'A point in the sun\'s coordinates (orthographic)',
+    title: 'Light-space position (orthographic)',
     expr: 'x<sub>L</sub> = x·cos {sun} + y·sin {sun},   z<sub>L</sub> = x·sin {sun} − y·cos {sun},   uv = x<sub>L</sub> / {ext} · 0.5 + 0.5',
     vars: { px: { sym: 'x', name: 'point x', unit: 'm', min: -5, max: 5, value: 2, step: 0.05 }, py: { sym: 'y', name: 'point y', unit: 'm', min: 0, max: 4, value: 1, step: 0.05 },
             sun: { name: 'sun angle from straight down', unit: '°', min: 0, max: 80, value: 35, step: 1 }, ext: { name: 'half size of the area the map covers', unit: 'm', min: 2, max: 50, value: 8, step: 0.5 } },
@@ -67,7 +67,7 @@
     return { frac: bad / n, gap: (v.b + v.k * slope * tex) / Math.max(slope, 0.05) };
   }
   A.fx('acne', {
-    title: 'Acne on a tilted surface, and the bias that fixes it',
+    title: 'Shadow acne and bias',
     expr: 'shadowed if d > d<sub>map</sub> + {b} + {k} · tan {th} · {t}',
     vars: { th: { sym: 'θ', name: 'surface angle to the light', unit: '°', min: 0, max: 80, value: 50, step: 1 }, t: { sym: 'texel', name: 'shadow texel size', unit: 'm', min: 0.05, max: 0.6, value: 0.3, step: 0.01 },
             b: { sym: 'bias', name: 'constant depth bias', unit: 'm', min: 0, max: 0.4, value: 0, step: 0.005 }, k: { sym: 'slope', name: 'slope-scaled bias factor', min: 0, max: 1.5, value: 0, step: 0.05 } },
@@ -85,7 +85,7 @@
 
   const pxPerM = (H, d, fov) => H / (2 * d * Math.tan(fov / 2 * DEG));
   A.fx('stexel', {
-    title: 'Shadow texels against screen pixels',
+    title: 'Shadow texels versus screen pixels',
     expr: 'texel = 2 · {ext} / {res},   screen pixels per texel = texel · {Hs} / (2 · {d} · tan(30°))',
     vars: { ext: { name: 'half size of the shadowed area', unit: 'm', min: 5, max: 500, value: 50, log: true }, res: { name: 'shadow map resolution', values: [512, 1024, 2048, 4096, 8192], index: 2 },
             d: { name: 'distance from the camera', unit: 'm', min: 1, max: 200, value: 10, log: true }, Hs: { sym: 'H', name: 'screen height', values: [1080, 1440, 2160], index: 0 } },
@@ -96,7 +96,7 @@
 
   const pcfVal = (x, e, k, t) => { if (k <= 1) return x > e ? 1 : 0; let s = 0; for (let i = 0; i < k; i++) { const xs = x + (i - (k - 1) / 2) * t; s += xs > e ? 1 : 0; } return s / k; };
   A.fx('pcf', {
-    title: 'Percentage-closer filtering across a shadow edge',
+    title: 'PCF across a shadow edge',
     expr: 'lit = (1/{k}) · Σ<sub>i</sub> [x + o<sub>i</sub> > edge],   texel {t}',
     vars: { x: { name: 'position across the edge', unit: 'm', min: -1, max: 1, value: 0.1, step: 0.005 }, k: { sym: 'k', name: 'filter taps (per axis)', min: 1, max: 9, value: 5, step: 1 }, t: { sym: 'texel', name: 'texel size', unit: 'm', min: 0.02, max: 0.2, value: 0.08, step: 0.005 } },
     out: { sym: 'lit', f: v => pcfVal(v.x, 0, v.k, v.t) },
@@ -113,7 +113,7 @@
 
   const splits = v => Array.from({ length: v.n + 1 }, (_, i) => v.l * v.nr * Math.pow(v.f / v.nr, i / v.n) + (1 - v.l) * (v.nr + (v.f - v.nr) * i / v.n));
   A.fx('cascades', {
-    title: 'Where to split the cascades',
+    title: 'Cascade split distances',
     expr: 'split<sub>i</sub> = {l} · n · (f/n)<sup>i/{n}</sup> + (1 − {l}) · (n + (f − n) · i / {n}),   n = {nr},   f = {f}',
     vars: { n: { sym: 'N', name: 'cascades', min: 1, max: 4, value: 4, step: 1 }, l: { sym: 'λ', name: 'blend: 0 even, 1 logarithmic', min: 0, max: 1, value: 0.75, step: 0.01 },
             nr: { sym: 'n', name: 'near distance', unit: 'm', min: 0.1, max: 2, value: 0.3, step: 0.05 }, f: { name: 'shadow distance', unit: 'm', min: 20, max: 1000, value: 150, log: true } },

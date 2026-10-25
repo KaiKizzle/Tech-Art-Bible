@@ -16,7 +16,7 @@
   }
 
   A.fx('split', {
-    title: 'Sharing the light between specular and diffuse',
+    title: 'Specular and diffuse energy split',
     expr: 'k<sub>s</sub> = {F},   k<sub>d</sub> = (1 − {F}) · (1 − {m})',
     vars: { F: { name: 'share reflected at the surface (Fresnel)', min: 0, max: 1, value: 0.04, step: 0.01 }, m: { name: 'metallic', min: 0, max: 1, value: 0, step: 0.01 } },
     sub: v => `k<sub>s</sub> = <b>${num(v.F)}</b>,   k<sub>d</sub> = (1 − ${num(v.F)}) · (1 − ${num(v.m)}) = <b>${num((1 - v.F) * (1 - v.m))}</b>,   absorbed ${num((1 - v.F) * v.m)}`,
@@ -41,7 +41,7 @@
   });
 
   A.fx('half', {
-    title: 'The half vector',
+    title: 'Half vector',
     expr: 'H = normalize(L + V),   L at {tl},   V at {tv}',
     vars: { tl: { sym: 'θ<sub>L</sub>', name: 'light angle from the normal (left is negative)', unit: '°', min: -85, max: 85, value: -40, step: 1 }, tv: { sym: 'θ<sub>V</sub>', name: 'view angle from the normal', unit: '°', min: -85, max: 85, value: 20, step: 1 } },
     out: [{ sym: 'θ<sub>H</sub>', f: v => (v.tl + v.tv) / 2, fmt: x => num(x) + '°', color: 'accent' }, { sym: 'N·H', f: v => Math.cos((v.tl + v.tv) / 2 * DEG), color: 'ray' }],
@@ -75,6 +75,17 @@
     note: 'Low roughness: a tall, narrow spike. High roughness: a low, wide dome.'
   });
 
+  A.fx('ior', {
+    title: 'F0 from the index of refraction, and Fresnel by angle',
+    expr: 'F0 = (({n} − 1) / ({n} + 1))²,   F = F0 + (1 − F0) · (1 − cos {th})⁵',
+    vars: { n: { sym: 'n', name: 'index of refraction', min: 1, max: 2.4, value: 1.5, step: 0.01 },
+            th: { sym: 'θ', name: 'angle from straight on', unit: '°', min: 0, max: 89, value: 60, step: 1 } },
+    out: [{ sym: 'F', name: 'reflected', f: v => schlick(Math.pow((v.n - 1) / (v.n + 1), 2), Math.cos(v.th * DEG)), color: 'ray' },
+          { sym: '1 − F', name: 'enters the surface', f: v => 1 - schlick(Math.pow((v.n - 1) / (v.n + 1), 2), Math.cos(v.th * DEG)), color: 'accent' }],
+    sub: (v, n) => { const f0 = Math.pow((v.n - 1) / (v.n + 1), 2), F = schlick(f0, Math.cos(v.th * DEG)); return `F0 = <b>${n(f0)}</b>; at ${v.th}° the surface reflects <b>${Math.round(F * 100)} %</b> and ${Math.round((1 - F) * 100)} % enters it`; },
+    plot: { x: 'th', y: [0, 1] }
+  });
+
   A.fx('f0', {
     title: 'F0 from base colour and metallic, and Fresnel by angle',
     expr: 'F0 = lerp(0.04, {b}, {m}),   F = F0 + (1 − F0) · (1 − cos {th})⁵',
@@ -94,7 +105,7 @@
   });
 
   A.fx('brdf', {
-    title: 'The full BRDF: reflected light toward each direction',
+    title: 'Complete BRDF by direction',
     expr: 'f = k<sub>d</sub> · {b} / π + D · F · G / (4 · N·L · N·V),   light at {tl},   roughness {r},   metallic {m}',
     vars: { tl: { sym: 'θ<sub>L</sub>', name: 'light angle (from the left)', unit: '°', min: 0, max: 85, value: 45, step: 1 }, r: { sym: 'r', name: 'roughness', min: 0.05, max: 1, value: 0.35, step: 0.01 },
             m: { name: 'metallic', min: 0, max: 1, value: 0, step: 0.01 }, b: { sym: 'base', name: 'base colour (one channel)', min: 0, max: 1, value: 0.8, step: 0.01 },
@@ -117,7 +128,7 @@
   /* lobe half-width: angle where D falls to half of its peak */
   const halfWidth = r => { const p = D(1, r); for (let a = 0; a < 90; a += 0.1) if (D(Math.cos(a * DEG), r) < p / 2) return a; return 90; };
   A.fx('ibl', {
-    title: 'Which pre-filtered mip a roughness reads',
+    title: 'Pre-filtered mip by roughness',
     expr: 'mip = {r} · ({n} − 1)',
     vars: { r: { sym: 'roughness', name: 'roughness (perceptual)', min: 0, max: 1, value: 0.5, step: 0.01 }, n: { name: 'mip levels of the cubemap', values: [6, 7, 8, 9], index: 1 } },
     out: { sym: 'mip', f: v => v.r * (v.n - 1) },

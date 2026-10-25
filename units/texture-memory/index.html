@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Texels on a Budget · Tech Art Atlas</title>
+<title>Texture Memory · Tech Art Atlas</title>
 <meta name="description" content="Textures are usually the biggest item in a game&#x27;s memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="texture-memory" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Texels on a Budget</a>
+  <a class="brand" href="#top">Texture Memory</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -39,8 +39,8 @@
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
 <div class="unit-top">
 <header class="unit-head">
-  <div class="eyebrow">Materials & texture pipeline · 10 chapters</div>
-  <h1>Texels on a Budget</h1>
+  <div class="eyebrow">Materials & texture pipeline · 7 chapters</div>
+  <h1>Texture Memory</h1>
   <p class="lede">Textures are usually the biggest item in a game's memory. Four decisions set their cost: resolution, format, mipmaps, and what goes in which channel. Each comes with its formula, live.</p>
   <p class="meta">From bytes per texel down to the bits in a 4×4 block, with notes for Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="textures-sampling#texture textures-sampling#mips color-values#linear-srgb spaces#tangent"></div>
 
-<section class="chapter" id="cost" data-title="What a texture costs" data-builds="textures-sampling#texture" data-summary="bytes = width · height · bpp / 8, × 4/3 with mips. Resolution ×2 = memory ×4.">
-  <div class="head"><div class="num"></div><h2>What a texture costs</h2></div>
+<section class="chapter" id="cost" data-title="Texture memory size" data-builds="textures-sampling#texture" data-summary="bytes = width · height · bpp / 8, × 4/3 with mips. Resolution ×2 = memory ×4.">
+  <div class="head"><div class="num"></div><h2>Texture memory size</h2></div>
 
   <div class="prose">
     <p>A texture in GPU memory is a grid of <button type="button" class="term" data-term="texel">texels</button> (<a class="x" href="../textures-sampling/index.html#texture">what a texture is</a>). Its format fixes how many <button type="button" class="term" data-term="bpp">bits each texel takes</button>. Multiply, divide by 8 for bytes, and add a third if the texture has a <a class="x" href="../textures-sampling/index.html#mips">mip chain</a>:</p>
@@ -75,50 +75,16 @@
   <details class="check"><summary></summary><script type="application/json">[["A 2048×2048 texture in BC7 with mips. Roughly how much memory?", ["1.3 MiB", "4 MiB", "5.3 MiB", "16 MiB"], 2, "2048² × 8 bits / 8 = 4 MiB, × 4/3 for mips ≈ 5.3 MiB."], ["You halve a texture's resolution from 4096² to 2048². What happens to its memory?", ["Halves", "Drops to a quarter", "Drops to an eighth", "Unchanged, only mips change"], 1, "Both dimensions halve: ½ × ½ = ¼."]]</script></details>
 
 </section>
-<section class="chapter" id="mips" data-title="Mipmaps and how the GPU picks one" data-builds="textures-sampling#mips textures-sampling#filter" data-summary="The chain adds 1/3. Mip level = log₂(texels per pixel), measured from UV derivatives across a 2×2 quad.">
-  <div class="head"><div class="num"></div><h2>Mipmaps and how the GPU picks one</h2></div>
+<section class="chapter" id="density" data-title="Texel density on screen" data-builds="textures-sampling#mips spaces#perspective" data-summary="Screen px per metre = screenHeight / (2·d·tan(fov/2)). Mip ≈ log₂(texel density / that).">
+  <div class="head"><div class="num"></div><h2>Texel density on screen</h2></div>
 
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Texel density: texels per metre of surface, density = T · √(u / A); teams pick one target (about 512 px/m third person, 1024 px/m first person) and unwrap every asset to it.</p></div><a class="x refto" href="../texturing/index.html#density">Open the full explanation</a></aside>
   <div class="prose">
-    <p>A mip chain stores the texture at full size, then half, quarter and so on down to 1×1. Each level has a quarter of the texels of the one before, so the whole chain adds up to a third more:</p>
-  </div>
-  <div class="fx" data-fx="mipsum"></div>
-  <div class="prose">
-    <p>Mips prevent <button type="button" class="term" data-term="aliasing">aliasing</button>: far away, one pixel covers many texels, and picking just one of them gives a different texel each frame, so detail crawls and sparkles. A smaller mip has already averaged them. They also keep neighbouring pixels reading neighbouring texels, which stay in the GPU's texture cache.</p>
-    <p>The GPU picks the level by itself. Pixels are shaded in 2×2 <button type="button" class="term" data-term="quad">quads</button> (<a class="x" href="../reading-a-frame/index.html#quads">why quads matter for cost</a>), so it can measure how much the UV changes from one pixel to the next: the <button type="button" class="term" data-term="derivative">screen-space derivatives</button> <code>ddx(uv)</code> and <code>ddy(uv)</code>. Turned into texels, that says how many texels one pixel spans; its log₂ is the mip level:</p>
-  </div>
-  <div class="fx" data-fx="miplevel"></div>
-  <div class="prose">
-    <p>With <button type="button" class="term" data-term="aniso">anisotropic filtering</button>, the GPU takes several samples along the long side of the pixel's footprint and picks the mip from the short side, so floors at a grazing angle stay sharp. Compare in the lab.</p>
-  </div>
-  <div class="lab">
-    <div class="lab-head"><span class="lab-tag">Lab</span>Which mip at which distance<span class="lab-hint">A floor seen by a standing player. Colors are mip levels. Hover for the numbers.</span></div>
-    <div class="lab-body">
-      <div class="stage">
-        <canvas id="mip" class="fig" width="560" height="340" aria-label="Floor plane colored by mip level"></canvas>
-        <div class="swatches" id="mip-key"></div>
-      </div>
-      <div class="side">
-        <div class="ctl"><label for="mip-d">Texel density</label><input type="range" id="mip-d" min="6" max="11" step="1" value="9"><output id="mip-d-o"></output></div>
-        <div class="ctl"><label for="mip-res">Screen height</label><input type="range" id="mip-res" min="0" max="3" step="1" value="1"><output id="mip-res-o"></output></div>
-        <div class="ctl"><label for="mip-fov">Vertical FOV</label><input type="range" id="mip-fov" min="30" max="90" step="1" value="60"><output id="mip-fov-o"></output></div>
-        <div class="seg" id="mip-aniso" role="group" aria-label="Filtering"><button type="button" data-v="1" aria-pressed="true">Trilinear</button><button type="button" data-v="4">Aniso 4×</button><button type="button" data-v="16">Aniso 16×</button></div>
-        <table class="ro" id="mip-ro"></table>
-      </div>
-    </div>
-  </div>
-  <details class="check"><summary></summary><script type="application/json">[["How does the GPU choose a mip level?", ["From the distance to the camera", "From the UV change between neighboring pixels in a 2×2 quad", "From the triangle size", "From the texture's import setting"], 1, "Screen-space derivatives give texels per pixel; the log₂ of that is the mip level."]]</script></details>
-
-</section>
-<section class="chapter" id="density" data-title="Texel density" data-builds="texture-memory#mips spaces#perspective" data-summary="Screen px per metre = screenHeight / (2·d·tan(fov/2)). Mip ≈ log₂(density / that).">
-  <div class="head"><div class="num"></div><h2>Texel density</h2></div>
-
-  <div class="prose">
-    <p><button type="button" class="term" data-term="density">Texel density</button> is texels per metre of surface. It keeps a project consistent: if a wall gets 512 px/m and the crate next to it 2048 px/m, the crate looks sharp and the wall blurry, although both "are 2K textures".</p>
-    <p>How much density can the screen show? It depends on how many pixels a metre of surface covers, which falls with distance (the <a class="x" href="../spaces/index.html#perspective">perspective divide</a>). Compare the two, and you know which mip the GPU will pick and whether the top mips are ever seen:</p>
+    <p>How much texel density can the screen show? It depends on how many pixels a metre of surface covers, which falls with distance (the <a class="x" href="../spaces/index.html#perspective">perspective divide</a>). Compare the two, and you know which mip the GPU will pick and whether the top mips are ever seen:</p>
   </div>
   <div class="fx" data-fx="density"></div>
   <div class="prose">
-    <p>At 1080p and a 60° field of view, a surface 1 m away gets about 935 screen pixels per metre. Anything above that is invisible at that distance and only costs memory. Typical targets are 1024 px/m for first-person games, where players press against walls, and 512 px/m for third-person cameras. Pick a number per project, write it down, and check assets against it.</p>
+    <p>At 1080p and a 60° field of view, a surface 1 m away gets about 935 screen pixels per metre. Anything above that is invisible at that distance and only costs memory. That is why first-person games, where players press against walls, need about twice the target of third-person ones. The same screen-size formula decides blur kernels for skin, LOD switches and light counts in other units.</p>
   </div>
   <div class="key" style="margin-top:18px"><b>Rule of thumb</b>Each halving of distance needs double the density. A prop only ever seen from 4 m needs a quarter of the density of one the player can touch.</div>
   <div class="engines">
@@ -179,78 +145,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Why can GPUs not use JPEG for textures?", ["JPEG has no alpha", "Sampling needs any texel in constant time; JPEG must decode large regions", "JPEG is patented", "JPEG is too lossy"], 1, "Block formats compress fixed 4×4 blocks to fixed sizes, so the GPU can find and decode any block directly."], ["A BC1 block contains a sharp red, green and blue pattern. What does the encoder struggle with?", ["Alpha", "The four palette colors lie on one line in RGB, which cannot pass through all three", "565 has too much precision", "Mipmaps"], 1, "All four palette entries are interpolated between two endpoints, so they lie on a straight segment in color space."], ["In BC1, which channel has the most precision?", ["Red", "Green", "Blue", "Alpha"], 1, "RGB565: green gets 6 bits, red and blue 5."]]</script></details>
 
 </section>
-<section class="chapter" id="color-data" data-title="Colour data and other data" data-builds="color-values#linear-srgb" data-summary="Colour maps: sRGB on. Data maps (roughness, masks, normals): sRGB off, or 0.5 reads as 0.21.">
-  <div class="head"><div class="num"></div><h2>Colour data and other data</h2></div>
-
-  <div class="prose">
-    <p>Colour textures are painted on sRGB monitors, so they are stored <button type="button" class="term" data-term="srgb">sRGB-encoded</button> (<a class="x" href="../color-values/index.html#linear-srgb">what that means</a>). When the shader samples them, the GPU decodes to linear values for free, because lighting maths must happen in linear.</p>
-    <p>Everything else is data: roughness, metallic, AO, masks, height, normals. Those numbers mean exactly what they say and must be imported with sRGB off. If a roughness map is flagged as sRGB, the GPU "decodes" it anyway:</p>
-  </div>
-  <div class="fx" data-fx="wrongflag"></div>
-  <div class="prose"><p>Every surface becomes glossier than painted, and the artist compensates by hand until nothing matches the reference.</p></div>
-  <div class="lab">
-    <div class="lab-head"><span class="lab-tag">Lab</span>What the shader actually reads<span class="lab-hint">A data texture sampled with the wrong flag.</span></div>
-    <div class="lab-body even">
-      <div class="stage">
-        <canvas id="srgb" class="fig" width="460" height="300" aria-label="Stored value versus value read by the shader"></canvas>
-      </div>
-      <div class="side">
-        <div class="ctl"><label for="sr-v">Stored byte</label><input type="range" id="sr-v" min="0" max="255" step="1" value="128"><output id="sr-v-o"></output></div>
-        <table class="ro" id="sr-ro"></table>
-        <p class="cap">The spheres show a roughness ramp from 0.15 to 0.9. Top row as painted, bottom row as the shader sees it with the sRGB flag on.</p>
-        <canvas id="srgb-spec" class="fig" width="340" height="110" aria-label="Highlight size with correct and wrong flag"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="engines">
-    <div class="eng" data-engine="hdrp"><p>Untick <em>sRGB (Color Texture)</em> in the importer for every data map. Texture Type <em>Normal map</em> handles it automatically. HDRP mask maps and detail maps are data.</p></div>
-    <div class="eng" data-engine="urp"><p>Same checkbox. URP's metallic/smoothness map is data; base color and emission are color.</p></div>
-    <div class="eng" data-engine="unreal"><p>The <em>sRGB</em> checkbox in the texture editor. The <em>Masks</em> and <em>Normalmap</em> compression presets turn it off for you. In the material, a Texture Sample's <em>Sampler Type</em> must match (<em>Linear Color</em> or <em>Masks</em> for data), or the editor shows an error.</p></div>
-  </div>
-  <details class="check"><summary></summary><script type="application/json">[["A roughness map is imported with sRGB on. A texel stores 0.5. What does the shader read?", ["0.5", "≈ 0.73", "≈ 0.21", "1.0"], 2, "sRGB decode of 0.5 is about 0.214. Surfaces become glossier than painted."]]</script></details>
-
-</section>
-<section class="chapter" id="packing" data-title="Channel packing" data-builds="shader-anatomy#types" data-summary="Up to four greyscale maps in one RGBA texture. Match the engine layout; smoothness = 1 − roughness.">
-  <div class="head"><div class="num"></div><h2>Channel packing</h2></div>
-
-  <div class="prose">
-    <p>Roughness, metallic and AO are each a single number per texel. Storing each in its own RGB texture wastes two thirds of it and costs three samples. <button type="button" class="term" data-term="packing">Channel packing</button> puts up to four greyscale maps into the R, G, B and A of one texture (<a class="x" href="../shader-anatomy/index.html#types">a float4, read with swizzles</a>):</p>
-  </div>
-  <div class="fx" data-fx="packmem"></div>
-  <div class="prose">
-    <p>Two details decide whether a packed map looks good. <strong>The format</strong>: BC1 and BC3 encode R, G and B together along one line, so unrelated maps interfere; BC7 handles it far better, and alpha is always compressed separately, which makes A the best slot for the most important map. <strong>The layout</strong>: each engine's standard shader expects a specific one, and Unity stores <em>smoothness</em> where Unreal conventions store <em>roughness</em>. Smoothness = 1 − roughness, so moving maps between engines means inverting that channel, not just moving it.</p>
-  </div>
-  <div class="lab">
-    <div class="lab-head"><span class="lab-tag">Lab</span>Pack a mask map<span class="lab-hint">Load an engine layout, then try to break it.</span></div>
-    <div class="lab-body">
-      <div class="stage">
-        <canvas id="pack" class="fig" width="600" height="190" aria-label="Packed channels and combined preview"></canvas>
-        <div class="slots" id="pack-slots"></div>
-      </div>
-      <div class="side">
-        <div class="seg" id="pack-preset" role="group" aria-label="Layout"><button type="button" data-v="hdrp" aria-pressed="true">HDRP Mask</button><button type="button" data-v="urp">URP Metallic</button><button type="button" data-v="unreal">Unreal ORM</button></div>
-        <div class="row"><label class="chk" for="pack-fmt">Format</label><select class="sel" id="pack-fmt"><option value="bc1">BC1 · 4 bpp</option><option value="bc3">BC3 · 8 bpp</option><option value="bc7" selected>BC7 · 8 bpp</option></select><label class="chk"><input type="checkbox" id="pack-srgb"> sRGB</label></div>
-        <ul class="warns" id="pack-warn"></ul>
-      </div>
-    </div>
-  </div>
-  <div class="tablewrap">
-  <table class="vals">
-    <thead><tr><th>Layout</th><th>R</th><th>G</th><th>B</th><th>A</th></tr></thead>
-    <tbody>
-      <tr><td>HDRP Lit · Mask Map</td><td>Metallic</td><td>Ambient occlusion</td><td>Detail mask</td><td>Smoothness</td></tr>
-      <tr><td>HDRP Lit · Detail Map</td><td>Albedo (desaturated, 0.5 neutral)</td><td>Normal Y</td><td>Smoothness</td><td>Normal X</td></tr>
-      <tr><td>URP Lit · Metallic Map</td><td>Metallic</td><td>—</td><td>—</td><td>Smoothness (source: Metallic Alpha)</td></tr>
-      <tr><td>Unreal · ORM (common convention)</td><td>Occlusion</td><td>Roughness</td><td>Metallic</td><td>free (height, opacity)</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p class="cap" style="margin-top:8px">Unreal's materials read any channel you wire, so ORM is a team convention rather than an engine rule.</p>
-  <details class="check"><summary></summary><script type="application/json">[["You move an Unreal ORM map into HDRP's mask map slot unchanged. What goes wrong?", ["Nothing, the layouts match", "AO lands in metallic, roughness in AO and metallic in the detail mask, and alpha (smoothness) holds nothing useful", "Only the sRGB flag is wrong", "HDRP rejects the texture"], 1, "HDRP expects R metallic, G AO, B detail mask, A smoothness. The channels must be moved, and roughness inverted into alpha."]]</script></details>
-
-</section>
-<section class="chapter" id="normals" data-title="Normal maps" data-builds="spaces#tangent vectors#normalize" data-summary="Stored as n·0.5 + 0.5; keep X, Y in BC5 and rebuild z = √(1 − x² − y²). Check the green convention.">
-  <div class="head"><div class="num"></div><h2>Normal maps</h2></div>
+<section class="chapter" id="normals" data-title="Normal map storage and conventions" data-builds="spaces#tangent vectors#normalize" data-summary="Stored as n·0.5 + 0.5; keep X, Y in BC5 and rebuild z = √(1 − x² − y²). Check the green convention.">
+  <div class="head"><div class="num"></div><h2>Normal map storage and conventions</h2></div>
 
   <div class="prose">
     <p>A tangent-space <button type="button" class="term" data-term="normalmap">normal map</button> stores a direction per texel in the surface's own frame (<a class="x" href="../spaces/index.html#tangent">tangent space</a>): X along U, Y along V, Z out of the surface. Directions run from −1 to 1, texels from 0 to 1, so each component is stored as n · 0.5 + 0.5. Flat is (0, 0, 1), stored as (0.5, 0.5, 1): the typical lilac.</p>
@@ -258,7 +154,7 @@
   </div>
   <div class="fx" data-fx="nz"></div>
   <div class="prose">
-    <p>The one convention that differs between tools is the sign of Y, the <button type="button" class="term" data-term="greenflip">green channel</button>. OpenGL style (Y+) means green points up the texture, DirectX style (Y−) down. Unity and Blender use Y+, Unreal and 3ds Max use Y−. A map with the wrong convention lights as if every bump were a dent, but only for light from above or below, which is why it slips through review. A normal map changes lighting only; to make the surface hide parts of itself, add a height map and <a class="x" href="../parallax/index.html#heightmap">parallax</a>.</p>
+    <p>The one convention that differs between tools is the sign of Y, the <button type="button" class="term" data-term="greenflip">green channel</button>. OpenGL style (Y+) means green points up the texture, DirectX style (Y−) down. Unity and Blender use Y+, Unreal and 3ds Max use Y−. A map with the wrong convention lights as if every bump were a dent, but only for light from above or below, which is why it slips through review. Flip the green channel at import rather than in the texture: Unity's normal map importer and Unreal's texture asset both have <em>Flip Green Channel</em>, and Substance tools export either convention. A normal map changes lighting only; to make the surface hide parts of itself, add a height map and <a class="x" href="../parallax/index.html#heightmap">parallax</a>.</p>
   </div>
   <div class="prose"><p>To combine two normal maps, such as folds and a tiling weave, see <a class="x" href="../fabric-folds/index.html#baked">blending normals</a>; to tile one without UVs, <a class="x" href="../mapping/index.html#normals">triplanar normals</a>.</p></div>
   <div class="lab">
@@ -303,12 +199,13 @@
   <details class="check"><summary></summary><script type="application/json">[["What does texture streaming primarily save?", ["Disk space", "Resident GPU memory for mips the view does not need", "Shader instructions", "Draw calls"], 1, "It keeps only the needed mips resident within a pool."]]</script></details>
 
 </section>
-<section class="chapter" id="checklist" data-title="An import checklist" data-summary="sRGB, format and mobile format per map type.">
-  <div class="head"><div class="num"></div><h2>An import checklist</h2></div>
+<section class="chapter" id="checklist" data-title="Import checklist" data-summary="sRGB, format and mobile format per map type.">
+  <div class="head"><div class="num"></div><h2>Import checklist</h2></div>
 
   <div class="prose">
     <p>Every texture that enters a project should pass the same few questions. Write them into your import presets so the defaults are right and reviews only catch exceptions.</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>sRGB on for colour maps only; roughness, masks, height and normals are data and need it off, or 0.5 reads as 0.21.</p></div><a class="x refto" href="../texture-settings/index.html#srgb">Open the full explanation</a></aside>
   <div class="tablewrap">
   <table class="vals">
     <thead><tr><th>Map</th><th>sRGB</th><th>PC / console format</th><th>Mobile</th><th>Notes</th></tr></thead>
@@ -326,7 +223,7 @@
   <div class="key" style="margin-top:18px"><b>The cheapest optimization</b>Before tuning formats, check resolution against density. A prop with a 4K map that never fills more than a quarter of the screen is the single most common waste in texture budgets.</div>
 
 </section>
-<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="texture-memory#streaming texture-memory#mips" data-summary="Where Unity reports texture memory, mip streaming with a budget, a mip-level debug view and a streaming HUD.">
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="texture-memory#streaming textures-sampling#mips" data-summary="Where Unity reports texture memory, mip streaming with a budget, a mip-level debug view and a streaming HUD.">
   <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
   <div class="prose"><p>Texture memory is measured, not guessed. These steps show where Unity reports it, how to turn on mip streaming with a budget, and a debug view that colours the screen by the mip level each pixel uses. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
   <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Quality settings: mip streaming and its memory budget.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>An Unlit debug graph showing mip levels.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>MipLevel.hlsl: the mip the hardware would pick.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>TextureMemoryHUD.cs: streaming memory on screen.</span></div></div>
@@ -372,7 +269,7 @@ public class TextureMemoryHUD : MonoBehaviour
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
   <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
-  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/" rel="noopener">Understanding BCn Texture Compression Formats</a></span><span class="by">Nathan Reed · 2012</span><span class="why">The clearest overview of BC1 to BC7: block layouts, endpoints and what each format is for.</span></li><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11" rel="noopener">Texture Block Compression in Direct3D 11</a></span><span class="by">Microsoft</span><span class="why">The reference definition of the BC formats, including BC6H and BC7.</span></li><li><span><span class="kind">Spec</span><a href="https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf" rel="noopener">Texture level of detail (mip selection)</a></span><span class="by">Khronos · OpenGL 4.6 core, section 8.14</span><span class="why">The official formula for λ = log₂ ρ from derivatives, used in chapter 2.</span></li><li><span><span class="kind">Guide</span><a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/ASTC_User_Guide_102162_0001_01.pdf" rel="noopener">ASTC User Guide</a></span><span class="by">Arm</span><span class="why">Block sizes, quality settings and encoder choices for mobile.</span></li><li><span><span class="kind">Article</span><a href="https://aras-p.info/blog/2022/06/23/Comparing-BCn-texture-decoders/" rel="noopener">Comparing BCn texture decoders</a></span><span class="by">Aras Pranckevičius · 2022</span><span class="why">How BCn decoding works in practice.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased Alpha Test: The Esoteric Alpha To Coverage</a></span><span class="by">Ben Golus</span><span class="why">Why alpha-tested foliage thins out in the distance and how to keep coverage in mips.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Mask-Map-and-Detail-Map.html" rel="noopener">Mask and detail maps</a></span><span class="by">Unity · HDRP 17</span><span class="why">The HDRP mask and detail map layouts.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/4.27/RenderingAndGraphics/Textures/TextureCompressionSettings" rel="noopener">Texture Compression Settings</a></span><span class="by">Epic Games</span><span class="why">What each Unreal compression preset produces.</span></li></ul>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/" rel="noopener">Understanding BCn Texture Compression Formats</a></span><span class="by">Nathan Reed · 2012</span><span class="why">The clearest overview of BC1 to BC7: block layouts, endpoints and what each format is for.</span></li><li><span><span class="kind">Docs</span><a href="https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11" rel="noopener">Texture Block Compression in Direct3D 11</a></span><span class="by">Microsoft</span><span class="why">The reference definition of the BC formats, including BC6H and BC7.</span></li><li><span><span class="kind">Spec</span><a href="https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf" rel="noopener">Texture level of detail (mip selection)</a></span><span class="by">Khronos · OpenGL 4.6 core, section 8.14</span><span class="why">The official formula for λ = log₂ ρ from derivatives.</span></li><li><span><span class="kind">Guide</span><a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/ASTC_User_Guide_102162_0001_01.pdf" rel="noopener">ASTC User Guide</a></span><span class="by">Arm</span><span class="why">Block sizes, quality settings and encoder choices for mobile.</span></li><li><span><span class="kind">Article</span><a href="https://aras-p.info/blog/2022/06/23/Comparing-BCn-texture-decoders/" rel="noopener">Comparing BCn texture decoders</a></span><span class="by">Aras Pranckevičius · 2022</span><span class="why">How BCn decoding works in practice.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased Alpha Test: The Esoteric Alpha To Coverage</a></span><span class="by">Ben Golus</span><span class="why">Why alpha-tested foliage thins out in the distance and how to keep coverage in mips.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Mask-Map-and-Detail-Map.html" rel="noopener">Mask and detail maps</a></span><span class="by">Unity · HDRP 17</span><span class="why">The HDRP mask and detail map layouts.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/4.27/RenderingAndGraphics/Textures/TextureCompressionSettings" rel="noopener">Texture Compression Settings</a></span><span class="by">Epic Games</span><span class="why">What each Unreal compression preset produces.</span></li></ul>
 </section>
 
 <div class="next" data-next="mapping parallax pbr-brdf"></div>
@@ -467,11 +364,11 @@ public class TextureMemoryHUD : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="textures.js?v=2c5f19e1"></script>
-<script src="texture-fx.js?v=b0d7e14b"></script>
+<script src="texture-fx.js?v=09009c09"></script>
 </body>
 </html>

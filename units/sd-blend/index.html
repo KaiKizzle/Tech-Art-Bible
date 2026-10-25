@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="sd-blend" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="sd-graphs#bitdepth sd-graphs#float"></div>
 
-<section class="chapter" id="node" data-title="The Blend node" data-builds="shader-anatomy#functions" data-summary="result = lerp(B, mode(F, B), opacity · mask), per pixel and per channel.">
-  <div class="head"><div class="num"></div><h2>The Blend node</h2></div>
+<section class="chapter" id="node" data-title="Blend node" data-builds="shader-anatomy#functions" data-summary="result = lerp(B, mode(F, B), opacity · mask), per pixel and per channel.">
+  <div class="head"><div class="num"></div><h2>Blend node</h2></div>
 
   <div class="prose">
     <p>Most of a Substance graph is images being combined, and most combining happens in one atomic node: <em>Blend</em>. It has three inputs. The <strong>Foreground</strong> (F) is laid on top of the <strong>Background</strong> (B), and the optional <strong>Opacity</strong> input is a greyscale mask that says where. The <em>Opacity</em> slider scales the mask, and the <em>Blending Mode</em> decides how F and B are combined.</p>
@@ -75,8 +75,8 @@
   <details class="check"><summary></summary><script type="application/json">[["You want to cut grooves (dark lines, white elsewhere in the groove mask: the grooves are white) into a height map. Which setup?", ["Groove mask as foreground, height as background, Subtract", "Height as foreground, grooves as background, Subtract", "Grooves as foreground, Add", "Grooves as background, Max"], 0, "B − F: the height minus the grooves. Swapped, you would subtract the height from the grooves."]]</script></details>
 
 </section>
-<section class="chapter" id="minmax" data-title="Max and Min: combining heights" data-builds="sd-blend#arith" data-summary="Max = union of height shapes (the higher wins), Min = intersection; Add stacks and can clip at 1.">
-  <div class="head"><div class="num"></div><h2>Max and Min: combining heights</h2></div>
+<section class="chapter" id="minmax" data-title="Max and Min" data-builds="sd-blend#arith" data-summary="Max = union of height shapes (the higher wins), Min = intersection; Add stacks and can clip at 1.">
+  <div class="head"><div class="num"></div><h2>Max and Min</h2></div>
 
   <div class="prose">
     <p>Height maps describe surfaces, and the question when combining two of them is usually "which one is on top here?". That is exactly what <strong>Max</strong> (Lighten) answers: at each pixel the higher surface wins. Two stones blended with Max overlap like real stones, with no seam and nothing above 1. <strong>Min</strong> (Darken) keeps the lower surface and is useful for cutting a shape down to another, an intersection.</p>
@@ -85,8 +85,8 @@
   <div class="prose"><p>The same idea is behind signed distance fields in shaders, where the union of two shapes is the minimum of their distances. In heights it is the maximum, because higher means more surface.</p></div>
 
 </section>
-<section class="chapter" id="addsub" data-title="Add Sub and Overlay: detail around 0.5" data-builds="sd-blend#node" data-summary="Add Sub: above 0.5 adds, below subtracts, 0.5 neutral. Overlay: multiply below 0.5, screen above, based on the background.">
-  <div class="head"><div class="num"></div><h2>Add Sub and Overlay: detail around 0.5</h2></div>
+<section class="chapter" id="addsub" data-title="Add Sub and Overlay" data-builds="sd-blend#node" data-summary="Add Sub: above 0.5 adds, below subtracts, 0.5 neutral. Overlay: multiply below 0.5, screen above, based on the background.">
+  <div class="head"><div class="num"></div><h2>Add Sub and Overlay</h2></div>
 
   <div class="prose">
     <p>Detail such as noise, scratches or pores usually comes as an image centred on mid grey: 0.5 means "no change", lighter raises, darker lowers. Add and Multiply cannot use such an image without shifting the whole surface, because they only ever raise or only ever lower. Two modes treat 0.5 as neutral:</p>
@@ -100,8 +100,8 @@
   <div class="prose"><p>Control the strength with the Blend's opacity, not by scaling the detail image: opacity keeps 0.5 neutral, while a Levels on the detail shifts its centre unless you remap around 0.5.</p></div>
 
 </section>
-<section class="chapter" id="screen" data-title="Screen, overlay and colour" data-builds="sd-graphs#srgb" data-summary="Screen = 1 − (1 − B)(1 − F). Colour blends run per channel on encoded values in Legacy mode. Switch skips the unused input.">
-  <div class="head"><div class="num"></div><h2>Screen, overlay and colour</h2></div>
+<section class="chapter" id="screen" data-title="Screen and colour blends" data-builds="sd-graphs#srgb" data-summary="Screen = 1 − (1 − B)(1 − F). Colour blends run per channel on encoded values in Legacy mode. Switch skips the unused input.">
+  <div class="head"><div class="num"></div><h2>Screen and colour blends</h2></div>
 
   <div class="prose">
     <p><strong>Screen</strong> is multiply turned upside down: invert both inputs, multiply, invert the result, 1 − (1 − B)(1 − F). It brightens without ever passing 1, which makes it a gentle way to add highlights, dust or edge wear to a colour. <strong>Overlay</strong> combines the two: it multiplies the darks and screens the lights of the background, adding contrast.</p>
@@ -111,8 +111,8 @@
   </div>
 
 </section>
-<section class="chapter" id="masks" data-title="Masks: where a blend applies" data-builds="sd-blend#node" data-summary="mask = saturate((h − (p − w/2)) / w): Histogram Scan and Levels turn heights, curvature or AO into masks.">
-  <div class="head"><div class="num"></div><h2>Masks: where a blend applies</h2></div>
+<section class="chapter" id="masks" data-title="Blend masks" data-builds="sd-blend#node" data-summary="mask = saturate((h − (p − w/2)) / w): Histogram Scan and Levels turn heights, curvature or AO into masks.">
+  <div class="head"><div class="num"></div><h2>Blend masks</h2></div>
 
   <div class="prose">
     <p>The Opacity input is where most of the art direction happens. A mask is usually made from something already in the graph: the height (moss in the low parts), its slope (dust on flat tops), a curvature map (wear on edges) or an ambient occlusion map (dirt in crevices). The tool that turns any of them into a mask is a threshold with a soft edge: below a value, 0; above it, 1; a short ramp between. <em>Histogram Scan</em> does this with a <em>Position</em> and a <em>Contrast</em>, and <em>Levels</em> does it with its input range:</p>
@@ -122,8 +122,8 @@
   <details class="check"><summary></summary><script type="application/json">[["You want moss only in the lowest parts of a stone wall. Which mask?", ["The height map, inverted, through a Histogram Scan", "The height map as it is", "The base colour", "A uniform colour of 0.5"], 0, "Low parts are dark in the height map; inverted, they become white. A Histogram Scan picks how much of the low part gets moss."]]</script></details>
 
 </section>
-<section class="chapter" id="heightblend" data-title="Blending materials by height" data-builds="sd-blend#masks sd-blend#minmax" data-summary="mask = saturate(0.5 + (h_top + offset − h_bottom) / contrast): the higher material shows.">
-  <div class="head"><div class="num"></div><h2>Blending materials by height</h2></div>
+<section class="chapter" id="heightblend" data-title="Height blending" data-builds="sd-blend#masks sd-blend#minmax" data-summary="mask = saturate(0.5 + (h_top + offset − h_bottom) / contrast): the higher material shows.">
+  <div class="head"><div class="num"></div><h2>Height blending</h2></div>
 
   <div class="prose">
     <p>When two materials meet (cobbles in sand, moss on stone), a mask painted from the top looks flat: the sand line ignores the stones. Real material sits in the low parts. A <em>height blend</em> compares the two height maps at every pixel and shows whichever material is higher there. A height offset moves one material up or down, which floods the other one from the low parts outward, and a contrast value controls how sharp the transition is:</p>
@@ -255,10 +255,10 @@ public class BlendDriver : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdblend.js?v=eb38c8bc"></script>
+<script src="sdblend.js?v=7937475d"></script>
 </body>
 </html>

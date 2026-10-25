@@ -18,7 +18,7 @@
   const ext = { min: -5, max: 5, step: 0.1 }, exty = { min: -3.8, max: 3.8, step: 0.1 };
 
   A.fx('components', {
-    title: 'A vector and its components',
+    title: 'Vector components',
     expr: 'v = ({x}, {y})',
     vars: { x: Object.assign({ name: 'x component', value: 3 }, ext), y: Object.assign({ name: 'y component', value: 2 }, exty) },
     sub: v => `v = <b>${V(v.x, v.y)}</b>: ${num(Math.abs(v.x))} ${v.x >= 0 ? 'right' : 'left'}, ${num(Math.abs(v.y))} ${v.y >= 0 ? 'up' : 'down'}`,
@@ -59,7 +59,7 @@
   });
 
   A.fx('sub', {
-    title: 'B − A: the arrow from A to B',
+    title: 'B − A',
     expr: 'd = B − A = ({Bx} − {Ax}, {By} − {Ay})',
     vars: { Ax: Object.assign({ sym: 'A<sub>x</sub>', name: 'start point, x', value: -3 }, ext), Ay: Object.assign({ sym: 'A<sub>y</sub>', name: 'start point, y', value: -1 }, exty),
             Bx: Object.assign({ sym: 'B<sub>x</sub>', name: 'target point, x', value: 2 }, ext), By: Object.assign({ sym: 'B<sub>y</sub>', name: 'target point, y', value: 2 }, exty) },

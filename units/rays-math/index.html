@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Rays and Solving for t · Tech Art Atlas</title>
+<title>Ray Intersections · Tech Art Atlas</title>
 <meta name="description" content="Sky shaders, interior mapping, volumetric clouds and ray tracers all ask one question: where does this ray hit that shape? This unit answers it for planes, spheres and boxes, one step at a time.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="rays-math" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Rays and Solving for t</a>
+  <a class="brand" href="#top">Ray Intersections</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Foundations · 7 chapters</div>
-  <h1>Rays and Solving for t</h1>
+  <h1>Ray Intersections</h1>
   <p class="lede">Sky shaders, interior mapping, volumetric clouds and ray tracers all ask one question: where does this ray hit that shape? This unit answers it for planes, spheres and boxes, one step at a time.</p>
   <p class="meta">Builds on Vectors and the dot product. Every formula is shown with the ray and the shape it describes.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="vectors dot-cross#dot"></div>
 
-<section class="chapter" id="ray" data-title="A ray is a formula" data-builds="vectors#add-sub vectors#scale" data-summary="P(t) = O + t·D: start at O, walk t along D.">
-  <div class="head"><div class="num"></div><h2>A ray is a formula</h2></div>
+<section class="chapter" id="ray" data-title="Ray equation" data-builds="vectors#add-sub vectors#scale" data-summary="P(t) = O + t·D: start at O, walk t along D.">
+  <div class="head"><div class="num"></div><h2>Ray equation</h2></div>
 
   <div class="prose">
     <p>A <button type="button" class="term" data-term="ray">ray</button> is a half-line: a start point and a direction. Shaders describe it with one small formula. Start at the origin O, walk a distance <i>t</i> along the direction D, and you are at the point P(t):</p>
@@ -62,8 +62,8 @@
   <details class="check"><summary></summary><script type="application/json">[["O = (0, 2), D = (1, 0). Where is P(3)?", ["(3, 2)", "(3, 0)", "(0, 5)", "(1, 2)"], 0, "(0, 2) + 3 × (1, 0) = (3, 2)."]]</script></details>
 
 </section>
-<section class="chapter" id="plane" data-title="Hitting a flat floor" data-builds="rays-math#ray" data-summary="Floor at height h: t = (h − Oᵧ) / Dᵧ. Negative or infinite t means no hit.">
-  <div class="head"><div class="num"></div><h2>Hitting a flat floor</h2></div>
+<section class="chapter" id="plane" data-title="Ray–plane intersection" data-builds="rays-math#ray" data-summary="Floor at height h: t = (h − Oᵧ) / Dᵧ. Negative or infinite t means no hit.">
+  <div class="head"><div class="num"></div><h2>Ray–plane intersection</h2></div>
 
   <div class="prose">
     <p>Start with the easiest shape: a horizontal floor at height <i>h</i>. A point is on the floor when its y equals <i>h</i>. The y part of P(t) is O<sub>y</sub> + t·D<sub>y</sub>, so set it equal to <i>h</i> and solve for t:</p>
@@ -75,8 +75,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A camera at height 2 looks down with D = (0.8, −0.6). How far until it hits the floor at height 0?", ["2", "3.33", "1.2", "0.6"], 1, "t = (0 − 2) / −0.6 = 3.33."], ["D<sub>y</sub> is positive and the floor is below the camera. What does the formula give?", ["A positive t", "A negative t: the floor is behind", "Zero", "Infinity"], 1, "Looking up, the floor below can only be reached by walking backwards."]]</script></details>
 
 </section>
-<section class="chapter" id="sphere" data-title="Hitting a sphere: setting up the equation" data-builds="rays-math#ray vectors#length dot-cross#projection" data-summary="Substituting the ray into |P − C|² = r² gives t² + 2bt + c = 0 with b = L·D, c = L·L − r².">
-  <div class="head"><div class="num"></div><h2>Hitting a sphere: setting up the equation</h2></div>
+<section class="chapter" id="sphere" data-title="Ray–sphere equation" data-builds="rays-math#ray vectors#length dot-cross#projection" data-summary="Substituting the ray into |P − C|² = r² gives t² + 2bt + c = 0 with b = L·D, c = L·L − r².">
+  <div class="head"><div class="num"></div><h2>Ray–sphere equation</h2></div>
 
   <div class="prose">
     <p>A point is on a sphere with centre C and radius r when its distance to C equals r. Squaring both sides avoids the root (<a class="x" href="../vectors/index.html#length">the trick from Vectors: Length</a>): <code>dot(P − C, P − C) = r²</code>.</p>
@@ -94,8 +94,8 @@
   <details class="check"><summary></summary><script type="application/json">[["What does c = dot(L, L) − r² < 0 tell you?", ["The ray misses", "The ray starts inside the sphere", "The sphere is behind", "The ray is parallel"], 1, "dot(L, L) is the squared distance from the centre; below r² means inside."], ["What does b = dot(L, D) measure?", ["The radius", "How far along the ray the centre lies, with the sign flipped", "The sphere's area", "The discriminant"], 1, "dot(L, D) with L = O − C is minus the distance along D to the point closest to the centre."]]</script></details>
 
 </section>
-<section class="chapter" id="quadratic" data-title="Solving it: two hits, one or none" data-builds="rays-math#sphere" data-summary="t = −b ± √(b² − c). The discriminant decides miss, graze or two hits.">
-  <div class="head"><div class="num"></div><h2>Solving it: two hits, one or none</h2></div>
+<section class="chapter" id="quadratic" data-title="Solving the quadratic" data-builds="rays-math#sphere" data-summary="t = −b ± √(b² − c). The discriminant decides miss, graze or two hits.">
+  <div class="head"><div class="num"></div><h2>Solving the quadratic</h2></div>
 
   <div class="prose">
     <p>The quadratic t² + 2bt + c = 0 has the solutions <code>t = −b ± √(b² − c)</code>. The part under the root, the <button type="button" class="term" data-term="discriminant">discriminant</button> h = b² − c, decides everything: negative means no real solution, the ray misses; zero means it just grazes; positive gives two hits, where the ray enters (t<sub>0</sub>, with minus) and leaves (t<sub>1</sub>, with plus).</p>
@@ -115,8 +115,8 @@
   <details class="check"><summary></summary><script type="application/json">[["b = −5, c = 9. Where does the ray hit?", ["t = 1 and 9", "t = 2 and 8", "It misses", "t = 5"], 0, "h = 25 − 9 = 16, √h = 4, t = 5 ∓ 4."], ["The discriminant is −3. What happens?", ["Two hits", "One grazing hit", "No hit", "A hit behind the ray"], 2, "No real square root: no intersection."]]</script></details>
 
 </section>
-<section class="chapter" id="which-t" data-title="Which t do you want?" data-builds="rays-math#quadratic" data-summary="Both t positive: outside. t₀ &lt; 0 &lt; t₁: inside, use t₁. Both negative: behind.">
-  <div class="head"><div class="num"></div><h2>Which t do you want?</h2></div>
+<section class="chapter" id="which-t" data-title="Choosing t" data-builds="rays-math#quadratic" data-summary="Both t positive: outside. t₀ &lt; 0 &lt; t₁: inside, use t₁. Both negative: behind.">
+  <div class="head"><div class="num"></div><h2>Choosing t</h2></div>
 
   <div class="prose">
     <p>The formula always returns two values, even when one or both are behind the start. Which one to use depends on where the ray starts:</p>
@@ -128,12 +128,12 @@
     <p>Slide the start point along the ray through the sphere and watch the signs flip:</p>
   </div>
   <div class="fx" data-fx="whicht"></div>
-  <div class="prose"><p>A camera standing on a planet is inside the atmosphere sphere, so a sky shader always needs this case analysis. It is chapter 7 of <a class="x" href="../ray-sphere/index.html#cases">Rays, Spheres and Shaders</a>.</p></div>
+  <div class="prose"><p>A camera standing on a planet is inside the atmosphere sphere, so a sky shader always needs this case analysis. It is covered in <a class="x" href="../ray-sphere/index.html#cases">Full-Screen Ray Setup</a>.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["t₀ = −4, t₁ = 6. Where is the start point?", ["Outside, in front", "Inside the sphere", "Behind the sphere", "On the surface"], 1, "One hit behind, one ahead: the start is inside."]]</script></details>
 
 </section>
-<section class="chapter" id="box" data-title="Hitting a box: the slab test" data-builds="rays-math#plane" data-summary="Per axis, compute entry and exit t; the box is hit if max(entries) &lt; min(exits).">
-  <div class="head"><div class="num"></div><h2>Hitting a box: the slab test</h2></div>
+<section class="chapter" id="box" data-title="Ray–box slab test" data-builds="rays-math#plane" data-summary="Per axis, compute entry and exit t; the box is hit if max(entries) &lt; min(exits).">
+  <div class="head"><div class="num"></div><h2>Ray–box slab test</h2></div>
 
   <div class="prose">
     <p>An axis-aligned box is the region between two planes on each axis, a "slab" per axis. On each axis, the <a href="#plane">plane formula</a> gives when the ray enters and leaves that slab. The ray is inside the box only while it is inside all slabs at once, so:</p>
@@ -221,10 +221,10 @@ void BoxHit_float(float3 Origin, float3 Dir, float3 Extents,
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="rays-math.js?v=51ec4be7"></script>
+<script src="rays-math.js?v=e1db8ad1"></script>
 </body>
 </html>

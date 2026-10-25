@@ -48,7 +48,7 @@
   });
 
   A.fx('penumbra', {
-    title: 'The sun\'s soft shadow edge',
+    title: 'Sun penumbra width',
     expr: 'penumbra ≈ {d} · tan({s})',
     vars: { d: { name: 'distance from the shadow caster\'s edge to the ground', unit: 'm', min: 0.01, max: 30, value: 5, log: true }, s: { sym: 'size', name: 'angular size of the sun', unit: '°', min: 0.1, max: 3, value: 0.53, step: 0.01 } },
     out: { sym: 'penumbra', unit: 'cm', f: v => v.d * Math.tan(v.s * DEG) * 100 },
@@ -71,7 +71,7 @@
     return s * 2 * PI * (1 - ca) / (N * M);
   }
   A.fx('sphere', {
-    title: 'A sphere light on a tilted surface',
+    title: 'Sphere light on a tilted surface',
     expr: 'E<sub>point</sub> = π · L · sin²α · max(cos {b}, 0),   sin α = {r} / {d}',
     vars: { r: { name: 'light radius', unit: 'm', min: 0.05, max: 1, value: 0.4, step: 0.01 }, d: { name: 'distance to the light\'s centre', unit: 'm', min: 0.45, max: 6, value: 1, step: 0.01 },
             b: { sym: 'β', name: 'tilt of the surface away from the light', unit: '°', min: 0, max: 120, value: 80, step: 1 } },
@@ -91,7 +91,7 @@
 
   const ies = (t, n, s) => Math.pow(Math.max(Math.cos(t * DEG), 0), n) + s * Math.max(0, Math.sin(t * DEG));
   A.fx('ies', {
-    title: 'An IES-like profile',
+    title: 'IES-like profile',
     expr: 'I(θ) = I₀ · (cos {th})<sup>{n}</sup> + {sp} · sin {th}',
     vars: { th: { sym: 'θ', name: 'angle from straight down', unit: '°', min: 0, max: 180, value: 30, step: 1 }, n: { name: 'beam tightness', min: 1, max: 60, value: 8, step: 1 }, sp: { sym: 'spill', name: 'sideways spill', min: 0, max: 0.6, value: 0.15, step: 0.01 } },
     out: { sym: 'I / I₀', f: v => ies(v.th, v.n, v.sp) },
@@ -108,7 +108,7 @@
   });
 
   A.fx('lightcost', {
-    title: 'Lights touching an average pixel',
+    title: 'Lights per pixel',
     expr: 'per pixel ≈ {n} · π · ({r} / ({d} · tan 30°))² / (4 · 16/9)',
     vars: { n: { sym: 'N', name: 'lights in view', min: 1, max: 1000, value: 100, log: true }, r: { name: 'average light range', unit: 'm', min: 0.5, max: 30, value: 5, step: 0.1 }, d: { name: 'average distance from the camera', unit: 'm', min: 2, max: 200, value: 30, log: true } },
     out: { sym: 'lights / pixel', f: v => v.n * PI * Math.pow(v.r / (v.d * Math.tan(30 * DEG)), 2) / (4 * 16 / 9) },

@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="shadow-maps" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="depth-effects#what-depth spaces#chain texture-memory#density"></div>
 
-<section class="chapter" id="idea" data-title="Seeing the scene from the light" data-builds="depth-effects#what-depth" data-summary="Render depth from the light; a point is shadowed if it is farther from the light than the stored depth.">
-  <div class="head"><div class="num"></div><h2>Seeing the scene from the light</h2></div>
+<section class="chapter" id="idea" data-title="Shadow map principle" data-builds="depth-effects#what-depth" data-summary="Render depth from the light; a point is shadowed if it is farther from the light than the stored depth.">
+  <div class="head"><div class="num"></div><h2>Shadow map principle</h2></div>
 
   <div class="prose">
     <p>A point is in shadow if something sits between it and the light. A shadow map answers that with the tool from <a class="x" href="../depth-effects/index.html#what-depth">the depth buffer</a>: first render the scene <em>from the light's point of view</em>, keeping only depth. That image stores, for every direction the light shines in, the distance to the first surface it hits. Then, while shading the camera's view, ask for each pixel: is this point farther from the light than what the light saw first?</p>
@@ -59,8 +59,8 @@
   <details class="check"><summary></summary><script type="application/json">[["The shadow map stores 12 m at a point's position; the point is 15 m from the light. Lit or shadowed?", ["Lit", "Shadowed", "Depends on the camera", "Half lit"], 1, "Something 12 m from the light is in front of it."]]</script></details>
 
 </section>
-<section class="chapter" id="light-space" data-title="Into light space" data-builds="spaces#chain spaces#transform" data-summary="p_light = lightMatrix · p_world; uv = p_light.xy / extent · 0.5 + 0.5, depth = p_light.z.">
-  <div class="head"><div class="num"></div><h2>Into light space</h2></div>
+<section class="chapter" id="light-space" data-title="Light space" data-builds="spaces#chain spaces#transform" data-summary="p_light = lightMatrix · p_world; uv = p_light.xy / extent · 0.5 + 0.5, depth = p_light.z.">
+  <div class="head"><div class="num"></div><h2>Light space</h2></div>
 
   <div class="prose">
     <p>To compare, the shaded point must be expressed in the light's own coordinates, exactly like a vertex goes from world to view to clip space for the camera (<a class="x" href="../spaces/index.html#chain">the chain of spaces</a>). For the sun the projection is <em>orthographic</em>: its rays are parallel, so there is no perspective divide. Light-space x and y become the shadow map UV, light-space z the depth to compare. In the side view, light space is the world rotated by the sun's angle:</p>
@@ -81,8 +81,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Stripes of shadow appear across a sunlit floor. What is the first thing to raise?", ["Shadow resolution only", "Depth or slope bias", "Light intensity", "Ambient occlusion"], 1, "Acne is self-shadowing from depth quantisation; bias fixes it, resolution only shrinks the stripes."]]</script></details>
 
 </section>
-<section class="chapter" id="resolution" data-title="How big is a shadow texel?" data-builds="texture-memory#density" data-summary="texel = 2 · extent / resolution; blocky when one texel covers several screen pixels.">
-  <div class="head"><div class="num"></div><h2>How big is a shadow texel?</h2></div>
+<section class="chapter" id="resolution" data-title="Shadow texel size" data-builds="texture-memory#density" data-summary="texel = 2 · extent / resolution; blocky when one texel covers several screen pixels.">
+  <div class="head"><div class="num"></div><h2>Shadow texel size</h2></div>
 
   <div class="prose">
     <p>A directional shadow map covers a square of the world with a fixed number of texels. Divide the size by the resolution and you get the size of one shadow texel on the ground. Compare it with how many screen pixels a metre covers at that distance (<a class="x" href="../texture-memory/index.html#density">texel density</a>) and you know whether the shadow's edge looks crisp or blocky:</p>
@@ -90,8 +90,8 @@
   <div class="fx" data-fx="stexel"></div>
 
 </section>
-<section class="chapter" id="pcf" data-title="Soft edges: PCF" data-builds="shadow-maps#resolution" data-summary="lit = average of k × k depth comparisons; edge width ≈ k · texel size.">
-  <div class="head"><div class="num"></div><h2>Soft edges: PCF</h2></div>
+<section class="chapter" id="pcf" data-title="PCF filtering" data-builds="shadow-maps#resolution" data-summary="lit = average of k × k depth comparisons; edge width ≈ k · texel size.">
+  <div class="head"><div class="num"></div><h2>PCF filtering</h2></div>
 
   <div class="prose">
     <p>A single comparison gives a hard, pixelated edge. <button type="button" class="term" data-term="pcf">Percentage-closer filtering</button> compares the point against several neighbouring texels and averages the results (yes/no, not the depths!). The edge becomes a gradient as wide as the filter:</p>
@@ -111,8 +111,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Four cascades, the first reaching 8 m, the last 400 m, all 2048². Which cascade has the smallest texels?", ["The last", "The first", "All equal", "The second"], 1, "The first covers the smallest area with the same number of texels."]]</script></details>
 
 </section>
-<section class="chapter" id="cost" data-title="What shadows cost" data-builds="reading-a-frame#drawcalls" data-summary="draws ≈ casters × (cascades + spot lights + 6 · point lights).">
-  <div class="head"><div class="num"></div><h2>What shadows cost</h2></div>
+<section class="chapter" id="cost" data-title="Shadow cost" data-builds="reading-a-frame#drawcalls" data-summary="draws ≈ casters × (cascades + spot lights + 6 · point lights).">
+  <div class="head"><div class="num"></div><h2>Shadow cost</h2></div>
 
   <div class="prose">
     <p>Each shadow map is a full render pass of every object that casts shadows into it. A directional light renders once per cascade, a spot light once, a point light six times, one per cube face. That multiplies <a class="x" href="../reading-a-frame/index.html#drawcalls">draw calls</a> quickly:</p>
@@ -200,10 +200,10 @@ public class ShadowOnDemand : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="shadow-maps.js?v=ed80702b"></script>
+<script src="shadow-maps.js?v=3b530930"></script>
 </body>
 </html>

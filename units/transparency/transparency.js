@@ -9,7 +9,7 @@
   const SRC = [1.0, 0.45, 0.08], DST = [0.08, 0.3, 0.75];
 
   A.fx('over', {
-    title: 'The over operator',
+    title: 'Over operator',
     expr: 'result = {s} · {a} + {d} · (1 − {a})',
     vars: { a: { sym: 'α', name: 'alpha of the new layer', min: 0, max: 1, value: 0.4, step: 0.01 },
             s: { sym: 'src', name: 'new colour (one channel)', min: 0, max: 1, value: 1, step: 0.01 },
@@ -30,7 +30,7 @@
   const MODES = ['alpha', 'additive', 'multiply', 'premultiplied'];
   const blend = (m, s, d, a) => m === 0 ? s * a + d * (1 - a) : m === 1 ? s + d : m === 2 ? s * d : s * a + d * (1 - a);
   A.fx('modes', {
-    title: 'Four blend modes (orange source over a blue destination)',
+    title: 'Blend modes',
     expr: 'result = src · SrcFactor + dst · DstFactor,   mode {m},   α = {a}',
     vars: { m: { name: 'blend mode', values: [0, 1, 2, 3], labels: MODES }, a: { sym: 'α', name: 'source alpha', min: 0, max: 1, value: 0.6, step: 0.01 } },
     out: [0, 1, 2].map(i => ({ sym: ['r', 'g', 'b'][i], f: v => blend(v.m, v.m === 3 ? SRC[i] * v.a : SRC[i], DST[i], v.a), color: ['ax-x', 'ax-y', 'ax-z'][i] })),
@@ -46,7 +46,7 @@
   const RED = [0.9, 0.1, 0.08], BLU = [0.1, 0.25, 0.95], BG = [0.85, 0.85, 0.85];
   const over = (c, a, d) => c.map((x, i) => x * a + d[i] * (1 - a));
   A.fx('order', {
-    title: 'Red and blue layers in both orders',
+    title: 'Blend order',
     expr: 'red α = {ar},   blue α = {ab}',
     vars: { ar: { sym: 'α<sub>red</sub>', name: 'alpha of the red layer', min: 0, max: 1, value: 0.6, step: 0.01 }, ab: { sym: 'α<sub>blue</sub>', name: 'alpha of the blue layer', min: 0, max: 1, value: 0.6, step: 0.01 } },
     out: [{ sym: 'red share, blue on top', f: v => v.ar * (1 - v.ab), color: 'bad' }, { sym: 'red share, red on top', f: v => v.ar, color: 'accent' }],
@@ -60,7 +60,7 @@
   });
 
   A.fx('fringe', {
-    title: 'Filtering at the edge of a leaf',
+    title: 'Filtering at alpha edges',
     expr: 'halfway between a green texel (α 1) and a transparent texel, at {t};  {mode}',
     vars: { t: { name: 'position between the two texels', min: 0, max: 1, value: 0.5, step: 0.01 }, mode: { name: 'storage', values: [0, 1], labels: ['straight alpha', 'premultiplied'] },
             bg: { name: 'background brightness', min: 0, max: 1, value: 0.9, step: 0.01 } },
@@ -81,7 +81,7 @@
 
   /* coverage of a thin strand across mips */
   A.fx('mipcoverage', {
-    title: 'A thin twig in smaller mips',
+    title: 'Alpha-test thinning in mips',
     expr: 'α<sub>mip</sub> = {w} / 2<sup>{k}</sup>,   visible if α<sub>mip</sub> ≥ {c}',
     vars: { w: { name: 'twig width in mip-0 texels', min: 0.5, max: 4, value: 1, step: 0.1 }, k: { name: 'mip level', min: 0, max: 5, value: 2, step: 1 },
             c: { name: 'alpha cutoff', min: 0.1, max: 0.9, value: 0.5, step: 0.01 } },
@@ -117,7 +117,7 @@
 
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
   A.fx('dither', {
-    title: 'Ordered dithering with a 4 × 4 Bayer matrix',
+    title: 'Bayer dithering (4 × 4)',
     expr: 'visible if {a} > (bayer(x, y) + 0.5) / 16',
     vars: { a: { sym: 'α', name: 'alpha (fade amount)', min: 0, max: 1, value: 0.5, step: 0.01 } },
     sub: v => `<b>${BAYER.filter(b => v.a > (b + 0.5) / 16).length} of 16</b> pixels in every 4 × 4 block are drawn`,
@@ -134,7 +134,7 @@
   });
 
   A.fx('oit', {
-    title: 'Weighted blended OIT for two layers',
+    title: 'Weighted blended OIT',
     expr: 'C = (c₁a₁ + c₂a₂) / (a₁ + a₂),   revealage = (1 − {a1})(1 − {a2}),   result = C · (1 − revealage) + dst · revealage',
     vars: { a1: { sym: 'a₁', name: 'alpha of the red layer (front)', min: 0, max: 1, value: 0.4, step: 0.01 }, a2: { sym: 'a₂', name: 'alpha of the blue layer (back)', min: 0, max: 1, value: 0.4, step: 0.01 } },
     sub: v => { const rev = (1 - v.a1) * (1 - v.a2); return `revealage = ${num(1 - v.a1)} · ${num(1 - v.a2)} = <b>${num(rev)}</b>: ${Math.round(rev * 100)}% of the background shows through, in either order`; },

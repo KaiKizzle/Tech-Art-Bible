@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>PBR Materials: the Basics · Tech Art Atlas</title>
+<title>PBR Material Inputs · Tech Art Atlas</title>
 <meta name="description" content="What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="pbr-basics" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">PBR Materials: the Basics</a>
+  <a class="brand" href="#top">PBR Material Inputs</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,27 +40,27 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
-  <h1>PBR Materials: the Basics</h1>
+  <h1>PBR Material Inputs</h1>
   <p class="lede">What each map of a PBR material means and which values are physical: base colour, metallic, roughness, normal, occlusion and height, the specular/gloss alternative, and how to check your work.</p>
-  <p class="meta">No prerequisites beyond Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">No prerequisites beyond Colour Values. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/pbr-basics.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The same sphere as rough plastic, polished plastic, rough metal and polished gold.</figcaption></figure>
 </div>
 <div class="needs" data-needs="color-values#linear-srgb"></div>
 
-<section class="chapter" id="idea" data-title="What PBR asks of you" data-builds="pbr-brdf#split color-values#linear-srgb" data-summary="Author what the surface is; light does the rest. Reflected ≈ F0 + (1 − F0) · albedo, always below 1.">
-  <div class="head"><div class="num"></div><h2>What PBR asks of you</h2></div>
+<section class="chapter" id="idea" data-title="PBR principles" data-builds="pbr-brdf#split color-values#linear-srgb" data-summary="Author what the surface is; light does the rest. Reflected ≈ F0 + (1 − F0) · albedo, always below 1.">
+  <div class="head"><div class="num"></div><h2>PBR principles</h2></div>
 
   <div class="prose">
-    <p><button type="button" class="term" data-term="pbr">Physically based rendering</button> splits the work cleanly. You describe what a surface <em>is</em>, with a handful of measurable properties, and the lighting decides how it <em>looks</em>. A well-made material then reads correctly in a dark corridor, at noon and under a red warning light, without retouching. The shading maths is the topic of <a class="x" href="../pbr-brdf/index.html#split">Inside a PBR Shader</a>; this unit is about the inputs you author.</p>
+    <p><button type="button" class="term" data-term="pbr">Physically based rendering</button> splits the work cleanly. You describe what a surface <em>is</em>, with a handful of measurable properties, and the lighting decides how it <em>looks</em>. A well-made material then reads correctly in a dark corridor, at noon and under a red warning light, without retouching. The shading maths is the topic of <a class="x" href="../pbr-brdf/index.html#split">PBR BRDF</a>; this unit is about the inputs you author.</p>
     <p>The one physical rule behind the inputs: a surface cannot send back more light than arrives. Part of the light reflects at the surface (specular, about 4 % for most non-metals), the rest enters and comes back coloured by the base colour (diffuse), and whatever is left is absorbed:</p>
   </div>
   <div class="fx" data-fx="energy"></div>
   <div class="prose"><p>That is why a base colour of pure white is wrong even for snow: nothing in nature sends back all of the diffuse light. The next chapters give the ranges that keep each input physical.</p></div>
 
 </section>
-<section class="chapter" id="basecolor" data-title="Base colour: colour without light" data-builds="color-values#linear-srgb pbr-basics#idea" data-summary="No baked lighting; non-metals roughly 30–240 sRGB; 128 sRGB is only about 22 % reflectance.">
-  <div class="head"><div class="num"></div><h2>Base colour: colour without light</h2></div>
+<section class="chapter" id="basecolor" data-title="Base colour" data-builds="color-values#linear-srgb pbr-basics#idea" data-summary="No baked lighting; non-metals roughly 30–240 sRGB; 128 sRGB is only about 22 % reflectance.">
+  <div class="head"><div class="num"></div><h2>Base colour</h2></div>
 
   <div class="prose">
     <p>The <button type="button" class="term" data-term="basecolor">base colour</button> (albedo) map holds the colour of the surface as if it were lit evenly from all sides: no shadows, no ambient occlusion, no highlights. All of those come from the lighting, and painting them in makes the surface wrong under every other light.</p>
@@ -70,8 +70,8 @@
   <div class="prose"><p>The reference marks are approximate. Note how much of the 0–255 range is spent on dark values: an sRGB value of 128 is only 22 % reflectance (<a class="x" href="../color-values/index.html#linear-srgb">linear values</a>). Base colour textures are colour data, so their import setting has <em>sRGB</em> ticked.</p></div>
 
 </section>
-<section class="chapter" id="metallic" data-title="Metallic is a switch" data-builds="pbr-brdf#fresnel pbr-basics#basecolor" data-summary="Metallic 0 or 1: F0 = lerp(0.04, base, m), diffuse = base · (1 − m). Metals: bright base colour.">
-  <div class="head"><div class="num"></div><h2>Metallic is a switch</h2></div>
+<section class="chapter" id="metallic" data-title="Metallic" data-builds="pbr-brdf#fresnel pbr-basics#basecolor" data-summary="Metallic 0 or 1: F0 = lerp(0.04, base, m), diffuse = base · (1 − m). Metals: bright base colour.">
+  <div class="head"><div class="num"></div><h2>Metallic</h2></div>
 
   <div class="prose">
     <p>Metals and non-metals reflect light in different ways. A non-metal has a coloured diffuse part and a faint, uncoloured reflection (F0 ≈ 0.04). A metal has no diffuse part at all: it reflects strongly, and its reflection is coloured. The <button type="button" class="term" data-term="metallic">metallic</button> input switches between the two, and the base colour changes meaning with it: for a metal it is the colour of the reflection, so it must be bright (roughly 180–255 sRGB):</p>
@@ -81,8 +81,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A painted metal door. What is its metallic value?", ["1, it is metal", "0, the paint is what you see; only scratches through the paint are 1", "0.5", "Whatever looks good"], 1, "The visible surface is paint, a non-metal. Bare metal shows only where the paint is gone."]]</script></details>
 
 </section>
-<section class="chapter" id="roughness" data-title="Roughness: how blurry reflections are" data-builds="pbr-brdf#ndf pbr-brdf#ibl" data-summary="Rough = blurry, dim, wide highlight; same total energy. Smoothness = 1 − roughness.">
-  <div class="head"><div class="num"></div><h2>Roughness: how blurry reflections are</h2></div>
+<section class="chapter" id="roughness" data-title="Roughness" data-builds="pbr-brdf#ndf pbr-brdf#ibl" data-summary="Rough = blurry, dim, wide highlight; same total energy. Smoothness = 1 − roughness.">
+  <div class="head"><div class="num"></div><h2>Roughness</h2></div>
 
   <div class="prose">
     <p><button type="button" class="term" data-term="roughness">Roughness</button> describes the microscopic bumps of a surface, too small for a normal map. A smooth surface reflects a sharp image of its surroundings; a rough one spreads the same light into a wide, dim highlight. The total amount of reflected light stays the same, only its spread changes. Unity uses <em>smoothness</em>, which is simply 1 − roughness:</p>
@@ -102,8 +102,8 @@
   <div class="prose"><p>HDRP applies the AO input to indirect diffuse light and derives <em>specular occlusion</em> from it, so reflections in crevices also darken. Small-scale crevice darkening that should affect everything (dirt in cracks) belongs in the base colour, painted as dirt, not as AO.</p></div>
 
 </section>
-<section class="chapter" id="workflows" data-title="Specular/gloss and other conventions" data-builds="pbr-basics#metallic pbr-basics#roughness" data-summary="specular = lerp(0.04, base, m), diffuse = base · (1 − m), gloss = 1 − roughness.">
-  <div class="head"><div class="num"></div><h2>Specular/gloss and other conventions</h2></div>
+<section class="chapter" id="workflows" data-title="Specular/gloss workflow" data-builds="pbr-basics#metallic pbr-basics#roughness" data-summary="specular = lerp(0.04, base, m), diffuse = base · (1 − m), gloss = 1 − roughness.">
+  <div class="head"><div class="num"></div><h2>Specular/gloss workflow</h2></div>
 
   <div class="prose">
     <p>Older content and some engines use the <em>specular/gloss</em> workflow: a diffuse colour map, a specular colour map (F0 directly) and a glossiness map. It can describe the same materials, plus a few the metal workflow cannot (non-metals with an unusual F0). Converting from metal/roughness is direct:</p>
@@ -112,8 +112,8 @@
   <div class="prose"><p>Watch three conventions when moving materials between tools: smoothness versus roughness (invert), the green channel of normal maps (OpenGL in Unity and Substance by default, DirectX in Unreal), and which channel holds what in packed masks (<a class="x" href="../texture-settings/index.html#packing">packing layouts</a>).</p></div>
 
 </section>
-<section class="chapter" id="validate" data-title="Checking your values" data-builds="pbr-basics#basecolor exposure#workflow" data-summary="Neutral light, fixed exposure; the Material Validator and single-input views catch most errors.">
-  <div class="head"><div class="num"></div><h2>Checking your values</h2></div>
+<section class="chapter" id="validate" data-title="Value validation" data-builds="pbr-basics#basecolor exposure#workflow" data-summary="Neutral light, fixed exposure; the Material Validator and single-input views catch most errors.">
+  <div class="head"><div class="num"></div><h2>Value validation</h2></div>
 
   <div class="prose">
     <p>Materials are judged under lighting, and lighting can hide mistakes. A routine that catches most of them:</p>
@@ -233,10 +233,10 @@ public static class BaseColorRangeCheck
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="pbrbasics.js?v=02d18e27"></script>
+<script src="pbrbasics.js?v=8691f13a"></script>
 </body>
 </html>

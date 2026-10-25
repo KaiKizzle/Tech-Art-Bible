@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Colour as Numbers · Tech Art Atlas</title>
+<title>Colour Values · Tech Art Atlas</title>
 <meta name="description" content="Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="color-values" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Colour as Numbers</a>
+  <a class="brand" href="#top">Colour Values</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Foundations · 5 chapters</div>
-  <h1>Colour as Numbers</h1>
+  <h1>Colour Values</h1>
   <p class="lede">Colours in a shader are three numbers, but which three numbers depends on how they are encoded. This unit explains linear and sRGB values, values above 1 and brightness.</p>
   <p class="meta">Swatches below show the colours as your screen displays them.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="vectors#what shader-anatomy#functions"></div>
 
-<section class="chapter" id="rgb" data-title="A colour is three numbers" data-builds="vectors#what shader-anatomy#types" data-summary="A colour is (r, g, b) from 0 to 1; 8-bit images store 0–255.">
-  <div class="head"><div class="num"></div><h2>A colour is three numbers</h2></div>
+<section class="chapter" id="rgb" data-title="RGB values" data-builds="vectors#what shader-anatomy#types" data-summary="A colour is (r, g, b) from 0 to 1; 8-bit images store 0–255.">
+  <div class="head"><div class="num"></div><h2>RGB values</h2></div>
 
   <div class="prose">
     <p>Screens make every colour from three lights per pixel: red, green and blue. A colour in a shader is therefore three numbers, usually written from 0 (off) to 1 (full). Image files and colour pickers often show the same values as 0 to 255, because they store each number in 8 bits; divide by 255 to get the shader's value.</p>
@@ -61,8 +61,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A colour picker shows (255, 128, 0). What does the shader see?", ["(255, 128, 0)", "(1, 0.5, 0)", "(1, 0.502, 0) before any sRGB decoding", "(0.5, 0.25, 0)"], 2, "Divide by 255. Whether the value is then decoded from sRGB is the next chapter."]]</script></details>
 
 </section>
-<section class="chapter" id="linear-srgb" data-title="Linear values and sRGB encoding" data-builds="color-values#rgb shader-anatomy#functions" data-summary="Stored colours are sRGB-encoded; lighting and blending must use decoded, linear values.">
-  <div class="head"><div class="num"></div><h2>Linear values and sRGB encoding</h2></div>
+<section class="chapter" id="linear-srgb" data-title="Linear and sRGB" data-builds="color-values#rgb shader-anatomy#functions" data-summary="Stored colours are sRGB-encoded; lighting and blending must use decoded, linear values.">
+  <div class="head"><div class="num"></div><h2>Linear and sRGB</h2></div>
 
   <div class="prose">
     <p>Our eyes notice small changes in dark tones far more than in bright ones. To spend the 256 steps of an 8-bit image where they are most visible, images and screens use an encoding called <button type="button" class="term" data-term="srgb">sRGB</button>: the stored number is roughly the true light value raised to the power 1/2.2. A stored 0.5 does not mean "half the light"; it means about 21% of it.</p>
@@ -73,25 +73,25 @@
   </div>
   <div class="fx" data-fx="blend"></div>
   <div class="prose">
-    <p>Engines handle this for you when settings are right: colour textures are flagged sRGB so the GPU decodes them when sampled, the shader works in linear, and the final image is encoded once at the end (<a class="x" href="../exposure/index.html#display">Sun to Screen: encoding for the display</a>). Data textures such as roughness must <em>not</em> be decoded (<a class="x" href="../texture-memory/index.html#color-data">Texels on a Budget: colour data and other data</a>).</p>
+    <p>Engines handle this for you when settings are right: colour textures are flagged sRGB so the GPU decodes them when sampled, the shader works in linear, and the final image is encoded once at the end (<a class="x" href="../exposure/index.html#display">Exposure and Tonemapping: encoding for the display</a>). Data textures such as roughness must <em>not</em> be decoded (<a class="x" href="../texture-settings/index.html#srgb">Texture Memory: colour data and other data</a>).</p>
   </div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP always works in linear. Colour textures need <em>sRGB (Color Texture)</em> ticked in the importer; data textures need it unticked.</p></div><div class="eng" data-engine="urp"><p>Check <em>Project Settings → Player → Color Space = Linear</em>. Gamma mode exists for very old mobile devices and makes lighting and blending wrong in the way shown above.</p></div><div class="eng" data-engine="unreal"><p>Unreal works in linear. The texture's <em>sRGB</em> checkbox and the material sampler type (<em>Color</em> versus <em>Linear Color</em> or <em>Masks</em>) must agree.</p></div></div>
   <details class="check"><summary></summary><script type="application/json">[["A texture texel stores 0.5 and is flagged sRGB. Roughly what value does the shader receive?", ["0.5", "0.21", "0.73", "0.25"], 1, "sRGB decoding of 0.5 gives about 0.214."], ["Why must lighting be computed on linear values?", ["It is faster", "Only linear values add up like real light", "sRGB cannot store negative numbers", "The GPU requires it"], 1, "Two lamps double the light only in linear values."]]</script></details>
 
 </section>
-<section class="chapter" id="hdr" data-title="Values above 1" data-builds="color-values#linear-srgb" data-summary="Scenes are rendered in HDR with values above 1; exposure and tonemapping bring them into 0–1.">
-  <div class="head"><div class="num"></div><h2>Values above 1</h2></div>
+<section class="chapter" id="hdr" data-title="HDR values" data-builds="color-values#linear-srgb" data-summary="Scenes are rendered in HDR with values above 1; exposure and tonemapping bring them into 0–1.">
+  <div class="head"><div class="num"></div><h2>HDR values</h2></div>
 
   <div class="prose">
     <p>A screen can only show 0 to 1, but light in a scene has no upper limit: the sun is many thousand times brighter than a lamp-lit wall. Renderers therefore compute in <button type="button" class="term" data-term="hdr">high dynamic range</button>: colour values far above 1, stored in 16-bit float <a class="x" href="../buffers/index.html#render-targets">render targets</a>. At the end of the frame, exposure scales them and a tonemapping curve squeezes them into 0–1:</p>
   </div>
   <div class="fx" data-fx="hdr"></div>
-  <div class="prose"><p>Exposure and the curves used for this, with real light units, are the whole subject of <a class="x" href="../exposure/index.html#range">Sun to Screen</a>.</p></div>
+  <div class="prose"><p>Exposure and the curves used for this, with real light units, are the whole subject of <a class="x" href="../exposure/index.html#range">Exposure and Tonemapping</a>.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["A pixel's linear value is 6.0 before tonemapping. Is that a bug?", ["Yes, colours must stay below 1", "No, HDR values above 1 are normal until tonemapping", "Only on mobile", "Only for red"], 1, "Bright light sources and sunlit surfaces are far above 1 in linear HDR."]]</script></details>
 
 </section>
-<section class="chapter" id="luminance" data-title="How bright a colour looks" data-builds="color-values#linear-srgb dot-cross#dot" data-summary="Luminance Y = 0.2126 R + 0.7152 G + 0.0722 B on linear values.">
-  <div class="head"><div class="num"></div><h2>How bright a colour looks</h2></div>
+<section class="chapter" id="luminance" data-title="Luminance" data-builds="color-values#linear-srgb dot-cross#dot" data-summary="Luminance Y = 0.2126 R + 0.7152 G + 0.0722 B on linear values.">
+  <div class="head"><div class="num"></div><h2>Luminance</h2></div>
 
   <div class="prose">
     <p>The eye is most sensitive to green and least to blue, so (0, 1, 0) looks much brighter than (0, 0, 1) at the same value. The <button type="button" class="term" data-term="luminance">luminance</button> of a linear colour weighs the three parts accordingly. Use it whenever you need one brightness number from a colour: desaturation, bloom thresholds, auto exposure.</p>
@@ -105,7 +105,7 @@
   <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
   <div class="prose"><p>Colour handling is mostly settings, and the bugs come from mixing them up: a colour converted twice, or a data texture treated as colour. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
   <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Linear colour space, sRGB flags on textures, HDR colour properties.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A debug graph that shows luminance and values above 1.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>ColorDebug.hlsl: luminance and a false-colour HDR view.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ColorFromScript.cs: SetColor versus SetVector.</span></div></div>
-<ol class="impl-steps"><li><div><em>Project Settings &gt; Player &gt; Other Settings &gt; Color Space</em> must be <code>Linear</code>; HDRP requires it and warns otherwise.</div></li><li><div>For each texture, tick <em>sRGB (Color Texture)</em> for colour (albedo, emissive) and untick it for data (masks, roughness, normal maps, heights). See <a class="x" href="../texture-memory/index.html#color-data">colour data and other data</a>.</div></li><li><div>In Shader Graph, a Color property has a <em>Mode</em>: <code>Default</code> (0 to 1) or <code>HDR</code> (any brightness, with an intensity slider). Use HDR for emissive colours.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Save <code>ColorDebug.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>ColorDebug.hlsl</code> and <em>Name</em> to <code>ColorDebug</code> (without the <code>_float</code> suffix). Add the inputs <b>Color (Vector 3), Mode (Float)</b> and the outputs <b>Out (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Mode 0 shows luminance, mode 1 shows a false-colour view where values above 1 turn yellow, then red.</div></li><li><div>Read <code>ColorFromScript.cs</code>: <code>material.SetColor</code> takes an sRGB colour and Unity converts it to linear in a linear project; <code>SetVector</code> passes numbers unchanged. Mixing them up makes colours too dark or too light.</div></li></ol>
+<ol class="impl-steps"><li><div><em>Project Settings &gt; Player &gt; Other Settings &gt; Color Space</em> must be <code>Linear</code>; HDRP requires it and warns otherwise.</div></li><li><div>For each texture, tick <em>sRGB (Color Texture)</em> for colour (albedo, emissive) and untick it for data (masks, roughness, normal maps, heights). See <a class="x" href="../texture-settings/index.html#srgb">colour data and other data</a>.</div></li><li><div>In Shader Graph, a Color property has a <em>Mode</em>: <code>Default</code> (0 to 1) or <code>HDR</code> (any brightness, with an intensity slider). Use HDR for emissive colours.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Unlit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>.</div></li><li><div>Save <code>ColorDebug.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>ColorDebug.hlsl</code> and <em>Name</em> to <code>ColorDebug</code> (without the <code>_float</code> suffix). Add the inputs <b>Color (Vector 3), Mode (Float)</b> and the outputs <b>Out (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Mode 0 shows luminance, mode 1 shows a false-colour view where values above 1 turn yellow, then red.</div></li><li><div>Read <code>ColorFromScript.cs</code>: <code>material.SetColor</code> takes an sRGB colour and Unity converts it to linear in a linear project; <code>SetVector</code> passes numbers unchanged. Mixing them up makes colours too dark or too light.</div></li></ol>
 <div class="files"><div class="file" data-name="ColorDebug.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_COLOR_DEBUG_INCLUDED
 #define ATLAS_COLOR_DEBUG_INCLUDED
 
@@ -183,10 +183,10 @@ public class ColorFromScript : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="color-values.js?v=1331d338"></script>
+<script src="color-values.js?v=1baa364b"></script>
 </body>
 </html>

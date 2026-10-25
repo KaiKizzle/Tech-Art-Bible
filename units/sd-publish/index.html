@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -55,8 +55,8 @@
 </div>
 <div class="needs" data-needs="sd-graphs#srgb sd-graphs#choose"></div>
 
-<section class="chapter" id="expose" data-title="Exposing a parameter" data-builds="sd-blend#node" data-summary="Expose as new graph input: identifier (for code), label, group, default, min, max, clamp.">
-  <div class="head"><div class="num"></div><h2>Exposing a parameter</h2></div>
+<section class="chapter" id="expose" data-title="Exposed parameters" data-builds="sd-blend#node" data-summary="Expose as new graph input: identifier (for code), label, group, default, min, max, clamp.">
+  <div class="head"><div class="num"></div><h2>Exposed parameters</h2></div>
 
   <div class="prose">
     <p>A graph becomes a reusable material when someone else can change it without opening it. That happens through <button type="button" class="term" data-term="exposed">exposed parameters</button>: node settings promoted to inputs of the whole graph.</p>
@@ -70,8 +70,8 @@
   </div>
 
 </section>
-<section class="chapter" id="drive" data-title="Driving many nodes from one input" data-builds="sd-pixel-fx#functions sd-performance#cache" data-summary="Parameter functions read an exposed input (Get Float) and compute each node&#x27;s value: one slider, many nodes.">
-  <div class="head"><div class="num"></div><h2>Driving many nodes from one input</h2></div>
+<section class="chapter" id="drive" data-title="Parameter functions" data-builds="sd-pixel-fx#functions sd-performance#cache" data-summary="Parameter functions read an exposed input (Get Float) and compute each node&#x27;s value: one slider, many nodes.">
+  <div class="head"><div class="num"></div><h2>Parameter functions</h2></div>
 
   <div class="prose">
     <p>One user-facing slider usually changes several nodes. "Wear" moves the edge-wear mask, raises dirt, roughens the surface and, past a point, lets rust appear. Each of those node parameters gets a <em>parameter function</em> (the button that appears next to a parameter) whose function graph reads the exposed input with a <em>Get Float</em> node and computes the node's value from it:</p>
@@ -104,8 +104,8 @@
   </div>
 
 </section>
-<section class="chapter" id="export" data-title="Exporting textures" data-builds="texture-settings#automation" data-summary="Export Outputs: destination, one format, a pattern of $(graph) and $(identifier), output toggles, Batch for size.">
-  <div class="head"><div class="num"></div><h2>Exporting textures</h2></div>
+<section class="chapter" id="export" data-title="Texture export" data-builds="texture-settings#automation" data-summary="Export Outputs: destination, one format, a pattern of $(graph) and $(identifier), output toggles, Batch for size.">
+  <div class="head"><div class="num"></div><h2>Texture export</h2></div>
 
   <div class="prose">
     <p>To write files, right-click the graph in the Explorer and choose <em>Export outputs as bitmaps</em> (or <em>Tools &gt; Export Outputs</em> in the Graph view). The dialog has five things to set:</p>
@@ -146,15 +146,16 @@
   <div class="prose">
     <p>Two settings decide whether exported maps are read correctly.</p>
     <p><strong>Colour space.</strong> In the default Legacy mode, outputs offer <em>sRGB</em>, <em>Linear</em> and <em>Raw</em>, and only <em>Linear</em> changes the pixels: it is meant for float HDR images. Base colour stays sRGB, data maps stay raw, and the engine flags them accordingly. In OCIO and ACE modes you assign a real colour space per output in the export dialog, and Designer converts before saving (<a class="x" href="../sd-graphs/index.html#srgb">sRGB and linear in Designer</a>).</p>
-    <p><strong>Normal format.</strong> Tangent-space normal maps come in two conventions that differ only in the green channel. <em>DirectX</em> style (Designer's default, Unreal) points green down; <em>OpenGL</em> style (Unity, Blender) points green up. The <em>Normal</em> node's format setting chooses the convention; a map in the wrong one looks right in a flat preview and lit from the wrong side in the engine:</p>
+    <p><strong>Normal format.</strong> Designer's <em>Normal</em> node outputs DirectX style by default; its format setting chooses the convention. A map in the wrong one looks right in a flat preview and lit from the wrong side in the engine:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Normal map convention: green down (DirectX: Unreal, Designer default) or green up (OpenGL: Unity, Blender); flip at import if they differ.</p></div><a class="x refto" href="../texture-memory/index.html#normals">Open the full explanation</a></aside>
   <div class="fx" data-fx="normalflip"></div>
-  <div class="prose"><p>Either export in the engine's format, or flip green on import (Unity's texture importer has no flip; Unreal has <em>Flip Green Channel</em>). The Substance plugin for Unity converts DirectX normals automatically, which is why Adobe recommends leaving graphs on DirectX when they are used through the plugin.</p></div>
+  <div class="prose"><p>Either export in the engine's format, or flip green on import. The Substance plugin for Unity converts DirectX normals automatically, which is why Adobe recommends leaving graphs on DirectX when they are used through the plugin.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["Bumps on a wall look like dents when the light comes from above, but are correct when it comes from the side. The likely cause?", ["Roughness is inverted", "The normal map's green channel is in the other engine's convention", "sRGB is on for the normal map", "The mipmaps are missing"], 1, "Only the vertical component is flipped, so only vertical lighting is wrong."]]</script></details>
 
 </section>
-<section class="chapter" id="sbsar" data-title="Publishing an SBSAR" data-builds="sd-performance#runtime" data-summary="SBSAR = compiled package with inputs and presets; output size relative, bitmaps Absolute; plugins render it in Unity and Unreal.">
-  <div class="head"><div class="num"></div><h2>Publishing an SBSAR</h2></div>
+<section class="chapter" id="sbsar" data-title="SBSAR publishing" data-builds="sd-performance#runtime" data-summary="SBSAR = compiled package with inputs and presets; output size relative, bitmaps Absolute; plugins render it in Unity and Unreal.">
+  <div class="head"><div class="num"></div><h2>SBSAR publishing</h2></div>
 
   <div class="prose">
     <p>An <button type="button" class="term" data-term="sbsar">SBSAR</button> is a published, compiled package: the graphs, their exposed inputs and presets, and every resource they need, in one stand-alone file. Painter, Stager, Sampler and the engine plugins can render it and change its exposed inputs, but nobody can edit the graph inside. Publish with right-click on the package, <em>Publish .sbsar file</em>.</p>
@@ -173,7 +174,7 @@
   <div class="head"><div class="num"></div><h2>Set it up in Designer and Unity HDRP</h2></div>
   <div class="prose"><p>Both routes out of Designer, end to end. Route A exports textures named for the import rules from <a class="x" href="../texture-settings/index.html#automation">Texture Packing and Import Settings</a>, including an HDRP mask map packed inside the graph. Route B publishes an SBSAR with one exposed Wear input and drives it at runtime from a script. Written for Substance 3D Designer 14 and later, Unity 6 with HDRP 17 and the Substance 3D for Unity plugin; menu names can differ slightly between versions.</p></div>
   <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>Exposed Wear input, parameter functions, a MaskMap output, export pattern.</span></div><div class="rt" data-k="plugin"><b>Engine plugin</b><span>Substance 3D for Unity: imports the SBSAR as a graph asset.</span></div><div class="rt" data-k="runtime"><b>Runtime script</b><span>WearController.cs: sets the Wear input and re-renders.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>AtlasTexturePostprocessor.cs from Texture Packing and Import Settings.</span></div></div>
-<ol class="impl-steps"><li><div>In Designer, pick the node that controls edge wear (for example the Histogram Scan on a curvature map). Next to its <em>Position</em>, choose <em>Expose as new graph input</em>: identifier <code>wear</code>, label <code>Wear</code>, group <code>Weathering</code>, default 0.3, min 0, max 1, clamp on.</div></li><li><div>On the other nodes that should follow (dirt Blend opacity, roughness Levels), open the parameter function and read the input: <em>Get Float</em> set to <code>wear</code>, then the mapping from the first widget (for example <em>Pow</em> 2 for the dirt opacity). Wear now drives everything.</div></li><li><div>Add an <em>RGBA Merge</em> node: metallic into R, ambient occlusion into G, a white <em>Uniform Color</em> into B, and roughness through <em>Invert Grayscale</em> into A. Connect it to a new <em>Output</em> node with identifier <code>MS</code> and no colour space conversion (Raw).</div></li><li><div>Set the other output identifiers to the suffixes your import script knows: <code>BC</code> base colour, <code>N</code> normal, <code>H</code> height (L16 output). Set the Normal node's format to <code>OpenGL</code> for Unity, <code>DirectX</code> for Unreal.</div></li><li><div>Route A: <em>Export outputs as bitmaps</em>, format <code>png</code>, pattern <code>T_$(graph)_$(identifier)</code>, destination inside the Unity project's <code>Assets/Textures</code>. The import script sets sRGB, compression and R16 per suffix; assign the textures to an HDRP/Lit material.</div></li><li><div>Route B: select the graph and set <em>Exposed in SBSAR</em> to Yes; keep its output size Relative to parent and every Bitmap node Absolute. Right-click the package, <em>Publish .sbsar file</em>.</div></li><li><div>In Unity, install the Substance 3D for Unity plugin (Asset Store or Adobe's package), then drag the SBSAR into the Project window. The plugin creates the graph asset, its textures and a material; with the plugin, leave normals on DirectX, it converts them. Set the output resolution in the Inspector.</div></li><li><div>For runtime changes, add the plugin's runtime component to the object as the plugin documentation describes, then add <code>WearController.cs</code> and assign the <code>SubstanceRuntimeGraph</code>. Changing <em>Wear</em> sets the <code>wear</code> input by identifier and requests a render, through the queue from <a class="x" href="../sd-performance/index.html#runtime">Keeping Graphs Fast</a> when it is in the scene.</div></li></ol>
+<ol class="impl-steps"><li><div>In Designer, pick the node that controls edge wear (for example the Histogram Scan on a curvature map). Next to its <em>Position</em>, choose <em>Expose as new graph input</em>: identifier <code>wear</code>, label <code>Wear</code>, group <code>Weathering</code>, default 0.3, min 0, max 1, clamp on.</div></li><li><div>On the other nodes that should follow (dirt Blend opacity, roughness Levels), open the parameter function and read the input: <em>Get Float</em> set to <code>wear</code>, then the mapping from the first widget (for example <em>Pow</em> 2 for the dirt opacity). Wear now drives everything.</div></li><li><div>Add an <em>RGBA Merge</em> node: metallic into R, ambient occlusion into G, a white <em>Uniform Color</em> into B, and roughness through <em>Invert Grayscale</em> into A. Connect it to a new <em>Output</em> node with identifier <code>MS</code> and no colour space conversion (Raw).</div></li><li><div>Set the other output identifiers to the suffixes your import script knows: <code>BC</code> base colour, <code>N</code> normal, <code>H</code> height (L16 output). Set the Normal node's format to <code>OpenGL</code> for Unity, <code>DirectX</code> for Unreal.</div></li><li><div>Route A: <em>Export outputs as bitmaps</em>, format <code>png</code>, pattern <code>T_$(graph)_$(identifier)</code>, destination inside the Unity project's <code>Assets/Textures</code>. The import script sets sRGB, compression and R16 per suffix; assign the textures to an HDRP/Lit material.</div></li><li><div>Route B: select the graph and set <em>Exposed in SBSAR</em> to Yes; keep its output size Relative to parent and every Bitmap node Absolute. Right-click the package, <em>Publish .sbsar file</em>.</div></li><li><div>In Unity, install the Substance 3D for Unity plugin (Asset Store or Adobe's package), then drag the SBSAR into the Project window. The plugin creates the graph asset, its textures and a material; with the plugin, leave normals on DirectX, it converts them. Set the output resolution in the Inspector.</div></li><li><div>For runtime changes, add the plugin's runtime component to the object as the plugin documentation describes, then add <code>WearController.cs</code> and assign the <code>SubstanceRuntimeGraph</code>. Changing <em>Wear</em> sets the <code>wear</code> input by identifier and requests a render, through the queue from <a class="x" href="../sd-performance/index.html#runtime">Graph Performance</a> when it is in the scene.</div></li></ol>
 <div class="files"><div class="file" data-name="WearController.cs" data-lang="cs"><pre>using Adobe.Substance.Runtime;
 using UnityEngine;
 
@@ -206,7 +207,7 @@ public class WearController : MonoBehaviour
     {
         graph.SetInputFloat(inputIdentifier, wear);
         rendered = wear;
-        var queue = FindAnyObjectByType&lt;SubstanceRenderQueue&gt;();   // optional, from Keeping Graphs Fast
+        var queue = FindAnyObjectByType&lt;SubstanceRenderQueue&gt;();   // optional, from Graph Performance
         if (queue != null) SubstanceRenderQueue.Request(graph);
         else graph.RenderAsync();
     }
@@ -257,10 +258,10 @@ public class WearController : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdpublish.js?v=29f2ea13"></script>
+<script src="sdpublish.js?v=78da4c6f"></script>
 </body>
 </html>

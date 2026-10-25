@@ -30,7 +30,7 @@
     s: { sym: 'scale', name: 'height scale (depth of the relief)', min: 0.05, max: 0.6, value: 0.3, step: 0.01 } });
 
   A.fx('shift', {
-    title: 'Sideways shift per unit of depth',
+    title: 'View shift per unit depth',
     expr: 'shift = tan {th} = |V.xy| / V.z',
     vars: { th: { sym: 'θ', name: 'view angle from the normal', unit: '°', min: 0, max: 85, value: 45, step: 1 } },
     out: { sym: 'shift', f: v => Math.tan(v.th * DEG) },
@@ -47,7 +47,7 @@
   });
 
   A.fx('offset', {
-    title: 'Offset parallax: one sample',
+    title: 'Offset parallax',
     expr: 'uv′ = {u} + tan {th} · {s} · depth({u})',
     vars: Object.assign(baseVars(), { lim: { name: 'offset limiting', values: [0, 1], labels: ['off', 'on'] } }),
     out: [{ sym: 'uv′', f: v => v.u + (v.lim ? Math.sin(v.th * DEG) : Math.tan(v.th * DEG)) * v.s * depthAt(v.u), color: 'accent' }, { sym: 'true', f: v => trueHit(v).u, color: 'good' }],
@@ -61,7 +61,7 @@
   });
 
   A.fx('steep', {
-    title: 'Steep parallax: marching in layers',
+    title: 'Steep parallax layers',
     expr: 'layer<sub>i</sub> = i / {n},   stop when layer<sub>i</sub> ≥ depth(uv<sub>i</sub>)',
     vars: Object.assign({ n: { sym: 'N', name: 'layers', min: 2, max: 48, value: 8, step: 1 } }, baseVars()),
     out: [{ sym: 'uv<sub>hit</sub>', f: v => { const p = steep(v); return p[p.length - 1][0]; }, color: 'accent' }, { sym: 'true', f: v => trueHit(v).u, color: 'good' }],
@@ -75,7 +75,7 @@
   });
 
   A.fx('pom', {
-    title: 'POM: interpolating the last two layers',
+    title: 'POM interpolation',
     expr: 'w = after / (after − before),   uv = lerp(uv<sub>i</sub>, uv<sub>i−1</sub>, w),   {n} layers',
     vars: Object.assign({ n: { sym: 'N', name: 'layers', min: 2, max: 48, value: 8, step: 1 } }, baseVars()),
     out: [{ sym: 'error steep', f: v => { const p = steep(v); return Math.abs(p[p.length - 1][0] - trueHit(v).u); }, color: 'bad' }, { sym: 'error POM', f: v => Math.abs(pom(v).u - trueHit(v).u), color: 'accent' }],
@@ -92,7 +92,7 @@
   });
 
   A.fx('adaptive', {
-    title: 'Layers by viewing angle',
+    title: 'Layer count by view angle',
     expr: 'N = lerp({mx}, {mn}, |cos {th}|),   fetches ≈ N',
     vars: { th: { sym: 'θ', name: 'view angle from the normal', unit: '°', min: 0, max: 89, value: 60, step: 1 }, mn: { sym: 'min', name: 'layers seen straight on', min: 2, max: 16, value: 8, step: 1 },
             mx: { sym: 'max', name: 'layers at grazing angles', min: 8, max: 96, value: 32, step: 1 } },
@@ -106,7 +106,7 @@
     return { t, pts, sh: clamp(1 - mx * v.k, 0, 1) };
   }
   A.fx('pomshadow', {
-    title: 'Self-shadow: marching toward the light',
+    title: 'Parallax self-shadowing',
     expr: 'shadow = 1 − {k} · max<sub>j</sub>(layer<sub>j</sub> − depth(uv<sub>j</sub>)),   light at {la}',
     vars: Object.assign(baseVars(), { la: { sym: 'θ<sub>L</sub>', name: 'light angle from the normal', unit: '°', min: 0, max: 85, value: 65, step: 1 }, k: { name: 'softness (higher = harder)', min: 1, max: 30, value: 8, step: 0.5 } }),
     out: { sym: 'lit', f: v => shadowAt(v).sh },

@@ -7,7 +7,7 @@
   /* ---------- blend versus filter ---------- */
   const TINT = [0.85, 0.08, 0.06], BGS = [[0.9, 0.9, 0.9], [0.1, 0.75, 0.15], [0.1, 0.25, 0.85]], BGN = ['white', 'green', 'blue'];
   A.fx('filter', {
-    title: 'Red glass: blending paints over, filtering lets through',
+    title: 'Blending versus filtering (red glass)',
     expr: 'blended = tint · {a} + bg · (1 − {a}),   filtered = bg · T,   bg = {bg}',
     vars: { a: { sym: 'α', name: 'opacity used for blending', min: 0, max: 1, value: 0.5, step: 0.01 },
             bg: { sym: 'bg', name: 'background', values: [0, 1, 2], labels: BGN, index: 1 } },
@@ -23,7 +23,7 @@
   /* ---------- the cost of a screen copy ---------- */
   const RES = [[1920, 1080], [2560, 1440], [3840, 2160]];
   A.fx('copycost', {
-    title: 'What a copy of the screen costs',
+    title: 'Screen copy memory and bandwidth',
     expr: 'memory = pixels({res}) · bytes({fmt}) · (mips ? 4/3 : 1),   mips = {mips}',
     vars: { res: { sym: 'res', name: 'resolution', values: [0, 1, 2], labels: ['1080p', '1440p', '4K'], index: 0 },
             fmt: { sym: 'format', name: 'colour format', values: [4, 8], labels: ['R11G11B10 (4 B)', 'RGBA16F (8 B)'], index: 1 },
@@ -36,7 +36,7 @@
   /* ---------- the full-screen pass with a mask ---------- */
   function sceneAt(x, y, W, H) { const stripe = Math.floor(x / (W / 9)) % 2 ? [0.2, 0.36, 0.55] : [0.85, 0.7, 0.35]; const dx = x - W * 0.62, dy = y - H * 0.55; return dx * dx + dy * dy < (H * 0.18) * (H * 0.18) ? [0.75, 0.12, 0.1] : stripe; }
   A.fx('mask', {
-    title: 'One full-screen pass, many glass objects',
+    title: 'Masked full-screen pass',
     expr: 'out = lerp(scene(uv), tint · scene(uv + {k} · n(uv)), mask),   edge softness {s}',
     vars: { k: { sym: 'k', name: 'distortion strength', min: 0, max: 0.06, value: 0.025, step: 0.001 },
             s: { sym: 's', name: 'mask edge softness', min: 0, max: 0.2, value: 0.03, step: 0.005 } },
@@ -72,7 +72,7 @@
     return { out, leaks };
   }
   A.fx('leak', {
-    title: 'Foreground objects leak into the distortion',
+    title: 'Foreground leaks and depth rejection',
     expr: 'uv′ = uv + offset({o}),   if depth(uv′) is in front of the glass: uv′ = uv   ({rej})',
     vars: { o: { sym: 'offset', name: 'distortion amplitude in pixels', min: 0, max: 12, value: 6, step: 1 },
             rej: { sym: 'reject', name: 'depth rejection', values: [0, 1], labels: ['off', 'on'], index: 0 } },
@@ -110,7 +110,7 @@
 
   /* ---------- screen edge fade ---------- */
   A.fx('edge', {
-    title: 'Fade the distortion out at the screen border',
+    title: 'Screen border fade',
     expr: 'w = saturate(min({u}, 1 − {u}) / {f}),   uv′ = lerp(uv, uv + offset, w)',
     vars: { u: { sym: 'u', name: 'horizontal screen coordinate', min: 0, max: 1, value: 0.03, step: 0.005 },
             f: { sym: 'f', name: 'fade width', min: 0.005, max: 0.2, value: 0.05, step: 0.005 } },

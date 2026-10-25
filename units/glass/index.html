@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="glass" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,20 +48,22 @@
 </div>
 <div class="needs" data-needs="transparency#alpha"></div>
 
-<section class="chapter" id="fresnel" data-title="Glass is a dielectric" data-builds="pbr-brdf#fresnel pbr-terms#specular" data-summary="F0 = ((n−1)/(n+1))² ≈ 4 %; a pane reflects 2F/(1+F) ≈ 8 %; reflection takes over at grazing angles.">
-  <div class="head"><div class="num"></div><h2>Glass is a dielectric</h2></div>
+<section class="chapter" id="fresnel" data-title="Glass reflectance" data-builds="pbr-brdf#fresnel pbr-terms#specular" data-summary="F0 = ((n−1)/(n+1))² ≈ 4 %; a pane reflects 2F/(1+F) ≈ 8 %; reflection takes over at grazing angles.">
+  <div class="head"><div class="num"></div><h2>Glass reflectance</h2></div>
 
   <div class="prose">
-    <p>Glass, water, plastic and gemstones are <button type="button" class="term" data-term="dielectric">dielectrics</button>: their electrons are bound, so light passes into them instead of being absorbed at the surface as in <a class="x" href="../metals/index.html#electrons">metals</a>. At the surface a part reflects, set by the <a class="x" href="../pbr-terms/index.html#specular">IOR</a> and the angle, and the rest enters. A pane has two surfaces, so it reflects at both:</p>
+    <p>Glass, water, plastic and gemstones are <button type="button" class="term" data-term="dielectric">dielectrics</button>: their electrons are bound, so light passes into them instead of being absorbed at the surface as in <a class="x" href="../metals/index.html#electrons">metals</a>. At the surface a part reflects, set by the IOR and the angle, and the rest enters.</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Fresnel: head-on a surface reflects F0 = ((n − 1)/(n + 1))², about 4 % for glass, rising to 100 % at grazing angles; 1 − F enters.</p></div><a class="x refto" href="../pbr-brdf/index.html#fresnel">Open the full explanation</a></aside>
+  <div class="prose"><p>What is specific to glass: a pane has two surfaces, so it reflects at both:</p></div>
   <div class="fx" data-fx="dielectric"></div>
   <div class="prose">
     <p>About 8 % of the light reflects off a window head-on and over 90 % goes through. That is why a window at night is a mirror: the 8 % of a bright room beats the 92 % of a dark street. At grazing angles the reflection takes over completely, which is what makes glass read as glass. A glass shader with the wrong Fresnel looks like plastic film.</p>
   </div>
 
 </section>
-<section class="chapter" id="snell" data-title="Bending light: Snell&#x27;s law" data-builds="glass#fresnel vectors#normalize" data-summary="n₁ sin θ₁ = n₂ sin θ₂. A flat pane only shifts light (≈ 1 mm for a window). Total internal reflection beyond 42°.">
-  <div class="head"><div class="num"></div><h2>Bending light: Snell's law</h2></div>
+<section class="chapter" id="snell" data-title="Snell&#x27;s law" data-builds="glass#fresnel vectors#normalize" data-summary="n₁ sin θ₁ = n₂ sin θ₂. A flat pane only shifts light (≈ 1 mm for a window). Total internal reflection beyond 42°.">
+  <div class="head"><div class="num"></div><h2>Snell's law</h2></div>
 
   <div class="prose">
     <p>Light that enters glass slows down and changes direction. <button type="button" class="term" data-term="snell">Snell's law</button> gives the new angle: n₁ sin θ₁ = n₂ sin θ₂. A flat pane bends the ray on the way in and back on the way out by the same amount, so the light leaves parallel to how it came, only shifted sideways:</p>
@@ -73,8 +75,8 @@
   </div>
 
 </section>
-<section class="chapter" id="shapes" data-title="Panes, blocks, balls and bulbs" data-builds="glass#snell rays-math#sphere" data-summary="Solid balls invert the image; hollow objects barely bend. Engines assume a shape: Planar, Sphere or Thin.">
-  <div class="head"><div class="num"></div><h2>Panes, blocks, balls and bulbs</h2></div>
+<section class="chapter" id="shapes" data-title="Glass shapes" data-builds="glass#snell rays-math#sphere" data-summary="Solid balls invert the image; hollow objects barely bend. Engines assume a shape: Planar, Sphere or Thin.">
+  <div class="head"><div class="num"></div><h2>Glass shapes</h2></div>
 
   <div class="prose">
     <p>What you see through glass depends on its shape more than on its IOR. A ball refracts twice through strongly curved surfaces, so it acts as a lens and turns the image upside down. A light bulb or a drinking glass is hollow: two thin walls, each almost a pane:</p>
@@ -86,32 +88,36 @@
   <details class="check"><summary></summary><script type="application/json">[["A glass marble on a table. Which refraction model?", ["Planar", "Sphere: it is a solid convex object", "Thin", "None"], 1, "Solid and round: the image behind it is inverted, which Sphere reproduces."], ["A wine glass. Which one?", ["Sphere", "Planar or Thin: the walls are thin and nearly parallel", "None", "Any"], 1, "It is hollow, so each wall behaves like a pane."]]</script></details>
 
 </section>
-<section class="chapter" id="colour" data-title="Colour comes from thickness" data-builds="glass#snell water#absorb" data-summary="T = e^(−μd), μ = −ln(colour)/distance. Colour builds with path length: edges and thick parts show it.">
-  <div class="head"><div class="num"></div><h2>Colour comes from thickness</h2></div>
+<section class="chapter" id="colour" data-title="Glass colour and thickness" data-builds="ray-marching#volumes glass#snell" data-summary="Glass colour is absorption along the path: thickness / cos θ inside the pane, so edges and thick parts show it.">
+  <div class="head"><div class="num"></div><h2>Glass colour and thickness</h2></div>
 
   <div class="prose">
-    <p>Coloured glass does not have a colour on its surface. It absorbs some wavelengths a little per centimetre, and the colour builds up with the distance light travels inside. That is <button type="button" class="term" data-term="beer">Beer–Lambert's law</button>: transmittance T = e<sup>−μd</sup>, with μ the absorption per unit length. Window glass looks clear face-on and green at its edge, where light travels its full width:</p>
+    <p>Coloured glass does not have a colour on its surface. It absorbs some wavelengths a little per centimetre, and the colour builds up with the distance light travels inside. Window glass looks clear face-on and green at its edge, where light travels its full width:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Beer–Lambert: T = e^(−μd) per channel; engines take a colour at a distance and compute μ = −ln(colour) / distance.</p></div><a class="x refto" href="../ray-marching/index.html#volumes">Open the full explanation</a></aside>
   <div class="fx" data-fx="beer"></div>
   <div class="prose">
-    <p>Nobody wants to type μ, so renderers ask for the colour reached at a distance and compute μ = −ln(colour) / distance. OpenPBR calls them <code>transmission_color</code> and <code>transmission_depth</code>; HDRP <em>Transmittance Color</em> and <em>Absorption Distance</em>. With depth 0, OpenPBR treats the colour as a simple surface tint instead.</p>
+    <p>In OpenPBR, a <code>transmission_depth</code> of 0 makes the colour a simple surface tint instead of an absorption.</p>
     <p>For thin objects (bottles, panes), the path length is thickness / cos θ inside the glass, so the colour deepens at grazing views. Multiplying the background by a flat tint ignores that and makes glass look like a coloured film.</p>
   </div>
 
 </section>
-<section class="chapter" id="realtime" data-title="Refraction in real time is a screen lookup" data-builds="screen-transparency#copies glass#shapes" data-summary="Refraction = reading the opaque scene copy at a shifted UV; offset from normal, IOR and assumed thickness.">
-  <div class="head"><div class="num"></div><h2>Refraction in real time is a screen lookup</h2></div>
+<section class="chapter" id="realtime" data-title="Screen-space refraction" data-builds="screen-transparency#copies glass#shapes" data-summary="Refraction = reading the opaque scene copy at a shifted UV; offset from normal, IOR and assumed thickness.">
+  <div class="head"><div class="num"></div><h2>Screen-space refraction</h2></div>
 
   <div class="prose">
-    <p>A rasteriser does not know what is behind a pixel. So real-time refraction reads a copy of the frame rendered so far (the opaque objects): HDRP's <em>colour pyramid</em>, Unreal's <em>scene colour</em>, URP's <em>opaque texture</em> (<a class="x" href="../screen-transparency/index.html#copies">where the copy comes from</a>). The shader estimates where the refracted ray would land on screen and reads the copy there:</p>
+    <p>A rasteriser does not know what is behind a pixel. So real-time refraction reads a copy of the frame rendered so far.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Screen copies: one copy of the opaque scene per frame (HDRP colour pyramid, URP opaque texture, Unreal scene colour); nothing drawn later is in it, and offsets that land on foreground objects need depth rejection.</p></div><a class="x refto" href="../screen-transparency/index.html#copies">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>The glass shader estimates where the refracted ray would land on screen and reads the copy there:</p>
   </div>
   <div class="fx" data-fx="ssrefr"></div>
   <div class="prose">
     <p>Three consequences shape every glass shader:</p>
     <ul>
       <li>The <strong>thickness</strong> you enter sets the amount of distortion, not the true distance to the background.</li>
-      <li>Only what is in the copy can be refracted: other transparent objects (particles, other glass) are missing behind the glass.</li>
-      <li>Near the screen border the lookup leaves the image and must fade out; foreground objects can leak into the refraction (<a class="x" href="../screen-transparency/index.html#leaks">fixing leaks</a>).</li>
+      <li>Only what is in the copy can be refracted, and near the screen border the lookup leaves the image and must fade out (<a class="x" href="../screen-transparency/index.html#artefacts">artefacts</a>, <a class="x" href="../screen-transparency/index.html#leaks">leaks</a>).</li>
     </ul>
   </div>
 
@@ -126,12 +132,13 @@
   <div class="prose"><p>Mips are blocky at high levels, so HDRP filters its pyramid with a Gaussian. Without a mip chain (URP, Unreal translucency) frosted glass needs several offset reads of the scene colour and averaging, which is the cost to keep in mind for large frosted panels.</p></div>
 
 </section>
-<section class="chapter" id="cheap" data-title="Cheap glass: alpha with premultiplied reflections" data-builds="transparency#premultiplied reflections#cheap" data-summary="Premultiplied: out = F·env + bg·(1 − α). The reflection survives at low opacity.">
-  <div class="head"><div class="num"></div><h2>Cheap glass: alpha with premultiplied reflections</h2></div>
+<section class="chapter" id="cheap" data-title="Alpha-blended glass" data-builds="transparency#premultiplied reflections#cheap" data-summary="Premultiplied: out = F·env + bg·(1 − α). The reflection survives at low opacity.">
+  <div class="head"><div class="num"></div><h2>Alpha-blended glass</h2></div>
 
   <div class="prose">
-    <p>Before screen copies, and still on low-end targets, glass was an alpha-blended surface with a reflection. The trap: plain alpha blending multiplies everything the glass draws by its opacity, including the reflection. Clear glass has a low opacity, so its reflection disappears. <a class="x" href="../transparency/index.html#premultiplied">Premultiplied alpha</a> fixes it: the surface adds its reflection at full strength and only the background is dimmed:</p>
+    <p>Before screen copies, and still on low-end targets, glass was an alpha-blended surface with a reflection. The trap: plain alpha blending multiplies everything the glass draws by its opacity, including the reflection. Clear glass has a low opacity, so its reflection disappears. Premultiplied alpha fixes it: the surface adds its reflection at full strength and only the background is dimmed:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Premultiplied alpha: colour is stored × alpha and blended with (One, OneMinusSrcAlpha), so light can be added without covering the background.</p></div><a class="x refto" href="../transparency/index.html#premultiplied">Open the full explanation</a></aside>
   <div class="fx" data-fx="premul"></div>
   <div class="prose">
     <p>That is the whole trick behind convincing cheap glass: a low opacity, a bright reflection from a probe or a <a class="x" href="../reflections/index.html#cheap">gradient</a> scaled by Fresnel, and premultiplied blending (blend One, OneMinusSrcAlpha). HDRP exposes it as <em>Preserve specular lighting</em>. Add a slight tint by multiplying the background with a colour blend (Blend DstColor, Zero) in a second pass if you need coloured glass without a screen copy.</p>
@@ -236,7 +243,7 @@ return exp(-mu * path);                                          // multiply int
 "beer": [
 "Beer–Lambert law",
 "Transmittance falls exponentially with path length: T = e^(−μd).",
-"#colour"
+"../ray-marching/index.html#volumes"
 ],
 "pyramid": [
 "Colour pyramid",
@@ -253,11 +260,11 @@ return exp(-mu * path);                                          // multiply int
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="glass.js?v=6c10d605"></script>
+<script src="glass.js?v=4c0f1e05"></script>
 </body>
 </html>

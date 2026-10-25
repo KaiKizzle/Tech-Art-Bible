@@ -9,7 +9,7 @@
   const texAt = (i, j) => TEX[(clamp(j, 0, 7)) * 8 + clamp(i, 0, 7)];
 
   A.fx('texbytes', {
-    title: 'Memory of an uncompressed texture',
+    title: 'Uncompressed texture memory',
     expr: 'bytes = {W} × {H} × {b}',
     vars: {
       W: { name: 'width', unit: 'texels', values: [256, 512, 1024, 2048, 4096], index: 2 },
@@ -22,7 +22,7 @@
   });
 
   A.fx('uv', {
-    title: 'From UV to a texel',
+    title: 'UV to texel',
     expr: 'x = {u} × {W} − 0.5,   texel = floor({u} × {W})',
     vars: { u: { name: 'u coordinate', min: 0, max: 1, value: 0.4, step: 0.001 }, W: { name: 'texture width', unit: 'texels', values: [4, 8, 16, 32], index: 1 } },
     out: [{ sym: 'x', name: 'continuous texel position (0 = centre of the first)', f: v => v.u * v.W - 0.5, color: 'accent' }, { sym: 'texel', f: v => Math.min(v.W - 1, Math.floor(v.u * v.W)), color: 'ink', fmt: x => String(x) }],
@@ -88,7 +88,7 @@
   });
 
   A.fx('mip', {
-    title: 'Which mip level',
+    title: 'Mip level from screen size',
     expr: 'λ = log₂({T} / {P})',
     vars: { T: { name: 'texture size', unit: 'texels', values: [256, 512, 1024, 2048, 4096], index: 3 }, P: { name: 'size on screen', unit: 'px', min: 4, max: 4096, value: 300, log: true } },
     out: { sym: 'λ', name: 'mip level', f: v => Math.max(0, Math.log2(v.T / v.P)) },
@@ -106,4 +106,30 @@
     },
     plot: { x: 'P' }
   });
+  /* how the GPU measures texels per pixel (moved here from Texture Memory) */
+  const L2 = Math.log2, sizes = [256, 512, 1024, 2048, 4096, 8192];
+  A.fx('miplevel', {
+    title: 'Mip level from derivatives',
+    expr: 'ρ = {du} · {w},   λ = log₂ ρ',
+    vars: { du: { sym: 'Δuv', name: 'UV change from one pixel to the next (ddx)', min: 0.00002, max: 0.05, value: 0.002, log: true },
+            w: { sym: 'size', name: 'texture size', values: sizes, index: 3, log: true } },
+    out: [{ sym: 'ρ', name: 'texels per pixel', f: v => v.du * v.w, color: 'ax-y' }, { sym: 'λ', name: 'mip level', f: v => Math.max(0, L2(v.du * v.w)), color: 'accent' }],
+    sub: v => { const r = v.du * v.w; return `ρ = ${num(v.du)} · ${v.w} = ${num(r)} texels per pixel,   λ = log₂ ${num(r)} = ${num(L2(r))} → <b>mip ${num(Math.max(0, L2(r)))}</b>${r < 1 ? ' (below 0: the texture is magnified, mip 0 is used)' : ''}`; },
+    draw(ctx, W, H, v, X) {
+      // a 2×2 quad of pixels over a texel grid: pixel size in texels = ρ
+      const r = v.du * v.w, lvl = Math.max(0, Math.floor(L2(Math.max(r, 1)))), px = 70, tex = px / Math.max(r, 0.02), x0 = 40, y0 = 40;
+      ctx.save(); ctx.beginPath(); ctx.rect(x0 - 20, y0 - 20, 2 * px + 40, 2 * px + 40); ctx.clip();
+      ctx.strokeStyle = alpha(col('muted'), 0.35); ctx.lineWidth = 1;
+      if (tex >= 3) { for (let x = x0 - 20; x < x0 + 2 * px + 20; x += tex) { ctx.beginPath(); ctx.moveTo(x, y0 - 20); ctx.lineTo(x, y0 + 2 * px + 20); ctx.stroke(); } for (let y = y0 - 20; y < y0 + 2 * px + 20; y += tex) { ctx.beginPath(); ctx.moveTo(x0 - 20, y); ctx.lineTo(x0 + 2 * px + 20, y); ctx.stroke(); } }
+      else { ctx.fillStyle = alpha(col('muted'), 0.2); ctx.fillRect(x0 - 20, y0 - 20, 2 * px + 40, 2 * px + 40); }
+      ctx.restore();
+      ctx.strokeStyle = col('accent'); ctx.lineWidth = 2.5; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) ctx.strokeRect(x0 + i * px, y0 + j * px, px, px);
+      X.label(ctx, 'a 2×2 quad of pixels over the texel grid', x0 - 20, y0 + 2 * px + 40, col('muted'));
+      X.label(ctx, `one pixel spans ${num(r)} texels`, x0 + 2 * px + 40, y0 + 20, col('ink'), 'left', true);
+      X.label(ctx, `→ sample mip ${lvl}, where it spans ${num(r / Math.pow(2, lvl))}`, x0 + 2 * px + 40, y0 + 44, col('accent'), 'left', true);
+    },
+    plot: { x: 'du', y: [-1, 13] },
+    note: 'The GPU uses the larger of the ddx and ddy footprints. Each doubling of ρ is one mip level further down.'
+  });
+
 })();

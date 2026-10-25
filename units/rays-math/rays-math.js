@@ -6,7 +6,7 @@
   const P2 = (x, y) => `(${num(x)}, ${num(y)})`;
 
   A.fx('ray', {
-    title: 'A point on a ray',
+    title: 'Point on a ray',
     expr: 'P(t) = O + {t}·D,   D = (cos {phi}, sin {phi})',
     vars: { t: { name: 'distance along the ray', min: -2, max: 8, value: 4, step: 0.05 }, phi: { sym: 'φ', name: 'direction', unit: '°', min: -90, max: 90, value: 20, step: 1 },
             ox: { sym: 'O<sub>x</sub>', name: 'start x', min: -4, max: 2, value: -3, step: 0.1 }, oy: { sym: 'O<sub>y</sub>', name: 'start y', min: -2, max: 2, value: -0.5, step: 0.1 } },
@@ -29,7 +29,7 @@
 
   const floorT = v => (v.h - v.oy) / Math.sin(v.be * DEG);
   A.fx('plane', {
-    title: 'Ray against a floor',
+    title: 'Ray–plane intersection',
     expr: 't = ({h} − {oy}) / D<sub>y</sub>,   D<sub>y</sub> = sin {be}',
     vars: { be: { sym: 'β', name: 'ray pitch (negative = looking down)', unit: '°', min: -80, max: 80, value: -25, step: 1 },
             oy: { sym: 'O<sub>y</sub>', name: 'start height', unit: 'm', min: 0, max: 5, value: 2, step: 0.1 },
@@ -63,7 +63,7 @@
     return g;
   }
   A.fx('quadsetup', {
-    title: 'The quadratic as a curve in t',
+    title: 'Quadratic in t',
     expr: 'f({t}) = {t}² + 2·b·{t} + c,   b = −6,  c = 36 + {oy}² − {r}²',
     vars: { t: { name: 'distance along the ray', min: 0, max: 12, value: 3, step: 0.05 }, oy: { sym: 'O<sub>y</sub>', name: 'ray height relative to the centre', min: -4, max: 4, value: 1.2, step: 0.05 }, r: { name: 'sphere radius', min: 0.5, max: 4, value: 3, step: 0.05 } },
     out: { sym: 'f(t)', f: v => { const q = geo(v); return v.t * v.t + 2 * q.b * v.t + q.c; } },
@@ -73,7 +73,7 @@
     note: 'The curve crosses zero exactly at the two hit distances. Lower the radius until the curve stays above zero: the ray misses.'
   });
   A.fx('quad', {
-    title: 'Solving: entry and exit',
+    title: 'Entry and exit solutions',
     expr: 't<sub>0,1</sub> = −b ∓ √(b² − c),   b = −6,   c = 36 + {oy}² − {r}²',
     vars: { oy: { sym: 'O<sub>y</sub>', name: 'ray height relative to the centre', min: -4, max: 4, value: 1.2, step: 0.05 }, r: { name: 'sphere radius', min: 0.5, max: 4, value: 3, step: 0.05 } },
     out: [{ sym: 't<sub>0</sub>', f: v => geo(v).t0, color: 'accent' }, { sym: 't<sub>1</sub>', f: v => geo(v).t1, color: 'ray' }],
@@ -84,7 +84,7 @@
     note: 'Animate the ray height: the two curves meet where the ray grazes the sphere, and vanish beyond it.'
   });
   A.fx('whicht', {
-    title: 'Moving the start through the sphere',
+    title: 'Ray origin inside and outside the sphere',
     expr: 'O = ({s}, 1),   r = 3',
     vars: { s: { name: 'start position along the line', min: -9, max: 9, value: -6, step: 0.05 } },
     out: [{ sym: 't<sub>0</sub>', f: v => { const b = v.s, c = v.s * v.s + 1 - 9, h = b * b - c; return h < 0 ? NaN : -b - Math.sqrt(h); }, color: 'accent' },

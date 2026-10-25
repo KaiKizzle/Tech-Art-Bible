@@ -12,7 +12,7 @@
     ['rust: Switch on', v => v.w > v.t ? 1 : 0, 'wear > threshold']
   ];
   A.fx('drive', {
-    title: 'One exposed input, four parameter functions',
+    title: 'Parameter functions from one input',
     expr: 'edge = lerp(0.9, 0.4, {w}),  dirt = {w}²,  rough = 0.25 · {w},  rust = {w} > {t}',
     vars: { w: { sym: 'wear', name: 'the exposed input', min: 0, max: 1, value: 0.4, step: 0.01 }, t: { sym: 'threshold', name: 'when rust appears', min: 0, max: 1, value: 0.6, step: 0.01 } },
     out: DR.map((d, i) => ({ sym: ['edge', 'dirt', 'rough', 'rust'][i], f: d[1], color: ['accent', 'ray', 'good', 'bad'][i] })),
@@ -24,7 +24,7 @@
   const PAT = ['$(graph)_$(identifier)', '$(graph)/$(identifier)', 'T_$(graph)_$(identifier)'];
   const OUTS = [['basecolor', 'BC', 'B'], ['normal', 'N', 'N'], ['roughness', 'R', 'R'], ['height', 'H', 'H'], ['MaskMap', 'MS', 'ORM']];
   A.fx('pattern', {
-    title: 'The export pattern decides every file name',
+    title: 'Export file name pattern',
     expr: 'file = {p} with {i},  format {f}',
     vars: { p: { sym: 'pattern', name: 'pattern', values: [0, 1, 2], labels: ['G_ID', 'G/ID', 'T_G_ID'], index: 2 }, i: { sym: 'ids', name: 'output identifiers', values: [0, 1, 2], labels: ['Designer defaults', 'short suffixes (Unity)', 'Unreal style'], index: 1 },
             f: { sym: 'format', name: 'file format', values: [0, 1, 2], labels: ['png', 'tga', 'exr'], index: 0 } },
@@ -42,7 +42,7 @@
   /* ---------- file size versus GPU memory ---------- */
   const MAPS = [['base colour', 3, 'BC7', 8], ['normal', 3, 'BC5', 8], ['mask (packed)', 4, 'BC7', 8], ['roughness', 1, 'BC4', 4], ['height', 1, 'R16', 16]];
   A.fx('filesize', {
-    title: 'Bits on disk and bits on the GPU',
+    title: 'File versus GPU bit depth',
     expr: 'raw file = {s}² · channels · {b} bits,   GPU = {s}² · bpp(engine format) · 4/3;   map {m}',
     vars: { s: { sym: 'size', name: 'texture size', values: [1024, 2048, 4096], labels: ['1k', '2k', '4k'], index: 1 }, b: { sym: 'bits', name: 'bits per channel exported', values: [8, 16], index: 0 },
             m: { sym: 'map', name: 'map', values: [0, 1, 2, 3, 4], labels: MAPS.map(x => x[0]), index: 0 } },
@@ -53,7 +53,7 @@
 
   /* ---------- normal format: DirectX versus OpenGL ---------- */
   A.fx('normalflip', {
-    title: 'A normal map read with the wrong green channel',
+    title: 'Wrong green channel',
     expr: 'exported as {e},  read by an engine expecting {g}  →  G is {flip}',
     vars: { e: { sym: 'export', name: 'normal format on export', values: [0, 1], labels: ['DirectX (Y−)', 'OpenGL (Y+)'], index: 0 }, g: { sym: 'engine', name: 'engine', values: [0, 1], labels: ['Unreal (DirectX)', 'Unity (OpenGL)'], index: 1 },
             flip: { sym: 'G', derived: v => v.e === v.g ? 1 : -1, values: [-1, 1], labels: ['inverted', 'correct'], index: 1 }, a: { sym: 'light', name: 'light direction', unit: '°', min: 0, max: 360, value: 120, step: 1 } },

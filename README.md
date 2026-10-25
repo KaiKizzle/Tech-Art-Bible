@@ -14,64 +14,64 @@ regenerates the link index after you add or change chapters; the site runs witho
 Every unit ends with an implementation chapter (**Build it in Unity HDRP**, or **Set it up in Designer and Unity HDRP** / **Set it up in Unity** for the Substance Designer and Unity project units): the tools it needs, numbered steps, and complete `.hlsl`, `.cs`, `.compute`, Python and shell files to copy, plus URP and Unreal notes.
 The Surfaces units explain the theory renderer-neutrally first (with OpenPBR as the reference), then have a full
 **Build it in Unity HDRP** chapter and a full **Build it in Unreal Engine** chapter.
-Ray Marching, Fast POM, Tinting and Clamping Colour and Eyes follow the same pattern and form the learning path
+Ray Marching, Fast POM, Colour Tinting and Clamping, and Eye Shading follow the same pattern and form the learning path
 **Ray marching to a realistic eye** (featured on the hub).
 
 | Category | Unit | Folder |
 |---|---|---|
-| Foundations | How a GPU Draws a Frame | `units/gpu-basics/` |
-| Foundations | Reading a Shader (types, stages, built-in functions) | `units/shader-anatomy/` |
+| Foundations | GPU Rendering Basics | `units/gpu-basics/` |
+| Foundations | Shader Anatomy (types, stages, built-in functions) | `units/shader-anatomy/` |
 | Foundations | Vectors | `units/vectors/` |
 | Foundations | Dot and Cross Product | `units/dot-cross/` |
 | Foundations | Coordinate Spaces (matrices, projection, tangent space) | `units/spaces/` |
 | Foundations | Textures and Sampling | `units/textures-sampling/` |
 | Foundations | Buffers and Render Targets (incl. append buffers) | `units/buffers/` |
 | Foundations | Compute Shaders (threads, groups, dispatch, shared memory, readback) | `units/compute-shaders/` |
-| Foundations | Colour as Numbers (linear, sRGB, HDR) | `units/color-values/` |
-| Foundations | Rays and Solving for t | `units/rays-math/` |
-| Shaders & rendering | Rooms Behind Glass (interior mapping) | `units/interior-mapping/` |
-| Shaders & rendering | Rays, Spheres and Shaders (full-screen ray setup) | `units/ray-sphere/` |
-| Shaders & rendering | Reading the Depth Buffer (depth, soft particles, SSAO) | `units/depth-effects/` |
+| Foundations | Colour Values (linear, sRGB, HDR) | `units/color-values/` |
+| Foundations | Ray Intersections | `units/rays-math/` |
+| Shaders & rendering | Interior Mapping (rooms behind windows from one quad) | `units/interior-mapping/` |
+| Shaders & rendering | Full-Screen Ray Setup (full-screen ray setup) | `units/ray-sphere/` |
+| Shaders & rendering | Depth Buffer Effects (depth, soft particles, SSAO) | `units/depth-effects/` |
 | Shaders & rendering | Transparency and Alpha (blending, sorting, alpha test, OIT) | `units/transparency/` |
-| Shaders & rendering | Marching a Cloud Layer (volumetric clouds) | `units/cloud-march/` |
-| Shaders & rendering | Parallax and POM | `units/parallax/` |
+| Shaders & rendering | Volumetric Cloud Layer (volumetric clouds) | `units/cloud-march/` |
+| Shaders & rendering | Parallax Mapping and POM | `units/parallax/` |
 | Shaders & rendering | Ray Marching (fixed steps, bisection and secant, sphere tracing, height fields, volumes, jitter, GPU cost) | `units/ray-marching/` |
 | Shaders & rendering | Fast Parallax Occlusion Mapping (adaptive steps, Hmax start, coarse + secant, analytic heights, gradients, fades) | `units/fpom/` |
-| Lighting & GI | Sun to Screen (light units, exposure, tonemapping) | `units/exposure/` |
-| Lighting & GI | Inside a PBR Shader (GGX, Fresnel, geometry, IBL) | `units/pbr-brdf/` |
+| Lighting & GI | Exposure and Tonemapping (light units, exposure, tonemapping) | `units/exposure/` |
+| Lighting & GI | PBR BRDF (GGX, Fresnel, geometry, IBL) | `units/pbr-brdf/` |
 | Lighting & GI | Shadow Maps (bias, PCF, cascades) | `units/shadow-maps/` |
-| Lighting & GI | Baked Light: Lightmaps and Probes (SH, leaking, box projection) | `units/baked-gi/` |
+| Lighting & GI | Lightmaps and Light Probes (SH, leaking, box projection) | `units/baked-gi/` |
 | Lighting & GI | Light Types and Falloff (point, spot, sun, area, IES) | `units/light-types/` |
-| Materials & texture pipeline | PBR Materials: the Basics (base colour, metallic, roughness, AO) | `units/pbr-basics/` |
+| Materials & texture pipeline | PBR Material Inputs (base colour, metallic, roughness, AO) | `units/pbr-basics/` |
 | Materials & texture pipeline | Texturing a Game Asset (UVs, padding, density, baking, trims) | `units/texturing/` |
-| Materials & texture pipeline | Texels on a Budget (memory, mips, compression, packing) | `units/texture-memory/` |
+| Materials & texture pipeline | Texture Memory (memory, mips, compression, packing) | `units/texture-memory/` |
 | Materials & texture pipeline | Texture Packing and Import Settings (formats, layouts, import script, packer) | `units/texture-settings/` |
-| Materials & texture pipeline | Simple Mapping Techniques (planar, triplanar, detail, flow, matcap, decals) | `units/mapping/` |
-| Materials & texture pipeline | Tinting and Clamping Colour (linear maths, grey tint masks, luminance, hue-preserving saturation caps, plausible ranges) | `units/color-tint/` |
-| Characters | Skin: Light Under the Surface (wrap, diffusion profiles, pre-integrated, transmission) | `units/skin/` |
-| Characters | Hair: Strands and Cards (Kajiya–Kay, shifted highlights, sorting) | `units/hair/` |
+| Materials & texture pipeline | Texture Mapping Techniques (planar, triplanar, detail, flow, matcap, decals) | `units/mapping/` |
+| Materials & texture pipeline | Colour Tinting and Clamping (linear maths, grey tint masks, luminance, hue-preserving saturation caps, plausible ranges) | `units/color-tint/` |
+| Characters | Skin Shading (wrap, diffusion profiles, pre-integrated, transmission) | `units/skin/` |
+| Characters | Hair Shading (Kajiya–Kay, shifted highlights, sorting) | `units/hair/` |
 | Characters | Cloth Shading (sheen, cloth visibility, silk anisotropy, fuzz, weave) | `units/cloth/` |
-| Characters | Fabric and Folds in Real Time (normal blending, wrinkle maps, Verlet cloth lab) | `units/fabric-folds/` |
-| Characters | Eyes: from a Painted Sphere to a Raymarched Iris (cornea, parallax, two meshes, refraction, iris profile, march, tint, cost) | `units/eyes/` |
-| Performance & tools | Reading a Frame (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
+| Characters | Fabric Folds and Wrinkles (normal blending, wrinkle maps, Verlet cloth lab) | `units/fabric-folds/` |
+| Characters | Eye Shading (cornea, parallax, two meshes, refraction, iris profile, march, tint, cost) | `units/eyes/` |
+| Performance & tools | Frame Profiling (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
 | Substance Designer | Graphs, Bit Depth and Colour Space (inheritance, 8/16 bit, float, sRGB vs linear) | `units/sd-graphs/` |
 | Substance Designer | Blend Modes (every mode as a formula, masks, height blend) | `units/sd-blend/` |
 | Substance Designer | Warps and Distortion (directional, gradient, vector warp, slope blur) | `units/sd-warps/` |
 | Substance Designer | Pixel Processor and FX-Maps (function graphs, quadtrees, scattering) | `units/sd-pixel-fx/` |
-| Substance Designer | Keeping Graphs Fast (resolution, formats, cache, heavy nodes, runtime) | `units/sd-performance/` |
+| Substance Designer | Graph Performance (resolution, formats, cache, heavy nodes, runtime) | `units/sd-performance/` |
 | Substance Designer | Parameters, Publishing and Export (exposing, outputs, export, SBSAR) | `units/sd-publish/` |
 | Unity projects & assets | GUIDs and .meta Files (references, breakage, version control) | `units/unity-guids/` |
 | Unity projects & assets | FBX, Prefabs, Variants and Nested Prefabs (overrides, reimports) | `units/unity-prefabs/` |
 | Unity projects & assets | Scene Management (single and additive, async, memory, bootstrap) | `units/unity-scenes/` |
 | Unity projects & assets | Addressables (groups, refcounts, duplicates, catalogs, breakage) | `units/unity-addressables/` |
-| Surfaces | Diffuse, Albedo, Base Colour (terminology across renderers, OpenPBR) | `units/pbr-terms/` |
+| Surfaces | PBR Terminology (terminology across renderers, OpenPBR) | `units/pbr-terms/` |
 | Surfaces | Metals (complex IOR, Fresnel, edge tint, measured colours, anisotropy, coatings, rust) | `units/metals/` |
-| Surfaces | Reflections, Mirrors and Cheap Metal (probes, box projection, SSR, planar, RT, fakes) | `units/reflections/` |
+| Surfaces | Reflections and Mirrors (probes, box projection, SSR, planar, RT, fakes) | `units/reflections/` |
 | Surfaces | Glass (Fresnel, Snell, shapes, absorption, screen refraction, frost, cheap glass) | `units/glass/` |
-| Surfaces | Faking Transparency with Screen Passes (copies, masks, leaks, thickness) | `units/screen-transparency/` |
+| Surfaces | Screen-Space Transparency (copies, masks, leaks, thickness) | `units/screen-transparency/` |
 | Surfaces | Water (waves, depth, absorption, foam, refraction, caustics, underwater, tiers) | `units/water/` |
 
-Rooms Behind Glass was written against Unity HDRP; its maths carries over to other engines, and the catalogue
+Interior Mapping was written against Unity HDRP; its maths carries over to other engines, and the catalogue
 says so on its card. Every other unit has notes for all three engines.
 
 ## Structure
@@ -130,12 +130,16 @@ All links are relative, so the site works in a subfolder or on a custom domain w
 
 1. Copy `units/_template/` to `units/<new-slug>/`. Its `index.html` explains every part in a comment at the top.
 2. Chapters: `<section class="chapter" id="short-name" data-title="…" data-summary="…" data-builds="unit#chapter …">`.
-   Use meaningful ids, other units link to them. The rail, numbering, breadcrumbs and phone navigation are generated.
+   Use meaningful ids, other units link to them. The rail, breadcrumbs and phone navigation are generated. Chapter titles
+   name the topic as a fact (see `STYLE.md`).
 3. Formulas: place `<div class="fx" data-fx="name"></div>` and define it in the unit's script with
    `Atlas.fx('name', { title, expr, vars, out, draw, plot })`. Write variables in `expr` as `{key}`; each becomes a
    coloured chip with a slider, and the reader can graph the output against any of them. `units/_template/template.js`
    has a complete example; every unit's `.js` file has many more.
-4. Cross-links: `<a class="x" href="../<unit>/index.html#<chapter>">…</a>` for any idea explained elsewhere.
+4. Cross-links: `<a class="x" href="../<unit>/index.html#<chapter>">…</a>` for any idea explained elsewhere. When a chapter
+   relies on a principle another unit owns, do not explain it again: add a reference card,
+   `<aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>one-line recap</p></div><a class="x refto" href="../<unit>/index.html#<chapter>">Open the full explanation</a></aside>`,
+   and keep only what is specific to your topic.
    `needs` (before this unit) and `next` cards go in `<div class="needs" data-needs="unit#chapter …">` and
    `<div class="next" data-next="unit …">`.
 5. Checks: `<details class="check"><summary></summary><script type="application/json">[[question, [options], right, why], …]</script></details>`

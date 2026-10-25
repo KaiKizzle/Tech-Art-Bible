@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sun to Screen · Tech Art Atlas</title>
+<title>Exposure and Tonemapping · Tech Art Atlas</title>
 <meta name="description" content="A sunlit wall is ten thousand times brighter than the same wall at night, and your monitor shows about a thousand to one. Exposure and tonemapping squeeze one into the other. Every formula on the way is live.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="exposure" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Sun to Screen</a>
+  <a class="brand" href="#top">Exposure and Tonemapping</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Lighting & GI · 10 chapters</div>
-  <h1>Sun to Screen</h1>
+  <h1>Exposure and Tonemapping</h1>
   <p class="lede">A sunlit wall is ten thousand times brighter than the same wall at night, and your monitor shows about a thousand to one. Exposure and tonemapping squeeze one into the other. Every formula on the way is live.</p>
   <p class="meta">Units of light, EV100 and the physical camera, auto exposure, tonemapping curves and display encoding, with notes for Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="color-values#hdr color-values#linear-srgb dot-cross#lambert"></div>
 
-<section class="chapter" id="range" data-title="Too much range" data-builds="color-values#hdr color-values#luminance" data-summary="Real scenes span about 15 stops (a stop is a factor of 2); a display shows about 10.">
-  <div class="head"><div class="num"></div><h2>Too much range</h2></div>
+<section class="chapter" id="range" data-title="Dynamic range" data-builds="color-values#hdr color-values#luminance" data-summary="Real scenes span about 15 stops (a stop is a factor of 2); a display shows about 10.">
+  <div class="head"><div class="num"></div><h2>Dynamic range</h2></div>
 
   <div class="prose">
     <p>Every pixel in the picture below stores a <button type="button" class="term" data-term="luminance">luminance</button>: how bright that spot looks, in candela per square metre (cd/m², also called nits), the same quantity a light meter reads. About 2 in the shadow under the table, about 20 on the wall, about 7 000 in the sky and 50 000 on the lamp bulb. These are <a class="x" href="../color-values/index.html#hdr">HDR values</a>: nothing caps them at 1.</p>
@@ -75,8 +75,8 @@
   <details class="check"><summary></summary><script type="application/json">[["When lighting a new level, what should you set first?", ["The tonemapper", "Bloom threshold", "A fixed exposure for the scene type", "Color grading LUT"], 2, "Lock exposure, light to it, then re-enable auto exposure within limits and grade last."]]</script></details>
 
 </section>
-<section class="chapter" id="units" data-title="Four units of light" data-builds="dot-cross#lambert" data-summary="lumen → candela (÷4π) → lux (× cos θ / d²) → nit (× ρ / π).">
-  <div class="head"><div class="num"></div><h2>Four units of light</h2></div>
+<section class="chapter" id="units" data-title="Photometric units" data-builds="dot-cross#lambert" data-summary="lumen → candela (÷4π) → lux (× cos θ / d²) → nit (× ρ / π).">
+  <div class="head"><div class="num"></div><h2>Photometric units</h2></div>
 
   <div class="prose">
     <p>Light can be measured at four points on its way from a lamp to your eye, and lighting tools use all four. Follow one bulb through them, one formula at a time.</p>
@@ -117,11 +117,11 @@
   <details class="check"><summary></summary><script type="application/json">[["A spot light and a point light both emit 800 lm. Ignoring reflectors, what is the point light's intensity?", ["800 cd", "≈ 64 cd", "≈ 255 cd", "≈ 2.5 cd"], 1, "I = Φ / 4π = 800 / 12.57 ≈ 64 cd."], ["You move a wall from 1 m to 3 m away from a bulb. How does the illuminance change?", ["1/3", "1/6", "1/9", "It stays the same"], 2, "Inverse square: (1/3)² = 1/9."], ["Which unit should the sun be specified in?", ["Lumen", "Candela", "Lux", "Nit"], 2, "The sun is effectively infinitely far, so what matters is light arriving per square meter: lux."]]</script></details>
 
 </section>
-<section class="chapter" id="values" data-title="Real-world numbers" data-summary="Moonlight ≈ 0.01 nits, an office ≈ 100, a sunlit wall ≈ 6 000: about 20 stops in total.">
-  <div class="head"><div class="num"></div><h2>Real-world numbers</h2></div>
+<section class="chapter" id="values" data-title="Real-world light levels" data-summary="Moonlight ≈ 0.01 nits, an office ≈ 100, a sunlit wall ≈ 6 000: about 20 stops in total.">
+  <div class="head"><div class="num"></div><h2>Real-world light levels</h2></div>
 
   <div class="prose">
-    <p>Physical units only help if you know which values to type. The figures below are rounded and commonly quoted; real scenes vary by a factor of two, which is a single stop. The last column uses the <a href="#multiplier">meter equation</a> from chapter 5.</p>
+    <p>Physical units only help if you know which values to type. The figures below are rounded and commonly quoted; real scenes vary by a factor of two, which is a single stop. The last column uses the <a href="#multiplier">meter equation</a> below.</p>
   </div>
   <div class="tablewrap" style="margin-top:18px">
   <table class="vals">
@@ -151,8 +151,8 @@
   </div>
 
 </section>
-<section class="chapter" id="ev100" data-title="EV100 and the camera" data-builds="exposure#range" data-summary="EV100 = log₂(N² / t) − log₂(S / 100); +1 EV = half the light, a darker image.">
-  <div class="head"><div class="num"></div><h2>EV100 and the camera</h2></div>
+<section class="chapter" id="ev100" data-title="EV100" data-builds="exposure#range" data-summary="EV100 = log₂(N² / t) − log₂(S / 100); +1 EV = half the light, a darker image.">
+  <div class="head"><div class="num"></div><h2>EV100</h2></div>
 
   <div class="prose">
     <p>A camera has three controls for how much light reaches the image. The <button type="button" class="term" data-term="aperture">aperture</button> is the size of the hole, written as an f-number N: smaller numbers are bigger holes. The <button type="button" class="term" data-term="shutter">shutter</button> time t is how long the hole stays open. The <button type="button" class="term" data-term="iso">ISO</button> S is how strongly the sensor amplifies what it collects.</p>
@@ -181,8 +181,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A camera is set to f/8, 1/125 s, ISO 100. What is EV100?", ["≈ 3", "≈ 8", "≈ 13", "≈ 16"], 2, "log₂(64 / 0.008) = log₂(8000) ≈ 12.97."], ["You raise ISO from 100 to 400 and keep aperture and shutter. What happens to EV100 and the image?", ["EV100 +2, image darker", "EV100 −2, image brighter", "EV100 unchanged", "EV100 +4, image brighter"], 1, "−log₂(400/100) = −2. A lower EV100 for the same scene means more amplification: a brighter image."]]</script></details>
 
 </section>
-<section class="chapter" id="multiplier" data-title="From EV to a multiplier" data-builds="exposure#ev100 buffers#render-targets" data-summary="exposure = 1 / (1.2 · 2^EV100); pixel = luminance × exposure. Meter: EV100 = log₂(8 · L_avg).">
-  <div class="head"><div class="num"></div><h2>From EV to a multiplier</h2></div>
+<section class="chapter" id="multiplier" data-title="Exposure multiplier" data-builds="exposure#ev100 buffers#render-targets" data-summary="exposure = 1 / (1.2 · 2^EV100); pixel = luminance × exposure. Meter: EV100 = log₂(8 · L_avg).">
+  <div class="head"><div class="num"></div><h2>Exposure multiplier</h2></div>
 
   <div class="prose">
     <p>A shader cannot use "f/8 at 1/125". It needs one float that turns a luminance into a value where 1.0 means "as bright as the sensor can record". Frostbite, Unity HDRP and others use this conversion, from the ISO standard for <button type="button" class="term" data-term="sbs">sensor sensitivity</button>:</p>
@@ -303,8 +303,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Which tonemapper never outputs pure white?", ["Clip", "Reinhard x/(1+x)", "Hable with W = 11.2", "ACES fit"], 1, "x/(1+x) approaches 1 only as x goes to infinity."], ["Why do bright orange highlights turn yellow under a per-channel tonemapper?", ["The sRGB curve shifts hue", "The red channel saturates first while green keeps rising", "Bloom adds yellow", "ACES adds a yellow tint"], 1, "Compressing each channel separately reduces the ratio between them in the highlights, moving the hue toward the second-brightest channel."]]</script></details>
 
 </section>
-<section class="chapter" id="display" data-title="Encoding for the display" data-builds="color-values#linear-srgb" data-summary="sRGB spends more of the 256 codes on dark values, where the eye sees steps.">
-  <div class="head"><div class="num"></div><h2>Encoding for the display</h2></div>
+<section class="chapter" id="display" data-title="Display encoding" data-builds="color-values#linear-srgb" data-summary="sRGB spends more of the 256 codes on dark values, where the eye sees steps.">
+  <div class="head"><div class="num"></div><h2>Display encoding</h2></div>
 
   <div class="prose">
     <p>The tonemapper outputs values from 0 to 1 that are still linear: twice the number, twice the light. Before they become 8-bit numbers, they are encoded with the <button type="button" class="term" data-term="srgb">sRGB</button> curve, explained in <a class="x" href="../color-values/index.html#linear-srgb">Linear and sRGB</a>. The reason is the eye: it notices small steps in dark tones much more than in bright ones, and 8 bits only give 256 steps. Count how many of them land in the dark quarter of the range, with and without the curve:</p>
@@ -327,8 +327,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Why is the sRGB curve applied before quantizing to 8 bits?", ["To make the image brighter", "To spend more codes on dark values where steps are most visible", "Because displays are linear", "To compress file size"], 1, "Linear 8-bit gives only a handful of codes in the darkest tones, producing banding."]]</script></details>
 
 </section>
-<section class="chapter" id="workflow" data-title="A lighting workflow" data-summary="Fix scale, lock exposure, light the dominant source in physical units, then auto exposure with limits, grade last.">
-  <div class="head"><div class="num"></div><h2>A lighting workflow</h2></div>
+<section class="chapter" id="workflow" data-title="Lighting workflow" data-summary="Fix scale, lock exposure, light the dominant source in physical units, then auto exposure with limits, grade last.">
+  <div class="head"><div class="num"></div><h2>Lighting workflow</h2></div>
 
   <div class="prose">
     <p>The theory turns into a short checklist. The order matters: each step assumes the one before it is settled.</p>
@@ -512,11 +512,11 @@ public class ExposureBlend : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="exposure.js?v=88dffa78"></script>
-<script src="exposure-fx.js?v=9770cea6"></script>
+<script src="exposure-fx.js?v=3d8baa20"></script>
 </body>
 </html>

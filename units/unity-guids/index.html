@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="unity-guids" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 
 
-<section class="chapter" id="meta" data-title="Every asset has a .meta file" data-summary="Rock.png.meta holds the asset&#x27;s permanent GUID and its import settings.">
-  <div class="head"><div class="num"></div><h2>Every asset has a .meta file</h2></div>
+<section class="chapter" id="meta" data-title=".meta files" data-summary="Rock.png.meta holds the asset&#x27;s permanent GUID and its import settings.">
+  <div class="head"><div class="num"></div><h2>.meta files</h2></div>
 
   <div class="prose">
     <p>Next to every file and folder in a Unity project's <code>Assets</code> folder sits a second file with the same name plus <code>.meta</code>: <code>Rock.png</code> and <code>Rock.png.meta</code>. Unity hides them in the Project window, but they are the most important files you will never edit by hand. A .meta file holds two things:</p>
@@ -70,8 +70,8 @@ TextureImporter:
   <div class="prose"><p>The GUID is the asset's real identity. Its path and name are only where it currently lives; Unity can move and rename it freely, because nothing in the project refers to it by path.</p></div>
 
 </section>
-<section class="chapter" id="refs" data-title="A reference is a GUID plus a fileID" data-builds="unity-guids#meta" data-summary="{fileID, guid, type}: guid → .meta → file, fileID → object inside it; same-file references store only the fileID.">
-  <div class="head"><div class="num"></div><h2>A reference is a GUID plus a fileID</h2></div>
+<section class="chapter" id="refs" data-title="References: GUID and fileID" data-builds="unity-guids#meta" data-summary="{fileID, guid, type}: guid → .meta → file, fileID → object inside it; same-file references store only the fileID.">
+  <div class="head"><div class="num"></div><h2>References: GUID and fileID</h2></div>
 
   <div class="prose">
     <p>Scenes, prefabs and materials are text files in Unity's YAML format (with <em>Force Text</em> serialization, the default). Open one and every link to another asset looks the same: <code>{fileID, guid, type}</code>. The GUID picks the file, through its .meta; the <button type="button" class="term" data-term="fileid">fileID</button> picks the object inside that file, because one file can hold many objects (a model holds meshes, materials, animations); the type says where Unity reads the data from:</p>
@@ -91,8 +91,8 @@ MonoBehaviour:
   <details class="check"><summary></summary><script type="application/json">[["A material shows its texture slot as \"Missing (Texture2D)\". What does the material file still contain?", ["Nothing, the reference was deleted", "The texture's old path", "A fileID and a GUID that no .meta file in the project has any more", "The texture's pixels"], 2, "Missing means a reference is stored but cannot be resolved. None means nothing is stored."]]</script></details>
 
 </section>
-<section class="chapter" id="fileid" data-title="fileIDs inside files" data-builds="unity-guids#refs" data-summary="Native: saved local IDs. Imported main objects: class ID · 100 000. FBX sub-objects: computed from names, so renames break references.">
-  <div class="head"><div class="num"></div><h2>fileIDs inside files</h2></div>
+<section class="chapter" id="fileid" data-title="fileIDs" data-builds="unity-guids#refs" data-summary="Native: saved local IDs. Imported main objects: class ID · 100 000. FBX sub-objects: computed from names, so renames break references.">
+  <div class="head"><div class="num"></div><h2>fileIDs</h2></div>
 
   <div class="prose">
     <p>fileIDs are stable for a different reason in each kind of file:</p>
@@ -107,8 +107,8 @@ MonoBehaviour:
   <div class="prose"><p>Keep object names in exported models stable, treat a rename as a breaking change, and check prefabs that use the model after re-exporting (<a class="x" href="../unity-prefabs/index.html#breaks">why reimports break prefabs</a>).</p></div>
 
 </section>
-<section class="chapter" id="breaks" data-title="How references break" data-builds="unity-guids#refs" data-summary="Keep file and .meta together: Project window moves are safe; moving without the .meta, forgetting to commit it, or duplicating it breaks references.">
-  <div class="head"><div class="num"></div><h2>How references break</h2></div>
+<section class="chapter" id="breaks" data-title="Broken references" data-builds="unity-guids#refs" data-summary="Keep file and .meta together: Project window moves are safe; moving without the .meta, forgetting to commit it, or duplicating it breaks references.">
+  <div class="head"><div class="num"></div><h2>Broken references</h2></div>
 
   <div class="prose"><p>Since references use GUIDs, the rule is simple: anything that keeps a file together with its .meta is safe, anything that separates them is not. Try each action:</p></div>
   <div class="fx" data-fx="guidlab"></div>
@@ -360,10 +360,10 @@ exit 0</pre></div><div class="file" data-name=".gitignore" data-lang="sh"><pre>#
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="guids.js?v=47e618a6"></script>
+<script src="guids.js?v=3ae6e471"></script>
 </body>
 </html>

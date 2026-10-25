@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Simple Mapping Techniques · Tech Art Atlas</title>
+<title>Texture Mapping Techniques · Tech Art Atlas</title>
 <meta name="description" content="Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="mapping" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Simple Mapping Techniques</a>
+  <a class="brand" href="#top">Texture Mapping Techniques</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
-  <h1>Simple Mapping Techniques</h1>
+  <h1>Texture Mapping Techniques</h1>
   <p class="lede">Texturing without hand-made UVs, or adding to them: planar and triplanar projection, detail maps, scrolling and flow maps, matcaps, spherical lookups and projected decals. Short, practical, and used on almost every character.</p>
   <p class="meta">Builds on Textures and Spaces. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="textures-sampling#uv spaces#transform texture-memory#normals"></div>
 
-<section class="chapter" id="planar" data-title="Planar projection: world position as UV" data-builds="textures-sampling#uv spaces#transform" data-summary="uv = worldPos.xz · scale; stretch = 1 / |N · axis|.">
-  <div class="head"><div class="num"></div><h2>Planar projection: world position as UV</h2></div>
+<section class="chapter" id="planar" data-title="Planar projection" data-builds="textures-sampling#uv spaces#transform" data-summary="uv = worldPos.xz · scale; stretch = 1 / |N · axis|.">
+  <div class="head"><div class="num"></div><h2>Planar projection</h2></div>
 
   <div class="prose">
     <p>A mesh's <a class="x" href="../textures-sampling/index.html#uv">UVs</a> are painted by hand. A projection computes them in the shader instead, from the position of the pixel. The simplest one drops one axis: viewed from above, the world X and Z coordinates are already a perfect UV. This is how terrain, floors and "world-space" dirt or snow layers are textured, and it never needs unwrapping. Its weakness is surfaces that turn away from the projection axis: the same strip of texture covers more and more surface, so it smears:</p>
@@ -81,7 +81,8 @@
     <p>Albedo can be blended as above, but a <a class="x" href="../texture-memory/index.html#normals">normal map</a> cannot. Each projection's normal map stores its bumps relative to its own plane, and they have to be turned into world space for the plane they were projected on. Using the sample as if it were already the surface normal points every bump the same way:</p>
   </div>
   <div class="fx" data-fx="trinormal"></div>
-  <div class="prose"><p>The fix is cheap, because each projection plane lines up with two world axes. Swizzle the tangent-space sample into place, add the surface normal with a whiteout blend (<a class="x" href="../fabric-folds/index.html#baked">blending normals</a>), and flip the sign on the negative side:</p></div>
+  <div class="prose"><p>The fix is cheap, because each projection plane lines up with two world axes. Swizzle the tangent-space sample into place, add the surface normal with a whiteout blend, and flip the sign on the negative side:</p></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Blending normals: tilt angles should add; RNM is exact, whiteout is close at small angles, averaging halves the detail.</p></div><a class="x refto" href="../fabric-folds/index.html#baked">Open the full explanation</a></aside>
   <pre class="hlsl"><span class="c">// whiteout triplanar normals (after Ben Golus). tnX, tnY, tnZ: unpacked tangent-space samples</span>
 <span class="t">float3</span> axisSign = sign(N);
 tnX.x *= axisSign.x;  tnY.x *= axisSign.y;  tnZ.x *= -axisSign.z;
@@ -92,7 +93,7 @@ tnZ = <span class="t">float3</span>(tnZ.xy + N.xy, abs(tnZ.z) * N.z);
   <div class="prose"><p>The UVs must use the matching axes: X projection samples at worldPos.zy, Y at worldPos.xz, Z at worldPos.xy, with their x flipped by the same signs so the back sides are not mirrored. Engine triplanar nodes for normals do this for you.</p></div>
 
 </section>
-<section class="chapter" id="detail" data-title="Detail maps" data-builds="texture-memory#density texture-memory#mips" data-summary="colour = base · 2 · detail (0.5 = no change), faded out with distance.">
+<section class="chapter" id="detail" data-title="Detail maps" data-builds="texture-memory#density textures-sampling#mips" data-summary="colour = base · 2 · detail (0.5 = no change), faded out with distance.">
   <div class="head"><div class="num"></div><h2>Detail maps</h2></div>
 
   <div class="prose">
@@ -229,7 +230,7 @@ public class DecalOnClick : MonoBehaviour
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
   <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
   <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
-  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a" rel="noopener">Normal Mapping for a Triplanar Shader</a></span><span class="by">Ben Golus</span><span class="why">Every common triplanar normal method, compared, with the whiteout swizzle used in chapter 3.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu" rel="noopener">GPU Gems 3, chapter 1: Generating Complex Procedural Terrains Using the GPU</a></span><span class="by">Ryan Geiss · NVIDIA</span><span class="why">The classic description of triplanar texturing.</span></li><li><span><span class="kind">Tutorial</span><a href="https://catlikecoding.com/unity/tutorials/flow/texture-distortion/" rel="noopener">Texture Distortion (Flow series)</a></span><span class="by">Jasper Flick · Catlike Coding</span><span class="why">Flow maps step by step in Unity, including the two-phase blend.</span></li><li><span><span class="kind">Talk</span><a href="https://alex.vlachos.com/graphics/Vlachos-SIGGRAPH10-WaterFlow.pdf" rel="noopener">Water Flow in Portal 2</a></span><span class="by">Alex Vlachos · SIGGRAPH 2010</span><span class="why">Where flow maps in games come from.</span></li><li><span><span class="kind">Article</span><a href="https://blog.selfshadow.com/publications/blending-in-detail/" rel="noopener">Blending in Detail</a></span><span class="by">Colin Barré-Brisebois, Stephen Hill</span><span class="why">Detail normal blending.</span></li></ul>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a" rel="noopener">Normal Mapping for a Triplanar Shader</a></span><span class="by">Ben Golus</span><span class="why">Every common triplanar normal method, compared, with the whiteout swizzle used for triplanar normals.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu" rel="noopener">GPU Gems 3, chapter 1: Generating Complex Procedural Terrains Using the GPU</a></span><span class="by">Ryan Geiss · NVIDIA</span><span class="why">The classic description of triplanar texturing.</span></li><li><span><span class="kind">Tutorial</span><a href="https://catlikecoding.com/unity/tutorials/flow/texture-distortion/" rel="noopener">Texture Distortion (Flow series)</a></span><span class="by">Jasper Flick · Catlike Coding</span><span class="why">Flow maps step by step in Unity, including the two-phase blend.</span></li><li><span><span class="kind">Talk</span><a href="https://alex.vlachos.com/graphics/Vlachos-SIGGRAPH10-WaterFlow.pdf" rel="noopener">Water Flow in Portal 2</a></span><span class="by">Alex Vlachos · SIGGRAPH 2010</span><span class="why">Where flow maps in games come from.</span></li><li><span><span class="kind">Article</span><a href="https://blog.selfshadow.com/publications/blending-in-detail/" rel="noopener">Blending in Detail</a></span><span class="by">Colin Barré-Brisebois, Stephen Hill</span><span class="why">Detail normal blending.</span></li></ul>
 </section>
 
 <div class="next" data-next="fabric-folds cloth texture-memory"></div>
@@ -264,10 +265,10 @@ public class DecalOnClick : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="mapping.js?v=3db34008"></script>
+<script src="mapping.js?v=b995ff2c"></script>
 </body>
 </html>

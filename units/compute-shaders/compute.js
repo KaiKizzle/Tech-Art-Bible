@@ -46,7 +46,7 @@
   /* ---------- thread IDs ---------- */
   const N = 8;
   A.fx('ids', {
-    title: 'The ID semantics of one thread',
+    title: 'Thread ID semantics',
     expr: 'DispatchThreadID = ({gx}, {gy}) · 8 + ({lx}, {ly}),   GroupIndex = {ly} · 8 + {lx}',
     vars: { gx: { sym: 'GroupID.x', name: 'group column', min: 0, max: 3, value: 2, step: 1 }, gy: { sym: 'GroupID.y', name: 'group row', min: 0, max: 2, value: 1, step: 1 },
             lx: { sym: 'GroupThreadID.x', name: 'thread column inside the group', min: 0, max: 7, value: 5, step: 1 }, ly: { sym: 'GroupThreadID.y', name: 'thread row inside the group', min: 0, max: 7, value: 3, step: 1 } },
@@ -65,7 +65,7 @@
   /* ---------- waves ---------- */
   const wv = v => cl(v.n / v.w);
   A.fx('waves', {
-    title: 'Idle lanes from the group size',
+    title: 'Idle lanes per group size',
     expr: 'waves = ⌈{n} / {w}⌉,   idle lanes = waves · {w} − {n}',
     vars: { n: { sym: 'threads', name: 'threads per group', min: 1, max: 256, value: 48, step: 1 }, w: { sym: 'wave', name: 'wave width of the GPU', values: [32, 64], index: 1 } },
     out: [{ sym: 'waves', f: wv, color: 'accent' }, { sym: 'lanes used', f: v => 100 * v.n / (wv(v) * v.w), color: 'good', fmt: x => num(x) + ' %' }],
@@ -97,7 +97,7 @@
 
   /* ---------- atomics ---------- */
   A.fx('atomics', {
-    title: 'Contention on a histogram',
+    title: 'Atomic contention on a histogram',
     expr: 'per bin = {n} / {b},   with shared memory: global atomics = ⌈{n} / 256⌉ · {b}',
     vars: { n: { sym: 'pixels', name: 'threads adding a value', min: 10000, max: 8300000, value: 2073600, log: true }, b: { sym: 'bins', name: 'histogram bins', min: 1, max: 256, value: 64, step: 1 } },
     out: [{ sym: 'atomics on one bin', f: v => v.n / v.b, color: 'bad' }, { sym: 'global atomics with shared memory', f: v => cl(v.n / 256) * v.b, color: 'good' }],
@@ -107,7 +107,7 @@
 
   /* ---------- readback ---------- */
   A.fx('readback', {
-    title: 'What a readback costs',
+    title: 'Readback latency',
     expr: 'copy = {mb} MB / {bw} GB/s,   wait ≈ {f} frames at {fps} fps',
     vars: { mb: { sym: 'size', name: 'data to read back', unit: 'MB', min: 0.001, max: 256, value: 4, log: true }, bw: { sym: 'bandwidth', name: 'transfer bandwidth (PCIe, realistic)', unit: 'GB/s', min: 2, max: 32, value: 12, step: 1 },
             f: { sym: 'frames', name: 'frames until the GPU has run it', min: 1, max: 4, value: 2, step: 1 }, fps: { name: 'frame rate', values: [30, 60, 120], index: 1 } },

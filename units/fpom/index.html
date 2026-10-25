@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="fpom" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,25 +42,24 @@
   <div class="eyebrow">Shading · 8 chapters</div>
   <h1>Fast Parallax Occlusion Mapping</h1>
   <p class="lede">What makes parallax occlusion mapping fast: adaptive step counts, starting at the highest point of the map, coarse steps with secant refinement, analytic heights instead of fetches, gradients taken outside the loop and distance fades, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on Parallax and POM and Ray Marching. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on Parallax Mapping and POM and Ray Marching. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/fpom.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A cobblestone patch with parallax depth on a single flat quad.</figcaption></figure>
 </div>
 <div class="needs" data-needs="parallax#pom ray-marching#find"></div>
 
-<section class="chapter" id="recap" data-title="POM in one paragraph, and where the time goes" data-builds="parallax#pom parallax#adaptive" data-summary="POM cost ≈ steps × dependent fetch latency. Adaptive steps: lerp(max, min, cos θ).">
-  <div class="head"><div class="num"></div><h2>POM in one paragraph, and where the time goes</h2></div>
+<section class="chapter" id="recap" data-title="POM cost" data-builds="parallax#pom parallax#adaptive" data-summary="POM cost ≈ steps × dependent fetch latency; the techniques below cut steps and fetches, starting from adaptive step counts.">
+  <div class="head"><div class="num"></div><h2>POM cost</h2></div>
 
   <div class="prose">
     <p><a class="x" href="../parallax/index.html#pom">Parallax occlusion mapping</a> marches the view ray through a height map in tangent space: step down layer by layer, read the height at each step, stop where the ray drops below it, interpolate. Every step is a texture fetch whose UV depends on the previous step, so the fetches cannot overlap: the cost is close to steps × fetch latency, per pixel, on every pixel of the surface.</p>
-    <p><button type="button" class="term" data-term="fpom">Fast POM</button> is not one algorithm but a set of ways to spend fewer of those steps. The first is the cheapest: use many steps only where the ray is long.</p>
+    <p><button type="button" class="term" data-term="fpom">Fast POM</button> is not one algorithm but a set of ways to spend fewer of those steps. The first is the cheapest and already built into HDRP's Lit POM and Unreal's ParallaxOcclusionMapping function: use many steps only where the ray is long.</p>
   </div>
-  <div class="fx" data-fx="adapt"></div>
-  <div class="prose"><p>Looking straight at the surface, the ray crosses the height range over a tiny horizontal distance, and a handful of steps find the hit. At grazing angles the same range spans a long stretch of texture. HDRP's Lit POM and Unreal's ParallaxOcclusionMapping function both do this already, with min and max step counts.</p></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Adaptive step count: N = lerp(max, min, |N·V|); straight-on views need a few steps, grazing views many.</p></div><a class="x refto" href="../parallax/index.html#adaptive">Open the full explanation</a></aside>
 
 </section>
-<section class="chapter" id="start" data-title="Start at the highest point" data-builds="fpom#recap ray-marching#heightfield" data-summary="Start at 1 − Hmax: same precision with N·Hmax layers.">
-  <div class="head"><div class="num"></div><h2>Start at the highest point</h2></div>
+<section class="chapter" id="start" data-title="Starting at maximum height" data-builds="fpom#recap ray-marching#heightfield" data-summary="Start at 1 − Hmax: same precision with N·Hmax layers.">
+  <div class="head"><div class="num"></div><h2>Starting at maximum height</h2></div>
 
   <div class="prose">
     <p>Standard POM starts the march at height 1, the top of the possible range. Most height maps never use the top: a brick wall that peaks at 0.6 wastes 40 % of its layers on empty space. Store the map's real maximum (one number per texture, from the authoring tool) and start there. This is the <a class="x" href="../ray-marching/index.html#heightfield">bounding slab</a> idea applied to POM:</p>
@@ -69,8 +68,8 @@
   <div class="prose"><p>The same goes for the bottom: if the map never goes below 0.2, the ray can be treated as hitting there at the latest. Authoring helps too: normalising the height map to the full 0–1 range in Substance and setting the depth in the material gives the most precision per step.</p></div>
 
 </section>
-<section class="chapter" id="coarse" data-title="Coarse steps, then secant" data-builds="ray-marching#find parallax#pom" data-summary="N coarse steps find a bracket; 2–3 secant steps refine it. Coarse step size set by the thinnest feature.">
-  <div class="head"><div class="num"></div><h2>Coarse steps, then secant</h2></div>
+<section class="chapter" id="coarse" data-title="Coarse steps with secant refinement" data-builds="ray-marching#find parallax#pom" data-summary="N coarse steps find a bracket; 2–3 secant steps refine it. Coarse step size set by the thinnest feature.">
+  <div class="head"><div class="num"></div><h2>Coarse steps with secant refinement</h2></div>
 
   <div class="prose">
     <p>Plain POM finds the first layer below the surface and interpolates once between it and the layer before: that is already one <a class="x" href="../ray-marching/index.html#find">secant step</a>. Doing two or three of them, each with a fresh fetch, gets the hit much closer than doubling the linear steps would:</p>
@@ -79,8 +78,8 @@
   <div class="prose"><p>The catch is thin features: if a ridge is narrower than a coarse step, the linear search walks past it and no refinement brings it back. Choose the coarse step from the smallest feature you need, and let the secant steps buy the precision. Relief mapping (Policarpo and Oliveira) uses binary search for the same refinement; it is more robust on noisy maps and converges more slowly.</p></div>
 
 </section>
-<section class="chapter" id="analytic" data-title="Heights without textures" data-builds="fpom#coarse ray-marching#budget" data-summary="Analytic heights: steps × ALU only. Hybrid: march the formula, one detail fetch at the hit.">
-  <div class="head"><div class="num"></div><h2>Heights without textures</h2></div>
+<section class="chapter" id="analytic" data-title="Analytic height functions" data-builds="fpom#coarse ray-marching#budget" data-summary="Analytic heights: steps × ALU only. Hybrid: march the formula, one detail fetch at the hit.">
+  <div class="head"><div class="num"></div><h2>Analytic height functions</h2></div>
 
   <div class="prose">
     <p>When the height can be written as a formula, the loop needs no fetches at all: a sine for waves, a smoothstep cone for an iris, a rounded-box profile for tiles, a distance to a grid for grout. Arithmetic is cheap and its results are available immediately, so a dozen steps of a short formula usually cost less than three dependent fetches:</p>
@@ -91,18 +90,19 @@
   </div>
 
 </section>
-<section class="chapter" id="gradients" data-title="Gradients and mips" data-builds="textures-sampling#mips ray-marching#gpu" data-summary="mip = log2(max |∂uv| · size); UV jumps between loop iterations pick huge mips. Take gradients before the loop and use SampleGrad.">
-  <div class="head"><div class="num"></div><h2>Gradients and mips</h2></div>
+<section class="chapter" id="gradients" data-title="Explicit gradients" data-builds="textures-sampling#mips ray-marching#gpu" data-summary="mip = log2(max |∂uv| · size); UV jumps between loop iterations pick huge mips. Take gradients before the loop and use SampleGrad.">
+  <div class="head"><div class="num"></div><h2>Explicit gradients</h2></div>
 
   <div class="prose">
-    <p>Texture sampling picks a mip level from how fast the UV changes between neighbouring pixels (<a class="x" href="../textures-sampling/index.html#mips">mips</a>). Inside the POM loop, neighbours stop at different steps, so their UVs jump. The GPU reads those jumps as a fast-changing UV and picks a very blurry mip: the step edges turn into blocky, blurred seams.</p>
+    <p>Inside the POM loop, neighbours stop at different steps, so their UVs jump. The GPU reads those jumps as a fast-changing UV and picks a very blurry mip: the step edges turn into blocky, blurred seams.</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Mip selection: level = log₂ of the texels one pixel spans, from ddx/ddy of the UV; UVs that jump need explicit gradients.</p></div><a class="x refto" href="../textures-sampling/index.html#mips">Open the full explanation</a></aside>
   <div class="fx" data-fx="mip"></div>
-  <div class="prose"><p>The fix is a few characters: compute ddx and ddy of the original UV once, before the loop, and sample with explicit gradients (SampleGrad, <code>SAMPLE_TEXTURE2D_GRAD</code>, <em>Texture2DSampleGrad</em>). The mip then matches the surface, not the march. Do the same for every texture sampled at the parallax UV afterwards.</p></div>
+  <div class="prose"><p>For POM: take ddx and ddy of the original UV once, before the loop, and pass them to every sample, inside the loop and afterwards at the parallax UV. The mip then matches the surface, not the march.</p></div>
 
 </section>
-<section class="chapter" id="fade" data-title="Fade with distance" data-builds="fpom#recap" data-summary="Fade depth and steps together over d₀…d₁; no march beyond d₁.">
-  <div class="head"><div class="num"></div><h2>Fade with distance</h2></div>
+<section class="chapter" id="fade" data-title="Distance fade" data-builds="fpom#recap" data-summary="Fade depth and steps together over d₀…d₁; no march beyond d₁.">
+  <div class="head"><div class="num"></div><h2>Distance fade</h2></div>
 
   <div class="prose">
     <p>Parallax is a close-up effect. A few metres away the offset is a fraction of a pixel and the normal map carries the look alone. Fade the depth and the step count together over a distance range, and skip the march completely beyond it:</p>
@@ -111,8 +111,8 @@
   <div class="prose"><p>Fading only the steps leaves the full depth with too few samples (stair steps at a distance); fading only the depth still pays for the loop. Fade both. A matching fade on the material's displacement or tessellation keeps the transition invisible.</p></div>
 
 </section>
-<section class="chapter" id="recipe" data-title="The recipe" data-builds="fpom#recap" data-summary="Adaptive steps, Hmax start, coarse + secant, analytic heights, gradients outside, distance fade, early outs.">
-  <div class="head"><div class="num"></div><h2>The recipe</h2></div>
+<section class="chapter" id="recipe" data-title="Technique summary" data-builds="fpom#recap" data-summary="Adaptive steps, Hmax start, coarse + secant, analytic heights, gradients outside, distance fade, early outs.">
+  <div class="head"><div class="num"></div><h2>Technique summary</h2></div>
 
   <div class="prose"><p>Each technique attacks a different part of the cost. In order of payoff:</p></div>
   
@@ -277,10 +277,10 @@ return UV + uvPerDepth * lerp(lPrev, lCur, hPrev / max(hPrev - hCur, 1e-6));</pr
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="fpom.js?v=bf003f85"></script>
+<script src="fpom.js?v=368dedb2"></script>
 </body>
 </html>

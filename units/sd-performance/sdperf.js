@@ -6,7 +6,7 @@
 
   /* ---------- cost per resolution step ---------- */
   A.fx('pixcost', {
-    title: 'Render time against output size',
+    title: 'Render time by output size',
     expr: 'time = {t} · ({s} / 2048)²',
     vars: { t: { sym: 't<sub>2k</sub>', name: 'graph time at 2048', unit: 'ms', min: 50, max: 3000, value: 600, log: true }, s: { sym: 'size', name: 'parent size', values: SZ, labels: SL, index: 2 } },
     out: { sym: 'time', unit: 'ms', f: v => v.t * Math.pow(v.s / 2048, 2), color: 'accent' },
@@ -18,7 +18,7 @@
   const COST = [4, 6, 3, 40, 5, 8, 3, 25, 4, 6, 3, 2];
   const NAMES = ['Noise', 'Levels', 'Blend', 'Slope Blur', 'Blend', 'Warp', 'Levels', 'Blur HQ', 'Blend', 'Normal', 'HSL', 'Output'];
   A.fx('recompute', {
-    title: 'A tweak recomputes everything after it',
+    title: 'Recompute chain after a change',
     expr: 'recompute = Σ cost of nodes from position {k} to the end',
     vars: { k: { sym: 'k', name: 'node whose parameter you change', min: 1, max: 12, value: 2, step: 1 } },
     out: { sym: 'recompute', unit: 'ms', f: v => COST.slice(v.k - 1).reduce((a, b) => a + b, 0), color: 'accent' },
@@ -36,7 +36,7 @@
 
   /* ---------- blur at full size versus downscaled ---------- */
   A.fx('blurcost', {
-    title: 'A wide blur, full size or after downscaling',
+    title: 'Blur cost with downscaling',
     expr: 'cost ∝ ({s} / 2<sup>{k}</sup>)² · 2 · {r} / 2<sup>{k}</sup>',
     vars: { s: { sym: 'size', name: 'output size', values: [1024, 2048, 4096], labels: ['1k', '2k', '4k'], index: 1 }, r: { sym: 'r', name: 'blur radius in pixels at full size', min: 2, max: 256, value: 64, log: true },
             k: { sym: 'k', name: 'times halved before blurring', min: 0, max: 4, value: 2, step: 1 } },
@@ -47,7 +47,7 @@
 
   /* ---------- Copy versus Switch on an optional branch ---------- */
   A.fx('switchcost', {
-    title: 'An optional feature switched off',
+    title: 'Switch node cost',
     expr: 'Copy: main + optional,   Switch: main + (opacity > 0 ? optional : 0);   opacity {o}',
     vars: { m: { sym: 'main', name: 'main chain', unit: 'ms', min: 50, max: 500, value: 200, step: 10 }, b: { sym: 'optional', name: 'optional branch (moss, dirt…)', unit: 'ms', min: 0, max: 500, value: 180, step: 10 },
             o: { sym: 'opacity', name: 'feature amount (exposed)', values: [0, 0.5, 1], index: 0 } },
@@ -58,7 +58,7 @@
 
   /* ---------- runtime: rendering substances at load ---------- */
   A.fx('runtime', {
-    title: 'Rendering Substance materials while a level loads',
+    title: 'Runtime render time during loading',
     expr: 'load time = {M} materials · {t} · ({s} / 2048)²',
     vars: { M: { sym: 'M', name: 'materials rendered at load', min: 1, max: 200, value: 30, step: 1 }, t: { sym: 't<sub>2k</sub>', name: 'one graph at 2048 in the engine', unit: 'ms', min: 50, max: 5000, value: 900, log: true },
             s: { sym: 'size', name: 'output size', values: [512, 1024, 2048, 4096], labels: ['512', '1k', '2k', '4k'], index: 2 } },

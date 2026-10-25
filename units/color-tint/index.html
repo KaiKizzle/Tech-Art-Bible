@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tinting and Clamping Colour · Tech Art Atlas</title>
+<title>Colour Tinting and Clamping · Tech Art Atlas</title>
 <meta name="description" content="Colour maths for tintable materials: why to work in linear, why a multiply tint goes dark, the 50 % grey tint-mask convention, luminance and hue, hue-preserving desaturation, clamping to plausible colours, and other tint tools, built in Unity HDRP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="color-tint" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Tinting and Clamping Colour</a>
+  <a class="brand" href="#top">Colour Tinting and Clamping</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,26 +40,27 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
-  <h1>Tinting and Clamping Colour</h1>
+  <h1>Colour Tinting and Clamping</h1>
   <p class="lede">Colour maths for tintable materials: why to work in linear, why a multiply tint goes dark, the 50 % grey tint-mask convention, luminance and hue, hue-preserving desaturation, clamping to plausible colours, and other tint tools, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on Colour as Numbers. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on Colour Values. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/color-tint.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One grey iris mask under four tints, each held inside the plausible range.</figcaption></figure>
 </div>
 <div class="needs" data-needs="color-values#linear-srgb"></div>
 
-<section class="chapter" id="linear" data-title="Do colour maths in linear" data-builds="color-values#linear-srgb" data-summary="Tint in linear: lin(tint)·lin(tex). Multiplying sRGB numbers brightens mid tones and shifts hue.">
-  <div class="head"><div class="num"></div><h2>Do colour maths in linear</h2></div>
+<section class="chapter" id="linear" data-title="Tinting in linear space" data-builds="color-values#linear-srgb" data-summary="Tint in linear: lin(tint)·lin(tex). Multiplying sRGB numbers brightens mid tones and shifts hue.">
+  <div class="head"><div class="num"></div><h2>Tinting in linear space</h2></div>
 
   <div class="prose">
-    <p>Texture and colour-picker values are stored in sRGB, a curve that spends more numbers on dark tones (<a class="x" href="../color-values/index.html#linear-srgb">linear and sRGB</a>). Light adds and multiplies in linear terms. A shader that tints by multiplying the stored numbers gets a different, usually brighter and hue-shifted, result than one that multiplies light:</p>
+    <p>A shader that tints by multiplying the stored sRGB numbers gets a different, usually brighter and hue-shifted, result than one that multiplies light:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Texture and picker values are stored sRGB-encoded; light adds and multiplies only in linear values.</p></div><a class="x refto" href="../color-values/index.html#linear-srgb">Open the full explanation</a></aside>
   <div class="fx" data-fx="linmul"></div>
   <div class="prose"><p>In practice: textures marked as colour (sRGB on) and colour properties arrive in the shader already converted to linear in Unity, Unreal and every modern engine. Do all tint maths there. Only data maps (masks, roughness) skip the conversion, which is why a grey mask used for tinting must be imported with sRGB on if it was painted as brightness.</p></div>
 
 </section>
-<section class="chapter" id="multiply" data-title="Multiply only darkens" data-builds="color-tint#linear" data-summary="tint · tex: a mean of 128 sRGB keeps only ~21 % of the picked colour&#x27;s brightness.">
-  <div class="head"><div class="num"></div><h2>Multiply only darkens</h2></div>
+<section class="chapter" id="multiply" data-title="Multiply tint" data-builds="color-tint#linear" data-summary="tint · tex: a mean of 128 sRGB keeps only ~21 % of the picked colour&#x27;s brightness.">
+  <div class="head"><div class="num"></div><h2>Multiply tint</h2></div>
 
   <div class="prose">
     <p>The simplest tint multiplies a texture by a colour. White texels become the tint, everything else becomes darker. A typical diffuse texture averages around 50 % grey in sRGB, which is only about 21 % in linear light, so the material ends up far darker than the colour the artist picked:</p>
@@ -68,8 +69,8 @@
   <div class="prose"><p>Artists then compensate with brighter, more saturated picks, and the result depends on each texture's average. A tint control should mean "this is the colour you will see", which needs a convention for the texture.</p></div>
 
 </section>
-<section class="chapter" id="greymask" data-title="The 50 % grey convention" data-builds="color-tint#multiply" data-summary="colour = tint · Y(tex) / 0.214: 128 sRGB in the mask shows exactly the tint; the texture carries detail only.">
-  <div class="head"><div class="num"></div><h2>The 50 % grey convention</h2></div>
+<section class="chapter" id="greymask" data-title="Grey tint masks" data-builds="color-tint#multiply" data-summary="colour = tint · Y(tex) / 0.214: 128 sRGB in the mask shows exactly the tint; the texture carries detail only.">
+  <div class="head"><div class="num"></div><h2>Grey tint masks</h2></div>
 
   <div class="prose">
     <p>Treat the texture as a <button type="button" class="term" data-term="greymask">tint mask</button>: a greyscale map whose 50 % grey (128 sRGB, 0.214 linear) means "exactly the tint". Divide the texel's luminance by 0.214 and multiply by the tint. Darker texels (crypts in an iris, the shadow side of a weave) go below the tint, lighter ones above it:</p>
@@ -81,18 +82,19 @@
   </div>
 
 </section>
-<section class="chapter" id="luminance" data-title="Luminance and hue" data-builds="color-values#luminance" data-summary="Y = 0.2126R + 0.7152G + 0.0722B (linear); hue = colour / Y can be rescaled to any luminance.">
-  <div class="head"><div class="num"></div><h2>Luminance and hue</h2></div>
+<section class="chapter" id="luminance" data-title="Hue at luminance 1" data-builds="color-values#luminance" data-summary="Y = 0.2126R + 0.7152G + 0.0722B (linear); hue = colour / Y can be rescaled to any luminance.">
+  <div class="head"><div class="num"></div><h2>Hue at luminance 1</h2></div>
 
   <div class="prose">
-    <p>To limit how bright or how colourful a tint may be, it has to be split into brightness and colour. <button type="button" class="term" data-term="luminance">Luminance</button> Y weighs the channels by how bright they look: green counts most, blue least (<a class="x" href="../color-values/index.html#luminance">luminance</a>). Dividing the colour by Y leaves the hue at luminance 1, a colour direction that can be scaled to any brightness without changing what colour it is:</p>
+    <p>To limit how bright or how colourful a tint may be, it has to be split into brightness and colour. Dividing the colour by its luminance Y leaves the hue at luminance 1, a colour direction that can be scaled to any brightness without changing what colour it is:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Luminance Y = 0.2126 R + 0.7152 G + 0.0722 B on linear values: green counts most, blue least.</p></div><a class="x refto" href="../color-values/index.html#luminance">Open the full explanation</a></aside>
   <div class="fx" data-fx="lum"></div>
   <div class="prose"><p>Pure blue has a luminance of only 0.07; pure green 0.72. That is why "the same" saturated colours in a picker look so different in brightness, and why a clamp must work on luminance, not on the RGB maximum.</p></div>
 
 </section>
-<section class="chapter" id="saturation" data-title="Saturation without hue shifts" data-builds="color-tint#luminance" data-summary="Mix hue (at Y = 1) towards (1,1,1) by k = s_max / ((max − min) − s_max(max − 1)): saturation capped, hue and luminance kept.">
-  <div class="head"><div class="num"></div><h2>Saturation without hue shifts</h2></div>
+<section class="chapter" id="saturation" data-title="Hue-preserving saturation cap" data-builds="color-tint#luminance" data-summary="Mix hue (at Y = 1) towards (1,1,1) by k = s_max / ((max − min) − s_max(max − 1)): saturation capped, hue and luminance kept.">
+  <div class="head"><div class="num"></div><h2>Hue-preserving saturation cap</h2></div>
 
   <div class="prose">
     <p>Saturation in HSV terms is (max − min) / max: 0 for grey, 1 when a channel is zero. Lowering it by mixing towards grey is the natural move, but mixing towards a grey of the wrong brightness changes luminance, and clamping channels changes the hue. Mixing the hue-at-luminance-1 towards (1, 1, 1) does neither: grey at luminance 1 is (1, 1, 1), so the luminance stays 1 and the hue direction stays the same. The mix factor k that lands exactly on the cap s<sub>max</sub> follows from the saturation formula:</p>
@@ -101,8 +103,8 @@
   <div class="prose"><p>Derivation, for the curious: after the mix, max′ = 1 + k(max − 1) and min′ = 1 + k(min − 1), so the new saturation is k(max − min) / (1 + k(max − 1)). Setting it to s<sub>max</sub> and solving for k gives the formula above. One division, no trigonometry, no HSV round trip.</p></div>
 
 </section>
-<section class="chapter" id="clamp" data-title="Clamping to a plausible range" data-builds="color-tint#saturation pbr-basics#basecolor" data-summary="clamp(Y, Ymin, Ymax), then cap saturation with lerp(s_dark, s_light, smoothstep(0.03, 0.30, Y)).">
-  <div class="head"><div class="num"></div><h2>Clamping to a plausible range</h2></div>
+<section class="chapter" id="clamp" data-title="Plausible colour ranges" data-builds="color-tint#saturation pbr-basics#basecolor" data-summary="clamp(Y, Ymin, Ymax), then cap saturation with lerp(s_dark, s_light, smoothstep(0.03, 0.30, Y)).">
+  <div class="head"><div class="num"></div><h2>Plausible colour ranges</h2></div>
 
   <div class="prose">
     <p>Natural materials occupy a small part of the colour space. Irises run from very dark brown to light grey-blue; no iris is neon green. Dark colours can be quite saturated (a deep brown), light ones only mildly (a pale blue). So the clamp has two parts: limit luminance, then cap saturation with a limit that falls as the colour gets lighter:</p>
@@ -122,8 +124,8 @@
   <div class="prose"><p>The values in the table are starting points from references, not standards; measure your own. The point of the clamp is that it is in the shader: any colour from a picker, a character creator or a script lands somewhere believable, and the hue the user asked for survives.</p></div>
 
 </section>
-<section class="chapter" id="other" data-title="Other tint tools" data-builds="color-tint#greymask" data-summary="Hue rotation (Rodrigues around grey) changes luminance; gradient maps, RGB masks, overlay as alternatives.">
-  <div class="head"><div class="num"></div><h2>Other tint tools</h2></div>
+<section class="chapter" id="other" data-title="Hue rotation, gradient maps and masks" data-builds="color-tint#greymask" data-summary="Hue rotation (Rodrigues around grey) changes luminance; gradient maps, RGB masks, overlay as alternatives.">
+  <div class="head"><div class="num"></div><h2>Hue rotation, gradient maps and masks</h2></div>
 
   <div class="prose">
     <ul>
@@ -240,10 +242,10 @@ return saturate(tint * dot(Tex, L) / 0.214);            // 50 % sRGB grey in the
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="tint.js?v=34209528"></script>
+<script src="tint.js?v=4cd54d6c"></script>
 </body>
 </html>

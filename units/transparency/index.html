@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="transparency" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="shader-anatomy#functions buffers#render-targets textures-sampling#filter"></div>
 
-<section class="chapter" id="alpha" data-title="What alpha means" data-builds="shader-anatomy#functions buffers#render-targets" data-summary="result = src · a + dst · (1 − a): a lerp from the background to the new colour.">
-  <div class="head"><div class="num"></div><h2>What alpha means</h2></div>
+<section class="chapter" id="alpha" data-title="Alpha" data-builds="shader-anatomy#functions buffers#render-targets" data-summary="result = src · a + dst · (1 − a): a lerp from the background to the new colour.">
+  <div class="head"><div class="num"></div><h2>Alpha</h2></div>
 
   <div class="prose">
     <p>Opaque surfaces simply replace the pixel behind them. A transparent surface has to <em>mix</em> with it, and the fourth channel of a colour, <button type="button" class="term" data-term="alpha">alpha</button>, says how much: 1 covers the background completely, 0 leaves it untouched. The GPU does the mixing after the pixel shader, when it writes the colour into the render target (<a class="x" href="../buffers/index.html#render-targets">render targets</a>), so it can read what is already there.</p>
@@ -60,8 +60,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A white particle (1) with alpha 0.25 is drawn over a black background (0). What is the result?", ["0", "0.25", "0.75", "1"], 1, "1 · 0.25 + 0 · 0.75 = 0.25."]]</script></details>
 
 </section>
-<section class="chapter" id="modes" data-title="Blend modes are one formula" data-builds="transparency#alpha color-values#rgb" data-summary="result = src · SrcFactor + dst · DstFactor; alpha, additive, multiply and premultiplied are factor choices.">
-  <div class="head"><div class="num"></div><h2>Blend modes are one formula</h2></div>
+<section class="chapter" id="modes" data-title="Blend modes" data-builds="transparency#alpha color-values#rgb" data-summary="result = src · SrcFactor + dst · DstFactor; alpha, additive, multiply and premultiplied are factor choices.">
+  <div class="head"><div class="num"></div><h2>Blend modes</h2></div>
 
   <div class="prose">
     <p>The blending hardware always computes the same thing: <code>result = src · SrcFactor + dst · DstFactor</code>. A blend mode is just a choice of the two factors. The over operator uses (SrcAlpha, OneMinusSrcAlpha); fire and glows use <strong>additive</strong> (One, One), which only ever brightens; dirt and shadows use <strong>multiply</strong> (DstColor, Zero), which only ever darkens:</p>
@@ -75,8 +75,8 @@ Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span><
   <div class="prose"><p>Additive and multiply have a useful property the over operator lacks: the order of the layers does not matter, because adding and multiplying do not care about order. The next chapter shows why that matters so much.</p></div>
 
 </section>
-<section class="chapter" id="order" data-title="Why the order matters" data-builds="transparency#modes reading-a-frame#overdraw" data-summary="Over is order-dependent: sort transparents back to front. Sorting is per object and fails for intersections.">
-  <div class="head"><div class="num"></div><h2>Why the order matters</h2></div>
+<section class="chapter" id="order" data-title="Sorting" data-builds="transparency#modes reading-a-frame#overdraw" data-summary="Over is order-dependent: sort transparents back to front. Sorting is per object and fails for intersections.">
+  <div class="head"><div class="num"></div><h2>Sorting</h2></div>
 
   <div class="prose">
     <p>Draw a red layer and then a blue layer over the background, and you get a different colour than blue first and red second: the over operator puts more weight on whatever is drawn last. The only correct order is <strong>back to front</strong>. Try both:</p>
@@ -97,16 +97,16 @@ Blend One OneMinusSrcAlpha        <span class="c">// premultiplied alpha</span><
     <p><button type="button" class="term" data-term="premult">Premultiplied alpha</button> stores colour already multiplied by alpha. A transparent texel is then (0, 0, 0, 0) by definition, filtering mixes the right amounts, and blending uses (One, OneMinusSrcAlpha):</p>
   </div>
   <div class="fx" data-fx="fringe"></div>
-  <div class="prose"><p>A second bonus: with premultiplied alpha, one blend state can do both normal and additive blending. A texel with colour but alpha 0 adds light without covering anything, which is how many particle systems mix smoke and fire in one texture.</p></div>
+  <div class="prose"><p>A second bonus: with premultiplied alpha, one blend state can do both normal and additive blending. A texel with colour but alpha 0 adds light without covering anything, which is how many particle systems mix smoke and fire in one texture, and how cheap glass keeps its reflection at low opacity (<a class="x" href="../glass/index.html#cheap">cheap glass</a>).</p></div>
   <details class="check"><summary></summary><script type="application/json">[["A texel is red (1, 0, 0) with alpha 0.5. What does it store when premultiplied?", ["(1, 0, 0, 0.5)", "(0.5, 0, 0, 0.5)", "(0.5, 0, 0, 1)", "(1, 0, 0, 1)"], 1, "Colour times alpha: (0.5, 0, 0), alpha stays 0.5."]]</script></details>
 
 </section>
-<section class="chapter" id="alpha-test" data-title="Alpha test and thinning foliage" data-builds="texture-memory#mips" data-summary="clip(alpha − cutoff) gives opaque, sortable cutouts; mip averaging thins them unless coverage is preserved.">
+<section class="chapter" id="alpha-test" data-title="Alpha test and thinning foliage" data-builds="textures-sampling#mips" data-summary="clip(alpha − cutoff) gives opaque, sortable cutouts; mip averaging thins them unless coverage is preserved.">
   <div class="head"><div class="num"></div><h2>Alpha test and thinning foliage</h2></div>
 
   <div class="prose">
     <p>Foliage, fences and <a class="x" href="../hair/index.html#cards">hair cards</a> usually avoid blending altogether. <button type="button" class="term" data-term="cutout">Alpha test</button> throws a pixel away when its alpha is below a cutoff (<code>clip(alpha − cutoff)</code>). The rest is drawn as fully opaque: no sorting, it writes depth and receives shadows. The cost is a hard edge, and that the GPU cannot always reject hidden pixels before running the shader.</p>
-    <p>Alpha test has one classic bug. <a class="x" href="../texture-memory/index.html#mips">Mip levels</a> average neighbouring texels, so a thin, fully opaque twig next to transparent texels becomes a wide, half-transparent texel in the next mip. Below the cutoff, it disappears:</p>
+    <p>Alpha test has one classic bug. <a class="x" href="../textures-sampling/index.html#mips">Mip levels</a> average neighbouring texels, so a thin, fully opaque twig next to transparent texels becomes a wide, half-transparent texel in the next mip. Below the cutoff, it disappears:</p>
   </div>
   <div class="fx" data-fx="mipcoverage"></div>
   <div class="prose"><p>That is why trees thin out and go bald in the distance. The fix is to rescale the alpha of each mip so that the fraction of texels above the cutoff stays the same as in mip 0 (<em>coverage-preserving mips</em>), an import option in most engines.</p></div>
@@ -239,10 +239,10 @@ public class TransparentOrder : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="transparency.js?v=744e50e5"></script>
+<script src="transparency.js?v=8012278a"></script>
 </body>
 </html>

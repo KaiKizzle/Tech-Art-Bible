@@ -19,7 +19,7 @@
 
   /* ---------- linear versus sRGB multiply ---------- */
   A.fx('linmul', {
-    title: 'The same multiply, in sRGB numbers and in linear light',
+    title: 'Multiply in sRGB values versus linear light',
     expr: 'linear: lin({t}) · lin({g}),   naive: {t} · {g} on sRGB values',
     vars: { g: { sym: 'tex', name: 'texture value (sRGB 0–255)', min: 0, max: 255, value: 128, step: 1 },
             t: { sym: 'tint', name: 'tint colour', values: [0, 1, 2, 3], labels: TN, index: 0 } },
@@ -34,7 +34,7 @@
 
   /* ---------- multiply darkens ---------- */
   A.fx('mul', {
-    title: 'A plain multiply makes the tint darker than picked',
+    title: 'Brightness loss of a multiply tint',
     expr: 'colour = tint · tex,   tex mean = lin({m})',
     vars: { m: { sym: 'mean', name: 'mean value of the texture (sRGB 0–255)', min: 40, max: 255, value: 128, step: 1 },
             t: { sym: 'tint', name: 'tint colour', values: [0, 1, 2, 3], labels: TN, index: 2 } },
@@ -52,7 +52,7 @@
 
   /* ---------- the 50 % grey convention ---------- */
   A.fx('greymask', {
-    title: 'Grey texture as a tint mask: 50 % grey shows the tint exactly',
+    title: 'Grey tint mask (50 % grey = tint)',
     expr: 'colour = tint · Y(tex) / 0.214,   tex = {g}',
     vars: { g: { sym: 'tex', name: 'texel value (sRGB 0–255)', min: 0, max: 255, value: 128, step: 1 },
             t: { sym: 'tint', name: 'tint colour', values: [0, 1, 2, 3], labels: TN, index: 0 } },
@@ -71,7 +71,7 @@
 
   /* ---------- luminance and hue ---------- */
   A.fx('lum', {
-    title: 'Luminance, and the hue left when you divide it out',
+    title: 'Luminance and hue at Y = 1',
     expr: 'Y = 0.2126 R + 0.7152 G + 0.0722 B,   hue = colour / Y,   colour = sRGB({r}, {g}, {b})',
     vars: { r: { sym: 'R', name: 'red (sRGB 0–255)', min: 0, max: 255, value: 60, step: 1, color: 'bad' },
             g: { sym: 'G', name: 'green (sRGB 0–255)', min: 0, max: 255, value: 140, step: 1, color: 'good' },
@@ -88,7 +88,7 @@
 
   /* ---------- hue-preserving desaturation ---------- */
   A.fx('satclamp', {
-    title: 'Lowering saturation without changing hue or brightness',
+    title: 'Hue-preserving saturation cap',
     expr: 'k = s<sub>max</sub> / ((max − min) − s<sub>max</sub> · (max − 1)),   hue′ = lerp(1, hue, k),   s<sub>max</sub> = {sm}',
     vars: { h: { sym: 'H', name: 'hue of the input', unit: '°', min: 0, max: 359, value: 125, step: 1 },
             s: { sym: 'S', name: 'saturation of the input (sRGB HSV)', min: 0, max: 1, value: 1, step: 0.01 },
@@ -105,7 +105,7 @@
   /* ---------- the full plausibility clamp ---------- */
   const TESTS = [[0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 0, 0], [1, 1, 1], [0.95, 0.75, 0.2]].map(lin), TESTN = ['neon green', 'pure blue', 'pure red', 'black', 'white', 'gold'];
   A.fx('range', {
-    title: 'Every pick lands inside a plausible range',
+    title: 'Plausibility clamp',
     expr: 'Y′ = clamp(Y, {lmin}, {lmax}),   s<sub>max</sub> = lerp({sd}, {sl}, smoothstep(0.03, 0.30, Y′))',
     vars: { lmin: { sym: 'Y<sub>min</sub>', name: 'darkest allowed luminance', min: 0.001, max: 0.1, value: 0.006, log: true },
             lmax: { sym: 'Y<sub>max</sub>', name: 'brightest allowed luminance', min: 0.1, max: 0.9, value: 0.32, step: 0.01 },
@@ -124,7 +124,7 @@
 
   /* ---------- hue rotation ---------- */
   A.fx('hue', {
-    title: 'Rotating the hue around the grey axis',
+    title: 'Hue rotation around the grey axis',
     expr: 'c′ = c cos {a} + (k × c) sin {a} + k (k·c)(1 − cos {a}),   k = (1, 1, 1) / √3',
     vars: { a: { sym: 'θ', name: 'hue rotation', unit: '°', min: -180, max: 180, value: 60, step: 1 },
             t: { sym: 'colour', name: 'input', values: [0, 1, 2, 3], labels: TN, index: 3 } },

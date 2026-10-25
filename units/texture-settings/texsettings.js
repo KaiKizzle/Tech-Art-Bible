@@ -8,7 +8,7 @@
   const FMT = ['RGBA32', 'BC1', 'BC3', 'BC4', 'BC5', 'BC6H', 'BC7', 'ASTC 4×4', 'ASTC 6×6', 'ASTC 8×8'], BPP = [32, 4, 8, 4, 8, 8, 8, 8, 128 / 36, 2];
   const mem = v => v.s * v.s * BPP[v.f] / 8 * 4 / 3 / 1048576;
   A.fx('fmtmem', {
-    title: 'Memory of one texture with mips',
+    title: 'Texture memory with mips',
     expr: 'MB = {s}² · bpp({f}) / 8 · 4/3',
     vars: { s: { sym: 'size', name: 'texture size', values: [256, 512, 1024, 2048, 4096, 8192], index: 3 }, f: { sym: 'format', name: 'format', values: FMT.map((_, i) => i), labels: FMT, index: 6 } },
     out: { sym: 'memory', unit: 'MB', f: mem },
@@ -18,7 +18,7 @@
 
   /* ---------- sRGB mistake ---------- */
   A.fx('srgbbug', {
-    title: 'A data map read with sRGB on',
+    title: 'Data map with sRGB on',
     expr: 'read = (({v} + 0.055) / 1.055)<sup>2.4</sup> instead of {v}',
     vars: { v: { sym: 'stored', name: 'value stored in the roughness map', min: 0, max: 1, value: 0.5, step: 0.01 } },
     out: [{ sym: 'sRGB off (correct)', f: v => v.v, color: 'good' }, { sym: 'sRGB on (wrong)', f: v => s2l(v.v), color: 'bad' }],
@@ -41,7 +41,7 @@
     { n: 'Unreal ORM', ch: ['AO', 'roughness', 'metallic', '(none)'], f: v => [v.ao, v.r, v.m, 1] }
   ];
   A.fx('layout', {
-    title: 'One texel in each engine\'s layout',
+    title: 'Packed texel per engine layout',
     expr: 'layout {e}: metallic {m}, AO {ao}, roughness {r}',
     vars: { e: { sym: 'engine', name: 'layout', values: [0, 1, 2], labels: LAY.map(l => l.n), index: 0 }, m: { sym: 'metallic', name: 'metallic', min: 0, max: 1, value: 1, step: 1 },
             ao: { sym: 'AO', name: 'ambient occlusion', min: 0, max: 1, value: 0.8, step: 0.01 }, r: { sym: 'roughness', name: 'roughness', min: 0, max: 1, value: 0.3, step: 0.01 } },
@@ -77,7 +77,7 @@
     return Math.sqrt(err / 32) * 255;
   }
   A.fx('bcerror', {
-    title: 'One 4 × 4 block of two mask channels',
+    title: 'BC block of two mask channels',
     expr: 'BC1: 4 colours on one line;   BC4/BC5: 8 levels per channel;   correlation {c}',
     vars: { c: { sym: 'correlation', name: 'how much the two channels follow each other', min: 0, max: 1, value: 0.15, step: 0.01 }, seed: { sym: 'block', name: 'a different random block', min: 1, max: 30, value: 7, step: 1 } },
     out: [{ sym: 'BC1 error', f: v => bc1(block(v)).rms, color: 'bad', fmt: x => num(x) + ' / 255' }, { sym: 'per-channel error', f: v => perChannel(block(v)), color: 'good', fmt: x => num(x) + ' / 255' }],

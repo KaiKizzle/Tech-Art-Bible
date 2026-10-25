@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="sd-warps" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="sd-graphs#float sd-blend#minmax"></div>
 
-<section class="chapter" id="idea" data-title="A warp reads from somewhere else" data-builds="textures-sampling#uv" data-summary="out(p) = in(p + offset(p)): every pixel fetches from a shifted position, so warps stretch and tear but never leave holes.">
-  <div class="head"><div class="num"></div><h2>A warp reads from somewhere else</h2></div>
+<section class="chapter" id="idea" data-title="How warps work" data-builds="textures-sampling#uv" data-summary="out(p) = in(p + offset(p)): every pixel fetches from a shifted position, so warps stretch and tear but never leave holes.">
+  <div class="head"><div class="num"></div><h2>How warps work</h2></div>
 
   <div class="prose">
     <p>Procedural patterns come out too perfect: straight lines, round dots, even noise. Warps are how they get bent, frayed and worn. All warp nodes share one idea: an output pixel does not read the input at its own position, but a little to the side, and how far and in which direction comes from a second image.</p>
@@ -72,8 +72,8 @@
   </div>
 
 </section>
-<section class="chapter" id="warp" data-title="Warp: along a gradient" data-builds="sd-warps#directional dot-cross#dot" data-summary="out(p) = in(p + k · ∇G(p)): reads uphill, as far as the slope is steep; flat areas do not move.">
-  <div class="head"><div class="num"></div><h2>Warp: along a gradient</h2></div>
+<section class="chapter" id="warp" data-title="Warp (gradient)" data-builds="sd-warps#directional dot-cross#dot" data-summary="out(p) = in(p + k · ∇G(p)): reads uphill, as far as the slope is steep; flat areas do not move.">
+  <div class="head"><div class="num"></div><h2>Warp (gradient)</h2></div>
 
   <div class="prose">
     <p>The atomic <em>Warp</em> node has no angle. It takes the <em>slope</em> of its <em>gradient input</em>: at every pixel, which way is uphill and how steep. Pixels read in the uphill direction, as far as the slope is steep. On a round white spot the slopes point to its centre from all sides, so the content near the centre is copied outward: the image looks pushed away from white areas.</p>
@@ -85,8 +85,8 @@
   <details class="check"><summary></summary><script type="application/json">[["You warp a brick pattern with Warp, using a noise with large pure-white areas as the gradient input. Which bricks stay straight?", ["Bricks over the white areas", "Bricks over the grey slopes", "None", "All of them"], 0, "Flat areas of the gradient input have no slope, so they do not warp. The slopes around them do."]]</script></details>
 
 </section>
-<section class="chapter" id="vector" data-title="Vector Warp: directions in a colour" data-builds="sd-warps#warp sd-graphs#float" data-summary="shift = intensity · (2R − 1, ±(2G − 1)); a normal map is a vector map; DirectX and OpenGL differ in the sign of G.">
-  <div class="head"><div class="num"></div><h2>Vector Warp: directions in a colour</h2></div>
+<section class="chapter" id="vector" data-title="Vector Warp" data-builds="sd-warps#warp sd-graphs#float" data-summary="shift = intensity · (2R − 1, ±(2G − 1)); a normal map is a vector map; DirectX and OpenGL differ in the sign of G.">
+  <div class="head"><div class="num"></div><h2>Vector Warp</h2></div>
 
   <div class="prose">
     <p>Sometimes one direction is not enough and a gradient is not what you want: pebbles should push sand away from their own centres, fibres should follow a hand-made flow. A <em>vector map</em> stores a direction per pixel in its red and green channels, with 0.5 meaning zero: red above 0.5 points right, below 0.5 left; green does the same vertically. <em>Vector Warp</em> reads that map and shifts each pixel by its direction times the intensity.</p>
@@ -98,8 +98,8 @@
   </div>
 
 </section>
-<section class="chapter" id="slopeblur" data-title="Slope Blur: erosion and growth" data-builds="sd-warps#warp sd-blend#minmax" data-summary="Up to n + 1 reads along the slope: Blur averages, Min erodes, Max grows. Cost grows with the samples.">
-  <div class="head"><div class="num"></div><h2>Slope Blur: erosion and growth</h2></div>
+<section class="chapter" id="slopeblur" data-title="Slope Blur" data-builds="sd-warps#warp sd-blend#minmax" data-summary="Up to n + 1 reads along the slope: Blur averages, Min erodes, Max grows. Cost grows with the samples.">
+  <div class="head"><div class="num"></div><h2>Slope Blur</h2></div>
 
   <div class="prose">
     <p><em>Slope Blur</em> reads many times along the slope of a second image instead of once: with 16 samples, every pixel looks at 17 positions along the direction of the slope and combines them. What it does with them is the <em>mode</em>. <strong>Blur</strong> averages, a smear that follows the slope image. <strong>Min</strong> keeps the darkest value, so a shape gets eaten away from its edges, chipped and eroded. <strong>Max</strong> keeps the brightest, so it grows ragged outgrowths:</p>
@@ -110,8 +110,8 @@
   </div>
 
 </section>
-<section class="chapter" id="artifacts" data-title="Artefacts and how to avoid them" data-summary="Smears: too much intensity. Tears: sharp maps. Seams: a non-tiling input. Jaggies: nearest filtering.">
-  <div class="head"><div class="num"></div><h2>Artefacts and how to avoid them</h2></div>
+<section class="chapter" id="artifacts" data-title="Warp artefacts" data-summary="Smears: too much intensity. Tears: sharp maps. Seams: a non-tiling input. Jaggies: nearest filtering.">
+  <div class="head"><div class="num"></div><h2>Warp artefacts</h2></div>
 
   <div class="prose">
     <ul>
@@ -125,15 +125,15 @@
   <details class="check"><summary></summary><script type="application/json">[["A crack pattern looks great at 1k but shows a sharp seam across the middle when tiled. What is the likely cause?", ["The warp intensity is too high", "One of the maps feeding the warp does not tile", "The graph is 8-bit", "Bilinear filtering"], 1, "Warps read across the border; a non-tiling input map makes the wrapped reads disagree at the edge."]]</script></details>
 
 </section>
-<section class="chapter" id="cost" data-title="What warps cost" data-builds="sd-performance#heavy" data-summary="reads = size² · reads per pixel · nodes; warps and blurs are the heavy nodes.">
-  <div class="head"><div class="num"></div><h2>What warps cost</h2></div>
+<section class="chapter" id="cost" data-title="Warp cost" data-builds="sd-performance#heavy" data-summary="reads = size² · reads per pixel · nodes; warps and blurs are the heavy nodes.">
+  <div class="head"><div class="num"></div><h2>Warp cost</h2></div>
 
   <div class="prose">
     <p>Adobe's guidelines name blurs and warps as the most processor-intensive nodes, and advise against warps for graphs that render on mobile. The reason is the reads. A Levels node reads one pixel per output pixel, in order. A warp reads from a computed position, and a Slope Blur reads once per sample, often 16 or 32 times:</p>
   </div>
   <div class="fx" data-fx="warpcost"></div>
   <div class="prose">
-    <p>Three habits keep it in check. Build and tune warps at a low parent size, since their look is resolution independent. Merge chains: three Directional Warps in a row can often be one with a better intensity map. And keep samples as low as the result allows; going from 32 to 16 samples halves the node's cost. <a class="x" href="../sd-performance/index.html#heavy">Keeping Graphs Fast</a> covers how to measure it.</p>
+    <p>Three habits keep it in check. Build and tune warps at a low parent size, since their look is resolution independent. Merge chains: three Directional Warps in a row can often be one with a better intensity map. And keep samples as low as the result allows; going from 32 to 16 samples halves the node's cost. <a class="x" href="../sd-performance/index.html#heavy">Graph Performance</a> covers how to measure it.</p>
   </div>
 
 </section>
@@ -221,10 +221,10 @@ void GradientWarpUV_float(float2 UV, UnityTexture2D GradTex, float2 GradUV, Unit
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdwarps.js?v=3bf6f69c"></script>
+<script src="sdwarps.js?v=bdb9cda3"></script>
 </body>
 </html>

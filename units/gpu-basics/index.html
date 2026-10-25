@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>How a GPU Draws a Frame · Tech Art Atlas</title>
+<title>GPU Rendering Basics · Tech Art Atlas</title>
 <meta name="description" content="Every technique on this site is a small change to one process: a GPU colouring every pixel of the screen, many times per second. This unit explains that process from zero.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="gpu-basics" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">How a GPU Draws a Frame</a>
+  <a class="brand" href="#top">GPU Rendering Basics</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Foundations · start here · 6 chapters</div>
-  <h1>How a GPU Draws a Frame</h1>
+  <h1>GPU Rendering Basics</h1>
   <p class="lede">Every technique on this site is a small change to one process: a GPU colouring every pixel of the screen, many times per second. This unit explains that process from zero.</p>
   <p class="meta">No maths or programming knowledge is needed. Coloured symbols in formulas are sliders you can move; dotted words open a definition; links with an arrow lead to the lesson that explains that idea.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 
 
-<section class="chapter" id="screen" data-title="The screen is a grid of pixels" data-summary="A frame is a grid of pixels, each holding a colour. Pixel count N = W × H.">
-  <div class="head"><div class="num"></div><h2>The screen is a grid of pixels</h2></div>
+<section class="chapter" id="screen" data-title="Pixels" data-summary="A frame is a grid of pixels, each holding a colour. Pixel count N = W × H.">
+  <div class="head"><div class="num"></div><h2>Pixels</h2></div>
 
   <div class="prose">
     <p>Everything a game shows is a picture made of small squares called <button type="button" class="term" data-term="pixel">pixels</button>. They are arranged in rows and columns, like squared paper. A 1920 × 1080 screen has 1920 pixels in each row and 1080 rows.</p>
@@ -63,8 +63,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A 2560 × 1440 screen has how many pixels?", ["About 1.4 million", "About 3.7 million", "About 4 thousand", "About 8.3 million"], 1, "2560 × 1440 = 3 686 400, about 3.7 million."], ["The width and the height of the image both double. How many times more pixels are there?", ["2 times", "3 times", "4 times", "8 times"], 2, "N = W × H, so 2W × 2H = 4 × W × H."]]</script></details>
 
 </section>
-<section class="chapter" id="per-pixel" data-title="One small program per pixel" data-summary="A pixel shader is a program written for one pixel and run for every pixel, each with its own inputs.">
-  <div class="head"><div class="num"></div><h2>One small program per pixel</h2></div>
+<section class="chapter" id="per-pixel" data-title="Pixel shaders" data-summary="A pixel shader is a program written for one pixel and run for every pixel, each with its own inputs.">
+  <div class="head"><div class="num"></div><h2>Pixel shaders</h2></div>
 
   <div class="prose">
     <p>The GPU's job is to find a colour for every pixel, every frame. It does that by running a small program once for each pixel. That program is called a <button type="button" class="term" data-term="pixelshader">pixel shader</button> (OpenGL and Vulkan call it a fragment shader).</p>
@@ -90,8 +90,8 @@
   <details class="check"><summary></summary><script type="application/json">[["What is different between two runs of the same pixel shader in one frame?", ["The code", "The input, such as the pixel position", "The GPU", "Nothing, they are identical"], 1, "The code is the same for every pixel; each run receives its own inputs."], ["Why do shaders use uv from 0 to 1 instead of pixel numbers?", ["It is faster", "The same code then works at any resolution", "Pixel numbers are not available", "GPUs cannot count"], 1, "Pixel numbers depend on the resolution; a 0–1 range does not."]]</script></details>
 
 </section>
-<section class="chapter" id="parallel" data-title="Thousands of pixels at the same time" data-summary="GPUs run pixels in waves of 32 or 64, in no fixed order, so pixels cannot see each other.">
-  <div class="head"><div class="num"></div><h2>Thousands of pixels at the same time</h2></div>
+<section class="chapter" id="parallel" data-title="Parallel execution" data-summary="GPUs run pixels in waves of 32 or 64, in no fixed order, so pixels cannot see each other.">
+  <div class="head"><div class="num"></div><h2>Parallel execution</h2></div>
 
   <div class="prose">
     <p>A CPU core runs one thing after another, very fast. A GPU instead has thousands of small cores and runs many pixels at once. It groups pixels into <button type="button" class="term" data-term="wave">waves</button> of 32 or 64 that execute the same instruction together, and it runs many waves side by side.</p>
@@ -121,8 +121,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A pixel shader wants the colour its left neighbour computed in the same pass. What happens?", ["It reads it directly", "It cannot: the neighbour may not have run yet", "The GPU waits for the neighbour", "It reads last frame's value automatically"], 1, "There is no defined order. Data from other pixels must come from memory written by an earlier pass."], ["How many 64-lane waves does a 100-pixel draw need?", ["1", "2", "100", "64"], 1, "⌈100 / 64⌉ = 2. The second wave is only partly full but still runs."]]</script></details>
 
 </section>
-<section class="chapter" id="pipeline" data-title="From triangles to pixels" data-summary="Vertex shader, rasterizer, pixel shader, output. A pixel is inside a triangle when all three edge functions agree.">
-  <div class="head"><div class="num"></div><h2>From triangles to pixels</h2></div>
+<section class="chapter" id="pipeline" data-title="Rasterization pipeline" data-summary="Vertex shader, rasterizer, pixel shader, output. A pixel is inside a triangle when all three edge functions agree.">
+  <div class="head"><div class="num"></div><h2>Rasterization pipeline</h2></div>
 
   <div class="prose">
     <p>Pixels are the end of the pipeline. The start is geometry. Every 3D model is made of triangles, and every triangle of three corner points called <button type="button" class="term" data-term="vertex">vertices</button>. Drawing one model goes through four stages:</p>
@@ -141,18 +141,15 @@
   <details class="check"><summary></summary><script type="application/json">[["Which stage decides which pixels a triangle covers?", ["Vertex shader", "Rasterizer", "Pixel shader", "Render target"], 1, "Rasterization is fixed hardware that tests pixel centres against each triangle."], ["For a point exactly on an edge, the edge function is…", ["Positive", "Negative", "Zero", "Undefined"], 2, "Zero means the point lies on the line through a and b."], ["How many times does the vertex shader run for a single triangle that is not shared with others?", ["Once", "Three times", "Once per covered pixel", "Never"], 1, "Once per vertex: three corners."]]</script></details>
 
 </section>
-<section class="chapter" id="frame" data-title="A frame and its time budget" data-summary="Frame budget in milliseconds = 1000 / fps. Budgets add up in milliseconds, not in fps.">
-  <div class="head"><div class="num"></div><h2>A frame and its time budget</h2></div>
+<section class="chapter" id="frame" data-title="Frames and frame time" data-summary="Frame budget in milliseconds = 1000 / fps. Budgets add up in milliseconds, not in fps.">
+  <div class="head"><div class="num"></div><h2>Frames and frame time</h2></div>
 
   <div class="prose">
     <p>All of the above happens for every object, and the finished picture is shown. Then the game moves everything a little and does it all again. One finished picture is a <button type="button" class="term" data-term="frame">frame</button>; how many frames appear per second is the frame rate.</p>
-    <p>Performance is easier to reason about in the time one frame may take, the frame budget, than in frames per second:</p>
+    <p>Performance is easier to reason about in the time one frame may take, the frame budget, than in frames per second.</p>
   </div>
-  <div class="fx" data-fx="budget"></div>
-  <div class="prose">
-    <p>The curve is steep on the left and flat on the right. Going from 30 to 60 fps halves the budget from 33.3 ms to 16.7 ms; going from 120 to 144 fps only removes 1.4 ms. Budgets, measurements and how to find what is slow are the subject of <a class="x" href="../reading-a-frame/index.html#budget">Reading a Frame</a>.</p>
-  </div>
-  <details class="check"><summary></summary><script type="application/json">[["A game targets 60 fps. How long may one frame take?", ["60 ms", "16.7 ms", "6 ms", "1.6 ms"], 1, "1000 ms / 60 ≈ 16.7 ms."], ["A feature costs 2 ms. Where does it hurt the frame rate more?", ["At 30 fps", "At 60 fps", "Equally at both", "Neither"], 1, "2 ms is 12% of a 16.7 ms frame but only 6% of a 33.3 ms frame."]]</script></details>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Frame budget: ms = 1000 / fps, so 60 fps leaves 16.7 ms. Milliseconds add up, frames per second do not.</p></div><a class="x refto" href="../reading-a-frame/index.html#budget">Open the full explanation</a></aside>
+  <details class="check"><summary></summary><script type="application/json">[["A game targets 60 fps. How long may one frame take?", ["60 ms", "16.7 ms", "6 ms", "1.6 ms"], 1, "1000 ms / 60 ≈ 16.7 ms."]]</script></details>
 
 </section>
 <section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="gpu-basics#per-pixel gpu-basics#frame" data-summary="An Unlit Shader Graph with a per-pixel Custom Function, and a frame-time readout with FrameTimingManager.">
@@ -201,7 +198,7 @@ public class FrameBudget : MonoBehaviour
             $&quot;Budget {budget:0.0} ms   CPU {cpuMs:0.0} ms   GPU {gpuMs:0.0} ms   (slowest: {slow})&quot;);
     }
 }</pre></div></div>
-<div class="prose"><p>The GPU number is the one to compare with the <a href="#frame">frame budget</a> when you work on shaders. For a detailed breakdown, open <em>Window &gt; Analysis &gt; Profiler</em> (GPU module) or the HDRP <em>Rendering Debugger</em>, covered in <a class="x" href="../reading-a-frame/index.html#implement">Reading a Frame</a>.</p></div>
+<div class="prose"><p>The GPU number is the one to compare with the <a href="#frame">frame budget</a> when you work on shaders. For a detailed breakdown, open <em>Window &gt; Analysis &gt; Profiler</em> (GPU module) or the HDRP <em>Rendering Debugger</em>, covered in <a class="x" href="../reading-a-frame/index.html#implement">Frame Profiling</a>.</p></div>
 <div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Create an <em>Unlit Shader Graph</em> under <em>Shader Graph &gt; URP</em>; the nodes, the HLSL file and the script are identical.</p></div><div class="eng" data-engine="unreal"><p>Make a Material with <em>Shading Model: Unlit</em>, connect <em>TexCoord</em> to <em>Emissive Color</em>, and use <em>ScreenPosition</em> (pixel position output) with a <em>Custom</em> node holding the PixelGrid body. <code>stat unit</code> in the console shows Game, Draw and GPU time.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
@@ -252,10 +249,10 @@ public class FrameBudget : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="gpu-basics.js?v=bc8f06e2"></script>
+<script src="gpu-basics.js?v=bf4de6d4"></script>
 </body>
 </html>

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Keeping Graphs Fast · Tech Art Atlas</title>
+<title>Graph Performance · Tech Art Atlas</title>
 <meta name="description" content="How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="sd-performance" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Keeping Graphs Fast</a>
+  <a class="brand" href="#top">Graph Performance</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Substance Designer · 8 chapters</div>
-  <h1>Keeping Graphs Fast</h1>
+  <h1>Graph Performance</h1>
   <p class="lede">How to keep Substance Designer graphs fast: measuring node times, why resolution dominates, greyscale and 8 bit, where exposed parameters belong in the cache, cheap versions of heavy nodes, graph structure, and what runtime rendering costs in an engine.</p>
   <p class="meta">Builds on Graphs, Bit Depth and Colour Space, Warps and Distortion and Pixel Processor and FX-Maps.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="sd-graphs#size sd-warps#cost"></div>
 
-<section class="chapter" id="measure" data-title="Measure first" data-builds="reading-a-frame#routine" data-summary="Turn on node timing, find the slowest nodes, use the GPU engine; engine plugins may render on the CPU.">
-  <div class="head"><div class="num"></div><h2>Measure first</h2></div>
+<section class="chapter" id="measure" data-title="Node timing" data-builds="reading-a-frame#routine" data-summary="Turn on node timing, find the slowest nodes, use the GPU engine; engine plugins may render on the CPU.">
+  <div class="head"><div class="num"></div><h2>Node timing</h2></div>
 
   <div class="prose">
     <p>A slow graph is usually slow because of a handful of nodes, and guessing which ones wastes an afternoon. Designer can show how long each node took. Turn on the node timing display in the Graph view toolbar: every node shows its computation time, and the slowest ones stand out. Re-measure after each change, and measure at the size you care about, since times scale with the pixel count.</p>
@@ -58,8 +58,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A graph takes 2 seconds to update. Which step comes first?", ["Lower every node to 8 bit", "Turn on node timing and find the few slowest nodes", "Delete the blurs", "Switch to the CPU engine"], 1, "Measure, then fix the nodes that cost the most. Blanket changes often cost quality where nothing was slow."]]</script></details>
 
 </section>
-<section class="chapter" id="resolution" data-title="Resolution is the biggest lever" data-builds="sd-graphs#size" data-summary="time = t₂ₖ · (size / 2048)²: build at 512–1k, export at full size from the Batch tab.">
-  <div class="head"><div class="num"></div><h2>Resolution is the biggest lever</h2></div>
+<section class="chapter" id="resolution" data-title="Resolution" data-builds="sd-graphs#size" data-summary="time = t₂ₖ · (size / 2048)²: build at 512–1k, export at full size from the Batch tab.">
+  <div class="head"><div class="num"></div><h2>Resolution</h2></div>
 
   <div class="prose">
     <p>Almost every node does work per pixel, so the whole graph scales with the pixel count. Each step of the parent size multiplies the time by four:</p>
@@ -71,8 +71,8 @@
   </div>
 
 </section>
-<section class="chapter" id="formats" data-title="Greyscale, 8 bit, and fewer conversions" data-builds="sd-graphs#bitdepth sd-graphs#graph" data-summary="Colour ≈ 4× greyscale. Stay L8, use L16 for heights only, convert to colour once near the end.">
-  <div class="head"><div class="num"></div><h2>Greyscale, 8 bit, and fewer conversions</h2></div>
+<section class="chapter" id="formats" data-title="Formats and conversions" data-builds="sd-graphs#bitdepth sd-graphs#graph" data-summary="Colour ≈ 4× greyscale. Stay L8, use L16 for heights only, convert to colour once near the end.">
+  <div class="head"><div class="num"></div><h2>Formats and conversions</h2></div>
 
   <div class="prose">
     <p>Adobe's numbers: colour operations take about four times as long as greyscale ones, and 16 bits costs memory and bandwidth where 8 bits would do (<a class="x" href="../sd-graphs/index.html#graph">memory per node</a>). Three rules follow:</p>
@@ -84,8 +84,8 @@
   </div>
 
 </section>
-<section class="chapter" id="cache" data-title="Caching and where parameters belong" data-builds="sd-graphs#graph" data-summary="A tweak recomputes the node and everything after it: put frequently tweaked parameters near the outputs.">
-  <div class="head"><div class="num"></div><h2>Caching and where parameters belong</h2></div>
+<section class="chapter" id="cache" data-title="Caching and parameter placement" data-builds="sd-graphs#graph" data-summary="A tweak recomputes the node and everything after it: put frequently tweaked parameters near the outputs.">
+  <div class="head"><div class="num"></div><h2>Caching and parameter placement</h2></div>
 
   <div class="prose">
     <p>Designer keeps every node's last result. When you change a parameter, only that node and the nodes after it are recomputed; everything before it comes from the cache. The same is true when an engine changes an exposed parameter at runtime. So where a parameter sits in the graph decides what a change costs:</p>
@@ -97,8 +97,8 @@
   </div>
 
 </section>
-<section class="chapter" id="heavy" data-title="The heavy nodes and their cheap versions" data-builds="sd-warps#cost sd-pixel-fx#which" data-summary="Blur downscaled copies (cost / 8 per halving), fewer warp samples and patterns, fast noise variants.">
-  <div class="head"><div class="num"></div><h2>The heavy nodes and their cheap versions</h2></div>
+<section class="chapter" id="heavy" data-title="Heavy nodes" data-builds="sd-warps#cost sd-pixel-fx#which" data-summary="Blur downscaled copies (cost / 8 per halving), fewer warp samples and patterns, fast noise variants.">
+  <div class="head"><div class="num"></div><h2>Heavy nodes</h2></div>
 
   <div class="prose">
     <p>Adobe names blurs and warps as the most processor-intensive nodes and FX-Maps as costly. Each has a cheaper way to the same look:</p>
@@ -126,8 +126,8 @@
   <div class="fx" data-fx="switchcost"></div>
 
 </section>
-<section class="chapter" id="runtime" data-title="Rendering at runtime" data-builds="sd-performance#resolution sd-publish#sbsar" data-summary="load time = materials · t₂ₖ · (size/2048)²: bake static materials, render only what must change.">
-  <div class="head"><div class="num"></div><h2>Rendering at runtime</h2></div>
+<section class="chapter" id="runtime" data-title="Runtime rendering" data-builds="sd-performance#resolution sd-publish#sbsar" data-summary="load time = materials · t₂ₖ · (size/2048)²: bake static materials, render only what must change.">
+  <div class="head"><div class="num"></div><h2>Runtime rendering</h2></div>
 
   <div class="prose">
     <p>An SBSAR in an engine is not a set of textures: it is the graph, and the engine plugin renders it to produce the textures, at import, when a parameter changes, or when a level loads. Everything above applies, multiplied by how many materials are rendered at once:</p>
@@ -263,10 +263,10 @@ public class SubstanceRenderQueue : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdperf.js?v=adc57ffb"></script>
+<script src="sdperf.js?v=c899a2e4"></script>
 </body>
 </html>

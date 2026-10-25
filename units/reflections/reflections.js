@@ -8,7 +8,7 @@
 
   /* ---------- the mirror direction ---------- */
   A.fx('reflect', {
-    title: 'Every reflection starts with the mirror direction',
+    title: 'Mirror reflection direction',
     expr: 'R = 2 (N·V) N − V,   V at {v} from the surface, surface tilted {t}',
     vars: { v: { sym: 'θ<sub>V</sub>', name: 'view angle above the surface', unit: '°', min: 2, max: 90, value: 35, step: 1 },
             t: { sym: 'tilt', name: 'tilt of the surface (a normal map or a bump)', unit: '°', min: -30, max: 30, value: 0, step: 1 } },
@@ -29,7 +29,7 @@
 
   /* ---------- roughness to mip ---------- */
   A.fx('mip', {
-    title: 'Rougher reflections read a blurrier mip',
+    title: 'Probe mip by roughness',
     expr: 'mip = {r} · (1.7 − 0.7 · {r}) · 6,   face size = {res} / 2<sup>mip</sup>',
     vars: { r: { sym: 'r', name: 'perceptual roughness', min: 0, max: 1, value: 0.4, step: 0.01 },
             res: { sym: 'size', name: 'probe resolution per face', values: [128, 256, 512, 1024], labels: ['128', '256', '512', '1024'], index: 1 } },
@@ -52,7 +52,7 @@
   function wallAt(p) { const ax = Math.abs(p[0] / BX), ay = Math.abs(p[1] / BY); if (ax > ay) return p[0] > 0 ? 1 : 3; return p[1] > 0 ? 0 : 2; }
   function boxHit(p, r) { let t = Infinity; for (let i = 0; i < 2; i++) { const b = i ? BY : BX; if (Math.abs(r[i]) > 1e-6) { const tt = ((r[i] > 0 ? b : -b) - p[i]) / r[i]; if (tt > 0) t = Math.min(t, tt); } } return t; }
   A.fx('box', {
-    title: 'Box projection: aim the lookup at the right wall',
+    title: 'Box projection',
     expr: 't = ray–box distance from {px} along R,   lookup = (P + t·R) − probe,   not just R',
     vars: { px: { sym: 'P', name: 'position of the shaded point (x)', min: -3.5, max: 3.5, value: 2.6, step: 0.05 },
             a: { sym: 'R', name: 'direction of the reflection', unit: '°', min: 0, max: 359, value: 60, step: 1 },
@@ -89,7 +89,7 @@
     return { R, hit, kind: 'ok' };
   }
   A.fx('ssr', {
-    title: 'Screen-space reflections only know what is on screen',
+    title: 'Screen-space reflection coverage',
     expr: 'R = reflect(V, N) at {fx},   step along R until behind the depth buffer,   box at {bx}, height {h}',
     vars: { fx: { sym: 'F', name: 'floor point that is being shaded', min: 1, max: 9, value: 4, step: 0.05 },
             bx: { sym: 'box', name: 'distance of the box', min: 3, max: 11, value: 8, step: 0.05 },
@@ -115,7 +115,7 @@
 
   /* ---------- planar mirror ---------- */
   A.fx('planar', {
-    title: 'A planar reflection renders the scene from a mirrored camera',
+    title: 'Mirrored camera for planar reflections',
     expr: 'p′ = p − 2 (n·p − d) n,   mirror tilted {t}, offset {d}',
     vars: { t: { sym: 'tilt', name: 'tilt of the mirror plane', unit: '°', min: -40, max: 40, value: 0, step: 1 },
             d: { sym: 'd', name: 'height of the plane', min: -1, max: 1, value: 0, step: 0.05 },
@@ -143,7 +143,7 @@
   /* ---------- ray tracing cost ---------- */
   const RES = [[1920, 1080], [2560, 1440], [3840, 2160]];
   A.fx('rtcost', {
-    title: 'How many reflection rays a frame needs',
+    title: 'Reflection rays per frame',
     expr: 'rays = pixels({res}) · {sc}² · {spp} · {sh},   per second at 60 fps',
     vars: { res: { sym: 'res', name: 'output resolution', values: [0, 1, 2], labels: ['1080p', '1440p', '4K'], index: 0 },
             sc: { sym: 'scale', name: 'reflection resolution (1 = full)', min: 0.25, max: 1, value: 0.5, step: 0.05 },
@@ -171,7 +171,7 @@
   const GRD = [0.06, 0.055, 0.05], HOR = [1.0, 0.95, 0.85], SKY = [0.3, 0.45, 0.75];
   function grad(R, w) { const y = R[1]; const lo = S.mix3(GRD, HOR, S.smooth(-w, 0, y)); return S.mix3(lo, SKY, S.smooth(0, w * 1.5 + 0.2, y)); }
   A.fx('cheap', {
-    title: 'A three-colour gradient as the whole environment',
+    title: 'Three-colour gradient environment',
     expr: 'env(R) = ground → horizon → sky, blended by smoothstep(R.y) over a width {w}',
     vars: { w: { sym: 'w', name: 'horizon softness (raise with roughness)', min: 0.01, max: 0.8, value: 0.08, step: 0.01 },
             m: { sym: 'metal', name: 'material', values: [0, 1, 2], labels: ['chrome', 'gold', 'red plastic'], index: 0 } },

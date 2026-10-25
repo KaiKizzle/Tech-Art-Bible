@@ -21,7 +21,7 @@
   });
 
   A.fx('srgb', {
-    title: 'sRGB decoding: stored value to light',
+    title: 'sRGB decoding',
     expr: 'linear = ({s} ≤ 0.04045) ? {s} / 12.92 : (({s} + 0.055) / 1.055)<sup>2.4</sup>',
     vars: { s: { name: 'stored (encoded) value', min: 0, max: 1, value: 0.5, step: 0.005 } },
     out: [{ sym: 'linear', f: v => dec(v.s), color: 'accent' }],
@@ -40,7 +40,7 @@
   });
 
   A.fx('blend', {
-    title: 'Blending red and green 50/50',
+    title: '50/50 blend of red and green',
     expr: 'mix = lerp(red, green, {t})',
     vars: { t: { name: 'blend amount', min: 0, max: 1, value: 0.5, step: 0.01 } },
     out: [{ sym: 'Y linear', name: 'brightness when blended in linear', f: v => 0.2126 * (1 - v.t) + 0.7152 * v.t, color: 'good' },

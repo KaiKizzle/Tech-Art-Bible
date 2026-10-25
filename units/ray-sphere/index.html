@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Rays, Spheres and Shaders · Tech Art Atlas</title>
+<title>Full-Screen Ray Setup · Tech Art Atlas</title>
 <meta name="description" content="The first stage of any sky, atmosphere or cloud effect: for every pixel, the direction it looks and where that ray crosses a layer around a curved planet. Every step is a formula you can move.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="ray-sphere" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Rays, Spheres and Shaders</a>
+  <a class="brand" href="#top">Full-Screen Ray Setup</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Shaders & rendering · 10 chapters</div>
-  <h1>Rays, Spheres and Shaders</h1>
+  <h1>Full-Screen Ray Setup</h1>
   <p class="lede">The first stage of any sky, atmosphere or cloud effect: for every pixel, the direction it looks and where that ray crosses a layer around a curved planet. Every step is a formula you can move.</p>
   <p class="meta">Engine notes cover Unity HDRP, Unity URP and Unreal. Test values are given so you can check your own implementation.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="gpu-basics#per-pixel spaces#perspective rays-math#quadratic buffers#constant"></div>
 
-<section class="chapter" id="goal" data-title="What we are building" data-builds="gpu-basics#per-pixel" data-summary="A full-screen pass that finds, per pixel, the ray direction and where it crosses a cloud layer 1500–2500 m above a curved planet.">
-  <div class="head"><div class="num"></div><h2>What we are building</h2></div>
+<section class="chapter" id="goal" data-title="Goal" data-builds="gpu-basics#per-pixel" data-summary="A full-screen pass that finds, per pixel, the ray direction and where it crosses a cloud layer 1500–2500 m above a curved planet.">
+  <div class="head"><div class="num"></div><h2>Goal</h2></div>
 
   <div class="prose">
     <p>Volumetric clouds are drawn by walking along a line from the camera through the sky and adding up how much cloud each step passes through. Before that walk can start, every pixel needs two answers: <strong>in which direction does this pixel look</strong>, and <strong>between which two distances does that line pass through the cloud layer</strong>? This unit builds exactly that first stage, as a full-screen pass.</p>
@@ -79,8 +79,8 @@
   </div>
 
 </section>
-<section class="chapter" id="pixel-uv" data-title="From a pixel to UV and NDC" data-builds="spaces#ndc-screen" data-summary="uv = (pixel + 0.5) / size; ndc = uv · 2 − 1, with y flipped on most platforms.">
-  <div class="head"><div class="num"></div><h2>From a pixel to UV and NDC</h2></div>
+<section class="chapter" id="pixel-uv" data-title="Pixel to UV and NDC" data-builds="spaces#ndc-screen" data-summary="uv = (pixel + 0.5) / size; ndc = uv · 2 − 1, with y flipped on most platforms.">
+  <div class="head"><div class="num"></div><h2>Pixel to UV and NDC</h2></div>
 
   <div class="prose">
     <p>A full-screen pass draws one big triangle (or quad) over the whole screen, so the pixel shader runs once for every pixel. The only thing it knows at first is <em>which</em> pixel it is: its column and row, given by the <code>SV_Position</code> input. Their values sit at pixel centres: 0.5, 1.5, 2.5 and so on.</p>
@@ -93,8 +93,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Pixel column 959 on a 1920 px wide screen. What is its NDC x?", ["0", "About −0.0005", "−1", "0.5"], 1, "uv = (959 + 0.5) / 1920 = 0.49974; ndc = 2 × 0.49974 − 1 = −0.0005. Pixel 959 is just left of the centre line."], ["Why compute NDC instead of using pixel numbers directly?", ["NDC is faster", "The camera maths in the next step works in the −1 to +1 range at any resolution", "Pixels are integers", "HLSL requires it"], 1, "The projection is defined in NDC, so the same code works at every resolution."]]</script></details>
 
 </section>
-<section class="chapter" id="view-ray" data-title="From NDC to a direction from the camera" data-builds="spaces#perspective vectors#normalize" data-summary="d_view = normalize(ndc.x · tan(fov/2) · aspect, ndc.y · tan(fov/2), 1).">
-  <div class="head"><div class="num"></div><h2>From NDC to a direction from the camera</h2></div>
+<section class="chapter" id="view-ray" data-title="View ray from NDC" data-builds="spaces#perspective vectors#normalize" data-summary="d_view = normalize(ndc.x · tan(fov/2) · aspect, ndc.y · tan(fov/2), 1).">
+  <div class="head"><div class="num"></div><h2>View ray from NDC</h2></div>
 
   <div class="prose">
     <p>A camera turns a direction into a screen position by dividing by distance (<a class="x" href="../spaces/index.html#perspective">the perspective divide</a>). For a ray we need the opposite: start from the screen position and build the direction it came from.</p>
@@ -107,8 +107,8 @@
   <details class="check"><summary></summary><script type="application/json">[["With a 90° vertical field of view, at which angle above the centre does the top edge of the screen look?", ["90°", "45°", "60°", "30°"], 1, "Half the field of view: tan(45°) = 1, so the top pixel's ray is (0, 1, 1), 45° up."], ["Why is the direction normalized at the end?", ["So t in later steps is a real distance in metres", "To make it point forward", "To flip y", "It is not needed"], 0, "The ray formula P(t) = O + t·D only measures distance when D has length 1."]]</script></details>
 
 </section>
-<section class="chapter" id="world-ray" data-title="Turning the ray into the world, camera-relative" data-builds="spaces#transform spaces#chain" data-summary="Rotate the view ray by the camera&#x27;s rotation (w = 0); start it at the origin by working camera-relative.">
-  <div class="head"><div class="num"></div><h2>Turning the ray into the world, camera-relative</h2></div>
+<section class="chapter" id="world-ray" data-title="Camera-relative world ray" data-builds="spaces#transform spaces#chain" data-summary="Rotate the view ray by the camera&#x27;s rotation (w = 0); start it at the origin by working camera-relative.">
+  <div class="head"><div class="num"></div><h2>Camera-relative world ray</h2></div>
 
   <div class="prose">
     <p>The view-space direction is relative to the camera's orientation. To know where it points in the world, rotate it by the camera's rotation, the camera-to-world matrix used as a <a class="x" href="../spaces/index.html#transform">direction transform (w = 0)</a>. In the side view used throughout this unit, rotation is one angle: the world elevation of the ray is the camera's pitch plus the pixel's angle inside the view.</p>
@@ -124,8 +124,8 @@
   <details class="check"><summary></summary><script type="application/json">[["The camera is pitched 10° up. A pixel's view ray points 25° above the view centre. Its world elevation?", ["15°", "25°", "35°", "10°"], 2, "In the side view the angles add: 10° + 25°."], ["Roughly how precise is a float that holds 6 371 000 (metres)?", ["1 mm", "1 cm", "0.5 m", "100 m"], 2, "Between 2²² and 2²³ the spacing of 32-bit floats is 0.5."]]</script></details>
 
 </section>
-<section class="chapter" id="planet" data-title="The planet and the layer as spheres" data-builds="rays-math#sphere vectors#length" data-summary="Planet centre C = (0, −(R + h), 0); altitude = |P − C| − R; the layer lies between R + 1500 and R + 2500.">
-  <div class="head"><div class="num"></div><h2>The planet and the layer as spheres</h2></div>
+<section class="chapter" id="planet" data-title="Planet and layer spheres" data-builds="rays-math#sphere vectors#length" data-summary="Planet centre C = (0, −(R + h), 0); altitude = |P − C| − R; the layer lies between R + 1500 and R + 2500.">
+  <div class="head"><div class="num"></div><h2>Planet and layer spheres</h2></div>
 
   <div class="prose">
     <p>The ground is a sphere of radius R = 6 371 km (the Earth's mean radius). The camera stands h metres above it. In camera-relative coordinates the camera is at the origin, so the planet's centre is straight below it at <code>C = (0, −(R + h), 0)</code>.</p>
@@ -138,11 +138,15 @@
   <details class="check"><summary></summary><script type="application/json">[["Where is the planet's centre in camera-relative coordinates for a camera 2 m above ground (R = 6 371 000 m)?", ["(0, 0, 0)", "(0, −6 371 002, 0)", "(0, 6 371 002, 0)", "(0, −2, 0)"], 1, "Straight below the camera, at a distance of R + h."], ["A horizontal ray has travelled 50 km. How much higher above the ground is it, roughly?", ["2 m", "20 m", "196 m", "5 km"], 2, "t² / 2R = 50 000² / 12 742 000 ≈ 196 m."]]</script></details>
 
 </section>
-<section class="chapter" id="hit" data-title="Where the ray enters and leaves the layer" data-builds="rays-math#quadratic rays-math#which-t" data-summary="b = (R + h)·D_y, c = (R + h)² − r²; from below, enter = t₁ of the lower sphere, exit = t₁ of the upper sphere.">
-  <div class="head"><div class="num"></div><h2>Where the ray enters and leaves the layer</h2></div>
+<section class="chapter" id="hit" data-title="Layer entry and exit" data-builds="rays-math#quadratic rays-math#which-t" data-summary="b = (R + h)·D_y, c = (R + h)² − r²; from below, enter = t₁ of the lower sphere, exit = t₁ of the upper sphere.">
+  <div class="head"><div class="num"></div><h2>Layer entry and exit</h2></div>
 
   <div class="prose">
-    <p>Now the <a class="x" href="../rays-math/index.html#quadratic">ray-sphere formula</a> does the work, once per sphere. With the ray starting at the origin, L = O − C = (0, R + h, 0), so the two numbers of the quadratic become very simple:</p>
+    <p>Now the ray-sphere formula does the work, once per sphere.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Ray against sphere: t² + 2bt + c = 0 with b = L·D, c = L·L − r², so t = −b ± √(b² − c); c < 0 means the ray starts inside.</p></div><a class="x refto" href="../rays-math/index.html#quadratic">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>With the ray starting at the origin, L = O − C = (0, R + h, 0), so the two numbers of the quadratic become very simple:</p>
     <ul>
       <li>b = dot(L, D) = (R + h) · D<sub>y</sub>, where D<sub>y</sub> = sin(elevation);</li>
       <li>c = dot(L, L) − r² = (R + h)² − r².</li>
@@ -156,8 +160,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Looking straight up from 2 m, where does the ray enter the layer that starts at 1500 m?", ["1500 m", "1498 m", "1502 m", "138 km"], 1, "It only has to climb the remaining 1498 m."], ["Why is t₀ never used in this case?", ["It is always NaN", "The camera is inside both spheres, so t₀ is behind it", "t₀ is the exit", "It is too large"], 1, "With c < 0 the start is inside; t₀ < 0 lies behind the camera."], ["Near the horizon the path through the layer is much longer than 1000 m. Why does that matter for clouds?", ["It does not", "More cloud is crossed, so the horizon looks denser and needs more march steps", "The ray misses the layer", "The precision is lower"], 1, "A grazing path crosses tens of kilometres of the layer."]]</script></details>
 
 </section>
-<section class="chapter" id="cases" data-title="When the camera is inside or above the layer" data-builds="rays-math#which-t" data-summary="Below: lower t₁ to upper t₁. Inside: 0 to the first exit. Above: upper t₀ to lower t₀ or upper t₁.">
-  <div class="head"><div class="num"></div><h2>When the camera is inside or above the layer</h2></div>
+<section class="chapter" id="cases" data-title="Camera inside or above the layer" data-builds="rays-math#which-t" data-summary="Below: lower t₁ to upper t₁. Inside: 0 to the first exit. Above: upper t₀ to lower t₀ or upper t₁.">
+  <div class="head"><div class="num"></div><h2>Camera inside or above the layer</h2></div>
 
   <div class="prose">
     <p>A flight game or a mountain top puts the camera inside the layer or above it. The same two sphere tests still give all the answers; only the choice of t changes. Use c (inside or outside each sphere) to tell the cases apart:</p>
@@ -171,8 +175,8 @@
   <details class="check"><summary></summary><script type="application/json">[["The camera flies at 2000 m and looks straight down. Where does the march end?", ["At 500 m distance, where the ray reaches the bottom of the layer", "At 2000 m", "At the horizon", "It never ends"], 0, "Down from 2000 m, the ray reaches 1500 m altitude after 500 m."], ["Above the layer, the ray misses the upper sphere. What does the pass do?", ["Marches from 0", "Nothing: there is no cloud along this ray", "Uses t₁", "Marches to the horizon"], 1, "No intersection with the layer's outer sphere means the ray never touches the layer."]]</script></details>
 
 </section>
-<section class="chapter" id="cpu-gpu" data-title="Getting the settings to the shader" data-builds="buffers#constant shader-anatomy#properties" data-summary="Planet radius, layer heights and camera height go in a constant buffer set once per frame.">
-  <div class="head"><div class="num"></div><h2>Getting the settings to the shader</h2></div>
+<section class="chapter" id="cpu-gpu" data-title="Shader parameters from C#" data-builds="buffers#constant shader-anatomy#properties" data-summary="Planet radius, layer heights and camera height go in a constant buffer set once per frame.">
+  <div class="head"><div class="num"></div><h2>Shader parameters from C#</h2></div>
 
   <div class="prose">
     <p>The shader needs a handful of numbers that are the same for every pixel: the planet radius, the layer's bottom and top, the camera height, and the camera's rotation and field of view. These are <a class="x" href="../shader-anatomy/index.html#properties">properties</a>, stored in a <a class="x" href="../buffers/index.html#constant">constant buffer</a> and set from a script once per frame.</p>
@@ -188,12 +192,12 @@
   <details class="check"><summary></summary><script type="application/json">[["Why are these values in a constant buffer rather than computed per pixel?", ["They are the same for every pixel of the frame", "Constant buffers are faster to compute", "Shaders cannot compute numbers", "So artists can paint them"], 0, "Per-frame, per-draw values belong in a constant buffer."]]</script></details>
 
 </section>
-<section class="chapter" id="output" data-title="Writing the result into the frame" data-builds="rays-math#quadratic" data-summary="Debug the distance through the layer first; later, blend clouds with result = clouds + background · T, T = e^(−σd).">
-  <div class="head"><div class="num"></div><h2>Writing the result into the frame</h2></div>
+<section class="chapter" id="output" data-title="Output and blending" data-builds="rays-math#quadratic" data-summary="Debug the distance through the layer first; later, blend clouds with result = clouds + background · T, T = e^(−σd).">
+  <div class="head"><div class="num"></div><h2>Output and blending</h2></div>
 
   <div class="prose">
     <p>At this stage the pass does not draw clouds yet. To check the maths, output the distance through the layer as a colour and compare with the test values from the <a href="#hit">hit chapter</a>.</p>
-    <p>When the march along the ray is added later, it produces two things: the light the clouds add, and how much of the background still shines through them, the <button type="button" class="term" data-term="transmittance">transmittance</button> T. Light passing through a uniform medium of density σ over a distance d is reduced exponentially (the Beer–Lambert law). The pass then blends with the frame below: <code>result = clouds + background · T</code>, which the GPU does for you with the blend mode <code>Blend One SrcAlpha</code> and T in the alpha channel (<a class="x" href="../transparency/index.html#modes">blend modes</a>). The march itself, step by step, is the next unit: <a class="x" href="../cloud-march/index.html#interval">Marching a Cloud Layer</a>.</p>
+    <p>When the march along the ray is added later, it produces two things: the light the clouds add, and how much of the background still shines through them, the <button type="button" class="term" data-term="transmittance">transmittance</button> T. Light passing through a uniform medium of density σ over a distance d is reduced exponentially (the Beer–Lambert law). The pass then blends with the frame below: <code>result = clouds + background · T</code>, which the GPU does for you with the blend mode <code>Blend One SrcAlpha</code> and T in the alpha channel (<a class="x" href="../transparency/index.html#modes">blend modes</a>). The march itself, step by step, is the next unit: <a class="x" href="../cloud-march/index.html#interval">Volumetric Cloud Layer</a>.</p>
   </div>
   <div class="fx" data-fx="beer"></div>
   <pre class="hlsl"><span class="c">// The complete first stage. Output: distance through the layer as a debug value.</span>
@@ -304,7 +308,7 @@ public class CameraRayParams : MonoBehaviour
         Shader.SetGlobalVector(PosId, t.position);
     }
 }</pre></div></div>
-<div class="prose"><p>HDRP renders with reversed Z on every modern platform, so the far plane reads as 0 and the near plane as 1; the check above accepts either end so it also works where Z is not reversed. With the interval working, <a class="x" href="../cloud-march/index.html#implement">Marching a Cloud Layer</a> replaces the debug colour with real clouds.</p></div>
+<div class="prose"><p>HDRP renders with reversed Z on every modern platform, so the far plane reads as 0 and the near plane as 1; the check above accepts either end so it also works where Z is not reversed. With the interval working, <a class="x" href="../cloud-march/index.html#implement">Volumetric Cloud Layer</a> replaces the debug colour with real clouds.</p></div>
 <div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp"><p>Create a <em>Fullscreen Shader Graph</em> (URP) and add the <em>Full Screen Pass Renderer Feature</em> to the URP Renderer, with the material and an injection point of <em>Before Rendering Post Processing</em>. Replace <code>SampleCameraDepth</code> with <code>SampleSceneDepth</code> from <code>DeclareDepthTexture.hlsl</code> (enable <em>Depth Texture</em> on the URP asset).</p></div><div class="eng" data-engine="unreal"><p>Use a <em>Post Process Material</em> (Material Domain: Post Process, Blendable Location: Before Tonemapping) on a Post Process Volume. The camera ray is <em>-CameraVector</em> in a post-process material, scene depth comes from <em>SceneDepth</em>, and parameters come from a <em>Material Parameter Collection</em>.</p></div></div>
 </section>
 <section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
@@ -334,10 +338,10 @@ public class CameraRayParams : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="ray-sphere.js?v=86fab613"></script>
+<script src="ray-sphere.js?v=19e9bd0d"></script>
 </body>
 </html>

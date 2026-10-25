@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="texturing" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -46,10 +46,10 @@
 </header>
 <figure class="keyart"><img src="../../assets/keyart/texturing.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A crate with its UV checker on one side and its finished material on the other.</figcaption></figure>
 </div>
-<div class="needs" data-needs="textures-sampling#uv texture-memory#mips"></div>
+<div class="needs" data-needs="textures-sampling#uv textures-sampling#mips"></div>
 
-<section class="chapter" id="uvs" data-title="UVs: flattening the surface" data-builds="textures-sampling#uv" data-summary="Cut seams where they hide; keep islands unstretched (aspect 1) and at even density.">
-  <div class="head"><div class="num"></div><h2>UVs: flattening the surface</h2></div>
+<section class="chapter" id="uvs" data-title="UV unwrapping" data-builds="textures-sampling#uv" data-summary="Cut seams where they hide; keep islands unstretched (aspect 1) and at even density.">
+  <div class="head"><div class="num"></div><h2>UV unwrapping</h2></div>
 
   <div class="prose">
     <p>A texture is flat; a model is not. <button type="button" class="term" data-term="unwrap">Unwrapping</button> cuts the surface along <em>seams</em> into pieces (<em>islands</em>) that can lie flat, and lays them out in the 0–1 square of <a class="x" href="../textures-sampling/index.html#uv">UV space</a>. Two things make an unwrap good: islands keep their proportions (no stretching), and every island gets the same amount of texture per metre (even density). Stretch an island and watch the checker:</p>
@@ -58,11 +58,11 @@
   <div class="prose"><p>Seams are unavoidable, so hide them: along hard edges, in crevices, on the side of an object that faces away from the camera, under straps and belts on characters. Every seam is also a place where the texture is discontinuous, so normal map details and painted strokes must be continued across it in the painting tool.</p></div>
 
 </section>
-<section class="chapter" id="padding" data-title="Padding and mip bleeding" data-builds="texture-memory#mips texturing#uvs" data-summary="At mip k a texel covers 2ᵏ texels: padding p keeps seams clean down to mip ⌊log₂ p⌋.">
+<section class="chapter" id="padding" data-title="Padding and mip bleeding" data-builds="textures-sampling#mips texturing#uvs" data-summary="At mip k a texel covers 2ᵏ texels: padding p keeps seams clean down to mip ⌊log₂ p⌋.">
   <div class="head"><div class="num"></div><h2>Padding and mip bleeding</h2></div>
 
   <div class="prose">
-    <p>The empty space between islands is not empty to the GPU. <a class="x" href="../texture-memory/index.html#mips">Mipmaps</a> average 2 × 2 texels into one, then 4 × 4, and so on, so at a distance the background colour bleeds into the edges of every island and shows up as thin dark or bright lines along the seams. The fix is <button type="button" class="term" data-term="padding">padding</button> (also called dilation or edge padding): fill the space around each island with the island's own colours. At mip level k one texel covers 2ᵏ original texels, so padding of p texels keeps the edges clean down to mip log₂ p:</p>
+    <p>The empty space between islands is not empty to the GPU. <a class="x" href="../textures-sampling/index.html#mips">Mipmaps</a> average 2 × 2 texels into one, then 4 × 4, and so on, so at a distance the background colour bleeds into the edges of every island and shows up as thin dark or bright lines along the seams. The fix is <button type="button" class="term" data-term="padding">padding</button> (also called dilation or edge padding): fill the space around each island with the island's own colours. At mip level k one texel covers 2ᵏ original texels, so padding of p texels keeps the edges clean down to mip log₂ p:</p>
   </div>
   <div class="fx" data-fx="padding"></div>
   <div class="prose"><p>Substance Painter, Designer and most bakers dilate on export (<em>Dilation</em> or <em>Padding: infinite</em>). Islands need a gap of about twice the padding between them so their paddings do not overwrite each other; 8 to 16 px at 2048 is common.</p></div>
@@ -75,11 +75,11 @@
     <p>Assets made by different artists must match in sharpness, or a crisp crate sits next to a blurry wall. Teams agree on a <button type="button" class="term" data-term="td">texel density</button> target in texels per metre, and every asset is unwrapped to hit it. For a surface with area A that uses a fraction u of a texture of size T:</p>
   </div>
   <div class="fx" data-fx="td"></div>
-  <div class="prose"><p>Typical targets are around 512 px/m for third-person games and 1024 px/m or more for first-person views, often with exceptions for heroes and props the player picks up. Why those numbers work is the topic of <a class="x" href="../texture-memory/index.html#density">texel density and the screen</a>.</p></div>
+  <div class="prose"><p>Typical targets are around 512 px/m for third-person games and 1024 px/m or more for first-person views, often with exceptions for heroes and props the player picks up. Why those numbers work, from how many pixels a metre of surface covers on screen, is in <a class="x" href="../texture-memory/index.html#density">texel density and the screen</a>.</p></div>
 
 </section>
-<section class="chapter" id="baking" data-title="Baking a high-poly model" data-builds="spaces#tangent texture-memory#normals" data-summary="Rays from the low-poly mesh must reach the detail (d ≥ h) but stop before other surfaces (d &lt; g). Bake in MikkTSpace.">
-  <div class="head"><div class="num"></div><h2>Baking a high-poly model</h2></div>
+<section class="chapter" id="baking" data-title="High-poly baking" data-builds="spaces#tangent texture-memory#normals" data-summary="Rays from the low-poly mesh must reach the detail (d ≥ h) but stop before other surfaces (d &lt; g). Bake in MikkTSpace.">
+  <div class="head"><div class="num"></div><h2>High-poly baking</h2></div>
 
   <div class="prose">
     <p>Detail too small for the game mesh is modelled or sculpted on a high-resolution copy and <button type="button" class="term" data-term="bake">baked</button> into textures. For every texel of the low-poly mesh, the baker casts a ray along the surface normal, finds the high-poly surface and records its normal, its distance (height), how occluded it is (AO), its curvature and thickness. Rays need a maximum distance (or a <em>cage</em>, an inflated copy of the low-poly mesh that sets the distance per vertex). Too short and the ray misses the detail; too long and it hits a different part of the model:</p>
@@ -112,14 +112,14 @@
   <div class="fx" data-fx="texmem"></div>
 
 </section>
-<section class="chapter" id="export" data-title="From the painting tool to the engine" data-builds="texture-settings#packing texturing#padding" data-summary="Engine export preset, the right green channel, padding on, suffixes in names, 8 bit except displacement heights.">
-  <div class="head"><div class="num"></div><h2>From the painting tool to the engine</h2></div>
+<section class="chapter" id="export" data-title="Export to the engine" data-builds="texture-settings#packing texturing#padding" data-summary="Engine export preset, the right green channel, padding on, suffixes in names, 8 bit except displacement heights.">
+  <div class="head"><div class="num"></div><h2>Export to the engine</h2></div>
 
   <div class="prose">
     <p>The painting tool works with many layers and full-precision maps; the engine wants a few packed, compressed textures. The export step decides how they meet:</p>
     <ol>
       <li><strong>Use the engine's export preset.</strong> Substance Painter ships presets for HDRP (base colour, normal, and the mask map with metallic, AO, detail mask and smoothness), URP and Unreal (base colour, normal, and an occlusion/roughness/metallic texture). The channel layouts are explained in <a class="x" href="../texture-settings/index.html#packing">packing layouts</a>.</li>
-      <li><strong>Normal map convention.</strong> OpenGL (Y+) for Unity, DirectX (Y−) for Unreal; most tools convert on export.</li>
+      <li><strong>Normal map convention.</strong> OpenGL (Y+) for Unity, DirectX (Y−) for Unreal; most tools convert on export (<a class="x" href="../texture-memory/index.html#normals">normal map conventions</a>).</li>
       <li><strong>Padding on.</strong> Dilation to infinity, so the mip chain stays clean.</li>
       <li><strong>Names with suffixes.</strong> <code>Crate_BC</code>, <code>Crate_N</code>, <code>Crate_MS</code>: the engine can then set import settings automatically (<a class="x" href="../texture-settings/index.html#implement">an import script</a>).</li>
       <li><strong>Resolution and bit depth.</strong> Export at the size you will ship (or larger and let the engine's <em>Max Size</em> scale down); 8 bits per channel is enough for everything except height maps used for displacement (16 bits).</li>
@@ -239,10 +239,10 @@ public static class TexelDensityReport
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="texturing.js?v=a1dd8809"></script>
+<script src="texturing.js?v=25ef0f03"></script>
 </body>
 </html>

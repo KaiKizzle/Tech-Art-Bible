@@ -25,7 +25,7 @@
 
   /* ---------- energy ---------- */
   A.fx('energy', {
-    title: 'Where the light goes',
+    title: 'Reflected versus absorbed light',
     expr: 'reflected ≈ {f0} + (1 − {f0}) · albedo,   albedo = linear({v})',
     vars: { v: { sym: 'base', name: 'base colour value (sRGB 0–255)', min: 0, max: 255, value: 200, step: 1 }, f0: { sym: 'F0', name: 'specular reflectance at normal incidence', min: 0.02, max: 0.08, value: 0.04, step: 0.005 } },
     out: [{ sym: 'specular', f: v => v.f0, color: 'ray', fmt: x => num(x * 100) + ' %' }, { sym: 'diffuse', f: v => (1 - v.f0) * s2l(v.v), color: 'accent', fmt: x => num(x * 100) + ' %' }, { sym: 'absorbed', f: v => 1 - v.f0 - (1 - v.f0) * s2l(v.v), color: 'muted', fmt: x => num(x * 100) + ' %' }],
@@ -42,7 +42,7 @@
   /* ---------- base colour range ---------- */
   const REF = [[56, 'charcoal'], [80, 'asphalt'], [170, 'dry sand'], [237, 'fresh snow']];
   A.fx('albedo', {
-    title: 'Is this base colour physical?',
+    title: 'Base colour range check',
     expr: 'linear = (({v} / 255 + 0.055) / 1.055)<sup>2.4</sup>',
     vars: { v: { sym: 'value', name: 'brightest channel of the base colour (sRGB 0–255)', min: 0, max: 255, value: 128, step: 1 } },
     out: { sym: 'reflectance', f: v => s2l(v.v), fmt: x => num(x * 100) + ' %' },
@@ -62,7 +62,7 @@
   /* ---------- metallic ---------- */
   const GOLD = [1.0, 0.85, 0.57];
   A.fx('metal', {
-    title: 'Metallic between 0 and 1',
+    title: 'Metallic values between 0 and 1',
     expr: 'F0 = lerp(0.04, base, {m}),   diffuse = base · (1 − {m})',
     vars: { m: { sym: 'metallic', name: 'metallic', min: 0, max: 1, value: 1, step: 0.01 }, r: { sym: 'roughness', name: 'roughness', min: 0.05, max: 1, value: 0.3, step: 0.01 } },
     out: [{ sym: 'F0 (red)', f: v => 0.04 + (GOLD[0] - 0.04) * v.m, color: 'accent' }, { sym: 'diffuse (red)', f: v => GOLD[0] * (1 - v.m), color: 'ray' }],
@@ -74,7 +74,7 @@
   /* ---------- roughness ---------- */
   const RED = [0.6, 0.06, 0.04];
   A.fx('rough', {
-    title: 'Roughness spreads the same light',
+    title: 'Roughness and highlight spread',
     expr: 'α = {r}²,   peak of the highlight = 1 / (π α²),   smoothness = 1 − {r}',
     vars: { r: { sym: 'roughness', name: 'roughness', min: 0.03, max: 1, value: 0.35, step: 0.01 } },
     out: [{ sym: 'peak', f: v => 1 / (PI * Math.pow(v.r, 4)), color: 'accent' }, { sym: 'smoothness', f: v => 1 - v.r, color: 'ray' }],
@@ -84,7 +84,7 @@
 
   /* ---------- AO ---------- */
   A.fx('ao', {
-    title: 'AO as an input versus baked into the base colour',
+    title: 'AO input versus baked AO',
     expr: 'correct = sun + sky · {ao},   baked = (sun + sky) · {ao},   sun share {s}',
     vars: { ao: { sym: 'AO', name: 'occlusion at this point (1 = open)', min: 0, max: 1, value: 0.4, step: 0.01 }, s: { sym: 'sun', name: 'share of the light coming from the sun', min: 0, max: 1, value: 0.7, step: 0.01 } },
     out: [{ sym: 'correct', f: v => v.s + (1 - v.s) * v.ao, color: 'good' }, { sym: 'baked into albedo', f: v => v.ao, color: 'bad' }],

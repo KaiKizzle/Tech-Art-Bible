@@ -57,7 +57,7 @@
   });
 
   A.fx('project', {
-    title: 'How far a reaches along b̂',
+    title: 'Projection of a onto b̂',
     expr: 's = a · b̂ = {ax}·cos {phi} + {ay}·sin {phi}',
     vars: { ax: Object.assign({ sym: 'a<sub>x</sub>', name: 'a, x', value: 3 }, ext), ay: Object.assign({ sym: 'a<sub>y</sub>', name: 'a, y', value: 2 }, exty),
             phi: { sym: 'φ', name: 'direction of b̂', unit: '°', min: -180, max: 180, value: 15, step: 1 } },

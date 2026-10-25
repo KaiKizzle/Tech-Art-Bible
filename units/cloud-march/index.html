@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Marching a Cloud Layer · Tech Art Atlas</title>
+<title>Volumetric Cloud Layer · Tech Art Atlas</title>
 <meta name="description" content="The second half of a volumetric cloud shader: from where the ray crosses the layer to the colour of the pixel. Steps, density, noise, absorption, light and cost, each as a formula you can move.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="cloud-march" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Marching a Cloud Layer</a>
+  <a class="brand" href="#top">Volumetric Cloud Layer</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,30 +40,31 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Shaders & rendering · 10 chapters</div>
-  <h1>Marching a Cloud Layer</h1>
+  <h1>Volumetric Cloud Layer</h1>
   <p class="lede">The second half of a volumetric cloud shader: from where the ray crosses the layer to the colour of the pixel. Steps, density, noise, absorption, light and cost, each as a formula you can move.</p>
-  <p class="meta">Continues Rays, Spheres and Shaders. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">Continues Full-Screen Ray Setup. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/cloud-march.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A raymarched cloud layer, lit from the side.</figcaption></figure>
 </div>
 <div class="needs" data-needs="ray-sphere#hit ray-sphere#output shader-anatomy#functions"></div>
 
-<section class="chapter" id="interval" data-title="From an interval to samples" data-builds="ray-sphere#hit ray-sphere#cases" data-summary="Δ = (t_exit − t_enter) / N; sample i at t_enter + (i + 0.5 + jitter) · Δ.">
-  <div class="head"><div class="num"></div><h2>From an interval to samples</h2></div>
+<section class="chapter" id="interval" data-title="Sample positions along the ray" data-builds="ray-sphere#hit ray-marching#budget" data-summary="Δ = (t_exit − t_enter) / N; sample i at t_enter + (i + 0.5 + jitter) · Δ.">
+  <div class="head"><div class="num"></div><h2>Sample positions along the ray</h2></div>
 
   <div class="prose">
-    <p><a class="x" href="../ray-sphere/index.html#hit">Rays, Spheres and Shaders</a> ended with two numbers per pixel: where the view ray enters the cloud layer and where it leaves. A sphere has a formula, so we could solve for the hit exactly. A cloud does not: its density changes everywhere, so there is no equation to solve. Instead the shader <button type="button" class="term" data-term="raymarch">raymarches</button>: it walks along the ray in steps, looks up the density at each step, and adds up the effect.</p>
+    <p><a class="x" href="../ray-sphere/index.html#hit">Full-Screen Ray Setup</a> ended with two numbers per pixel: where the view ray enters the cloud layer and where it leaves. A sphere has a formula, so we could solve for the hit exactly. A cloud does not: its density changes everywhere, so there is no equation to solve. Instead the shader <button type="button" class="term" data-term="raymarch">raymarches</button>: it walks along the ray in steps, looks up the density at each step, and adds up the effect.</p>
     <p>With N steps between t<sub>enter</sub> and t<sub>exit</sub>, each step covers Δ = (t<sub>exit</sub> − t<sub>enter</sub>) / N, and the sample sits in the middle of its step:</p>
   </div>
   <div class="fx" data-fx="steps"></div>
   <div class="prose">
-    <p>Fixed steps leave visible slices in the clouds, because every pixel samples the same depths. The fix is a per-pixel <strong>jitter</strong>: shift all samples by a random fraction of a step, different for each pixel and each frame. The slices turn into fine noise, which temporal anti-aliasing then averages away. Move the jitter slider: the samples slide inside their steps.</p>
+    <p>Fixed steps leave visible slices in the clouds, because every pixel samples the same depths. Move the jitter slider: the samples slide inside their steps, by a different random fraction for each pixel and frame.</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Jitter: offset each ray's samples by a random fraction of a step per pixel and frame; bands turn into noise that TAA averages away.</p></div><a class="x refto" href="../ray-marching/index.html#budget">Open the full explanation</a></aside>
   <details class="check"><summary></summary><script type="application/json">[["The ray crosses the layer from 2 km to 14 km with 48 steps. How long is each step?", ["48 m", "250 m", "2.9 km", "12 km"], 1, "(14 − 2) km / 48 = 0.25 km."]]</script></details>
 
 </section>
-<section class="chapter" id="height" data-title="Density by height" data-builds="ray-sphere#planet shader-anatomy#functions" data-summary="h = (altitude − bottom) / (top − bottom); profile = smoothstep(0, a, h) · (1 − smoothstep(b, 1, h)).">
-  <div class="head"><div class="num"></div><h2>Density by height</h2></div>
+<section class="chapter" id="height" data-title="Height profile" data-builds="ray-sphere#planet shader-anatomy#functions" data-summary="h = (altitude − bottom) / (top − bottom); profile = smoothstep(0, a, h) · (1 − smoothstep(b, 1, h)).">
+  <div class="head"><div class="num"></div><h2>Height profile</h2></div>
 
   <div class="prose">
     <p>Real cloud layers are thin at the bottom, dense in the middle and wispy at the top. The shader turns the sample's altitude (<a class="x" href="../ray-sphere/index.html#planet">altitude along the ray</a>) into a position inside the layer, from 0 at the bottom to 1 at the top, and shapes it with two <a class="x" href="../shader-anatomy/index.html#functions">smoothsteps</a>:</p>
@@ -72,8 +73,8 @@
   <div class="prose"><p>Different cloud types are different profiles: low, flat stratus has a short bump near the bottom; towering cumulus fills the whole height. Many systems store a few profiles in a small gradient texture and blend between them with a "cloud type" map.</p></div>
 
 </section>
-<section class="chapter" id="noise" data-title="Shapes from noise" data-builds="cloud-march#height textures-sampling#texture" data-summary="fbm = Σ pᵏ · noise(2ᵏ x) / Σ pᵏ; density = saturate((n − (1 − c)) / c) · profile.">
-  <div class="head"><div class="num"></div><h2>Shapes from noise</h2></div>
+<section class="chapter" id="noise" data-title="Cloud shapes from noise" data-builds="cloud-march#height textures-sampling#texture" data-summary="fbm = Σ pᵏ · noise(2ᵏ x) / Σ pᵏ; density = saturate((n − (1 − c)) / c) · profile.">
+  <div class="head"><div class="num"></div><h2>Cloud shapes from noise</h2></div>
 
   <div class="prose">
     <p>Clouds get their shapes from <button type="button" class="term" data-term="fbm">fractal noise</button>. One layer of smooth noise gives round blobs. Adding copies at double the frequency and a fraction of the strength adds detail at every scale, the way real clouds have puffs on puffs. Each copy is an <em>octave</em>:</p>
@@ -87,32 +88,33 @@
   <details class="check"><summary></summary><script type="application/json">[["Halving the coverage mostly makes clouds…", ["half as dense everywhere", "fewer and smaller, with the remaining ones still dense", "taller", "move faster"], 1, "The remap keeps only the highest noise values and stretches them back to full density."]]</script></details>
 
 </section>
-<section class="chapter" id="transmittance" data-title="Adding up the absorption" data-builds="ray-sphere#output" data-summary="T ← T · e^(−σ·ρᵢ·Δ) per step; stop when T is almost 0.">
-  <div class="head"><div class="num"></div><h2>Adding up the absorption</h2></div>
+<section class="chapter" id="transmittance" data-title="Transmittance" data-builds="ray-marching#volumes ray-sphere#output" data-summary="T ← T · e^(−σ·ρᵢ·Δ) per step; stop when T is almost 0.">
+  <div class="head"><div class="num"></div><h2>Transmittance</h2></div>
 
   <div class="prose">
-    <p>Light passing through a step of density ρ and length Δ is reduced by e<sup>−σ·ρ·Δ</sup> (the <a class="x" href="../ray-sphere/index.html#output">Beer–Lambert law</a>). Along the ray these factors multiply, so the shader carries one running number, the <button type="button" class="term" data-term="trans">transmittance</button> T, and updates it at every step:</p>
+    <p>Light passing through a step of density ρ and length Δ is reduced by e<sup>−σ·ρ·Δ</sup>. Along the ray these factors multiply, so the shader carries one running number, the <button type="button" class="term" data-term="trans">transmittance</button> T, and updates it at every step:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Beer–Lambert: T = e^(−μd) through a uniform medium; through varying density, multiply e^(−σΔt) step by step and stop once T is close to 0.</p></div><a class="x refto" href="../ray-marching/index.html#volumes">Open the full explanation</a></aside>
   <div class="fx" data-fx="accum"></div>
   <div class="prose">
     <p>Once T is close to 0, nothing behind can be seen any more, so the loop stops early (typically at T &lt; 0.01). Dense clouds are therefore cheaper than thin haze: the march ends after a few steps.</p>
   </div>
 
 </section>
-<section class="chapter" id="light" data-title="Light at each sample" data-builds="cloud-march#transmittance" data-summary="Lᵢ = T · σρΔ · T_sun · phase · sun; the total is Σ Lᵢ, and the pixel = clouds + background · T.">
-  <div class="head"><div class="num"></div><h2>Light at each sample</h2></div>
+<section class="chapter" id="light" data-title="In-scattered light per sample" data-builds="cloud-march#transmittance" data-summary="Lᵢ = T · σρΔ · T_sun · phase · sun; the total is Σ Lᵢ, and the pixel = clouds + background · T.">
+  <div class="head"><div class="num"></div><h2>In-scattered light per sample</h2></div>
 
   <div class="prose">
     <p>A cloud is bright because sunlight scatters inside it toward the camera. At each sample, the shader asks how much sunlight arrives there: it takes a second, short march from the sample toward the sun (often 4 to 6 steps) and computes that path's transmittance T<sub>sun</sub> the same way. The light the sample sends to the camera is then:</p>
   </div>
   <div class="fx" data-fx="scatter"></div>
   <div class="prose">
-    <p>Each sample's light is added up along the view ray, already multiplied by the T in front of it, so samples deep inside a cloud contribute little. The final pixel is <code>clouds + background · T</code>, the same blend as at the end of <a class="x" href="../ray-sphere/index.html#output">Rays, Spheres and Shaders</a>.</p>
+    <p>Each sample's light is added up along the view ray, already multiplied by the T in front of it, so samples deep inside a cloud contribute little. The final pixel is <code>clouds + background · T</code>, the same blend as at the end of <a class="x" href="../ray-sphere/index.html#output">Full-Screen Ray Setup</a>.</p>
   </div>
 
 </section>
-<section class="chapter" id="phase" data-title="Which way the light scatters" data-builds="dot-cross#angle" data-summary="p(θ) = (1 − g²) / (4π · (1 + g² − 2g·cos θ)^1.5).">
-  <div class="head"><div class="num"></div><h2>Which way the light scatters</h2></div>
+<section class="chapter" id="phase" data-title="Phase function" data-builds="dot-cross#angle" data-summary="p(θ) = (1 − g²) / (4π · (1 + g² − 2g·cos θ)^1.5).">
+  <div class="head"><div class="num"></div><h2>Phase function</h2></div>
 
   <div class="prose">
     <p>Water droplets scatter most light forward, roughly in the direction it was already travelling. That is why clouds glow at their edges when you look toward the sun: the <em>silver lining</em>. A <button type="button" class="term" data-term="phase">phase function</button> gives the share of light scattered at each angle θ between the sun's direction and the view direction. The standard one is Henyey–Greenstein, with one number g: 0 scatters evenly, values toward 1 scatter forward:</p>
@@ -122,8 +124,8 @@
   <details class="check"><summary></summary><script type="application/json">[["With the sun straight behind the camera (θ = 180°), g = 0.8 gives…", ["the brightest scattering", "very little scattering toward the camera", "exactly 1/4π", "negative light"], 1, "Strong forward scattering sends almost nothing back toward the sun."]]</script></details>
 
 </section>
-<section class="chapter" id="powder" data-title="Dark edges: the powder effect" data-builds="cloud-march#light" data-summary="E = 2 · e^(−d) · (1 − e^(−2d)): Beer–Lambert times a powder term.">
-  <div class="head"><div class="num"></div><h2>Dark edges: the powder effect</h2></div>
+<section class="chapter" id="powder" data-title="Powder effect" data-builds="cloud-march#light" data-summary="E = 2 · e^(−d) · (1 − e^(−2d)): Beer–Lambert times a powder term.">
+  <div class="head"><div class="num"></div><h2>Powder effect</h2></div>
 
   <div class="prose">
     <p>Beer–Lambert alone makes the sun-facing edge of a cloud the brightest part. Real clouds show dark crevices and a darker rim on the sun side, because light has to scatter many times before it comes back out of thin regions. Horizon Zero Dawn's clouds approximated that with one extra factor, the <em>powder</em> term, that darkens samples with little cloud in front of them:</p>
@@ -131,8 +133,8 @@
   <div class="fx" data-fx="powder"></div>
 
 </section>
-<section class="chapter" id="together" data-title="One ray, all steps together" data-builds="cloud-march#transmittance cloud-march#light" data-summary="Loop: density, light march, add T·σρΔ·T_sun·phase, multiply T, stop when T is small.">
-  <div class="head"><div class="num"></div><h2>One ray, all steps together</h2></div>
+<section class="chapter" id="together" data-title="The complete march" data-builds="cloud-march#transmittance cloud-march#light" data-summary="Loop: density, light march, add T·σρΔ·T_sun·phase, multiply T, stop when T is small.">
+  <div class="head"><div class="num"></div><h2>The complete march</h2></div>
 
   <div class="prose">
     <p>Here is the complete march on a 2D slice of a cloud layer, with the sun straight above. Every dot is a sample; its colour is the light it adds. Watch the transmittance fall as the ray enters a cloud and the march stop early inside dense ones.</p>
@@ -154,21 +156,21 @@
 <span class="k">return</span> <span class="t">float4</span>(L, T);                              <span class="c">// composite: L + background * T</span></pre>
 
 </section>
-<section class="chapter" id="cost" data-title="What it costs" data-builds="reading-a-frame#budget ray-sphere#cpu-gpu" data-summary="samples = (W/s)·(H/s)·N·(1 + M) / frames.">
-  <div class="head"><div class="num"></div><h2>What it costs</h2></div>
+<section class="chapter" id="cost" data-title="Cost" data-builds="reading-a-frame#budget ray-sphere#cpu-gpu" data-summary="samples = (W/s)·(H/s)·N·(1 + M) / frames.">
+  <div class="head"><div class="num"></div><h2>Cost</h2></div>
 
   <div class="prose">
     <p>Clouds are among the most expensive things a frame can contain: every pixel runs N density samples, and each of those runs M more toward the sun. Production systems cut the work three ways: they render at a fraction of the resolution, they spread the samples over several frames and reproject the result (temporal accumulation), and they stop early in dense clouds. The cost model, in samples per frame:</p>
   </div>
   <div class="fx" data-fx="cloudcost"></div>
-  <div class="prose"><p>Compare the result with the frame budget in <a class="x" href="../reading-a-frame/index.html#budget">Reading a Frame</a>: a modern GPU handles a few hundred million simple texture samples per millisecond, so an unoptimised full-resolution march can easily take the whole frame.</p></div>
+  <div class="prose"><p>Compare the result with the frame budget in <a class="x" href="../reading-a-frame/index.html#budget">Frame Profiling</a>: a modern GPU handles a few hundred million simple texture samples per millisecond, so an unoptimised full-resolution march can easily take the whole frame.</p></div>
   <div class="engines"><div class="eng" data-engine="hdrp"><p>HDRP ships <em>Volumetric Clouds</em> as a Volume override (Simple, Advanced and Manual modes), with the cloud layer heights, density and erosion noise, and a temporal accumulation factor. Its settings map directly onto the chapters here.</p></div><div class="eng" data-engine="urp"><p>URP has no built-in volumetric clouds. Build them as a <em>Full Screen Pass Renderer Feature</em> or a custom ScriptableRenderPass: render the march at half or quarter resolution into a render texture, reproject with the previous frame, then composite (<a class="x" href="../ray-sphere/index.html#cpu-gpu">setting up the pass</a>).</p></div><div class="eng" data-engine="unreal"><p>The <em>Volumetric Cloud</em> component renders a layer around the planet defined by the <em>Sky Atmosphere</em>, with a material that returns extinction and albedo per sample. Sample counts and tracing distances are in the component; quality scales with <code>r.VolumetricCloud.*</code> settings.</p></div></div>
   <details class="check"><summary></summary><script type="application/json">[["Rendering the clouds at quarter resolution (half width, half height) divides the samples by…", ["2", "4", "8", "16"], 1, "(1/2)² = 1/4 of the pixels."]]</script></details>
 
 </section>
 <section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-builds="cloud-march#together cloud-march#cost" data-summary="3D noise baked by compute, a Fullscreen graph with Premultiply blending, the full march in HLSL, drawn in a Custom Pass.">
   <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
-  <div class="prose"><p>A complete cloud layer: a compute shader bakes a tiling 3D noise texture once, a Fullscreen Shader Graph marches the layer per pixel with the loop from <a href="#together">one ray, all steps together</a>, and a Custom Pass Volume draws it over the sky. It reuses the camera ray and layer interval from <a class="x" href="../ray-sphere/index.html#implement">Rays, Spheres and Shaders</a>. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="prose"><p>A complete cloud layer: a compute shader bakes a tiling 3D noise texture once, a Fullscreen Shader Graph marches the layer per pixel with the loop from <a href="#together">one ray, all steps together</a>, and a Custom Pass Volume draws it over the sky. It reuses the camera ray and layer interval from <a class="x" href="../ray-sphere/index.html#implement">Full-Screen Ray Setup</a>. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
   <div class="route"><div class="rt" data-k="compute"><b>Compute shader</b><span>CloudNoise.compute: a tiling 3D fbm texture, 4 × 4 × 4 threads per group.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>CloudSetup.cs: bakes the noise, sends sun and camera settings.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Fullscreen graph with Premultiply blending.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>CloudLayer.hlsl: interval, density, light march, phase, powder.</span></div><div class="rt" data-k="pass"><b>Custom Pass</b><span>A FullScreen Custom Pass at Before Post Process.</span></div></div>
 <ol class="impl-steps"><li><div>Create the compute shader <code>CloudNoise</code> from the file below. Add <code>CloudSetup.cs</code> (with <code>CameraRayParams</code> from the ray-sphere unit) to the camera and assign the compute shader and your sun light.</div></li><li><div>Create a Fullscreen Shader Graph. Graph Settings: <em>Blend Mode</em> <code>Premultiply</code>, so the output is clouds + background × T: Base Color = clouds, Alpha = 1 − T.</div></li><li><div>Save <code>CloudLayer.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>CloudLayer.hlsl</code> and <em>Name</em> to <code>CloudLayer</code> (without the <code>_float</code> suffix). Add the inputs <b>UV (Vector 2), Coverage (Float), Density (Float), Steps (Float), SunIntensity (Float), Exposure (Float)</b> and the outputs <b>Color (Vector 3), Alpha (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Inputs: <em>Screen Position</em> (Default).xy for UV; Coverage 0.5, Density 0.04 (per metre), Steps 48, SunIntensity in lux (for example 100 000); Exposure from HDRP's <em>Exposure</em> node (Mode <code>Current Multiplier</code>). HDRP's colour buffer is pre-exposed, so the clouds must be too.</div></li><li><div>Material from the graph; a <em>Custom Pass Volume</em> (Global, <code>Before Post Process</code>) with a <em>FullScreen Custom Pass</em> using it.</div></li><li><div>Cost: the march runs per pixel. Start at 32–48 steps with 4–6 light steps; for production, render at half or quarter resolution in a C# custom pass and reproject over frames (<a href="#cost">what it costs</a>). HDRP also ships its own <em>Volumetric Clouds</em> override, which is the practical choice when you do not need a custom look.</div></li></ol>
 <div class="files"><div class="file" data-name="CloudLayer.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_CAMERA_RAY_DECLARED
@@ -426,10 +428,10 @@ public class CloudSetup : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="cloud-march.js?v=b7858030"></script>
+<script src="cloud-march.js?v=d0841356"></script>
 </body>
 </html>

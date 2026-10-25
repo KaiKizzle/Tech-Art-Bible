@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Hair: Strands and Cards · Tech Art Atlas</title>
+<title>Hair Shading · Tech Art Atlas</title>
 <meta name="description" content="Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="hair" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Hair: Strands and Cards</a>
+  <a class="brand" href="#top">Hair Shading</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Characters · 7 chapters</div>
-  <h1>Hair: Strands and Cards</h1>
+  <h1>Hair Shading</h1>
   <p class="lede">Hair is thousands of thin, overlapping cylinders. This unit covers how games fake them with cards, shade them along the strand instead of the normal, place the two highlights, and handle the alpha.</p>
   <p class="meta">Builds on PBR shading and Transparency. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="pbr-brdf#half transparency#alpha-test spaces#tangent"></div>
 
-<section class="chapter" id="cards" data-title="Strands or cards" data-builds="transparency#alpha reading-a-frame#overdraw" data-summary="Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw.">
-  <div class="head"><div class="num"></div><h2>Strands or cards</h2></div>
+<section class="chapter" id="cards" data-title="Strands and cards" data-builds="transparency#alpha reading-a-frame#overdraw" data-summary="Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw.">
+  <div class="head"><div class="num"></div><h2>Strands and cards</h2></div>
 
   <div class="prose">
     <p>A human head has about 100 000 hairs. Film renders every one as a curve; games mostly cannot. The standard real-time solution is <button type="button" class="term" data-term="hcard">hair cards</button>: strips of a few quads, each textured with an image of many hairs and their alpha (<a class="x" href="../transparency/index.html#alpha">transparency</a>). A full head takes a few hundred to a few thousand cards. Compare the geometry:</p>
@@ -60,8 +60,8 @@
   <div class="prose"><p>Strand rendering in real time exists (Unreal's groom system, compute rasterizers), but it remains a high-end option for close-up characters. This unit focuses on cards; the shading model is the same for both.</p></div>
 
 </section>
-<section class="chapter" id="tangent" data-title="Shading along the strand" data-builds="spaces#tangent dot-cross#angle" data-summary="diffuse = sin(T, L) = √(1 − (T·L)²).">
-  <div class="head"><div class="num"></div><h2>Shading along the strand</h2></div>
+<section class="chapter" id="tangent" data-title="Strand tangent shading" data-builds="spaces#tangent dot-cross#angle" data-summary="diffuse = sin(T, L) = √(1 − (T·L)²).">
+  <div class="head"><div class="num"></div><h2>Strand tangent shading</h2></div>
 
   <div class="prose">
     <p>A hair is a thin cylinder. Its surface normal points every way around the strand, so a single normal per pixel makes no sense. What is well defined is the strand's direction, its <button type="button" class="term" data-term="htangent">tangent</button> T. Hair shading models use T instead of N. Kajiya and Kay's diffuse term is the light a cylinder receives from L, averaged around it, which works out as the sine of the angle between T and L:</p>
@@ -70,8 +70,8 @@
   <div class="prose"><p>Light along the strand gives almost nothing (you see the hair end-on); light across it gives full brightness. On cards, T comes from the direction of the texture's V axis, or from a <em>flow map</em> that stores the strand direction per texel, transformed into world space with the <a class="x" href="../spaces/index.html#tangent">tangent frame</a>.</p></div>
 
 </section>
-<section class="chapter" id="highlight" data-title="The highlight band" data-builds="hair#tangent pbr-brdf#half" data-summary="spec = sin(T, H)ᵖ: a band where the strand is perpendicular to H.">
-  <div class="head"><div class="num"></div><h2>The highlight band</h2></div>
+<section class="chapter" id="highlight" data-title="Kajiya–Kay highlight" data-builds="hair#tangent pbr-brdf#half" data-summary="spec = sin(T, H)ᵖ: a band where the strand is perpendicular to H.">
+  <div class="head"><div class="num"></div><h2>Kajiya–Kay highlight</h2></div>
 
   <div class="prose">
     <p>The specular highlight of a cylinder is not a dot but a line across it, wherever the strand runs perpendicular to the <a class="x" href="../pbr-brdf/index.html#half">half vector</a>. Kajiya–Kay specular measures exactly that, raised to a power for sharpness. Along a head, the strand direction turns, and the highlight forms the familiar band:</p>
@@ -88,8 +88,8 @@
 }</pre>
 
 </section>
-<section class="chapter" id="shift" data-title="Two shifted highlights" data-builds="hair#highlight" data-summary="T′ = normalize(T + shift · N); R with a small shift, TRT tinted, wider and shifted the other way.">
-  <div class="head"><div class="num"></div><h2>Two shifted highlights</h2></div>
+<section class="chapter" id="shift" data-title="Shifted primary and secondary highlights" data-builds="hair#highlight" data-summary="T′ = normalize(T + shift · N); R with a small shift, TRT tinted, wider and shifted the other way.">
+  <div class="head"><div class="num"></div><h2>Shifted primary and secondary highlights</h2></div>
 
   <div class="prose">
     <p>Real hair shows two highlights. Light reflecting off the outer surface (R) gives a sharp, white one. Light entering the fibre, reflecting off its back and leaving again (TRT) gives a wider one tinted with the hair colour. Because the scales on a hair's surface are tilted, the two appear at slightly different places along the strand: R toward the root, TRT toward the tip (Marschner's measurements). Shaders reproduce that by tilting the tangent toward the normal by a different amount for each lobe:</p>
@@ -113,8 +113,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Why does the opaque hair pass use a high alpha cutoff?", ["To save memory", "So only the solid core writes depth, and the soft ends are left for the blended pass", "To make hair darker", "Because hair has no alpha"], 1, "High cutoff = only confident pixels go opaque."]]</script></details>
 
 </section>
-<section class="chapter" id="variation" data-title="Root to tip, and self-shadowing" data-builds="hair#cards skin#transmission" data-summary="colour = lerp(root, tip, v^g) · lerp(AO, 1, v); self-shadow by the amount of hair in front.">
-  <div class="head"><div class="num"></div><h2>Root to tip, and self-shadowing</h2></div>
+<section class="chapter" id="variation" data-title="Root-to-tip variation and self-shadowing" data-builds="hair#cards skin#transmission" data-summary="colour = lerp(root, tip, v^g) · lerp(AO, 1, v); self-shadow by the amount of hair in front.">
+  <div class="head"><div class="num"></div><h2>Root-to-tip variation and self-shadowing</h2></div>
 
   <div class="prose">
     <p>Hair is darker near the scalp, both because roots are often darker and because the outer hair shadows the inner layers. Cards carry a gradient from root to tip in a UV channel or texture, used to darken the colour and the ambient light:</p>
@@ -235,10 +235,10 @@ public static class HairCardSorter
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="hair.js?v=58d40e4c"></script>
+<script src="hair.js?v=2e7c46fa"></script>
 </body>
 </html>

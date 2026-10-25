@@ -7,7 +7,7 @@
 
   /* ---------- dielectric Fresnel ---------- */
   A.fx('dielectric', {
-    title: 'How much a glass surface reflects',
+    title: 'Glass surface and pane reflectance',
     expr: 'F0 = (({n} − 1) / ({n} + 1))²,   F({th}) exact,   pane with two surfaces: 2F / (1 + F)',
     vars: { n: { sym: 'n', name: 'index of refraction', min: 1.0, max: 2.5, value: 1.5, step: 0.01 },
             th: { sym: 'θ', name: 'angle from the normal', unit: '°', min: 0, max: 89.5, value: 60, step: 0.5 } },
@@ -20,7 +20,7 @@
 
   /* ---------- Snell and the slab ---------- */
   A.fx('snell', {
-    title: 'A pane shifts light sideways but does not turn it',
+    title: 'Lateral shift through a pane',
     expr: '1 · sin {th} = {n} · sin θ<sub>t</sub>,   shift = {t} · sin({th} − θ<sub>t</sub>) / cos θ<sub>t</sub>',
     vars: { th: { sym: 'θ', name: 'angle of the incoming ray', unit: '°', min: 0, max: 85, value: 45, step: 1 },
             n: { sym: 'n', name: 'index of refraction of the glass', min: 1, max: 2.5, value: 1.5, step: 0.01 },
@@ -60,7 +60,7 @@
     return { pts, d };
   }
   A.fx('ball', {
-    title: 'A solid glass ball against a hollow bulb',
+    title: 'Solid ball versus hollow bulb',
     expr: 'Snell at every surface: n₁ sin θ₁ = n₂ sin θ₂,   n = {n},   ray height {h}',
     vars: { n: { sym: 'n', name: 'index of refraction', min: 1, max: 2, value: 1.5, step: 0.01 },
             h: { sym: 'h', name: 'height of the highlighted ray (radius = 1)', min: -0.98, max: 0.98, value: 0.5, step: 0.01 },
@@ -80,7 +80,7 @@
   /* ---------- Beer–Lambert ---------- */
   const GL = [[[0.86, 0.95, 0.9], 'window glass, seen through 1 cm'], [[0.35, 0.55, 0.92], 'blue bottle glass'], [[0.9, 0.55, 0.12], 'amber bottle glass']];
   A.fx('beer', {
-    title: 'Colour grows with the distance through glass',
+    title: 'Glass colour by path length',
     expr: 'μ = −ln(T<sub>ref</sub>) / 1 cm,   T = e<sup>−μ · {d}</sup>,   T<sub>ref</sub> = {g}',
     vars: { d: { sym: 'd', name: 'path length through the glass', unit: 'cm', min: 0, max: 30, value: 1, step: 0.1 },
             g: { sym: 'glass', name: 'glass', values: [0, 1, 2], labels: GL.map(x => x[1].split(',')[0]), index: 0 } },
@@ -103,7 +103,7 @@
   const FPX = 540 / Math.tan(rad(30));
   function shift(v) { const ti = rad(v.tilt), tt = Math.asin(Math.sin(ti) / v.n), dist = v.t / 100 / Math.cos(tt), lat = dist * Math.sin(ti - tt); return { lat, px: FPX * lat / v.z, tt }; }
   A.fx('ssrefr', {
-    title: 'Real-time refraction: read the screen a little further over',
+    title: 'Screen-space refraction offset',
     expr: 'exit = P + refract(V, N, 1/{n}) · {t} / cos θ<sub>t</sub>,   offset = project(exit) − project(P),   glass {z} away',
     vars: { tilt: { sym: 'θ', name: 'tilt of the surface normal against the view', unit: '°', min: 0, max: 60, value: 20, step: 1 },
             n: { sym: 'n', name: 'index of refraction', min: 1, max: 2, value: 1.5, step: 0.01 },
@@ -130,7 +130,7 @@
 
   /* ---------- frosted glass ---------- */
   A.fx('frost', {
-    title: 'Frosted glass reads a blurred copy of the screen',
+    title: 'Frosted glass blur level',
     expr: 'mip = {r}<sup>1.3</sup> · ({lods} − 1),   blur ≈ 2<sup>mip</sup> px',
     vars: { r: { sym: 'r', name: 'perceptual roughness', min: 0, max: 1, value: 0.35, step: 0.01 },
             lods: { sym: 'mips', name: 'mip levels of the colour pyramid (1080p: 11)', values: [9, 10, 11, 12], labels: ['9', '10', '11', '12'], index: 2 } },
@@ -148,7 +148,7 @@
 
   /* ---------- premultiplied glass ---------- */
   A.fx('premul', {
-    title: 'Cheap glass: keep the reflection when alpha is low',
+    title: 'Premultiplied reflection on alpha glass',
     expr: 'alpha blend: (F · env) · {a} + bg · (1 − {a}),   premultiplied: F · env + bg · (1 − {a}),   F = {F}',
     vars: { a: { sym: 'α', name: 'opacity of the glass', min: 0, max: 1, value: 0.1, step: 0.01 },
             F: { sym: 'F', name: 'Fresnel reflectance at this pixel', min: 0, max: 1, value: 0.3, step: 0.01 },

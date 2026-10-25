@@ -6,7 +6,7 @@
 
   /* ---------- adaptive step count ---------- */
   A.fx('adapt', {
-    title: 'Steps by view angle',
+    title: 'Step count by view angle',
     expr: 'steps = lerp({mx}, {mn}, cos {th})',
     vars: { th: { sym: 'θ', name: 'view angle from the surface normal', unit: '°', min: 0, max: 89, value: 30, step: 1 },
             mn: { sym: 'min', name: 'steps when looking straight on', min: 2, max: 16, value: 4, step: 1 },
@@ -19,7 +19,7 @@
   /* ---------- start at the highest point ---------- */
   const prof = x => 0.38 + 0.18 * Math.sin(x * 13) * Math.cos(x * 5) + 0.06 * Math.sin(x * 41);
   A.fx('start', {
-    title: 'Start at the highest point the map contains',
+    title: 'Start depth at maximum height',
     expr: 'layers needed = {N} · {Hm}   (same spacing, start at depth 1 − {Hm})',
     vars: { N: { sym: 'N', name: 'layers over the full 0–1 range', min: 8, max: 64, value: 32, step: 1 },
             Hm: { sym: 'H<sub>max</sub>', name: 'highest value in the height map', min: 0.2, max: 1, value: 0.62, step: 0.01 } },
@@ -48,7 +48,7 @@
     return { est, exact: (lo + hi) / 2, n, pts, xAt, slope };
   }
   A.fx('coarse', {
-    title: 'Few coarse steps, then secant refinement',
+    title: 'Coarse steps with secant refinement',
     expr: '{N} linear steps until the ray is below the map, then {k} secant steps,   view {th} from the normal',
     vars: { N: { sym: 'N', name: 'linear steps', min: 4, max: 48, value: 8, step: 1 },
             k: { sym: 'k', name: 'secant refinements', min: 0, max: 3, value: 2, step: 1 },
@@ -68,7 +68,7 @@
 
   /* ---------- fetches versus arithmetic ---------- */
   A.fx('alu', {
-    title: 'A fetch in the loop versus arithmetic in the loop',
+    title: 'Texture fetch versus arithmetic per step',
     expr: 'cost ≈ {s} · ({f} + {a}),   analytic: {s} · {a}',
     vars: { s: { sym: 'steps', name: 'steps per pixel', min: 1, max: 32, value: 12, step: 1 },
             f: { sym: 'fetch', name: 'cost of a dependent texture fetch, in ALU instructions', min: 4, max: 60, value: 20, step: 1 },
@@ -80,7 +80,7 @@
 
   /* ---------- derivatives and mips ---------- */
   A.fx('mip', {
-    title: 'Mip level from derivatives, and what a jump does to it',
+    title: 'Mip level from derivatives with UV jumps',
     expr: 'mip = log2(max(|∂uv/∂x|, |∂uv/∂y|) · {size}),   ∂uv/∂x = {g} + {j}',
     vars: { size: { sym: 'size', name: 'texture size', values: [512, 1024, 2048, 4096], labels: ['512', '1024', '2048', '4096'], index: 2 },
             g: { sym: 'g', name: 'smooth UV change per pixel', min: 0.0001, max: 0.004, value: 0.0005, log: true },
@@ -92,7 +92,7 @@
 
   /* ---------- distance fade ---------- */
   A.fx('fade', {
-    title: 'Fewer steps with distance, none beyond the fade',
+    title: 'Step count by distance',
     expr: 'steps(d) = {N} · (1 − saturate((d − {d0}) / ({d1} − {d0}))),   pixels ∝ 1 / d²',
     vars: { d: { sym: 'd', name: 'distance to the camera', unit: 'm', min: 1, max: 40, value: 8, step: 0.5 },
             N: { sym: 'N', name: 'steps close up', min: 4, max: 32, value: 16, step: 1 },

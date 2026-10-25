@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="compute-shaders" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,14 +42,14 @@
   <div class="eyebrow">Foundations · 9 chapters</div>
   <h1>Compute Shaders</h1>
   <p class="lede">A compute shader is GPU code you start yourself, with no triangles involved. This unit explains threads and groups, which thread does what, waves, shared memory, atomics, dispatching from C#, reading results back, and when compute is the right tool.</p>
-  <p class="meta">Builds on How a GPU Draws a Frame and Buffers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">Builds on GPU Rendering Basics and Buffers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/compute-shaders.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A dispatch as blocks of 8 × 8 threads, the groups at the edge hanging over the image.</figcaption></figure>
 </div>
 <div class="needs" data-needs="gpu-basics#parallel buffers#structured"></div>
 
-<section class="chapter" id="what" data-title="A shader without triangles" data-builds="gpu-basics#parallel gpu-basics#pipeline buffers#structured" data-summary="threads = (groups X · Y · Z) · (numthreads X · Y · Z); you choose both, there are no triangles.">
-  <div class="head"><div class="num"></div><h2>A shader without triangles</h2></div>
+<section class="chapter" id="what" data-title="Compute shader basics" data-builds="gpu-basics#parallel gpu-basics#pipeline buffers#structured" data-summary="threads = (groups X · Y · Z) · (numthreads X · Y · Z); you choose both, there are no triangles.">
+  <div class="head"><div class="num"></div><h2>Compute shader basics</h2></div>
 
   <div class="prose">
     <p>Every shader so far was started by the <a class="x" href="../gpu-basics/index.html#pipeline">pipeline</a>: the rasterizer finds the pixels a triangle covers and runs the pixel shader once for each. A <button type="button" class="term" data-term="compute">compute shader</button> skips all of that. You choose how many copies to run, each copy gets a number, and it can read and write any texture or <a class="x" href="../buffers/index.html#structured">buffer</a> you give it. No triangles, no fixed output pixel.</p>
@@ -59,8 +59,8 @@
   <div class="prose"><p>The work is the same kind as a pixel shader's: thousands of small, identical programs running <a class="x" href="../gpu-basics/index.html#parallel">in parallel and in no fixed order</a>. What changes is who decides how many there are, and where each one writes.</p></div>
 
 </section>
-<section class="chapter" id="groups" data-title="Covering an image with groups" data-builds="compute-shaders#what textures-sampling#uv" data-summary="groups = ⌈size / numthreads⌉ per axis; threads past the edge must return early.">
-  <div class="head"><div class="num"></div><h2>Covering an image with groups</h2></div>
+<section class="chapter" id="groups" data-title="Thread groups" data-builds="compute-shaders#what textures-sampling#uv" data-summary="groups = ⌈size / numthreads⌉ per axis; threads past the edge must return early.">
+  <div class="head"><div class="num"></div><h2>Thread groups</h2></div>
 
   <div class="prose">
     <p>The most common job is one thread per pixel of a texture. With 8 × 8 threads per group, a 1920 × 1080 image needs ⌈1920 / 8⌉ × ⌈1080 / 8⌉ groups. The division is rounded up, so when the size is not a multiple of the group size the last row and column of groups hang over the edge. Those threads must do nothing, or they write outside the texture:</p>
@@ -81,8 +81,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
   <div class="prose"><p>That is a complete compute shader. The square brackets after a texture (<code>_Result[id.xy]</code>) read or write one texel directly by its integer position: no sampler, no filtering, no mipmap selection.</p></div>
 
 </section>
-<section class="chapter" id="ids" data-title="Which thread am I?" data-builds="compute-shaders#groups" data-summary="DispatchThreadID = GroupID · numthreads + GroupThreadID; GroupIndex = y · nx + x.">
-  <div class="head"><div class="num"></div><h2>Which thread am I?</h2></div>
+<section class="chapter" id="ids" data-title="Thread IDs" data-builds="compute-shaders#groups" data-summary="DispatchThreadID = GroupID · numthreads + GroupThreadID; GroupIndex = y · nx + x.">
+  <div class="head"><div class="num"></div><h2>Thread IDs</h2></div>
 
   <div class="prose">
     <p>A thread finds out what to work on from a few built-in numbers, its <em>semantics</em>. <code>SV_GroupID</code> is the group's position in the dispatch, <code>SV_GroupThreadID</code> the thread's position inside its group, and <code>SV_DispatchThreadID</code> combines them into one position across the whole dispatch. <code>SV_GroupIndex</code> flattens the position inside the group into a single number, handy for indexing shared memory. Pick a thread:</p>
@@ -137,8 +137,8 @@ void BlurH(uint3 id : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
   <div class="prose"><p>The barrier is the important line: without it, a thread could read a neighbour's slot before that neighbour has written it. Every thread of the group must reach the barrier, which is why the early return for edge threads comes after it.</p></div>
 
 </section>
-<section class="chapter" id="writes" data-title="Many threads, one address" data-builds="buffers#append compute-shaders#shared" data-summary="Same address, many threads: use Interlocked*; time grows with the threads per address, so reduce in shared memory first.">
-  <div class="head"><div class="num"></div><h2>Many threads, one address</h2></div>
+<section class="chapter" id="writes" data-title="Atomic writes" data-builds="buffers#append compute-shaders#shared" data-summary="Same address, many threads: use Interlocked*; time grows with the threads per address, so reduce in shared memory first.">
+  <div class="head"><div class="num"></div><h2>Atomic writes</h2></div>
 
   <div class="prose">
     <p>Threads run in no fixed order, so two threads writing the same texel or buffer element is a <button type="button" class="term" data-term="race">race</button>: one write wins, unpredictably. For anything that collects results, like counting pixels per brightness for a <a class="x" href="../exposure/index.html#auto">histogram</a> or adding particles to a list, use <em>atomic</em> operations. <code>InterlockedAdd</code>, <code>InterlockedMin</code> and <code>InterlockedMax</code> make the read, change and write one step that cannot be interrupted. The price is that threads hitting the same address wait for each other:</p>
@@ -147,8 +147,8 @@ void BlurH(uint3 id : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
   <div class="prose"><p>The fix is the same as for blurs: count into a <code>groupshared</code> array first (one atomic per pixel, but only among the group's threads), then have each group add its partial result to the global buffer once per bin. <a class="x" href="../buffers/index.html#append">Append buffers</a> are an atomic counter plus a list, packaged.</p></div>
 
 </section>
-<section class="chapter" id="cpu" data-title="Starting it from C# and getting results back" data-builds="compute-shaders#groups buffers#memory" data-summary="FindKernel, Set*, Dispatch(⌈size / numthreads⌉); read back with AsyncGPUReadback, frames later.">
-  <div class="head"><div class="num"></div><h2>Starting it from C# and getting results back</h2></div>
+<section class="chapter" id="cpu" data-title="Dispatch and readback from C#" data-builds="compute-shaders#groups buffers#memory" data-summary="FindKernel, Set*, Dispatch(⌈size / numthreads⌉); read back with AsyncGPUReadback, frames later.">
+  <div class="head"><div class="num"></div><h2>Dispatch and readback from C#</h2></div>
 
   <div class="prose">
     <p>On the CPU side, a compute shader is an asset with one or more <button type="button" class="term" data-term="kernel">kernels</button> (the functions named by <code>#pragma kernel</code>). C# finds a kernel, binds the textures and buffers it uses, sets values and dispatches:</p>
@@ -168,8 +168,8 @@ shader.Dispatch(kernel, Mathf.CeilToInt(width / (float)gx), Mathf.CeilToInt(heig
 });</pre>
 
 </section>
-<section class="chapter" id="when" data-title="When to use compute" data-builds="compute-shaders#cpu" data-summary="Compute for simulation, reductions, generation and culling; pixel shaders for shading geometry.">
-  <div class="head"><div class="num"></div><h2>When to use compute</h2></div>
+<section class="chapter" id="when" data-title="Compute or pixel shader" data-builds="compute-shaders#cpu" data-summary="Compute for simulation, reductions, generation and culling; pixel shaders for shading geometry.">
+  <div class="head"><div class="num"></div><h2>Compute or pixel shader</h2></div>
 
   <div class="prose">
     <p>Use a compute shader when the work is not "colour the pixels of these triangles":</p>
@@ -188,7 +188,7 @@ shader.Dispatch(kernel, Mathf.CeilToInt(width / (float)gx), Mathf.CeilToInt(heig
   <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
   <div class="prose"><p>A complete, working example: a compute shader writes an animated noise texture every frame, and a Shader Graph material uses it straight away, with no copy to the CPU. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
   <div class="route"><div class="rt" data-k="compute"><b>Compute shader</b><span>NoiseField.compute: one thread per texel, 8 × 8 groups.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>ComputeNoise.cs: creates the texture, dispatches, hands it to a material.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Any graph with a Texture2D property for the result.</span></div></div>
-<ol class="impl-steps"><li><div>Create the compute shader: <em>Create &gt; Shader &gt; Compute Shader</em>, name it <code>NoiseField</code>, and replace its contents with the file below.</div></li><li><div>Create a Lit Shader Graph with a <em>Texture2D</em> property whose Reference is <code>_ComputeMask</code>. Sample it and use the result, for example as emission or to lerp between two colours. Right-click the graph and choose <em>Create &gt; Material</em>, then assign the material to an object.</div></li><li><div>Add <code>ComputeNoise.cs</code> to the object, assign <em>Shader</em> (the compute asset) and <em>Target</em> (the object's renderer). The texture animates in Play mode.</div></li><li><div>The <code>RenderTexture</code> is created with <code>enableRandomWrite = true</code>: without it, a compute shader cannot write to it and the dispatch fails with an error about a missing UAV flag.</div></li><li><div>Read the result on the CPU only if you must, with <code>AsyncGPUReadback.Request(rt, 0, callback)</code>; never with <code>ReadPixels</code> in a loop.</div></li><li><div>To run compute work at a specific point in HDRP's frame (for example after the opaque objects), record <code>ctx.cmd.DispatchCompute(...)</code> in the <code>Execute</code> method of a C# Custom Pass. <a class="x" href="../cloud-march/index.html#implement">Marching a Cloud Layer</a> uses compute to bake its 3D noise. HDRP's camera buffers are texture arrays, so compute code that reads them uses the <code>TEXTURE2D_X</code> macros from <code>TextureXR.hlsl</code>.</div></li></ol>
+<ol class="impl-steps"><li><div>Create the compute shader: <em>Create &gt; Shader &gt; Compute Shader</em>, name it <code>NoiseField</code>, and replace its contents with the file below.</div></li><li><div>Create a Lit Shader Graph with a <em>Texture2D</em> property whose Reference is <code>_ComputeMask</code>. Sample it and use the result, for example as emission or to lerp between two colours. Right-click the graph and choose <em>Create &gt; Material</em>, then assign the material to an object.</div></li><li><div>Add <code>ComputeNoise.cs</code> to the object, assign <em>Shader</em> (the compute asset) and <em>Target</em> (the object's renderer). The texture animates in Play mode.</div></li><li><div>The <code>RenderTexture</code> is created with <code>enableRandomWrite = true</code>: without it, a compute shader cannot write to it and the dispatch fails with an error about a missing UAV flag.</div></li><li><div>Read the result on the CPU only if you must, with <code>AsyncGPUReadback.Request(rt, 0, callback)</code>; never with <code>ReadPixels</code> in a loop.</div></li><li><div>To run compute work at a specific point in HDRP's frame (for example after the opaque objects), record <code>ctx.cmd.DispatchCompute(...)</code> in the <code>Execute</code> method of a C# Custom Pass. <a class="x" href="../cloud-march/index.html#implement">Volumetric Cloud Layer</a> uses compute to bake its 3D noise. HDRP's camera buffers are texture arrays, so compute code that reads them uses the <code>TEXTURE2D_X</code> macros from <code>TextureXR.hlsl</code>.</div></li></ol>
 <div class="files"><div class="file" data-name="NoiseField.compute" data-lang="hlsl"><pre>#pragma kernel CSMain
 
 RWTexture2D&lt;float4&gt; _Result;   // written by this shader
@@ -334,10 +334,10 @@ public class ComputeNoise : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="compute.js?v=3bddbbd0"></script>
+<script src="compute.js?v=ec8aa201"></script>
 </body>
 </html>

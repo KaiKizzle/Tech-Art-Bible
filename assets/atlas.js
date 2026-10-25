@@ -145,10 +145,10 @@
       const ref = s.hasAttribute('data-ref');
       if (!ref) n++;
       const num = $('.head .num', s);
-      if (num && !num.textContent.trim()) num.textContent = ref ? 'Reference' : 'Chapter ' + n;
+      if (num && !num.textContent.trim()) { if (ref) num.textContent = 'Reference'; else num.remove(); }
       if (ref && !refStarted) { html += '<li class="sep">Reference</li>'; refStarted = true; }
-      html += `<li><a class="ch" href="#${s.id}" data-id="${s.id}"><span class="n">${ref ? '·' : n}</span><span>${s.dataset.title}</span></a></li>`;
-      opts += `<option value="${s.id}">${ref ? '' : n + '. '}${esc(s.dataset.title)}</option>`;
+      html += `<li><a class="ch" href="#${s.id}" data-id="${s.id}"><span>${s.dataset.title}</span></a></li>`;
+      opts += `<option value="${s.id}">${esc(s.dataset.title)}</option>`;
     });
     if (list) list.innerHTML = html;
     if (sel) { sel.innerHTML = opts; sel.addEventListener('change', () => { const t = document.getElementById(sel.value); if (t) t.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' }); }); }
@@ -200,6 +200,15 @@
         const l = label(r.s, r.id), u = unitMeta(r.s), c = u ? CATS.find(x => x.id === u.cat) : null;
         return `<a class="mini" href="${hrefFor(r.s, r.id)}" style="--c:${c && c.tone ? c.tone : 'var(--muted)'}"><span class="k">${esc(c ? c.name : '')}</span><b>${esc(r.id ? l.chapter : l.unit)}</b><span>${esc(r.id ? l.unit : (u && u.summary) || '')}</span></a>`;
       }).join('')}</div>`;
+    });
+  }
+
+  function refCards() {
+    $$('.refcard a.refto').forEach(a => {
+      const m = a.getAttribute('href').match(/\.\.\/([\w-]+)\/index\.html#([\w-]+)/); if (!m) return;
+      const r = { s: m[1], id: m[2] }, l = label(r.s, r.id), u = unitMeta(r.s), c = u ? CATS.find(x => x.id === u.cat) : null;
+      a.className = 'mini refto'; a.style.setProperty('--c', c && c.tone ? c.tone : 'var(--muted)');
+      a.innerHTML = `<span class="k">${esc(c ? c.name : '')}</span><b>${esc(l.chapter || l.unit)}</b><span>${esc(l.unit)}</span>`;
     });
   }
 
@@ -579,7 +588,7 @@
     if (hero && img) img.src = ROOT + hero;
   }
   function boot() {
-    unitBadges(); crumbs(); rail(); chapterChips(); needsNext(); xlinks(); glossary(); checks(); engines(); files();
+    unitBadges(); crumbs(); rail(); chapterChips(); needsNext(); refCards(); xlinks(); glossary(); checks(); engines(); files();
     $$('.fx[data-fx]').forEach(fxQueue);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

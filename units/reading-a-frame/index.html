@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Reading a Frame · Tech Art Atlas</title>
+<title>Frame Profiling · Tech Art Atlas</title>
 <meta name="description" content="A frame is three workers in a relay: the game thread, the render thread and the GPU. The slowest sets your frame rate, and optimizing anything else changes nothing. Every cost model here is a formula you can move.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="reading-a-frame" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Reading a Frame</a>
+  <a class="brand" href="#top">Frame Profiling</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,7 +40,7 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Performance & tools · 9 chapters</div>
-  <h1>Reading a Frame</h1>
+  <h1>Frame Profiling</h1>
   <p class="lede">A frame is three workers in a relay: the game thread, the render thread and the GPU. The slowest sets your frame rate, and optimizing anything else changes nothing. Every cost model here is a formula you can move.</p>
   <p class="meta">Frame budgets, finding the bottleneck, draw calls, overdraw, tiny triangles, divergent shaders and LODs, with notes for Unity HDRP, Unity URP and Unreal.</p>
 </header>
@@ -48,11 +48,11 @@
 </div>
 <div class="needs" data-needs="gpu-basics#pipeline gpu-basics#parallel buffers#constant"></div>
 
-<section class="chapter" id="budget" data-title="The frame budget" data-builds="gpu-basics#frame" data-summary="Work in ms: fps = 1000 / ms. Pipelined stages: frame = slowest stage, latency = sum; vsync rounds up to whole refreshes.">
-  <div class="head"><div class="num"></div><h2>The frame budget</h2></div>
+<section class="chapter" id="budget" data-title="Frame budget" data-builds="gpu-basics#frame" data-summary="Work in ms: fps = 1000 / ms. Pipelined stages: frame = slowest stage, latency = sum; vsync rounds up to whole refreshes.">
+  <div class="head"><div class="num"></div><h2>Frame budget</h2></div>
 
   <div class="prose">
-    <p>Performance work is done in milliseconds, not frames per second. Frame rate is one second divided by the frame time, so it does not add up: a feature that costs 2 ms takes 60 fps down to 53, but 30 fps only to 28. Milliseconds add, so budgets are written in them:</p>
+    <p>Performance work is done in milliseconds, not frames per second. Frame rate is one second divided by the frame time, so it does not add up: a feature that costs 2 ms takes 60 fps down to 53, but 30 fps only to 28. Going from 30 to 60 fps halves the budget from 33.3 ms to 16.7 ms; going from 120 to 144 fps only removes 1.4 ms. Milliseconds add, so budgets are written in them:</p>
   </div>
   <div class="fx" data-fx="ms"></div>
   <div class="tablewrap">
@@ -187,11 +187,11 @@
   <details class="check"><summary></summary><script type="application/json">[["Why do engines sort opaque objects front to back?", ["For correct blending", "So early-Z rejects hidden pixels before shading", "To reduce draw calls", "To improve shadow quality"], 1, "Nearer surfaces fill depth first; farther fragments fail the depth test cheaply."], ["Why can transparent particles not use early-Z to avoid overdraw?", ["They have no depth", "Each layer must be blended over the ones behind, so every layer is shaded", "Their shaders are too simple", "They are drawn in screen space"], 1, "Blending needs every layer's color, drawn back to front."]]</script></details>
 
 </section>
-<section class="chapter" id="quads" data-title="Quads and tiny triangles" data-builds="gpu-basics#screen texture-memory#mips" data-summary="Efficiency = covered pixels / (4 × quads touched). Below ~10 px per triangle it collapses.">
+<section class="chapter" id="quads" data-title="Quads and tiny triangles" data-builds="gpu-basics#screen textures-sampling#mips" data-summary="Efficiency = covered pixels / (4 × quads touched). Below ~10 px per triangle it collapses.">
   <div class="head"><div class="num"></div><h2>Quads and tiny triangles</h2></div>
 
   <div class="prose">
-    <p>GPUs shade pixels in 2×2 <button type="button" class="term" data-term="quad">quads</button>, because the <a class="x" href="../texture-memory/index.html#mips">mip selection</a> needs the UV of the neighbours. If a triangle covers only some pixels of a quad, the others still run the shader as <button type="button" class="term" data-term="helper">helper lanes</button>, and their results are thrown away. Shrink a triangle and watch the useful share fall:</p>
+    <p>GPUs shade pixels in 2×2 <button type="button" class="term" data-term="quad">quads</button>, because the <a class="x" href="../textures-sampling/index.html#mips">mip selection</a> needs the UV of the neighbours. If a triangle covers only some pixels of a quad, the others still run the shader as <button type="button" class="term" data-term="helper">helper lanes</button>, and their results are thrown away. Shrink a triangle and watch the useful share fall:</p>
   </div>
   <div class="fx" data-fx="quadeff"></div>
   <div class="prose">
@@ -219,8 +219,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A triangle covers a single pixel. How many pixel shader lanes run for it?", ["1", "2", "4", "32"], 2, "Pixels are shaded in 2×2 quads; three helper lanes run for derivatives."]]</script></details>
 
 </section>
-<section class="chapter" id="shader-cost" data-title="What a shader costs" data-builds="gpu-basics#parallel" data-summary="Divergent waves pay both sides of a branch. With random lanes, a 32-lane wave almost always diverges.">
-  <div class="head"><div class="num"></div><h2>What a shader costs</h2></div>
+<section class="chapter" id="shader-cost" data-title="Shader cost" data-builds="gpu-basics#parallel" data-summary="Divergent waves pay both sides of a branch. With random lanes, a 32-lane wave almost always diverges.">
+  <div class="head"><div class="num"></div><h2>Shader cost</h2></div>
 
   <div class="prose">
     <p>A pixel shader's cost comes from three places. <strong>ALU</strong>: the maths instructions. <strong>Texture fetches</strong>: each sample has a wait the GPU hides by switching to other work. <strong>Bandwidth</strong>: bytes read and written to memory, often the real limit for full-screen passes.</p>
@@ -259,6 +259,7 @@
   <div class="prose">
     <p><button type="button" class="term" data-term="lod">Levels of detail</button> swap meshes for simpler ones as they get smaller on screen. The switch point is a <button type="button" class="term" data-term="screensize">screen size</button>, not a distance, so the same setup works for every field of view and resolution. It is the object's height relative to the screen height, again the <a class="x" href="../spaces/index.html#perspective">perspective divide</a>:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Size on screen: screenHeight / (2 · d · tan(fov/2)) pixels per metre; the same formula sets mip levels and blur kernels.</p></div><a class="x refto" href="../texture-memory/index.html#density">Open the full explanation</a></aside>
   <div class="fx" data-fx="screensize"></div>
   <div class="prose">
     <p>A useful target is to keep triangles at about 10 pixels or more. Below that, <a href="#quads">quad efficiency</a> collapses and the vertex stage does work nobody sees. Set each LOD's switch size to keep that ratio, and halve the triangle count per LOD.</p>
@@ -285,14 +286,14 @@
   <details class="check"><summary></summary><script type="application/json">[["A 1 m-radius object at 20 m, 60° vertical FOV. Roughly what screen size?", ["0.087", "0.017", "0.25", "0.5"], 0, "1 / (20 × tan 30°) = 1 / 11.55 ≈ 0.087 of the screen height."], ["Why are LODs a GPU optimization, not only a vertex optimization?", ["They reduce texture memory", "They keep triangles large enough on screen for efficient quad shading", "They reduce draw calls", "They disable shadows"], 1, "Dense distant meshes waste most of their pixel shading in helper lanes and shared quads."]]</script></details>
 
 </section>
-<section class="chapter" id="routine" data-title="A profiling routine" data-summary="Reproduce, find the stage, find the biggest item, test by removal, measure again.">
-  <div class="head"><div class="num"></div><h2>A profiling routine</h2></div>
+<section class="chapter" id="routine" data-title="Profiling routine" data-summary="Reproduce, find the stage, find the biggest item, test by removal, measure again.">
+  <div class="head"><div class="num"></div><h2>Profiling routine</h2></div>
 
   <div class="prose">
     <p>Optimization goes wrong mostly through guessing. A routine keeps it honest:</p>
     <ol>
       <li><strong>Reproduce.</strong> Profile a fixed camera or a recorded flythrough in the worst spot, in a development build on target hardware. Editor numbers include the editor.</li>
-      <li><strong>Find the stage.</strong> Game, render thread or GPU (<a href="#bound">chapter 2</a>). Write down the numbers.</li>
+      <li><strong>Find the stage.</strong> Game, render thread or GPU (<a href="#bound">CPU-bound or GPU-bound</a>). Write down the numbers.</li>
       <li><strong>Find the biggest item in that stage.</strong> A system on the CPU, a pass on the GPU. Ignore anything under 5% of the frame for now.</li>
       <li><strong>Form one hypothesis and test it by removal.</strong> Disable the suspect (hide the particles, drop to LOD 1, turn off the pass). If the time does not move, it was not the problem.</li>
       <li><strong>Fix, then measure again</strong> in the same spot. Keep the before and after numbers with the change.</li>
@@ -480,11 +481,11 @@ public class MarkerExample : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="frame.js?v=b33a56b0"></script>
-<script src="frame-fx.js?v=baadb1f0"></script>
+<script src="frame-fx.js?v=f1e72a2d"></script>
 </body>
 </html>

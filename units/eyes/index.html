@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Eyes: from a Painted Sphere to a Raymarched Iris · Tech Art Atlas</title>
+<title>Eye Shading · Tech Art Atlas</title>
 <meta name="description" content="Eye anatomy in shader terms, then five tiers of eye shader from the cheapest to a raymarched iris: a painted sphere, a parallax offset, two meshes with refraction, HDRP&#x27;s iris-plane refraction, and an analytic iris marched with one texture fetch, plus tinting, mesh conventions and cost, built in Unity HDRP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="eyes" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Eyes: from a Painted Sphere to a Raymarched Iris</a>
+  <a class="brand" href="#top">Eye Shading</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,16 +40,16 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Characters · 11 chapters</div>
-  <h1>Eyes: from a Painted Sphere to a Raymarched Iris</h1>
+  <h1>Eye Shading</h1>
   <p class="lede">Eye anatomy in shader terms, then five tiers of eye shader from the cheapest to a raymarched iris: a painted sphere, a parallax offset, two meshes with refraction, HDRP's iris-plane refraction, and an analytic iris marched with one texture fetch, plus tinting, mesh conventions and cost, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on Glass, Ray Marching, Fast POM and Tinting and Clamping Colour. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on Glass, Ray Marching, Fast POM and Colour Tinting and Clamping. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/eyes.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>An eye in close-up: a recessed iris behind a glossy cornea, seen slightly from the side.</figcaption></figure>
 </div>
 <div class="needs" data-needs="glass#snell ray-marching#heightfield color-tint#greymask"></div>
 
-<section class="chapter" id="anatomy" data-title="The parts that matter for shading" data-builds="glass#snell glass#shapes" data-summary="Sclera, cornea (R ≈ 7.8 mm), limbus, anterior chamber (~3 mm), iris, pupil. Cornea bulge h = R − √(R² − r²).">
-  <div class="head"><div class="num"></div><h2>The parts that matter for shading</h2></div>
+<section class="chapter" id="anatomy" data-title="Eye anatomy for shading" data-builds="glass#snell glass#shapes" data-summary="Sclera, cornea (R ≈ 7.8 mm), limbus, anterior chamber (~3 mm), iris, pupil. Cornea bulge h = R − √(R² − r²).">
+  <div class="head"><div class="num"></div><h2>Eye anatomy for shading</h2></div>
 
   <div class="prose">
     <p>An eye is a white ball (the <button type="button" class="term" data-term="sclera">sclera</button>) with a clear dome on the front (the <button type="button" class="term" data-term="cornea">cornea</button>). The ring where they meet is the <em>limbus</em>. Behind the cornea is a few millimetres of clear fluid, the <em>anterior chamber</em>, and at its back the <button type="button" class="term" data-term="iris">iris</button>, a muscle disc with a hole, the pupil, through which the lens shows black.</p>
@@ -61,8 +61,8 @@
   </div>
 
 </section>
-<section class="chapter" id="painted" data-title="Tier 0: a painted sphere" data-builds="eyes#anatomy mapping#matcap" data-summary="Painted iris on the surface; the real iris shifts d·tan(asin(sin θ / n)), about a third of its radius at 40°.">
-  <div class="head"><div class="num"></div><h2>Tier 0: a painted sphere</h2></div>
+<section class="chapter" id="painted" data-title="Tier 0: painted iris" data-builds="eyes#anatomy mapping#matcap" data-summary="Painted iris on the surface; the real iris shifts d·tan(asin(sin θ / n)), about a third of its radius at 40°.">
+  <div class="head"><div class="num"></div><h2>Tier 0: painted iris</h2></div>
 
   <div class="prose">
     <p>The cheapest eye is a sphere with the iris painted on it, a glossy material and maybe a painted highlight. Head-on and at a distance it is fine. Turn the head and the illusion breaks, because the painted iris sits on the surface instead of under it. The real iris shifts by this much:</p>
@@ -73,18 +73,22 @@
   </div>
 
 </section>
-<section class="chapter" id="offset" data-title="Tier 1: a parallax offset" data-builds="eyes#painted parallax#offset" data-summary="uv −= V.xy/V.z · d: plain tan θ overshoots; tan θ / n or a clamp is the cheap fix; good to ~30°.">
-  <div class="head"><div class="num"></div><h2>Tier 1: a parallax offset</h2></div>
+<section class="chapter" id="offset" data-title="Tier 1: parallax offset" data-builds="eyes#painted parallax#offset" data-summary="uv −= V.xy/V.z · d: plain tan θ overshoots; tan θ / n or a clamp is the cheap fix; good to ~30°.">
+  <div class="head"><div class="num"></div><h2>Tier 1: parallax offset</h2></div>
 
   <div class="prose">
-    <p>One instruction block fixes most of tier 0: shift the iris UVs against the view direction, as if the iris were a layer under the surface (<a class="x" href="../parallax/index.html#offset">parallax offset</a>). The plain offset uses tan θ, which explodes towards grazing angles. Refraction bends the view ray towards the axis on entering the cornea, so the real shift grows much more slowly. Dividing the offset by the IOR is a cheap middle ground:</p>
+    <p>One instruction block fixes most of tier 0: shift the iris UVs against the view direction, as if the iris were a layer under the surface.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Offset parallax: uv′ = uv + V.xy / V.z · depth; one guess, no march.</p></div><a class="x refto" href="../parallax/index.html#offset">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>The plain offset uses tan θ, which explodes towards grazing angles. Refraction bends the view ray towards the axis on entering the cornea, so the real shift grows much more slowly. Dividing the offset by the IOR is a cheap middle ground:</p>
   </div>
   <div class="fx" data-fx="bump"></div>
   <div class="prose"><p>Clamp the offset (or fade it towards the limbus) and tier 1 holds up to about 30° off axis, which covers most gameplay cameras. It still treats the iris as a flat sticker and the cornea as flat glass: the pupil turns oval at angles, and the iris never disappears behind the limbus.</p></div>
 
 </section>
-<section class="chapter" id="twomesh" data-title="Tier 2: two meshes and a refractive cornea" data-builds="glass#realtime screen-transparency#copies" data-summary="Opaque eyeball with real iris + transparent cornea shell: correct at every angle; costs a transparent draw and a screen copy.">
-  <div class="head"><div class="num"></div><h2>Tier 2: two meshes and a refractive cornea</h2></div>
+<section class="chapter" id="twomesh" data-title="Tier 2: separate cornea mesh" data-builds="glass#realtime screen-transparency#copies" data-summary="Opaque eyeball with real iris + transparent cornea shell: correct at every angle; costs a transparent draw and a screen copy.">
+  <div class="head"><div class="num"></div><h2>Tier 2: separate cornea mesh</h2></div>
 
   <div class="prose">
     <p>The physical setup models what is there: an opaque eyeball with a real, recessed iris (a disc or slight cone of geometry, the pupil a hole or a dark texture), plus a separate transparent cornea shell over it. The shell refracts what is behind it like any <a class="x" href="../glass/index.html#realtime">glass</a>, so depth, parallax and the oval-from-the-side look come for free, and the iris can even have real geometry for the collarette.</p>
@@ -99,12 +103,13 @@
   <details class="check"><summary></summary><script type="application/json">[["A game scene has no glass or water. You add two-mesh eyes with screen refraction. What new cost appears?", ["None", "A full-screen colour copy (and pyramid) every frame, triggered only by the eyes", "More shadow maps", "Larger textures"], 1, "Refraction reads a copy of the screen; something has to produce it."]]</script></details>
 
 </section>
-<section class="chapter" id="plane" data-title="Tier 3: one mesh, refracted onto an iris plane" data-builds="eyes#anatomy glass#snell" data-summary="Refract at the cornea, hit the plane z = −d, use the hit as iris UV. HDRP: Cornea Refraction → Iris UV Location → pupil animation.">
-  <div class="head"><div class="num"></div><h2>Tier 3: one mesh, refracted onto an iris plane</h2></div>
+<section class="chapter" id="plane" data-title="Tier 3: iris plane refraction" data-builds="eyes#anatomy glass#snell" data-summary="Refract at the cornea, hit the plane z = −d, use the hit as iris UV. HDRP: Cornea Refraction → Iris UV Location → pupil animation.">
+  <div class="head"><div class="num"></div><h2>Tier 3: iris plane refraction</h2></div>
 
   <div class="prose">
     <p>HDRP's Eye shader keeps one closed mesh (sclera plus cornea bulge) and computes the iris instead of modelling it. For each cornea pixel, the view ray is refracted at the cornea normal and intersected with a flat plane at the iris depth; the hit point becomes the iris UV:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Refraction: n₁ sin θ₁ = n₂ sin θ₂; HLSL refract(V, N, n₁/n₂) returns the bent direction. Cornea and aqueous humour: n ≈ 1.336.</p></div><a class="x refto" href="../glass/index.html#snell">Open the full explanation</a></aside>
   <div class="fx" data-fx="plane"></div>
   <div class="prose">
     <p>In Shader Graph that is a short chain of HDRP eye nodes: <em>Cornea Refraction</em> (refract and intersect the plane), <em>Iris UV Location</em> (plane position to UV), <em>Circle Pupil Animation</em> (dilation), <em>Iris Offset</em> (off-centre pupils), and <em>Sclera UV Location</em> for the white. The Eye master stack then lights cornea and iris separately (iris normal, two diffusion profiles), and <em>Eye Cinematic With Caustic</em> adds the light focused through the cornea onto the far side of the iris.</p>
@@ -112,8 +117,8 @@
   </div>
 
 </section>
-<section class="chapter" id="profile" data-title="Tier 4: the iris is not flat" data-builds="ray-marching#heightfield eyes#plane" data-summary="h(r) = cone·smoothstep(s) + ridge·Gaussian: an analytic height field bounded by a thin slab; detail stays in a texture.">
-  <div class="head"><div class="num"></div><h2>Tier 4: the iris is not flat</h2></div>
+<section class="chapter" id="profile" data-title="Tier 4: iris height profile" data-builds="ray-marching#heightfield eyes#plane" data-summary="h(r) = cone·smoothstep(s) + ridge·Gaussian: an analytic height field bounded by a thin slab; detail stays in a texture.">
+  <div class="head"><div class="num"></div><h2>Tier 4: iris height profile</h2></div>
 
   <div class="prose">
     <p>The step beyond the plane is to give the iris a shape and find where the refracted ray meets it. The shape does not need a texture: three features carry most of the visible depth, and each is a short formula:</p>
@@ -127,8 +132,8 @@
   <div class="prose"><p>Because the profile is always between 0 and cone + ridge, the surface is guaranteed to lie in a thin slab above the iris root, exactly the bound a <a class="x" href="../ray-marching/index.html#heightfield">height-field march</a> needs. Fine detail (crypts, fibres) stays in a texture and is added once at the end.</p></div>
 
 </section>
-<section class="chapter" id="march" data-title="Marching the iris" data-builds="fpom#coarse fpom#gradients eyes#profile" data-summary="Refract, early out, march the slab with 4–8 ALU steps, 2 secant steps, 1 optional detail fetch; normal from the profile slope.">
-  <div class="head"><div class="num"></div><h2>Marching the iris</h2></div>
+<section class="chapter" id="march" data-title="Iris ray march" data-builds="fpom#coarse fpom#gradients eyes#profile" data-summary="Refract, early out, march the slab with 4–8 ALU steps, 2 secant steps, 1 optional detail fetch; normal from the profile slope.">
+  <div class="head"><div class="num"></div><h2>Iris ray march</h2></div>
 
   <div class="prose">
     <p>The march is the <a class="x" href="../fpom/index.html#recap">fast POM</a> recipe in the eye's object space:</p>
@@ -148,8 +153,8 @@
   </div>
 
 </section>
-<section class="chapter" id="tint" data-title="Tinting the iris" data-builds="color-tint#greymask color-tint#clamp" data-summary="Grey iris texture (mean 128 sRGB) × clamped tint: luminance 0.006–0.32, saturation cap 0.88 → 0.55 with brightness.">
-  <div class="head"><div class="num"></div><h2>Tinting the iris</h2></div>
+<section class="chapter" id="tint" data-title="Iris tint" data-builds="color-tint#greymask color-tint#clamp" data-summary="Grey iris texture (mean 128 sRGB) × clamped tint: luminance 0.006–0.32, saturation cap 0.88 → 0.55 with brightness.">
+  <div class="head"><div class="num"></div><h2>Iris tint</h2></div>
 
   <div class="prose">
     <p>Iris colour is a property players and character artists want to change. The robust setup is the <a class="x" href="../color-tint/index.html#greymask">grey tint mask</a>: the iris texture holds structure only (fibres, crypts, the limbal ring), centred on 50 % grey, and a colour property supplies the hue and brightness. 50 % grey in the texture shows exactly the picked colour.</p>
@@ -175,8 +180,8 @@
   <details class="check"><summary></summary><script type="application/json">[["The iris swims when the character blinks and the eye mesh is part of the skinned head. Why?", ["Wrong IOR", "The shader assumes the eye's object space, but a merged skinned head has the head's object space", "Too few steps", "The tint clamp"], 1, "Separate eye objects on eye bones, or a baked per-vertex eye frame, fix it."]]</script></details>
 
 </section>
-<section class="chapter" id="cost" data-title="Which tier when" data-builds="eyes#march screen-transparency#copies" data-summary="Cost ∝ iris pixels × steps; even a close-up is a few percent of the frame. Mix tiers by distance.">
-  <div class="head"><div class="num"></div><h2>Which tier when</h2></div>
+<section class="chapter" id="cost" data-title="Cost per tier" data-builds="eyes#march screen-transparency#copies" data-summary="Cost ∝ iris pixels × steps; even a close-up is a few percent of the frame. Mix tiers by distance.">
+  <div class="head"><div class="num"></div><h2>Cost per tier</h2></div>
 
   <div class="prose"><p>Eye cost scales with how much of the screen the irises cover, and in a close-up that is still small compared with full-screen effects:</p></div>
   <div class="fx" data-fx="eyecost"></div>
@@ -478,10 +483,10 @@ return hit.xy / IrisRadius * 0.5 + 0.5;</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="eyes.js?v=a5e981a9"></script>
+<script src="eyes.js?v=b8347fda"></script>
 </body>
 </html>

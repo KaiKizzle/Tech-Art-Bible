@@ -5,7 +5,7 @@
   const DEG = Math.PI / 180;
 
   A.fx('ms', {
-    title: 'Frame time, frame rate and the cost of a feature',
+    title: 'Frame time versus frame rate',
     expr: 'ms = 1000 / {fps},   new fps = 1000 / (ms + {c})',
     vars: { fps: { name: 'frame rate now', unit: 'fps', min: 20, max: 144, value: 60, step: 1 }, c: { name: 'cost of a new feature', unit: 'ms', min: 0, max: 10, value: 2, step: 0.1 } },
     out: [{ sym: 'ms', f: v => 1000 / v.fps, color: 'ax-y' }, { sym: 'new fps', f: v => 1000 / (1000 / v.fps + v.c), color: 'accent' }],
@@ -16,7 +16,7 @@
 
   const pipe = v => { const m = Math.max(v.g, v.r, v.gpu), frame = v.vs ? Math.ceil(m / (1000 / v.vs) - 1e-9) * 1000 / v.vs : m; return { m, frame, lat: v.g + v.r + v.gpu }; };
   A.fx('pipe', {
-    title: 'The slowest stage sets the pace',
+    title: 'Pipelined stages',
     expr: 'frame = max({g}, {r}, {gpu}),   latency ≈ {g} + {r} + {gpu}',
     vars: { g: { sym: 'game', name: 'game thread', unit: 'ms', min: 2, max: 40, value: 9, step: 0.5 }, r: { sym: 'render', name: 'render thread', unit: 'ms', min: 2, max: 40, value: 7, step: 0.5 },
             gpu: { sym: 'GPU', name: 'GPU', unit: 'ms', min: 2, max: 40, value: 14, step: 0.5 }, vs: { sym: 'vsync', name: 'vsync', values: [0, 60, 120], labels: ['off', '60 Hz', '120 Hz'] } },
@@ -35,7 +35,7 @@
   });
 
   A.fx('res', {
-    title: 'The resolution test',
+    title: 'Resolution test',
     expr: 'GPU = {vtx} + {pix} · {sc}²,   frame = max({cpu}, GPU)',
     vars: { sc: { sym: 'scale', name: 'resolution scale (per axis)', min: 0.25, max: 1, value: 1, step: 0.01 },
             pix: { sym: 'pixel', name: 'per-pixel GPU work at full resolution', unit: 'ms', min: 0, max: 20, value: 10, step: 0.1 },
@@ -49,7 +49,7 @@
 
   const dcost = v => { const draws = v.inst ? Math.min(v.n, v.m * 4) : v.n, changes = v.sort ? v.m : Math.round(v.n * (1 - 1 / v.m)) + 1; return { draws, changes, us: draws * 2 + changes * 6 }; };
   A.fx('drawcost', {
-    title: 'A simple CPU cost model for draws',
+    title: 'CPU cost of draw calls',
     expr: 'CPU ≈ draws · 2 µs + state changes · 6 µs,   {n} objects, {m} materials',
     vars: { n: { name: 'objects', min: 50, max: 5000, value: 1500, step: 50 }, m: { name: 'materials', min: 1, max: 200, value: 30, step: 1 },
             sort: { name: 'sorted by material', values: [0, 1], labels: ['no', 'yes'] }, inst: { name: 'instancing (4 meshes per material)', values: [0, 1], labels: ['no', 'yes'] } },
@@ -60,7 +60,7 @@
   });
 
   A.fx('od', {
-    title: 'Counting pixel shader runs',
+    title: 'Pixel shader invocations',
     expr: 'runs = {w} · {h} · {cov} · {layers}',
     vars: { w: { sym: 'W', name: 'width', values: [1280, 1920, 2560, 3840], index: 1 }, h: { sym: 'H', name: 'height', values: [720, 1080, 1440, 2160], index: 1 },
             cov: { name: 'screen fraction covered by the effect', min: 0.05, max: 1, value: 0.5, step: 0.01 }, layers: { name: 'transparent layers on top of each other', min: 1, max: 30, value: 8, step: 1 } },
@@ -86,7 +86,7 @@
     return { cov, quads, c: cov.size, q: quads.size };
   }
   A.fx('quadeff', {
-    title: 'Useful lanes for one triangle',
+    title: 'Quad efficiency per triangle',
     expr: 'efficiency = covered pixels / (4 · quads touched),   legs {L} px',
     vars: { L: { name: 'triangle size (leg length in pixels)', min: 0.8, max: 24, value: 6, step: 0.1, log: true }, o: { name: 'position inside the pixel grid', min: 0, max: 1, value: 0.3, step: 0.01 } },
     out: { sym: 'efficiency', f: v => { const r = rast(v.L, v.o, v.o * 0.6 + 0.2); return r.q ? r.c / (4 * r.q) : 0; } },
@@ -107,7 +107,7 @@
   });
 
   A.fx('diverge', {
-    title: 'Expected cost of a branch per wave',
+    title: 'Branch divergence cost per wave',
     expr: 'cost = {a} · (1 − (1 − {p})<sup>{n}</sup>) + {b} · (1 − {p}<sup>{n}</sup>)',
     vars: { p: { name: 'fraction of pixels taking the expensive side', min: 0, max: 1, value: 0.2, step: 0.01 },
             a: { name: 'cost of the expensive side', min: 1, max: 200, value: 100, step: 1 }, b: { name: 'cost of the cheap side', min: 1, max: 200, value: 10, step: 1 },

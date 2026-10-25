@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -49,14 +49,14 @@
   <div class="eyebrow">Substance Designer · 8 chapters</div>
   <h1>Graphs, Bit Depth and Colour Space</h1>
   <p class="lede">What the numbers in a Substance Designer graph are: output size and inheritance, what 8 and 16 bits mean, why heights band, when you need float formats, and how sRGB and linear values behave inside the graph and on export.</p>
-  <p class="meta">No Designer experience needed. Builds on Colour as Numbers. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">No Designer experience needed. Builds on Colour Values. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/sd-graphs.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One height ramp stored at 8 bits, terraced into 255 steps.</figcaption></figure>
 </div>
 <div class="needs" data-needs="color-values#linear-srgb textures-sampling#texture"></div>
 
-<section class="chapter" id="graph" data-title="A graph is a chain of images" data-builds="gpu-basics#per-pixel textures-sampling#texture" data-summary="Nodes compute images and pass them on. Greyscale (L, 1 channel) or colour (C, 4 channels); colour costs about 4×.">
-  <div class="head"><div class="num"></div><h2>A graph is a chain of images</h2></div>
+<section class="chapter" id="graph" data-title="Graph basics" data-builds="gpu-basics#per-pixel textures-sampling#texture" data-summary="Nodes compute images and pass them on. Greyscale (L, 1 channel) or colour (C, 4 channels); colour costs about 4×.">
+  <div class="head"><div class="num"></div><h2>Graph basics</h2></div>
 
   <div class="prose">
     <p>A Substance graph is a chain of small image programs. Every node takes images in, computes a new image, and passes it on, until the last nodes arrive at the <em>outputs</em> (base colour, normal, roughness and so on). Nothing is painted; every pixel is the result of the chain. Change a parameter at the start and every node after it is computed again.</p>
@@ -84,8 +84,8 @@
   <div class="prose"><p>Two traps from Adobe's guidelines. An embedded bitmap is Absolute by default, and an Absolute node at the start of a chain forces its size on every node that inherits from it. Keep the Bitmap node Absolute (a Bitmap set to Relative to parent is saved at 256 × 256 when you publish), and put a <em>Transformation 2D</em> set to Relative to parent right after it. And avoid sizes below 16 × 16: they render slower, not faster. A <em>Uniform Color</em> set to Absolute 16 × 16 is the cheap way to make a flat value.</p></div>
 
 </section>
-<section class="chapter" id="bitdepth" data-title="What bit depth means" data-builds="color-values#rgb" data-summary="n bits store 2ⁿ levels: 8 bit 256 (step 1/255), 16 bit 65 536 (step 1/65 535).">
-  <div class="head"><div class="num"></div><h2>What bit depth means</h2></div>
+<section class="chapter" id="bitdepth" data-title="Bit depth" data-builds="color-values#rgb" data-summary="n bits store 2ⁿ levels: 8 bit 256 (step 1/255), 16 bit 65 536 (step 1/65 535).">
+  <div class="head"><div class="num"></div><h2>Bit depth</h2></div>
 
   <div class="prose">
     <p>An image stores each channel of each pixel as a number. <button type="button" class="term" data-term="bitdepth">Bit depth</button> is how many bits that number gets, and with n bits a channel can hold 2<sup>n</sup> different values. An 8-bit channel has 256 values from 0 to 255, which Designer shows as 0 to 1 in steps of 1/255. A 16-bit channel has 65 536, in steps of 1/65 535.</p>
@@ -110,8 +110,8 @@
   </div>
 
 </section>
-<section class="chapter" id="float" data-title="Float formats: beyond 0 and 1" data-builds="buffers#render-targets" data-summary="Integer formats clamp to 0–1 at every node; 16F and 32F keep negatives and values above 1. 16F step near v: 2^(⌊log₂ v⌋ − 10).">
-  <div class="head"><div class="num"></div><h2>Float formats: beyond 0 and 1</h2></div>
+<section class="chapter" id="float" data-title="Float formats" data-builds="buffers#render-targets" data-summary="Integer formats clamp to 0–1 at every node; 16F and 32F keep negatives and values above 1. 16F step near v: 2^(⌊log₂ v⌋ − 10).">
+  <div class="head"><div class="num"></div><h2>Float formats</h2></div>
 
   <div class="prose">
     <p>The integer formats clamp: every value below 0 becomes 0, every value above 1 becomes 1, at every node. That is usually what you want for a mask, and a problem whenever the maths in between needs room. Subtract one image from another and add it back later, and the integer graph has lost everything that went negative in the middle:</p>
@@ -128,7 +128,10 @@
   <div class="head"><div class="num"></div><h2>sRGB and linear in Designer</h2></div>
 
   <div class="prose">
-    <p>Colours on disk and on screen are usually <a class="x" href="../color-values/index.html#linear-srgb">sRGB-encoded</a>: the stored number is not proportional to the light, it is bent so that 8 bits spend more codes on the darks, where eyes notice differences. Light adds up in <em>linear</em> values. Both facts matter inside a graph.</p>
+    <p>Colours on disk and on screen are usually sRGB-encoded, while light adds up in linear values. Both facts matter inside a graph.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>sRGB encoding: the stored number ≈ light^(1/2.2), spending more 8-bit codes on the darks; blends and lighting are only correct on linear values.</p></div><a class="x refto" href="../color-values/index.html#linear-srgb">Open the full explanation</a></aside>
+  <div class="prose">
     <p>Designer has three colour management modes, set in the project settings:</p>
     <ul>
       <li><strong>Legacy</strong> (the default): no colour management. Colour values pass through the graph untouched, the graph is considered to work in sRGB, and a Blend mixes the stored, encoded numbers.</li>
@@ -146,8 +149,8 @@
   <details class="check"><summary></summary><script type="application/json">[["Your team works in Legacy mode. A colour Blend at 50 % between red and green looks muddy compared with Photoshop set to linear blending. Why?", ["Designer has a bug", "Legacy mode blends the stored sRGB-encoded values; the linear mix is brighter in the middle", "The graph is 8-bit", "Green is too dark"], 1, "Mixing encoded values darkens the middle of a blend between saturated colours. OCIO or ACE mode blends in linear."]]</script></details>
 
 </section>
-<section class="chapter" id="choose" data-title="Choosing a format per map" data-builds="sd-graphs#bitdepth sd-graphs#float" data-summary="Heights L16, masks L8, base colour C8 (C16 when linear), vectors 16F, HDR 16F/32F.">
-  <div class="head"><div class="num"></div><h2>Choosing a format per map</h2></div>
+<section class="chapter" id="choose" data-title="Format per map type" data-builds="sd-graphs#bitdepth sd-graphs#float" data-summary="Heights L16, masks L8, base colour C8 (C16 when linear), vectors 16F, HDR 16F/32F.">
+  <div class="head"><div class="num"></div><h2>Format per map type</h2></div>
 
   <div class="prose"><p>Put together, most graphs follow one table. Formats are set once at the first node of a chain, Absolute, and every node after it inherits them:</p></div>
   
@@ -270,10 +273,10 @@ public class HeightImportCheck : AssetPostprocessor
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="sdgraphs.js?v=6af33373"></script>
+<script src="sdgraphs.js?v=38a7d29c"></script>
 </body>
 </html>

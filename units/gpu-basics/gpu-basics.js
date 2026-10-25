@@ -60,7 +60,7 @@
   const TA = [80, 230], TB = [360, 40], TC = [400, 250];
   const edge = (a, b, p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
   A.fx('edge', {
-    title: 'Edge function: which side of an edge is p on?',
+    title: 'Edge function',
     expr: 'E(p) = (b<sub>x</sub>−a<sub>x</sub>)({py}−a<sub>y</sub>) − (b<sub>y</sub>−a<sub>y</sub>)({px}−a<sub>x</sub>)',
     vars: {
       px: { sym: 'p<sub>x</sub>', name: 'point x', min: 0, max: 440, value: 250, step: 1 },

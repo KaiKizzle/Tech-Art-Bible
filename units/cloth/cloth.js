@@ -17,7 +17,7 @@
   }
 
   A.fx('charlie', {
-    title: 'Charlie sheen against GGX',
+    title: 'Charlie sheen versus GGX',
     expr: 'D<sub>Charlie</sub> = (2 + 1/α) · sin({th})<sup>1/α</sup> / 2π,   α = {r}²',
     vars: { th: { sym: 'θ<sub>H</sub>', name: 'angle between N and H', unit: '°', min: 0, max: 90, value: 70, step: 0.5 }, r: { sym: 'roughness', name: 'sheen roughness', min: 0.2, max: 1, value: 0.6, step: 0.01 },
             la: { sym: 'θ<sub>L</sub>', name: 'light angle from the view direction (sphere picture)', unit: '°', min: 0, max: 90, value: 20, step: 1 } },
@@ -33,7 +33,7 @@
   });
 
   A.fx('clothvis', {
-    title: 'Cloth visibility against the GGX denominator',
+    title: 'Cloth visibility versus the GGX denominator',
     expr: 'V<sub>cloth</sub> = 1 / (4 · (N·L + N·V − N·L · N·V)),   N·L = cos {tl},   N·V = cos {tv}',
     vars: { tl: { sym: 'θ<sub>L</sub>', name: 'light angle from the normal', unit: '°', min: 0, max: 89, value: 40, step: 1 }, tv: { sym: 'θ<sub>V</sub>', name: 'view angle from the normal', unit: '°', min: 0, max: 89.5, value: 70, step: 0.5 } },
     out: [{ sym: 'V<sub>cloth</sub>', f: v => vis(Math.cos(v.tl * DEG), Math.cos(v.tv * DEG)), color: 'accent' }, { sym: '1 / (4 N·L N·V)', f: v => 1 / (4 * Math.cos(v.tl * DEG) * Math.cos(v.tv * DEG)), color: 'bad' }],
@@ -60,7 +60,7 @@
 
   const aniso = (x, y, n, ax, ay) => { const d = x * x / (ax * ax) + y * y / (ay * ay) + n * n; return 1 / (PI * ax * ay * d * d); };
   A.fx('aniso', {
-    title: 'Anisotropic GGX: the highlight shape',
+    title: 'Anisotropic GGX highlight shape',
     expr: 'D = 1 / (π · α<sub>T</sub> α<sub>B</sub> · ((T·H / α<sub>T</sub>)² + (B·H / α<sub>B</sub>)² + (N·H)²)²),   α<sub>T</sub> = {at},   α<sub>B</sub> = {ab}',
     vars: { at: { sym: 'α<sub>T</sub>', name: 'roughness along the threads', min: 0.02, max: 0.8, value: 0.08, step: 0.01 }, ab: { sym: 'α<sub>B</sub>', name: 'roughness across the threads', min: 0.02, max: 0.8, value: 0.45, step: 0.01 },
             rot: { name: 'thread direction', unit: '°', min: 0, max: 180, value: 0, step: 1 } },
@@ -75,7 +75,7 @@
   });
 
   A.fx('fuzz', {
-    title: 'A fuzz rim',
+    title: 'Fuzz rim',
     expr: 'fuzz = fuzzColor · (1 − N·V)<sup>{p}</sup> · {k}',
     vars: { p: { name: 'rim falloff', min: 1, max: 8, value: 3, step: 0.1 }, k: { name: 'strength', min: 0, max: 1, value: 0.5, step: 0.01 }, nv: { sym: 'N·V', name: 'N·V at a sample point', min: 0, max: 1, value: 0.3, step: 0.01 } },
     out: { sym: 'fuzz', f: v => Math.pow(1 - v.nv, v.p) * v.k },
@@ -87,7 +87,7 @@
   });
 
   A.fx('weavefade', {
-    title: 'When the weave gets smaller than a pixel',
+    title: 'Weave fade below pixel size',
     expr: 'threads per pixel = {tpc} · 100 / ({Hs} / (2 · {d} · tan 30°))',
     vars: { tpc: { name: 'threads per centimetre', min: 2, max: 60, value: 20, log: true }, d: { name: 'distance to the camera', unit: 'm', min: 0.2, max: 30, value: 3, log: true }, Hs: { sym: 'H', name: 'screen height', values: [1080, 1440, 2160], index: 0 } },
     out: { sym: 'threads / px', f: v => v.tpc * 100 / (v.Hs / (2 * v.d * Math.tan(30 * DEG))) },

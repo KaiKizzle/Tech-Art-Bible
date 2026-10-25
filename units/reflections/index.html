@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Reflections, Mirrors and Cheap Metal · Tech Art Atlas</title>
+<title>Reflections and Mirrors · Tech Art Atlas</title>
 <meta name="description" content="Where reflections come from in a real-time renderer: probes and box projection, screen-space and ray-traced reflections, planar mirrors, specular occlusion, and cheap fallbacks that still sell a metal, built in Unity HDRP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="reflections" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Reflections, Mirrors and Cheap Metal</a>
+  <a class="brand" href="#top">Reflections and Mirrors</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,16 +40,16 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Surfaces · 10 chapters</div>
-  <h1>Reflections, Mirrors and Cheap Metal</h1>
+  <h1>Reflections and Mirrors</h1>
   <p class="lede">Where reflections come from in a real-time renderer: probes and box projection, screen-space and ray-traced reflections, planar mirrors, specular occlusion, and cheap fallbacks that still sell a metal, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on Metals and Inside a PBR Shader. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on Metals and PBR BRDF. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/reflections.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A chrome sphere on a reflective floor in a box-projected room.</figcaption></figure>
 </div>
 <div class="needs" data-needs="metals#electrons"></div>
 
-<section class="chapter" id="sources" data-title="Where reflections come from" data-builds="dot-cross#reflect pbr-brdf#ibl" data-summary="R = 2(N·V)N − V. Engines stack techniques: traced or screen-space → planar → probes → sky → black.">
-  <div class="head"><div class="num"></div><h2>Where reflections come from</h2></div>
+<section class="chapter" id="sources" data-title="Reflection sources" data-builds="dot-cross#reflect pbr-brdf#ibl" data-summary="R = 2(N·V)N − V. Engines stack techniques: traced or screen-space → planar → probes → sky → black.">
+  <div class="head"><div class="num"></div><h2>Reflection sources</h2></div>
 
   <div class="prose">
     <p>A smooth surface shows what lies in the mirror direction. With the view vector V (from the surface to the eye) and the normal N, that direction is R = 2(N·V)N − V (<a class="x" href="../dot-cross/index.html#reflect">reflection</a>). A rough surface shows a blurred average around R (<a class="x" href="../pbr-brdf/index.html#ibl">image-based lighting</a>). The whole problem of real-time reflections is answering one question per pixel: <em>what is out there along R?</em></p>
@@ -68,8 +68,8 @@
   </div>
 
 </section>
-<section class="chapter" id="probes" data-title="Probes: the environment in a cube" data-builds="pbr-brdf#ibl reflections#sources" data-summary="Probes = cubemaps with pre-blurred mips; mip = r(1.7 − 0.7r)·6 in Unity. Static content only.">
-  <div class="head"><div class="num"></div><h2>Probes: the environment in a cube</h2></div>
+<section class="chapter" id="probes" data-title="Reflection probes" data-builds="pbr-brdf#ibl reflections#sources" data-summary="Probes = cubemaps with pre-blurred mips; mip = r(1.7 − 0.7r)·6 in Unity. Static content only.">
+  <div class="head"><div class="num"></div><h2>Reflection probes</h2></div>
 
   <div class="prose">
     <p>A <button type="button" class="term" data-term="probe">reflection probe</button> is a camera that renders its surroundings into a cubemap, once (baked) or now and then (real-time). Shaders look the cubemap up along R. That covers the static world everywhere at the cost of a texture read.</p>
@@ -84,7 +84,7 @@
 
   <div class="prose">
     <p>A cubemap is captured from one point and treats everything as infinitely far away. Inside a room that is wrong: a point near the right wall that looks up-left should see the left wall from <em>its</em> position, not from the probe's. The error makes reflections slide across the floor as you walk.</p>
-    <p><button type="button" class="term" data-term="boxproj">Box projection</button> (parallax correction) fixes it for box-shaped rooms: intersect the ray from the shaded point with the room box (<a class="x" href="../rays-math/index.html#box">ray against box</a>), then look up the cubemap in the direction from the probe to that hit point:</p>
+    <p><button type="button" class="term" data-term="boxproj">Box projection</button> (parallax correction) fixes it for box-shaped rooms: intersect the ray from the shaded point with the room box (<a class="x" href="../rays-math/index.html#box">ray against box</a>), then look up the cubemap in the direction from the probe to that hit point. The correction is exact for points on the box walls and approximate for furniture inside; outdoors there is no box, so probes there stay unprojected:</p>
   </div>
   <div class="fx" data-fx="box"></div>
   <div class="prose"><p>Set the box to the walls, not to where you want the probe to apply: those are two different volumes (HDRP calls them influence and proxy volume). For L-shaped or round rooms, split into several boxes or accept some sliding. The same trick drives <a class="x" href="../interior-mapping/index.html#trick">interior mapping</a>, which fakes rooms behind windows with a box and a cubemap.</p></div>
@@ -139,8 +139,8 @@
   <div class="prose"><p>It is a fit, not physics, but it removes most leaks. Screen-space and ray-traced reflections need it less, because they see the actual surroundings. Bent normals (the average open direction, baked with the AO) improve it further, and HDRP has a mode for them.</p></div>
 
 </section>
-<section class="chapter" id="cheap" data-title="Cheap metal: gradients, matcaps, one probe" data-builds="mapping#matcap reflections#probes" data-summary="Three-colour gradient env by R.y, matcaps, one global probe, fake Fresnel, analytic env BRDF.">
-  <div class="head"><div class="num"></div><h2>Cheap metal: gradients, matcaps, one probe</h2></div>
+<section class="chapter" id="cheap" data-title="Low-cost reflections" data-builds="mapping#matcap reflections#probes" data-summary="Three-colour gradient env by R.y, matcaps, one global probe, fake Fresnel, analytic env BRDF.">
+  <div class="head"><div class="num"></div><h2>Low-cost reflections</h2></div>
 
   <div class="prose">
     <p>A metal needs something to reflect, but it does not always need the real world. On mobile, for distant objects or in stylised games, three colours do a surprising job: ground, a bright horizon, sky, blended by the height of R. A soft horizon reads as a rough surface, a sharp one as chrome:</p>
@@ -157,8 +157,8 @@
   </div>
 
 </section>
-<section class="chapter" id="mirrors" data-title="Choosing a mirror technique" data-builds="reflections#planar reflections#ssr" data-summary="Pick by what must appear and the budget: planar, SSR, RT, probes, mirrored room, gradients.">
-  <div class="head"><div class="num"></div><h2>Choosing a mirror technique</h2></div>
+<section class="chapter" id="mirrors" data-title="Mirror techniques compared" data-builds="reflections#planar reflections#ssr" data-summary="Pick by what must appear and the budget: planar, SSR, RT, probes, mirrored room, gradients.">
+  <div class="head"><div class="num"></div><h2>Mirror techniques compared</h2></div>
 
   <div class="prose"><p>For a given mirror or reflective surface, the question is what must appear in it and what the frame can afford:</p></div>
   
@@ -317,11 +317,11 @@ return P + R * t - ProbePos;</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="reflections.js?v=8e0b39d8"></script>
+<script src="reflections.js?v=970aa67f"></script>
 </body>
 </html>

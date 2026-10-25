@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="water" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,17 +42,21 @@
   <div class="eyebrow">Surfaces · 10 chapters</div>
   <h1>Water</h1>
   <p class="lede">How water shaders work: Fresnel at 2 %, waves from normals and Gerstner, depth from the depth buffer, colour from absorption and scattering, shore foam, refraction, caustics, the view from below, and cheap tiers, built in Unity HDRP and Unreal.</p>
-  <p class="meta">Builds on Glass, Depth Buffer Effects and Faking Transparency with Screen Passes. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">Builds on Glass, Depth Buffer Effects and Screen-Space Transparency. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/water.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A shallow shore: sand fading into blue-green depth, foam at the edge and caustics on the bottom.</figcaption></figure>
 </div>
 <div class="needs" data-needs="depth-effects#water"></div>
 
-<section class="chapter" id="layers" data-title="What you see in water" data-builds="glass#fresnel reflections#sources" data-summary="F0 = 0.02 for water; colour = F·reflection + (1 − F)·light from below. Mostly mirror at the horizon, clear at your feet.">
-  <div class="head"><div class="num"></div><h2>What you see in water</h2></div>
+<section class="chapter" id="layers" data-title="Reflection and transmission" data-builds="pbr-brdf#fresnel reflections#sources" data-summary="F0 = 0.02 for water; colour = F·reflection + (1 − F)·light from below. Mostly mirror at the horizon, clear at your feet.">
+  <div class="head"><div class="num"></div><h2>Reflection and transmission</h2></div>
 
   <div class="prose">
-    <p>Water is a <a class="x" href="../glass/index.html#fresnel">dielectric</a> with an IOR of 1.33, so its surface reflects only 2 % head-on (F0 = 0.02) and close to 100 % at grazing angles. Everything else you see comes from below: the bottom, seen through water that absorbs and scatters light. The balance between the two changes across every view of a lake:</p>
+    <p>Water is a dielectric with an IOR of 1.33, so its surface reflects only 2 % head-on (F0 = 0.02) and close to 100 % at grazing angles.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Fresnel: F0 = ((n − 1)/(n + 1))², 0.02 for water; F rises to 1 at grazing angles; 1 − F enters the water.</p></div><a class="x refto" href="../pbr-brdf/index.html#fresnel">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>Everything else you see comes from below: the bottom, seen through water that absorbs and scatters light. The balance between the two changes across every view of a lake:</p>
   </div>
   <div class="fx" data-fx="wfresnel"></div>
   <div class="prose">
@@ -65,8 +69,8 @@
   </div>
 
 </section>
-<section class="chapter" id="waves" data-title="Waves: normals and Gerstner" data-builds="water#layers mapping#flow" data-summary="Scrolling normal maps for ripples; Gerstner waves for geometry: circular particle motion, ω = √(gk), Q·A·k &lt; 1.">
-  <div class="head"><div class="num"></div><h2>Waves: normals and Gerstner</h2></div>
+<section class="chapter" id="waves" data-title="Wave normals and Gerstner waves" data-builds="water#layers mapping#flow" data-summary="Scrolling normal maps for ripples; Gerstner waves for geometry: circular particle motion, ω = √(gk), Q·A·k &lt; 1.">
+  <div class="head"><div class="num"></div><h2>Wave normals and Gerstner waves</h2></div>
 
   <div class="prose">
     <p>Most of what reads as "water" is the surface normal. Small ripples come from normal maps scrolling in two or three directions at different speeds (<a class="x" href="../mapping/index.html#flow">flow maps</a> steer them along rivers). Larger waves move the geometry. The classic shape is the <button type="button" class="term" data-term="gerstner">Gerstner wave</button>: each water particle moves in a circle, so crests sharpen and troughs flatten, as in real swell:</p>
@@ -78,8 +82,8 @@
   </div>
 
 </section>
-<section class="chapter" id="depth" data-title="How much water is there?" data-builds="depth-effects#water depth-effects#linearize" data-summary="path = Δ linear depth / cos α; vertical depth = path · cos φ. Absorption uses the path; foam and fades use the depth.">
-  <div class="head"><div class="num"></div><h2>How much water is there?</h2></div>
+<section class="chapter" id="depth" data-title="Water depth" data-builds="depth-effects#water depth-effects#linearize" data-summary="path = Δ linear depth / cos α; vertical depth = path · cos φ. Absorption uses the path; foam and fades use the depth.">
+  <div class="head"><div class="num"></div><h2>Water depth</h2></div>
 
   <div class="prose">
     <p>Colour, foam and refraction all depend on how much water lies between the surface and the ground. A transparent water surface can read the <a class="x" href="../depth-effects/index.html#water">depth buffer</a>, which holds the ground behind it. Subtract the surface's own depth and you get the distance the view ray travels through water, after <a class="x" href="../depth-effects/index.html#linearize">linearising</a> both:</p>
@@ -88,12 +92,13 @@
   <div class="prose"><p>Use the right one for each job. Absorption follows the <em>path</em>: looking across a shallow pool at a low angle, you see through a lot of water. Foam, shore fades and caustics follow the <em>vertical depth</em>: they belong to places, not to views. Divide by the cosine of the angle to the camera axis when the pixel is far from the screen centre, because the depth buffer stores distance along the view axis.</p></div>
 
 </section>
-<section class="chapter" id="absorb" data-title="Colour: absorption and scattering" data-builds="glass#colour water#depth" data-summary="Pure water a ≈ (0.35, 0.06, 0.01)/m; colour = bottom·e^(−aL) + scatter·(1 − e^(−aL)).">
-  <div class="head"><div class="num"></div><h2>Colour: absorption and scattering</h2></div>
+<section class="chapter" id="absorb" data-title="Absorption and scattering" data-builds="ray-marching#volumes water#depth" data-summary="Pure water a ≈ (0.35, 0.06, 0.01)/m; colour = bottom·e^(−aL) + scatter·(1 − e^(−aL)).">
+  <div class="head"><div class="num"></div><h2>Absorption and scattering</h2></div>
 
   <div class="prose">
-    <p>Pure water absorbs red light far more than blue: measured absorption is roughly 0.35 per metre for red (650 nm), 0.06 for green and about 0.01 for blue (Pope and Fry, 1997). After a few metres, red is gone; after tens of metres, green too. That is why clear water is blue-green, and it is the same <a class="x" href="../glass/index.html#colour">Beer–Lambert law</a> as for glass, per channel. Particles and plankton add <em>scattering</em>: light that bounces back towards you from inside the water, which gives lagoons their turquoise and rivers their brown:</p>
+    <p>Pure water absorbs red light far more than blue: measured absorption is roughly 0.35 per metre for red (650 nm), 0.06 for green and about 0.01 for blue (Pope and Fry, 1997). After a few metres, red is gone; after tens of metres, green too. That is why clear water is blue-green. Particles and plankton add <em>scattering</em>: light that bounces back towards you from inside the water, which gives lagoons their turquoise and rivers their brown:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Beer–Lambert: T = e^(−a·L) per channel, with L the path length through the water.</p></div><a class="x refto" href="../ray-marching/index.html#volumes">Open the full explanation</a></aside>
   <div class="fx" data-fx="wabs"></div>
   <div class="prose">
     <p>The model in one line: colour = bottom · T + scatter · (1 − T). Deep water converges to the scatter colour; shallow water shows the bottom. Engines expose the same two parts: HDRP's water has a refraction (absorption) colour and distance and a scattering colour; Unreal's Single Layer Water has absorption and scattering coefficients; OpenPBR's volume parameters split them the same way.</p>
@@ -113,11 +118,15 @@
   </div>
 
 </section>
-<section class="chapter" id="refract" data-title="Refraction below the surface" data-builds="glass#realtime screen-transparency#leaks" data-summary="offset = N.xz · k · saturate(d/d₀): weak at the shore, full in deep water; plus depth rejection.">
-  <div class="head"><div class="num"></div><h2>Refraction below the surface</h2></div>
+<section class="chapter" id="refract" data-title="Refraction" data-builds="screen-transparency#copies screen-transparency#leaks" data-summary="offset = N.xz · k · saturate(d/d₀): weak at the shore, full in deep water; plus depth rejection.">
+  <div class="head"><div class="num"></div><h2>Refraction</h2></div>
 
   <div class="prose">
-    <p>Water refracts what lies below it, which real-time renderers do with the <a class="x" href="../glass/index.html#realtime">screen copy</a>: offset the UV by the surface normal and read the scene behind. Two water-specific rules:</p>
+    <p>Water refracts what lies below it, which real-time renderers do with the screen copy: offset the UV by the surface normal and read the scene behind.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Screen-space refraction reads a copy of the opaque scene at an offset UV; samples that land on foreground objects must be rejected by depth.</p></div><a class="x refto" href="../screen-transparency/index.html#copies">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>Two water-specific rules:</p>
     <ul>
       <li>Scale the offset by depth. In real water, the bottom right at the shoreline barely moves; deep water distorts strongly. It also hides the worst leaks.</li>
       <li>Reject samples in front of the water, as in <a class="x" href="../screen-transparency/index.html#leaks">depth rejection</a>: a pier, a leg, a boat at the waterline would otherwise smear into the water.</li>
@@ -139,20 +148,21 @@
   </div>
 
 </section>
-<section class="chapter" id="underwater" data-title="Under the surface" data-builds="glass#snell water#absorb" data-summary="θc = asin(1/1.33) ≈ 48.6°: the sky fits in a 97° cone; outside, total reflection. Underwater = absorption fog.">
-  <div class="head"><div class="num"></div><h2>Under the surface</h2></div>
+<section class="chapter" id="underwater" data-title="Underwater view" data-builds="glass#snell water#absorb" data-summary="θc = asin(1/1.33) ≈ 48.6°: the sky fits in a 97° cone; outside, total reflection. Underwater = absorption fog.">
+  <div class="head"><div class="num"></div><h2>Underwater view</h2></div>
 
   <div class="prose">
-    <p>Seen from below, the surface behaves differently. Light from the whole sky enters only within a cone, because of <a class="x" href="../glass/index.html#snell">refraction</a>: the sky appears as a bright circle overhead, <button type="button" class="term" data-term="snellwindow">Snell's window</button>, and outside it the surface is a mirror of the water below (total internal reflection):</p>
+    <p>Seen from below, the surface behaves differently. Light from the whole sky enters only within a cone, because of refraction: the sky appears as a bright circle overhead, <button type="button" class="term" data-term="snellwindow">Snell's window</button>, and outside it the surface is a mirror of the water below (total internal reflection):</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Snell's law: n₁ sin θ₁ = n₂ sin θ₂; going from the denser medium out, beyond the critical angle asin(n₂/n₁) light cannot leave: total internal reflection.</p></div><a class="x refto" href="../glass/index.html#snell">Open the full explanation</a></aside>
   <div class="fx" data-fx="snellwin"></div>
   <div class="prose">
     <p>The rest of the underwater look is the same absorption and scattering applied to everything the camera sees, as a fog: colour = object · T(distance) + scatter · (1 − T). Renderers do it as a full-screen pass when the camera is below the surface, plus a <em>waterline</em> effect where the camera cuts the surface. Make the surface shader two-sided and switch to the total-reflection look from below, or the sky shows through everywhere.</p>
   </div>
 
 </section>
-<section class="chapter" id="budget" data-title="Water on a budget" data-builds="water#shore water#absorb" data-summary="Hero, mid, low and stylised tiers; bake depth into vertex colours where there is no depth buffer.">
-  <div class="head"><div class="num"></div><h2>Water on a budget</h2></div>
+<section class="chapter" id="budget" data-title="Quality tiers" data-builds="water#shore water#absorb" data-summary="Hero, mid, low and stylised tiers; bake depth into vertex colours where there is no depth buffer.">
+  <div class="head"><div class="num"></div><h2>Quality tiers</h2></div>
 
   <div class="prose"><p>Every layer of this unit has a cheaper stand-in. Pick per platform and per water body:</p></div>
   
@@ -298,11 +308,11 @@ return saturate((band - Noise * 0.9) * 4.0);</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="water.js?v=6520fc56"></script>
+<script src="water.js?v=5d176aeb"></script>
 </body>
 </html>

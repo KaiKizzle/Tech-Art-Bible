@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="unity-scenes" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="unity-guids#refs"></div>
 
-<section class="chapter" id="what" data-title="What a scene is" data-builds="unity-guids#refs" data-summary="A scene is a YAML file of GameObjects plus lighting and navigation data; build scenes come from the Build Profiles scene list.">
-  <div class="head"><div class="num"></div><h2>What a scene is</h2></div>
+<section class="chapter" id="what" data-title="Scene files" data-builds="unity-guids#refs" data-summary="A scene is a YAML file of GameObjects plus lighting and navigation data; build scenes come from the Build Profiles scene list.">
+  <div class="head"><div class="num"></div><h2>Scene files</h2></div>
 
   <div class="prose">
     <p>A scene is a file (<code>.unity</code>) holding a hierarchy of GameObjects with their components, plus the scene's own settings: its lighting settings, its baked lightmaps and probes, its navigation data. Like prefabs, scenes are YAML and refer to assets by GUID (<a class="x" href="../unity-guids/index.html#refs">references</a>).</p>
@@ -69,8 +69,8 @@
   <div class="prose"><p>Objects that must survive every load can be moved to the special <em>DontDestroyOnLoad</em> scene with <code>DontDestroyOnLoad(gameObject)</code>. It works, but every object there needs code that prevents duplicates when its original scene loads again; a bootstrap scene is usually cleaner (<a class="x" href="../unity-scenes/index.html#bootstrap">the bootstrap pattern</a>).</p></div>
 
 </section>
-<section class="chapter" id="async" data-title="Loading in the background" data-builds="unity-scenes#modes reading-a-frame#budget" data-summary="LoadSceneAsync: progress 0 → 0.9 while loading, then a single activation frame ≈ objects · Awake cost; allowSceneActivation holds at 0.9.">
-  <div class="head"><div class="num"></div><h2>Loading in the background</h2></div>
+<section class="chapter" id="async" data-title="Async loading" data-builds="unity-scenes#modes reading-a-frame#budget" data-summary="LoadSceneAsync: progress 0 → 0.9 while loading, then a single activation frame ≈ objects · Awake cost; allowSceneActivation holds at 0.9.">
+  <div class="head"><div class="num"></div><h2>Async loading</h2></div>
 
   <div class="prose">
     <p><code>LoadScene</code> blocks the game until the scene is loaded. <code>LoadSceneAsync</code> loads in the background and returns an <code>AsyncOperation</code> whose <code>progress</code> goes from 0 to 0.9 while data is read. The last step, <em>activation</em>, runs on the main thread: Unity integrates the objects and calls <code>Awake</code> and <code>OnEnable</code> on every one of them in a single frame. Setting <code>allowSceneActivation = false</code> holds the load at 0.9, so you can finish a fade or wait for the player:</p>
@@ -99,8 +99,8 @@ public class LevelLoader : MonoBehaviour
   <details class="check"><summary></summary><script type="application/json">[["A loading bar driven by op.progress stops at 90 % and never moves. What is happening?", ["The scene file is corrupt", "allowSceneActivation is false, so the load waits before activation", "The scene is too large", "progress only works for Single mode"], 1, "Progress reaches 0.9 when the data is loaded; the rest happens only after allowSceneActivation is set to true."]]</script></details>
 
 </section>
-<section class="chapter" id="memory" data-title="Memory: unloading scenes and their assets" data-builds="unity-scenes#async" data-summary="Single: peak ≈ A + B. Transition scene: ≈ max(A, B). Additive unloads need Resources.UnloadUnusedAssets to free assets.">
-  <div class="head"><div class="num"></div><h2>Memory: unloading scenes and their assets</h2></div>
+<section class="chapter" id="memory" data-title="Unloading and memory" data-builds="unity-scenes#async" data-summary="Single: peak ≈ A + B. Transition scene: ≈ max(A, B). Additive unloads need Resources.UnloadUnusedAssets to free assets.">
+  <div class="head"><div class="num"></div><h2>Unloading and memory</h2></div>
 
   <div class="prose">
     <p>Switching levels raises a memory question: is the old level gone before the new one arrives? With <code>LoadScene</code> in Single mode, Unity loads the new scene and then destroys the old one, so for a moment both are in memory. On a console or phone with a tight budget, that peak is what crashes. A tiny transition scene in between (load it, let the old level go, then load the next) keeps the peak at the larger of the two levels:</p>
@@ -111,8 +111,8 @@ public class LevelLoader : MonoBehaviour
   </div>
 
 </section>
-<section class="chapter" id="bootstrap" data-title="The bootstrap pattern" data-builds="unity-scenes#modes unity-scenes#memory" data-summary="Bootstrap scene with persistent systems, additive UI and levels, a loader that swaps levels; auto-load the bootstrap when playing any scene.">
-  <div class="head"><div class="num"></div><h2>The bootstrap pattern</h2></div>
+<section class="chapter" id="bootstrap" data-title="Bootstrap scene" data-builds="unity-scenes#modes unity-scenes#memory" data-summary="Bootstrap scene with persistent systems, additive UI and levels, a loader that swaps levels; auto-load the bootstrap when playing any scene.">
+  <div class="head"><div class="num"></div><h2>Bootstrap scene</h2></div>
 
   <div class="prose">
     <p>Most projects end up with the same structure:</p>
@@ -125,8 +125,8 @@ public class LevelLoader : MonoBehaviour
   </div>
 
 </section>
-<section class="chapter" id="crossscene" data-title="References between scenes" data-builds="unity-scenes#bootstrap" data-summary="No serialized cross-scene references: use ScriptableObject channels, runtime lookups or IDs; avoid scene names as plain strings.">
-  <div class="head"><div class="num"></div><h2>References between scenes</h2></div>
+<section class="chapter" id="crossscene" data-title="Cross-scene references" data-builds="unity-scenes#bootstrap" data-summary="No serialized cross-scene references: use ScriptableObject channels, runtime lookups or IDs; avoid scene names as plain strings.">
+  <div class="head"><div class="num"></div><h2>Cross-scene references</h2></div>
 
   <div class="prose">
     <p>A field in one scene cannot reference an object in another: Unity does not save <button type="button" class="term" data-term="crossref">cross-scene references</button>, and the Inspector refuses them. That is by design, since the other scene may not be loaded. Systems in different scenes talk in other ways:</p>
@@ -140,8 +140,8 @@ public class LevelLoader : MonoBehaviour
   <details class="check"><summary></summary><script type="application/json">[["A UI button in the UI scene must call a method on the player in the level scene. What works?", ["Drag the player into the button's OnClick in the Inspector", "Have both use a ScriptableObject event channel, or find the player at runtime", "Put the player in the UI scene", "Use DontDestroyOnLoad on the button"], 1, "Cross-scene references are not saved. Shared assets or runtime lookups connect scenes."]]</script></details>
 
 </section>
-<section class="chapter" id="lighting" data-title="Lighting with several scenes" data-builds="baked-gi#probes baked-gi#lightmaps" data-summary="Lightmaps per scene, retetrahedralize probes after additive loads, APV baking sets, Volumes by priority, environment from the active scene.">
-  <div class="head"><div class="num"></div><h2>Lighting with several scenes</h2></div>
+<section class="chapter" id="lighting" data-title="Multi-scene lighting" data-builds="baked-gi#probes baked-gi#lightmaps" data-summary="Lightmaps per scene, retetrahedralize probes after additive loads, APV baking sets, Volumes by priority, environment from the active scene.">
+  <div class="head"><div class="num"></div><h2>Multi-scene lighting</h2></div>
 
   <div class="prose">
     <ul>
@@ -308,10 +308,10 @@ public static class Bootstrapper
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="scenes.js?v=157470e5"></script>
+<script src="scenes.js?v=83d0a138"></script>
 </body>
 </html>

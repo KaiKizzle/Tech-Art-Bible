@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="light-types" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -42,14 +42,14 @@
   <div class="eyebrow">Lighting & GI · 8 chapters</div>
   <h1>Light Types and Falloff</h1>
   <p class="lede">Point, spot, sun and area lights each follow a few lines of maths: how light fades with distance, fills a cone, softens shadows and adds up across a scene.</p>
-  <p class="meta">Builds on Sun to Screen. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">Builds on Exposure and Tonemapping. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/light-types.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A spot light cone and a warm point light on a studio floor.</figcaption></figure>
 </div>
 <div class="needs" data-needs="exposure#units dot-cross#lambert dot-cross#angle"></div>
 
-<section class="chapter" id="point" data-title="Point lights and a finite range" data-builds="exposure#units" data-summary="falloff = saturate(1 − (d/r)⁴)² / (d² + 1): physical up close, exactly zero at the range.">
-  <div class="head"><div class="num"></div><h2>Point lights and a finite range</h2></div>
+<section class="chapter" id="point" data-title="Point lights and range" data-builds="exposure#units" data-summary="falloff = saturate(1 − (d/r)⁴)² / (d² + 1): physical up close, exactly zero at the range.">
+  <div class="head"><div class="num"></div><h2>Point lights and range</h2></div>
 
   <div class="prose">
     <p>A point light obeys the <a class="x" href="../exposure/index.html#units">inverse-square law</a>: at twice the distance, a quarter of the light. Physically that never reaches zero, so every light would touch every pixel of the scene. Engines give each light a <em>range</em> and fade it to exactly zero at that range, while keeping the physical curve close to the light. The common window from Unreal (also used by Frostbite and HDRP):</p>
@@ -69,8 +69,8 @@
   <div class="prose"><p>Computing with cosines instead of angles saves an <code>acos</code> per pixel: the shader compares dot(L, axis) directly with cos(outer) and cos(inner), both precomputed on the CPU.</p></div>
 
 </section>
-<section class="chapter" id="spot-units" data-title="How bright is a spot in lumens?" data-builds="exposure#units light-types#spot" data-summary="I = Φ / (2π · (1 − cos(θ/2))) for a spot with a reflector.">
-  <div class="head"><div class="num"></div><h2>How bright is a spot in lumens?</h2></div>
+<section class="chapter" id="spot-units" data-title="Spot intensity in lumens" data-builds="exposure#units light-types#spot" data-summary="I = Φ / (2π · (1 − cos(θ/2))) for a spot with a reflector.">
+  <div class="head"><div class="num"></div><h2>Spot intensity in lumens</h2></div>
 
   <div class="prose">
     <p>A bulb's lumens spread over a whole sphere (<a class="x" href="../exposure/index.html#units">I = Φ / 4π</a>). Put a reflector behind it and the same lumens go into the cone only, so the light in each direction rises as the cone narrows. A cone of full angle θ covers a solid angle of 2π(1 − cos(θ/2)):</p>
@@ -80,8 +80,8 @@
   <div class="engines"><div class="eng" data-engine="hdrp"><p>Spot lights in <em>Lumen</em> units concentrate the light into the cone only when <em>Reflector</em> is enabled; without it they behave like a point light masked by the cone.</p></div><div class="eng" data-engine="urp"><p>URP intensity is unitless: narrowing the cone does not change the brightness on the lit area.</p></div><div class="eng" data-engine="unreal"><p>In <em>Lumens</em> mode the total stays constant, so a narrower cone is brighter. In <em>Candelas</em> mode the brightness per direction stays constant.</p></div></div>
 
 </section>
-<section class="chapter" id="directional" data-title="The sun" data-builds="dot-cross#lambert shadow-maps#pcf" data-summary="E = E_sun · cos θ; penumbra width ≈ distance × tan(0.53°).">
-  <div class="head"><div class="num"></div><h2>The sun</h2></div>
+<section class="chapter" id="directional" data-title="Directional light" data-builds="dot-cross#lambert shadow-maps#pcf" data-summary="E = E_sun · cos θ; penumbra width ≈ distance × tan(0.53°).">
+  <div class="head"><div class="num"></div><h2>Directional light</h2></div>
 
   <div class="prose">
     <p>The sun is so far away that its rays arrive parallel and there is no falloff: a directional light has a direction and an illuminance in lux, about 100 000 lx at noon. The light on a surface is just E · cos θ (<a class="x" href="../dot-cross/index.html#lambert">Lambert</a>). But the sun is not a point: its disc covers about 0.53° of the sky. That is why shadows are sharp at the foot of a pole and blurry at its top:</p>
@@ -110,8 +110,8 @@
   <div class="prose"><p>IES profiles store the shape and often the absolute intensity. Lights with a profile look markedly more real in architecture and interiors, at the cost of one extra texture fetch.</p></div>
 
 </section>
-<section class="chapter" id="many" data-title="Many lights: what they cost" data-builds="spaces#perspective shadow-maps#cost" data-summary="lights per pixel ≈ N · π · (r / (d · tan(fov/2)))² / (4 · aspect).">
-  <div class="head"><div class="num"></div><h2>Many lights: what they cost</h2></div>
+<section class="chapter" id="many" data-title="Cost of many lights" data-builds="spaces#perspective shadow-maps#cost" data-summary="lights per pixel ≈ N · π · (r / (d · tan(fov/2)))² / (4 · aspect).">
+  <div class="head"><div class="num"></div><h2>Cost of many lights</h2></div>
 
   <div class="prose">
     <p>Every light whose range touches a pixel adds one lighting calculation to that pixel. Modern renderers split the screen (and the depth range) into tiles or clusters and keep a list of the lights that touch each one, so a pixel only loops over its own list. The average list length depends on how much of the screen each light's sphere covers, which falls with the square of its distance (<a class="x" href="../spaces/index.html#perspective">perspective</a>):</p>
@@ -227,10 +227,10 @@ public class CustomLightsToShader : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="light-types.js?v=b12f0d59"></script>
+<script src="light-types.js?v=6e1e9a03"></script>
 </body>
 </html>

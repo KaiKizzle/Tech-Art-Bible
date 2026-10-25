@@ -10,7 +10,7 @@
   const fmts = [32, 8, 4], fmtL = ['RGBA8 · 32 bpp', 'BC7 · 8 bpp', 'BC1 · 4 bpp'];
 
   A.fx('texmem', {
-    title: 'Memory of one texture',
+    title: 'Texture memory',
     expr: 'bytes = {w} · {w} · {bpp} / 8 · {m}',
     vars: { w: { sym: 'size', name: 'width and height in texels', values: sizes, index: 4, log: true },
             bpp: { name: 'bits per texel (format)', values: fmts, index: 0, labels: fmtL },
@@ -30,7 +30,7 @@
   });
 
   A.fx('mipsum', {
-    title: 'The mip chain adds a third',
+    title: 'Mip chain memory',
     expr: 'total = 1 + 1/4 + 1/16 + … ({n} levels)',
     vars: { n: { name: 'number of mip levels', min: 1, max: 13, value: 4, step: 1 } },
     out: { sym: 'total', f: v => { let s = 0; for (let i = 0; i < v.n; i++) s += Math.pow(0.25, i); return s; } },
@@ -44,7 +44,7 @@
   });
 
   A.fx('miplevel', {
-    title: 'Which mip the GPU picks',
+    title: 'Mip level from derivatives',
     expr: 'ρ = {du} · {w},   λ = log₂ ρ',
     vars: { du: { sym: 'Δuv', name: 'UV change from one pixel to the next (ddx)', min: 0.00002, max: 0.05, value: 0.002, log: true },
             w: { sym: 'size', name: 'texture size', values: sizes, index: 3, log: true } },
@@ -70,7 +70,7 @@
   const res = [720, 1080, 1440, 2160];
   const pxPerM = v => v.H / (2 * v.d * Math.tan(v.fov / 2 * DEG));
   A.fx('density', {
-    title: 'Texel density against what the screen can show',
+    title: 'Texel density versus screen resolution',
     expr: 'screen px/m = {H} / (2 · {d} · tan({fov} / 2)),   mip ≈ log₂({rho} / screen px/m)',
     vars: { rho: { sym: 'ρ<sub>tex</sub>', name: 'texel density of the asset', unit: 'px/m', values: [128, 256, 512, 1024, 2048, 4096], index: 3, log: true },
             d: { name: 'distance to the camera', unit: 'm', min: 0.25, max: 64, value: 4, log: true },
@@ -94,7 +94,7 @@
   });
 
   A.fx('bc1', {
-    title: 'A BC1 palette, in one channel',
+    title: 'BC1 palette (one channel)',
     expr: 'palette = lerp({e0}, {e1}, i / 3),   i = round(({x} − {e0}) / ({e1} − {e0}) · 3)',
     vars: { e0: { sym: 'e₀', name: 'first endpoint', min: 0, max: 1, value: 0.2, step: 0.01 },
             e1: { sym: 'e₁', name: 'second endpoint', min: 0, max: 1, value: 0.8, step: 0.01 },
@@ -118,7 +118,7 @@
   });
 
   A.fx('wrongflag', {
-    title: 'A data texture sampled with sRGB on',
+    title: 'Data texture with sRGB on',
     expr: 'read = (({s} + 0.055) / 1.055)<sup>2.4</sup>',
     vars: { s: { name: 'stored value (e.g. roughness)', min: 0, max: 1, value: 0.5, step: 0.005 } },
     out: [{ sym: 'intended', f: v => v.s, color: 'good' }, { sym: 'read', f: v => dec(v.s), color: 'bad' }],
@@ -128,7 +128,7 @@
   });
 
   A.fx('packmem', {
-    title: 'Separate maps against one packed map',
+    title: 'Separate versus packed maps',
     expr: 'separate = 3 · {w}² · 4 / 8 · 4/3,   packed = {w}² · 8 / 8 · 4/3',
     vars: { w: { sym: 'size', name: 'texture size', values: sizes, index: 3, log: true } },
     out: [{ sym: 'separate', name: 'three BC1 maps', f: v => 3 * v.w * v.w * 4 / 8 * 4 / 3, fmt: MiB, color: 'bad' }, { sym: 'packed', name: 'one BC7 RGBA map', f: v => v.w * v.w * 8 / 8 * 4 / 3, fmt: MiB, color: 'good' }],
@@ -141,7 +141,7 @@
   });
 
   A.fx('nz', {
-    title: 'Rebuilding Z from the two stored channels',
+    title: 'Normal Z reconstruction',
     expr: 'x = {r} · 2 − 1,   y = {g} · 2 − 1,   z = √(1 − x² − y²)',
     vars: { r: { name: 'stored red (X)', min: 0, max: 1, value: 0.7, step: 0.005 }, g: { name: 'stored green (Y)', min: 0, max: 1, value: 0.5, step: 0.005 } },
     out: [{ sym: 'z', f: v => { const x = v.r * 2 - 1, y = v.g * 2 - 1; return Math.sqrt(clamp(1 - x * x - y * y, 0, 1)); }, color: 'ax-z' }],
@@ -163,7 +163,7 @@
   });
 
   A.fx('stream', {
-    title: 'Leaving out the top mips',
+    title: 'Dropping top mips',
     expr: 'resident = {w}² · 8 / 8 · 4/3 / 4<sup>{k}</sup>',
     vars: { w: { sym: 'size', name: 'texture size', values: sizes, index: 4, log: true }, k: { name: 'top mips not loaded', min: 0, max: 4, value: 1, step: 1 } },
     out: { sym: 'resident', f: v => v.w * v.w * 4 / 3 / Math.pow(4, v.k), fmt: MiB },

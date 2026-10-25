@@ -7,7 +7,7 @@
 
   /* ---------- the cornea cap ---------- */
   A.fx('cornea', {
-    title: 'How far the cornea bulges, and how deep the iris sits',
+    title: 'Cornea height and iris depth',
     expr: 'h = {R} − √({R}² − {r}²),   apex to iris = h + {d}',
     vars: { R: { sym: 'R', name: 'radius of curvature of the cornea', unit: 'mm', min: 6.5, max: 9, value: 7.8, step: 0.05 },
             r: { sym: 'r', name: 'radius of the limbus (half the visible iris width)', unit: 'mm', min: 5.2, max: 6.4, value: 5.8, step: 0.05 },
@@ -31,7 +31,7 @@
   /* ---------- where the iris appears at an angle ---------- */
   const shiftR = v => v.d * Math.tan(Math.asin(Math.sin(rad(v.th)) / v.n));
   A.fx('shift', {
-    title: 'How far the iris slides when you look from the side',
+    title: 'Iris shift by viewing angle',
     expr: 'shift = {d} · tan(asin(sin {th} / {n}))',
     vars: { th: { sym: 'θ', name: 'viewing angle from the eye\'s axis', unit: '°', min: 0, max: 70, value: 40, step: 1 },
             d: { sym: 'd', name: 'depth of the iris below the cornea', unit: 'mm', min: 0.5, max: 4, value: 3, step: 0.05 },
@@ -43,7 +43,7 @@
 
   /* ---------- bump offset versus refraction ---------- */
   A.fx('bump', {
-    title: 'A one-step parallax offset against real refraction',
+    title: 'Parallax offset versus refraction',
     expr: 'offset = {d} · tan {th}  (plain),   {d} · tan {th} / {n}  (scaled),   {d} · tan θ<sub>t</sub>  (refracted)',
     vars: { th: { sym: 'θ', name: 'viewing angle', unit: '°', min: 0, max: 80, value: 45, step: 1 },
             d: { sym: 'd', name: 'iris depth', unit: 'mm', min: 0.5, max: 4, value: 3, step: 0.05 },
@@ -68,7 +68,7 @@
     return { O, P, T, I, I0, h };
   }
   A.fx('plane', {
-    title: 'Refract once at the cornea, land on the iris plane',
+    title: 'Refraction onto the iris plane',
     expr: 'T = refract(V, N<sub>cornea</sub>, 1/{n}),   iris point = P + T · (−{d} − P.y) / T.y,   view {th}',
     vars: { th: { sym: 'θ', name: 'viewing angle from the eye\'s axis', unit: '°', min: 0, max: 60, value: 35, step: 1 },
             x0: { sym: 'x', name: 'where the highlighted ray meets the cornea', unit: 'mm', min: -5, max: 5, value: 1, step: 0.05 },
@@ -93,7 +93,7 @@
   /* ---------- the iris profile ---------- */
   function shape(r, v) { const s = clamp((1 - r) / Math.max(1 - v.p, 1e-3), 0, 1); const dd = (r - lerp(v.p, 1, 0.35)) * 12; return v.cone * sstep(s) + v.col * Math.exp(-dd * dd); }
   A.fx('profile', {
-    title: 'The iris is not flat: a cone towards the pupil and a ridge',
+    title: 'Iris height profile',
     expr: 'h(r) = {cone} · smoothstep(s) + {col} · e<sup>−((r − r<sub>c</sub>) · 12)²</sup>,   s = (1 − r) / (1 − {p}),   r<sub>c</sub> = lerp({p}, 1, 0.35)',
     vars: { cone: { sym: 'cone', name: 'height of the pupil margin above the iris root (× iris radius)', min: 0, max: 0.35, value: 0.16, step: 0.005 },
             col: { sym: 'ridge', name: 'height of the collarette ridge', min: 0, max: 0.1, value: 0.035, step: 0.002 },
@@ -127,7 +127,7 @@
     return { D, O, tTop, tBot, pts, sec, th, ex: (lo + hi) / 2, steps, xAt, zAt, top, depth };
   }
   A.fx('march', {
-    title: 'Marching the refracted ray through the iris slab',
+    title: 'Iris slab ray march',
     expr: 'steps = lerp({mx}, {mn}, −D.z),   then 2 secant steps,   ray {th}',
     vars: { th: { sym: 'θ', name: 'angle of the refracted ray from the eye\'s axis', unit: '°', min: 0, max: 60, value: 38, step: 1 },
             x0: { sym: 'x', name: 'where the ray enters (× iris radius)', min: -0.9, max: 0.9, value: -0.2, step: 0.01 },
@@ -151,7 +151,7 @@
 
   /* ---------- cost ---------- */
   A.fx('eyecost', {
-    title: 'What an eye costs on screen',
+    title: 'Eye cost on screen',
     expr: 'iris pixels = π · (0.22 · {w})² · 2 eyes,   work = pixels · (base + {s} · step)',
     vars: { w: { sym: 'w', name: 'width of one eye opening on screen', unit: 'px', min: 20, max: 900, value: 220, step: 1 },
             s: { sym: 'steps', name: 'march steps + refinements', min: 0, max: 20, value: 10, step: 1 } },

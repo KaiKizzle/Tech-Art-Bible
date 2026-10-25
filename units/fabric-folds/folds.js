@@ -11,7 +11,7 @@
   /* ---------- fold amplitude ---------- */
   const amp = v => v.lam * Math.sqrt(v.c / 100) / PI;
   A.fx('foldamp', {
-    title: 'How high folds must be',
+    title: 'Fold height from compression',
     expr: 'A ≈ {lam} · √{c} / π',
     vars: { c: { name: 'compression (how much shorter the cloth is pushed)', unit: '%', min: 0, max: 30, value: 15, step: 0.5 }, lam: { sym: 'λ', name: 'fold wavelength', unit: 'cm', min: 1, max: 20, value: 6, step: 0.1 } },
     out: { sym: 'A', name: 'fold amplitude', unit: 'cm', f: amp },
@@ -39,7 +39,7 @@
   };
   const NB = [['rnm', 'RNM', 'accent'], ['wo', 'whiteout', 'good'], ['udn', 'UDN', 'ray'], ['lin', 'linear', 'muted']];
   A.fx('nblend', {
-    title: 'Blending a fold normal with a detail normal',
+    title: 'Fold and detail normal blending',
     expr: 'RNM: θ = {a1} + {a2},   whiteout: n = (x₁ + x₂, z₁ · z₂),   UDN: n = (x₁ + x₂, z₁),   linear: n = n₁ + n₂',
     vars: { a1: { sym: 'θ<sub>1</sub>', name: 'tilt of the fold (base) normal', unit: '°', min: -60, max: 60, value: 40, step: 1 }, a2: { sym: 'θ<sub>2</sub>', name: 'tilt of the weave (detail) normal', unit: '°', min: -60, max: 60, value: 25, step: 1 } },
     out: NB.map(([k, n, c]) => ({ sym: n, f: nb[k], color: c, fmt: x => num(x) + '°' })),

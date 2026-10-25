@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 <style>
 .tbl-wrap{overflow-x:auto;max-width:100%}
 .tbl{border-collapse:collapse;font-size:.93rem;min-width:640px}
@@ -49,14 +49,14 @@
   <div class="eyebrow">Materials & texture pipeline · 9 chapters</div>
   <h1>Texture Packing and Import Settings</h1>
   <p class="lede">The import settings that decide how every texture looks and what it costs: sRGB or data, the right compression per map type, packing layouts for HDRP, URP and Unreal, mobile formats, mipmaps and anisotropy, and tools that set it all automatically.</p>
-  <p class="meta">Builds on Texels on a Budget. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
+  <p class="meta">Builds on Texture Memory. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/texture-settings.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One mask texture taken apart into its four channels.</figcaption></figure>
 </div>
-<div class="needs" data-needs="texture-memory#blocks texture-memory#packing"></div>
+<div class="needs" data-needs="texture-memory#blocks texture-settings#packing"></div>
 
-<section class="chapter" id="maptypes" data-title="One setting per kind of map" data-builds="texture-memory#cost texture-memory#blocks" data-summary="Per map type: sRGB on or off, a format, a maximum size. BC7 1 byte per texel, BC1 and BC4 half that.">
-  <div class="head"><div class="num"></div><h2>One setting per kind of map</h2></div>
+<section class="chapter" id="maptypes" data-title="Settings per map type" data-builds="texture-memory#cost texture-memory#blocks" data-summary="Per map type: sRGB on or off, a format, a maximum size. BC7 1 byte per texel, BC1 and BC4 half that.">
+  <div class="head"><div class="num"></div><h2>Settings per map type</h2></div>
 
   <div class="prose">
     <p>Every texture you import needs three decisions: is it <em>colour</em> or <em>data</em> (the sRGB flag), which compression format, and how large it may be. They depend on the kind of map, not on the asset, so a studio writes them down once:</p>
@@ -79,28 +79,29 @@
   <div class="fx" data-fx="fmtmem"></div>
 
 </section>
-<section class="chapter" id="srgb" data-title="The sRGB checkbox" data-builds="texture-memory#color-data color-values#linear-srgb" data-summary="sRGB on decodes 0.5 to 0.214: correct for colour, wrong for data.">
-  <div class="head"><div class="num"></div><h2>The sRGB checkbox</h2></div>
+<section class="chapter" id="srgb" data-title="sRGB flag" data-builds="color-values#linear-srgb" data-summary="sRGB on decodes 0.5 to 0.214: correct for colour, wrong for data.">
+  <div class="head"><div class="num"></div><h2>sRGB flag</h2></div>
 
   <div class="prose">
-    <p>Colour textures are stored <a class="x" href="../color-values/index.html#linear-srgb">sRGB-encoded</a>, and the GPU decodes them for free when it samples, if the texture is flagged as sRGB. Data textures hold numbers that must arrive unchanged. Flag a roughness map as sRGB and every value is pushed toward 0 when the shader reads it:</p>
+    <p>The GPU decodes colour textures for free when it samples them, if the texture is flagged as sRGB. Everything else is data: roughness, metallic, AO, masks, height and normals hold numbers that must arrive unchanged. Flag a roughness map as sRGB and every value is pushed toward 0 when the shader reads it:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>sRGB encoding: stored colour ≈ light^(1/2.2), so 0.5 stored is about 0.214 of the light; shading and blending need the decoded, linear values.</p></div><a class="x refto" href="../color-values/index.html#linear-srgb">Open the full explanation</a></aside>
   <div class="fx" data-fx="srgbbug"></div>
   <div class="prose"><p>In Unity the checkbox is <em>sRGB (Color Texture)</em> in the importer; Texture Type <em>Normal map</em> turns it off by itself. In Unreal it is <em>sRGB</em> on the texture, and the <em>Masks (no sRGB)</em> compression setting forces it off. The mistake is invisible in the texture preview, so check it in the material: a rough surface that looks glossy is the usual sign.</p></div>
 
 </section>
-<section class="chapter" id="packing" data-title="Packing layouts per engine" data-builds="texture-memory#packing pbr-basics#roughness" data-summary="HDRP mask: (metallic, AO, detail mask, smoothness). URP: metallic R, smoothness A. Unreal ORM: (AO, roughness, metallic).">
-  <div class="head"><div class="num"></div><h2>Packing layouts per engine</h2></div>
+<section class="chapter" id="packing" data-title="Channel packing layouts" data-builds="shader-anatomy#types pbr-basics#roughness" data-summary="HDRP mask: (metallic, AO, detail mask, smoothness). URP: metallic R, smoothness A. Unreal ORM: (AO, roughness, metallic).">
+  <div class="head"><div class="num"></div><h2>Channel packing layouts</h2></div>
 
   <div class="prose">
-    <p>Greyscale maps are packed four to a texture to save samples and memory (<a class="x" href="../texture-memory/index.html#packing">channel packing</a>). Each engine's standard shader expects its own layout, and smoothness versus roughness flips between them:</p>
+    <p>Roughness, metallic and AO are each a single number per texel. Storing each in its own texture wastes memory and costs a sample per map. <button type="button" class="term" data-term="packing">Channel packing</button> puts up to four greyscale maps into the R, G, B and A of one texture, read with swizzles (<a class="x" href="../shader-anatomy/index.html#types">float4 and swizzles</a>). Two rules decide whether a packed map works: compress it with a format that keeps the channels apart (<a href="#compression">BC7, not BC1</a>; alpha is always stored separately, so A is the best slot for the most important map), and match the layout the shader expects. Each engine's standard shader has its own, and Unity stores <em>smoothness</em> where Unreal conventions store <em>roughness</em>: smoothness = 1 − roughness, so moving maps between engines means inverting that channel, not just moving it:</p>
   </div>
   <div class="fx" data-fx="layout"></div>
   <div class="prose"><p>HDRP also has a <em>detail map</em> with its own layout: desaturated albedo in R, the detail normal's Y in G, smoothness in B and the normal's X in A. For your own Shader Graphs you may pack however you like, but stick to one convention per project and name the texture after it (<code>_MS</code>, <code>_ORM</code>).</p></div>
 
 </section>
-<section class="chapter" id="compression" data-title="Why packed masks need BC7" data-builds="texture-memory#blocks" data-summary="BC1 puts the palette on one line through colour space: uncorrelated channels lose most. BC4/BC5/BC7 keep them apart.">
-  <div class="head"><div class="num"></div><h2>Why packed masks need BC7</h2></div>
+<section class="chapter" id="compression" data-title="Compression for packed masks" data-builds="texture-memory#blocks" data-summary="BC1 puts the palette on one line through colour space: uncorrelated channels lose most. BC4/BC5/BC7 keep them apart.">
+  <div class="head"><div class="num"></div><h2>Compression for packed masks</h2></div>
 
   <div class="prose">
     <p>Block compression stores each 4 × 4 block of texels as a few endpoint colours and short indices (<a class="x" href="../texture-memory/index.html#blocks">block compression</a>). BC1 and the colour part of BC3 put all four palette colours on one straight line through RGB space. That suits a photo, where red, green and blue rise and fall together. It does not suit a mask map, where metallic, AO and roughness have nothing to do with each other. Compare one block of two channels:</p>
@@ -119,7 +120,7 @@
   <div class="prose"><p>In Unity, each platform has its own tab in the importer (<em>Override for Android</em>, <em>iOS</em>), and the Android player settings choose the fallback format. Pick per map type, as in the table: normal maps 4 × 4 or 5 × 5, colour and masks 6 × 6, large distant textures 8 × 8.</p></div>
 
 </section>
-<section class="chapter" id="filtering" data-title="Max size, mipmaps and anisotropy" data-builds="texture-memory#mips textures-sampling#filter" data-summary="Footprint ratio 1/cos θ; aniso level n removes blur up to that ratio, beyond it blur grows by (1/cos θ) / n.">
+<section class="chapter" id="filtering" data-title="Max size, mipmaps and anisotropy" data-builds="textures-sampling#mips textures-sampling#filter" data-summary="Footprint ratio 1/cos θ; aniso level n removes blur up to that ratio, beyond it blur grows by (1/cos θ) / n.">
   <div class="head"><div class="num"></div><h2>Max size, mipmaps and anisotropy</h2></div>
 
   <div class="prose">
@@ -130,8 +131,8 @@
   <div class="prose"><p>Use 4 to 8 for floors, roads and terrain, 1 for objects mostly seen face-on and for UI. HDRP and URP can force a minimum in <em>Project Settings &gt; Quality &gt; Anisotropic Textures</em>.</p></div>
 
 </section>
-<section class="chapter" id="automation" data-title="Setting it once, for every texture" data-builds="texture-settings#maptypes" data-summary="Suffixes in file names plus an import script apply the per-map-type table automatically.">
-  <div class="head"><div class="num"></div><h2>Setting it once, for every texture</h2></div>
+<section class="chapter" id="automation" data-title="Import automation" data-builds="texture-settings#maptypes" data-summary="Suffixes in file names plus an import script apply the per-map-type table automatically.">
+  <div class="head"><div class="num"></div><h2>Import automation</h2></div>
 
   <div class="prose">
     <p>Clicking through import settings for every texture is slow and error-prone. Two tools make the rules automatic:</p>
@@ -143,8 +144,8 @@
   </div>
 
 </section>
-<section class="chapter" id="packer" data-title="A channel packer in the engine" data-builds="compute-shaders#cpu texture-settings#packing" data-summary="One thread per texel: read four sources, pick a channel each, invert where needed, write RGBA.">
-  <div class="head"><div class="num"></div><h2>A channel packer in the engine</h2></div>
+<section class="chapter" id="packer" data-title="Channel packer tool" data-builds="compute-shaders#cpu texture-settings#packing" data-summary="One thread per texel: read four sources, pick a channel each, invert where needed, write RGBA.">
+  <div class="head"><div class="num"></div><h2>Channel packer tool</h2></div>
 
   <div class="prose">
     <p>Packing usually happens on export from the painting tool. An in-engine packer is still useful: for scanned materials that arrive as separate maps, for converting between engine layouts, or for inverting roughness into smoothness without a round trip. On the GPU it is a few lines of compute shader, one thread per texel, reading four sources and writing four channels:</p>
@@ -382,6 +383,11 @@ for t in unreal.EditorUtilityLibrary.get_selected_assets():
 "Adaptive Scalable Texture Compression: 128-bit blocks of 4 × 4 up to 12 × 12 texels, used on mobile.",
 "#mobile"
 ],
+"packing": [
+"Channel packing",
+"Up to four greyscale maps stored in the R, G, B and A channels of one texture.",
+"#packing"
+],
 "srgbflag": [
 "sRGB flag",
 "Marks a texture as colour, so the GPU decodes sRGB to linear when sampling.",
@@ -392,10 +398,10 @@ for t in unreal.EditorUtilityLibrary.get_selected_assets():
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="texsettings.js?v=ebed49ee"></script>
+<script src="texsettings.js?v=7c3ee39d"></script>
 </body>
 </html>

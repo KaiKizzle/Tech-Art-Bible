@@ -8,7 +8,7 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="dot-cross" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -48,8 +48,8 @@
 </div>
 <div class="needs" data-needs="vectors"></div>
 
-<section class="chapter" id="dot" data-title="The dot product: multiply and add" data-builds="vectors#what" data-summary="a·b = aₓbₓ + a_yb_y + a_zb_z: multiply matching components and add.">
-  <div class="head"><div class="num"></div><h2>The dot product: multiply and add</h2></div>
+<section class="chapter" id="dot" data-title="Dot product" data-builds="vectors#what" data-summary="a·b = aₓbₓ + a_yb_y + a_zb_z: multiply matching components and add.">
+  <div class="head"><div class="num"></div><h2>Dot product</h2></div>
 
   <div class="prose">
     <p>The <button type="button" class="term" data-term="dot">dot product</button> takes two vectors and returns one number. The recipe is short: multiply the matching components, then add the results.</p>
@@ -61,8 +61,8 @@
   <details class="check"><summary></summary><script type="application/json">[["dot((1, 2), (3, 4)) = ?", ["10", "11", "(3, 8)", "5"], 1, "1 × 3 + 2 × 4 = 11."], ["Two vectors are at a right angle. What is their dot product?", ["1", "0", "−1", "Their lengths multiplied"], 1, "cos 90° = 0."]]</script></details>
 
 </section>
-<section class="chapter" id="angle" data-title="What the number means: the angle" data-builds="dot-cross#dot vectors#normalize" data-summary="a·b = |a||b| cos θ. For unit vectors the dot product is the cosine of the angle.">
-  <div class="head"><div class="num"></div><h2>What the number means: the angle</h2></div>
+<section class="chapter" id="angle" data-title="Dot product and angle" data-builds="dot-cross#dot vectors#normalize" data-summary="a·b = |a||b| cos θ. For unit vectors the dot product is the cosine of the angle.">
+  <div class="head"><div class="num"></div><h2>Dot product and angle</h2></div>
 
   <div class="prose">
     <p>The same number can be computed a second way, from the two lengths and the angle θ between the arrows:</p>
@@ -79,32 +79,33 @@
   <details class="check"><summary></summary><script type="application/json">[["Two unit vectors have a dot product of 0.5. What is the angle between them?", ["30°", "45°", "60°", "90°"], 2, "cos 60° = 0.5."], ["dot(N, V) is close to 0 at a pixel. Where on the object is that pixel?", ["Facing the camera directly", "At the silhouette, seen edge-on", "Behind the camera", "In shadow"], 1, "The normal is perpendicular to the view direction at the outline."]]</script></details>
 
 </section>
-<section class="chapter" id="projection" data-title="Projection: how far along a direction" data-builds="dot-cross#angle" data-summary="dot(a, b̂) is the length of a&#x27;s shadow on the line of b.">
-  <div class="head"><div class="num"></div><h2>Projection: how far along a direction</h2></div>
+<section class="chapter" id="projection" data-title="Projection onto a direction" data-builds="dot-cross#angle" data-summary="dot(a, b̂) is the length of a&#x27;s shadow on the line of b.">
+  <div class="head"><div class="num"></div><h2>Projection onto a direction</h2></div>
 
   <div class="prose">
     <p>When only <i>b</i> is normalized, <code>dot(a, b̂)</code> answers a different question: how far does <i>a</i> reach along the direction of <i>b</i>? Picture a light shining straight down onto b's line; the shadow of <i>a</i> has exactly this length.</p>
   </div>
   <div class="fx" data-fx="project"></div>
-  <div class="prose"><p>This "how far along" reading is how a ray finds the point closest to a sphere's centre in <a class="x" href="../rays-math/index.html#sphere">Rays and Solving for t</a>, and how height above a plane is measured: <code>dot(p − pointOnPlane, planeNormal)</code>.</p></div>
+  <div class="prose"><p>This "how far along" reading is how a ray finds the point closest to a sphere's centre in <a class="x" href="../rays-math/index.html#sphere">Ray Intersections</a>, and how height above a plane is measured: <code>dot(p − pointOnPlane, planeNormal)</code>.</p></div>
   <details class="check"><summary></summary><script type="application/json">[["a = (3, 4), b̂ = (1, 0). How far does a reach along b̂?", ["3", "4", "5", "0"], 0, "dot = 3 × 1 + 4 × 0 = 3: the x component."]]</script></details>
 
 </section>
-<section class="chapter" id="lambert" data-title="Lighting with one dot product" data-builds="dot-cross#angle" data-summary="Diffuse light = saturate(N · L) × light colour × albedo.">
-  <div class="head"><div class="num"></div><h2>Lighting with one dot product</h2></div>
+<section class="chapter" id="lambert" data-title="Lambert lighting (N·L)" data-builds="dot-cross#angle" data-summary="Diffuse light = saturate(N · L) × light colour × albedo.">
+  <div class="head"><div class="num"></div><h2>Lambert lighting (N·L)</h2></div>
 
   <div class="prose">
     <p>A surface receives the most light when it faces the light head-on, and less as it turns away, because the same beam spreads over a larger area. The amount is exactly the cosine of the angle between the surface <button type="button" class="term" data-term="normal">normal</button> N and the direction to the light L. With both normalized, that cosine is <code>dot(N, L)</code>. Negative values mean the light is behind the surface, so they are cut to 0:</p>
   </div>
   <div class="fx" data-fx="lambert"></div>
   <div class="prose">
-    <p>This is <button type="button" class="term" data-term="lambert">Lambert's cosine law</button>, the diffuse part of every lighting model in Unity and Unreal. The full equation multiplies it with the light's colour and intensity and the surface's albedo, part by part (<a class="x" href="../shader-anatomy/index.html#types">colour times colour</a>). Real-world light units are in <a class="x" href="../exposure/index.html#units">Sun to Screen</a>.</p>
+    <p>This is <button type="button" class="term" data-term="lambert">Lambert's cosine law</button>, the diffuse part of every lighting model in Unity and Unreal. The full equation multiplies it with the light's colour and intensity and the surface's albedo, part by part (<a class="x" href="../shader-anatomy/index.html#types">colour times colour</a>).</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Lambert diffuse in a PBR shader: albedo / π · E · max(N·L, 0); the /π spreads the reflected light evenly over the half-sphere.</p></div><a class="x refto" href="../pbr-brdf/index.html#diffuse">Open the full explanation</a></aside>
   <details class="check"><summary></summary><script type="application/json">[["The light hits a surface at 60° from its normal. What fraction of the head-on brightness does it get?", ["0.87", "0.5", "0.6", "0.25"], 1, "cos 60° = 0.5."], ["Why is dot(N, L) wrapped in saturate?", ["To make it faster", "Negative values mean the light is behind the surface and must not subtract light", "To normalize it", "To convert to sRGB"], 1, "A light behind a surface contributes nothing, not negative light."]]</script></details>
 
 </section>
-<section class="chapter" id="reflect" data-title="Reflections" data-builds="dot-cross#projection" data-summary="r = d − 2(d·n)n flips the part of d that goes into the surface.">
-  <div class="head"><div class="num"></div><h2>Reflections</h2></div>
+<section class="chapter" id="reflect" data-title="Reflection vector" data-builds="dot-cross#projection" data-summary="r = d − 2(d·n)n flips the part of d that goes into the surface.">
+  <div class="head"><div class="num"></div><h2>Reflection vector</h2></div>
 
   <div class="prose">
     <p>A mirror flips the part of a direction that goes into the surface and keeps the part that runs along it. The part going into the surface is the projection of the direction onto the normal, <code>dot(d, n)·n</code> (previous chapters). Subtract it twice and you have the reflection:</p>
@@ -114,8 +115,8 @@
   <details class="check"><summary></summary><script type="application/json">[["d = (1, −1) hits a floor with n = (0, 1). What is the reflection?", ["(1, 1)", "(−1, −1)", "(−1, 1)", "(0, 1)"], 0, "d·n = −1, r = (1, −1) − 2·(−1)·(0, 1) = (1, 1)."]]</script></details>
 
 </section>
-<section class="chapter" id="cross" data-title="The cross product: a perpendicular vector" data-builds="dot-cross#dot vectors#axes" data-summary="a × b is perpendicular to a and b, with length equal to their parallelogram&#x27;s area.">
-  <div class="head"><div class="num"></div><h2>The cross product: a perpendicular vector</h2></div>
+<section class="chapter" id="cross" data-title="Cross product" data-builds="dot-cross#dot vectors#axes" data-summary="a × b is perpendicular to a and b, with length equal to their parallelogram&#x27;s area.">
+  <div class="head"><div class="num"></div><h2>Cross product</h2></div>
 
   <div class="prose">
     <p>The <button type="button" class="term" data-term="cross">cross product</button> of two 3D vectors returns a third vector that is perpendicular to both. Its length equals the area of the parallelogram the two span, and its direction follows the <a class="x" href="../vectors/index.html#axes">handedness rule</a> of the coordinate system.</p>
@@ -211,10 +212,10 @@ public class SunToShader : MonoBehaviour
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
-<script src="dot-cross.js?v=332078ce"></script>
+<script src="dot-cross.js?v=82b288d6"></script>
 </body>
 </html>

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Diffuse, Albedo, Base Colour · Tech Art Atlas</title>
+<title>PBR Terminology · Tech Art Atlas</title>
 <meta name="description" content="Why one material input has five names, what each name meant when it was coined, and how to translate maps and values between renderers, with OpenPBR as the reference and the conversion built in Unity HDRP and Unreal.">
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
 </head>
 <body data-unit="pbr-terms" class="app unitpage">
 <nav class="iconrail" aria-label="Site">
@@ -29,7 +29,7 @@
 <nav class="rail" aria-label="Chapters">
 <div class="rail-card">
   <nav class="crumbs" aria-label="Breadcrumb"></nav>
-  <a class="brand" href="#top">Diffuse, Albedo, Base Colour</a>
+  <a class="brand" href="#top">PBR Terminology</a>
   <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
 </div>
@@ -40,16 +40,16 @@
 <div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Surfaces · 9 chapters</div>
-  <h1>Diffuse, Albedo, Base Colour</h1>
+  <h1>PBR Terminology</h1>
   <p class="lede">Why one material input has five names, what each name meant when it was coined, and how to translate maps and values between renderers, with OpenPBR as the reference and the conversion built in Unity HDRP and Unreal.</p>
-  <p class="meta">No prerequisites. PBR Materials: the Basics is a good companion. Build chapters for Unity HDRP and Unreal Engine.</p>
+  <p class="meta">No prerequisites. PBR Material Inputs is a good companion. Build chapters for Unity HDRP and Unreal Engine.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/pbr-terms.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>The same material under three names: a painted diffuse map, an albedo and a base colour.</figcaption></figure>
 </div>
 
 
-<section class="chapter" id="names" data-title="One input, many names" data-summary="Diffuse (lighting baked in), albedo (physical fraction), base colour (albedo or metal F0). A table translates the inputs between renderers.">
-  <div class="head"><div class="num"></div><h2>One input, many names</h2></div>
+<section class="chapter" id="names" data-title="Name overview" data-summary="Diffuse (lighting baked in), albedo (physical fraction), base colour (albedo or metal F0). A table translates the inputs between renderers.">
+  <div class="head"><div class="num"></div><h2>Name overview</h2></div>
 
   <div class="prose">
     <p>Open a material in four programs and the first input is called four things: <em>Diffuse</em> in an old engine, <em>Albedo</em> in Unity's built-in Standard shader, <em>Base Color</em> in Unreal, Substance and Blender, <code>base_color</code> in OpenPBR. They are not quite synonyms. Each name comes from a period with its own idea of what the number means, and the meaning changed twice:</p>
@@ -77,8 +77,8 @@
   <details class="check"><summary></summary><script type="application/json">[["A texture set has Diffuse, Specular and Glossiness maps. Which workflow is it?", ["Metal/roughness", "Specular/glossiness", "OpenPBR", "It cannot be told"], 1, "Diffuse plus a specular colour plus gloss is the spec/gloss workflow. Its diffuse map is close to an albedo, but metals have black diffuse and coloured specular."], ["Unity's Mask Map stores smoothness. Unreal wants roughness. What do you do?", ["Use it as it is", "Invert it: roughness = 1 − smoothness", "Square it", "Take the square root"], 1, "Smoothness is defined as 1 − perceptual roughness."]]</script></details>
 
 </section>
-<section class="chapter" id="diffuse" data-title="Diffuse: the map that held the lighting" data-builds="pbr-terms#names" data-summary="Phong: kd · N·L + ks · (R·V)ⁿ, two free colours. Diffuse maps once held painted light, which breaks under new lights.">
-  <div class="head"><div class="num"></div><h2>Diffuse: the map that held the lighting</h2></div>
+<section class="chapter" id="diffuse" data-title="Diffuse" data-builds="pbr-terms#names" data-summary="Phong: kd · N·L + ks · (R·V)ⁿ, two free colours. Diffuse maps once held painted light, which breaks under new lights.">
+  <div class="head"><div class="num"></div><h2>Diffuse</h2></div>
 
   <div class="prose">
     <p>Real-time shading started with the <button type="button" class="term" data-term="phong">Phong</button> model (1975) and Blinn's variant (1977). It has two independent colours: a <em>diffuse</em> colour scaled by how much the surface faces the light, and a <em>specular</em> colour for a highlight whose size is set by an exponent. Nothing ties them together:</p>
@@ -92,13 +92,14 @@
   <div class="prose"><p>That is the core reason for the later names. A map that holds only the surface, without any light, works under every light. Modern engines still accept a map in a slot called diffuse (Substrate has a <em>Diffuse Albedo</em> input, glTF's old spec/gloss extension a <em>diffuseFactor</em>), but there it means the albedo of the next chapter.</p></div>
 
 </section>
-<section class="chapter" id="albedo" data-title="Albedo: a word from astronomy" data-builds="pbr-brdf#diffuse pbr-basics#basecolor" data-summary="Albedo ρ is a fraction 0–1 of light sent back; Lambert BRDF = ρ/π. No light in the map.">
-  <div class="head"><div class="num"></div><h2>Albedo: a word from astronomy</h2></div>
+<section class="chapter" id="albedo" data-title="Albedo" data-builds="pbr-brdf#diffuse pbr-basics#basecolor" data-summary="Albedo ρ is a fraction 0–1 of light sent back; Lambert BRDF = ρ/π. No light in the map.">
+  <div class="head"><div class="num"></div><h2>Albedo</h2></div>
 
   <div class="prose">
     <p><button type="button" class="term" data-term="albedo">Albedo</button> is Latin for whiteness. Johann Heinrich Lambert used it in 1760 for the share of light a surface sends back, and astronomers still use it for planets: the Moon sends back about 12 % of the sunlight it gets, Earth about 30 %. It is a ratio between 0 and 1, with no lighting in it.</p>
-    <p>In shading, albedo appears in the simplest physical surface, the <a class="x" href="../pbr-brdf/index.html#diffuse">Lambertian diffuser</a>. Its BRDF is the albedo divided by π, which makes sure the total light sent back over all directions is exactly the albedo times the light that arrived:</p>
+    <p>In shading, albedo appears in the simplest physical surface, the Lambertian diffuser. Its BRDF is the albedo divided by π, which makes sure the total light sent back over all directions is exactly the albedo times the light that arrived:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Lambert diffuse: albedo / π · E · max(N·L, 0).</p></div><a class="x refto" href="../pbr-brdf/index.html#diffuse">Open the full explanation</a></aside>
   <div class="fx" data-fx="albedo"></div>
   <div class="prose">
     <p>When physically based shading reached games around 2010, the word moved into the engines: the map is the albedo, the fraction of light that comes back diffusely, and it must not contain light. Unity's built-in Standard shader (2015) calls its colour input <em>Albedo</em> for that reason. The rules in <a class="x" href="../pbr-basics/index.html#basecolor">base colour ranges</a> are albedo rules: no real non-metal reflects much less than 3 % or much more than 90 % of the light.</p>
@@ -106,13 +107,14 @@
   </div>
 
 </section>
-<section class="chapter" id="basecolor" data-title="Base colour: one map for two meanings" data-builds="pbr-basics#metallic pbr-terms#albedo" data-summary="Base colour = albedo when metalness is 0, F0 (reflection colour) when metalness is 1.">
-  <div class="head"><div class="num"></div><h2>Base colour: one map for two meanings</h2></div>
+<section class="chapter" id="basecolor" data-title="Base colour" data-builds="pbr-basics#metallic pbr-terms#albedo" data-summary="Base colour = albedo when metalness is 0, F0 (reflection colour) when metalness is 1.">
+  <div class="head"><div class="num"></div><h2>Base colour</h2></div>
 
   <div class="prose">
     <p>Metals reflect strongly and in colour, and send back nothing diffusely (<a class="x" href="../metals/index.html#electrons">why</a>). In the spec/gloss workflow that meant a black diffuse map and a coloured specular map for gold, and a coloured diffuse map with a grey 4 % specular map for paint. Two colour maps where one would do.</p>
     <p>Brent Burley's 2012 Disney shading model, and Unreal Engine 4 after it, replaced the pair with one <button type="button" class="term" data-term="basecolor">base colour</button> and a <em>metallic</em> switch. For a non-metal the base colour is the albedo; for a metal it is F0, the colour of the reflection head-on. The number is the same, its meaning depends on metalness:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Metallic workflow: F0 = lerp(0.04, base, m), diffuse = base · (1 − m); use 0 or 1, metals need a bright base colour.</p></div><a class="x refto" href="../pbr-basics/index.html#metallic">Open the full explanation</a></aside>
   <div class="fx" data-fx="base"></div>
   <div class="prose">
     <p>The name says what it is: the colour you base the material on, not a physical quantity. That is why base colour and albedo are not interchangeable in documentation. When a renderer says <em>albedo</em> it usually means the diffuse part only; when it says <em>base colour</em> it means the metalness-dependent map.</p>
@@ -132,6 +134,7 @@
       <li><strong>Specular power</strong> or <em>exponent</em>: the Phong and Blinn-Phong shininess of old materials, roughly 2 / α² − 2.</li>
     </ul>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Roughness: rough surfaces spread the same reflected light into a wider, dimmer highlight; smoothness = 1 − roughness.</p></div><a class="x refto" href="../pbr-basics/index.html#roughness">Open the full explanation</a></aside>
   <div class="fx" data-fx="rough"></div>
   <div class="prose"><p>When a material looks too shiny or too dull after moving between programs, check this first: an inverted smoothness map, or a roughness stored as α, are the two common slips. A packed texture does not say which one it holds, so name the channels in the file name (<a class="x" href="../texture-settings/index.html#packing">packing layouts</a>).</p></div>
 
@@ -159,19 +162,19 @@
   <div class="prose">
     <p>The detail maps have their own naming muddle:</p>
     <ul>
-      <li><strong>Normal map</strong>: the direction the surface faces, per pixel, in tangent space. Two conventions exist for the green channel: OpenGL (green up; Unity, Blender, Substance by default) and DirectX (green down; Unreal). A map in the wrong one lights bumps from the wrong side.</li>
+      <li><strong>Normal map</strong>: the direction the surface faces, per pixel, in tangent space, in one of two green-channel conventions (OpenGL or DirectX).</li>
       <li><strong>Bump map</strong>: a greyscale height used only to tilt the shading normal, computed from its slopes. Old name, still used in offline renderers.</li>
       <li><strong>Height</strong> and <strong>displacement</strong>: the same greyscale, used to move geometry (displacement, tessellation) or to fake depth (<a class="x" href="../parallax/index.html#heightmap">parallax</a>).</li>
       <li><strong>Ambient occlusion</strong> (AO, occlusion): how hidden a point is from ambient light. A separate input, never multiplied into the base colour (<a class="x" href="../pbr-basics/index.html#maps">why</a>).</li>
       <li><strong>Cavity</strong>: occlusion of the tiniest crevices, from the high-poly bake, often used to dampen the specular. In Unreal, a cavity map can drive the <em>Specular</em> input to darken reflections in tiny cracks.</li>
     </ul>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Normal maps: stored as n · 0.5 + 0.5; green up (OpenGL: Unity, Blender) or green down (DirectX: Unreal); flip at import.</p></div><a class="x refto" href="../texture-memory/index.html#normals">Open the full explanation</a></aside>
   <div class="fx" data-fx="normal"></div>
-  <div class="prose"><p>Flip the green channel at import rather than in the texture: Unity has <em>Flip Green Channel</em> in the importer, Unreal <em>Flip Green Channel</em> on the texture asset, Substance exports both.</p></div>
 
 </section>
-<section class="chapter" id="openpbr" data-title="OpenPBR: the reference model" data-builds="pbr-terms#names" data-summary="OpenPBR: fuzz over coat over base (metal + dielectric: specular, transmission, subsurface, diffuse), with weights. Engines implement subsets.">
-  <div class="head"><div class="num"></div><h2>OpenPBR: the reference model</h2></div>
+<section class="chapter" id="openpbr" data-title="OpenPBR" data-builds="pbr-terms#names" data-summary="OpenPBR: fuzz over coat over base (metal + dielectric: specular, transmission, subsurface, diffuse), with weights. Engines implement subsets.">
+  <div class="head"><div class="num"></div><h2>OpenPBR</h2></div>
 
   <div class="prose">
     <p><button type="button" class="term" data-term="openpbr">OpenPBR Surface</button> is an open specification for one physically based surface, maintained by the Academy Software Foundation. It merges Autodesk Standard Surface and Adobe Standard Material, so content moves between Arnold, Substance, MaterialX-based tools and renderers that adopt it with the same look. Version 1.0 came out in 2024; this unit follows 1.1.</p>
@@ -474,11 +477,11 @@ return saturate(lerp(fromDiffuse, fromSpecular, m * m));</pre></div></div>
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=76a6bcc6"></script>
-<script src="../../assets/index.js?v=97e4c60c"></script>
-<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/catalog.js?v=0573c031"></script>
+<script src="../../assets/index.js?v=8b09161c"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="../../assets/surf.js?v=ea5431d2"></script>
-<script src="terms.js?v=a0e3bce4"></script>
+<script src="terms.js?v=ef2350cb"></script>
 </body>
 </html>
