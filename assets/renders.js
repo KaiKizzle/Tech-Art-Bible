@@ -1186,6 +1186,129 @@ vec3 render(vec2 frag){
   c = mix(c, vec3(1.9, 1.95, 2.0)*max(SUN.y, 0.0) + .3, foam*.85);
   return mix(c, sky(rd)*.9, smoothstep(14.0, 40.0, tw))*.85; }`
   });
+  Object.assign(SCENES, {
+    /* Sphere tracing: a smooth blob and a torus, with one ray's steps drawn as shrinking spheres. */
+    'ray-marching': SURF + `
+float smin(float a, float b, float k){ float h = clamp(.5 + .5*(b - a)/k, 0.0, 1.0); return mix(b, a, h) - k*h*(1.0 - h); }
+vec3 TC = vec3(1.25, .65, -.25);
+float sdTor(vec3 p){ vec3 q = p - TC; q = rotY(.35)*q; vec2 t = vec2(length(q.xy) - .48, q.z); return length(t) - .17; }
+float sdBlob(vec3 p){ return smin(length(p - vec3(-.95, .55, -.3)) - .55, length(p - vec3(-.25, .3, -.65)) - .3, .3); }
+float map(vec3 p){ return min(min(sdBlob(p), sdTor(p)), p.y); }
+vec3 nrm(vec3 p){ vec2 e = vec2(.001, 0.0); return normalize(vec3(map(p + e.xyy) - map(p - e.xyy), map(p + e.yxy) - map(p - e.yxy), map(p + e.yyx) - map(p - e.yyx))); }
+float shad(vec3 ro, vec3 rd){ float r = 1.0, t = .02; for (int i = 0; i < 40; i++){ float h = min(sdBlob(ro + rd*t), sdTor(ro + rd*t)); r = min(r, 8.0*h/t); t += clamp(h, .02, .3); if (h < .001 || t > 6.0) break; } return clamp(r, 0.0, 1.0); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(-.1, 1.35, 5.0); mat3 cam = lookAt(ro, vec3(.05, .5, -.2)); vec3 rd = cam*normalize(vec3(uv, 2.7));
+  float t = 0.0, ts = 1e9; for (int i = 0; i < 110; i++){ float d = map(ro + rd*t); if (d < .0005*t){ ts = t; break; } t += d; if (t > 30.0) break; }
+  vec3 col = studio(rd);
+  if (ts < 1e8){ vec3 p = ro + rd*ts, n = nrm(p);
+    if (p.y < min(sdBlob(p), sdTor(p))){ float sh = shad(p + n*.002, KS); col = floorS(p, rd, sh); }
+    else { float sh = shad(p + n*.004, KS); bool tor = sdTor(p) < sdBlob(p);
+      col = tor ? shadeS(rd, n, .22, 1.0, vec3(.92, .93, .95), vec3(.96)) : shadeS(rd, n, .45, 0.0, vec3(.5, .14, .04), vec3(1.0));
+      col *= mix(.35, 1.0, sh); } }
+  vec3 A = vec3(-3.2, .62, 1.1); vec3 D = normalize(TC + vec3(0.0, .47, 0.0) - A);
+  vec3 G = vec3(.16, .62, .1);
+  float tr = 0.0; vec3 add = vec3(0.0);
+  for (int i = 0; i < 26; i++){ vec3 p = A + D*tr; float d = map(p);
+    vec2 q = sphIntersect(ro, rd, vec4(p, max(d, .02)));
+    if (q.x > 0.0 && q.x < ts){ vec3 n = normalize(ro + rd*q.x - p); float rim = pow(1.0 - abs(dot(n, rd)), 3.0); add += G*(.025 + rim*.4); }
+    vec2 c = sphIntersect(ro, rd, vec4(p, .028)); if (c.x > 0.0 && c.x < ts) add += G*2.0;
+    if (d < .002) break; tr += d; }
+  vec3 B = A + D*tr; vec3 w = ro - A; float b = dot(rd, D), dd = dot(rd, w), e = dot(D, w), den = 1.0 - b*b;
+  float sc = (b*e - dd)/den, tc = clamp((e - b*dd)/den, 0.0, tr); sc = dot(A + D*tc - ro, rd);
+  float dist = length(ro + rd*sc - (A + D*tc)); if (sc < ts + .01) add += G*.9*exp(-dist*dist*9000.0) + G*.12*exp(-dist*90.0);
+  return col + add; }`,
+
+    /* Parallax occlusion on one flat quad: cobblestones with depth, the quad's silhouette still flat. */
+    fpom: SURF + `
+vec2 h22(vec2 p){ return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))))*43758.5453); }
+vec3 vor(vec2 x){ vec2 n = floor(x), f = fract(x); float f1 = 8.0, f2 = 8.0; vec2 id = vec2(0.0);
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){ vec2 g = vec2(float(i), float(j)); vec2 o = .5 + .38*(h22(n + g) - .5)*2.0; vec2 r = g + o - f; float d = dot(r, r);
+    if (d < f1){ f2 = f1; f1 = d; id = n + g; } else if (d < f2) f2 = d; }
+  return vec3(sqrt(f2) - sqrt(f1), id); }
+float HT(vec2 xz){ vec3 v = vor(xz*2.4); float s = smoothstep(0.0, .32, v.x); return pow(s, .55)*(.82 + .18*h22(v.yz).x) + .04*noise3(vec3(xz*14.0, 1.0)); }
+const float DEPTH = .14;
+bool inPatch(vec2 xz){ return abs(xz.x) < 2.6 && xz.y > -2.6 && xz.y < 1.35; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(.4, 1.45, 3.5); mat3 cam = lookAt(ro, vec3(-.1, 0.0, -.55)); vec3 rd = cam*normalize(vec3(uv, 2.35));
+  if (rd.y >= 0.0) return studio(rd);
+  float t0 = -ro.y/rd.y; vec3 p0 = ro + rd*t0;
+  if (!inPatch(p0.xz)){ vec3 c = floorS(p0, rd, 1.0); vec2 e = abs(p0.xz - vec2(0.0, -.625)) - vec2(2.6, 1.975); float edge = length(max(e, 0.0)); return c + vec3(.16, .6, .1)*.25*exp(-edge*60.0); }
+  float lt = 0.0, lh = 1.0, ph = 0.0; vec3 p = p0; float tPrev = 0.0;
+  float tMax = DEPTH/max(-rd.y, .05); float hit = tMax;
+  for (int i = 0; i < 40; i++){ float tt = tMax*float(i)/39.0; vec3 q = p0 + rd*tt; float surf = -DEPTH*(1.0 - HT(q.xz)); if (q.y < surf){ float a = tPrev, b = tt;
+      for (int k = 0; k < 5; k++){ float m = .5*(a + b); vec3 qm = p0 + rd*m; if (qm.y < -DEPTH*(1.0 - HT(qm.xz))) b = m; else a = m; } hit = .5*(a + b); break; } tPrev = tt; }
+  vec3 ph3 = p0 + rd*hit; vec2 xz = ph3.xz; float h = HT(xz); vec2 e = vec2(.004, 0.0);
+  vec3 n = normalize(vec3(-(HT(xz + e.xy) - HT(xz - e.xy))*DEPTH/(2.0*e.x), 1.0, -(HT(xz + e.yx) - HT(xz - e.yx))*DEPTH/(2.0*e.x)));
+  vec3 v = vor(xz*2.4); float tone = h22(v.yz).y;
+  vec3 stone = mix(vec3(.16, .15, .13), vec3(.32, .29, .25), tone)*(.8 + .4*fbm(vec3(xz*9.0, 2.0)));
+  vec3 alb = mix(vec3(.05, .045, .035), stone, smoothstep(.05, .35, h));
+  float sh = 1.0; for (int i = 1; i < 10; i++){ vec3 q = ph3 + KS*float(i)*.012; float s = -DEPTH*(1.0 - HT(q.xz)); sh = min(sh, clamp((q.y - s)*60.0 + .1, 0.0, 1.0)); }
+  vec3 c = shadeS(rd, n, mix(.85, .5, h), 0.0, alb, vec3(1.0))*mix(.25, 1.0, sh)*mix(.45, 1.0, h);
+  return mix(c, studio(rd), smoothstep(4.0, 9.0, length(ph3.xz))); }`,
+
+    /* One grey iris mask under four picked tints; above each, the raw pick, below, what the clamp lets through. */
+    'color-tint': `
+const vec3 WY = vec3(.2126, .7152, .0722);
+vec3 plaus(vec3 c){ float y = max(dot(c, WY), 1e-5); vec3 h = c/y; float y2 = clamp(y, .006, .32); float sm = mix(.88, .55, smoothstep(.03, .30, y2));
+  float mx = max(h.r, max(h.g, h.b)), mn = min(h.r, min(h.g, h.b)); if ((mx - mn)/mx > sm){ float k = sm/((mx - mn) - sm*(mx - 1.0)); h = mix(vec3(1.0), h, k); } return h*y2; }
+float irisMask(vec2 q, float seed){ float r = length(q), a = atan(q.y, q.x);
+  float fib = fbm(vec3(a*7.0, r*2.2, seed))*.6 + .55*noise3(vec3(a*38.0, r*3.0, seed + 4.0));
+  float col = exp(-pow((r - .42)*9.0, 2.0))*.5;
+  float crypt = smoothstep(.62, .78, fbm(vec3(q*6.0, seed + 9.0)))*smoothstep(.36, .5, r)*.55;
+  float g = .16 + .2*fib + col*.25 - crypt*.18; g *= mix(1.0, .25, smoothstep(.82, 1.0, r));
+  return g; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 c = vec3(.006, .0065, .008)*(1.0 - .25*length(uv));
+  vec3 picks[4]; picks[0] = vec3(.01, 1.0, .06); picks[1] = vec3(.02, .22, 1.0); picks[2] = vec3(.12, .03, .004); picks[3] = vec3(.3, .16, .01);
+  for (int i = 0; i < 4; i++){ vec2 cen = vec2(-1.86 + float(i)*1.24, -.06); vec2 q = (uv - cen)/.5; float r = length(q);
+    vec3 tint = plaus(picks[i]);
+    if (r < 1.0){ float pr = .3; float g = irisMask(q, float(i)*3.7 + 1.0)/.214; vec3 ir = tint*g; ir *= smoothstep(pr, pr + .03, r);
+      ir *= .55 + .55*clamp(dot(normalize(vec3(q, .9)), normalize(vec3(-.4, .6, .7))), 0.0, 1.0);
+      float hl = exp(-dot(q - vec2(-.32, .34), q - vec2(-.32, .34))*55.0)*2.5; c = ir*1.4 + vec3(hl); }
+    c = mix(c, vec3(.0), smoothstep(.98, 1.02, r)*smoothstep(1.12, 1.03, r)*.6);
+    vec2 s = uv - (cen + vec2(0.0, .74)); if (abs(s.x) < .3 && abs(s.y) < .07) c = picks[i]*.7;
+    s = uv - (cen + vec2(0.0, -.74)); if (abs(s.x) < .3 && abs(s.y) < .07) c = tint*1.4; }
+  return c; }`,
+
+    /* An eye in close-up: refraction at the cornea, then a short march to a coned iris with a collarette. */
+    eyes: SURF + `
+const float RL = .48, ZL = .877, RC = .65, IOR = 1.336;
+const float ZI = .835, CONE = .05, COLL = .012, PUP = .3;
+float zc(){ return ZL - sqrt(RC*RC - RL*RL); }
+float prof(float r){ if (r < PUP) return -1.0; float s = clamp((1.0 - r)/(1.0 - PUP), 0.0, 1.0); float rc = mix(PUP, 1.0, .35); return CONE*s*s*(3.0 - 2.0*s) + COLL*exp(-pow((r - rc)*12.0, 2.0)); }
+vec3 irisCol(vec2 q){ float r = length(q), a = atan(q.y, q.x);
+  float fib = fbm(vec3(a*7.0, r*2.4, 3.0))*.6 + .55*noise3(vec3(a*40.0, r*3.0, 7.0));
+  float crypt = smoothstep(.6, .78, fbm(vec3(q*7.0, 11.0)))*smoothstep(.4, .55, r);
+  vec3 outer = vec3(.06, .13, .15), inner = vec3(.22, .12, .035);
+  vec3 c = mix(inner, outer, smoothstep(.38, .62, r))*(.55 + .75*fib)*(1.0 - crypt*.5);
+  c *= mix(1.0, .18, smoothstep(.84, 1.0, r)); return c; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, .12, 3.0); mat3 cam = lookAt(ro, vec3(.0, .02, 0.0)); vec3 rdW = cam*normalize(vec3(uv, 2.6));
+  mat3 E = rotY(-.5)*mat3(1, 0, 0, 0, cos(.1), -sin(.1), 0, sin(.1), cos(.1));
+  vec3 o = ro*E, rd = rdW*E; vec3 KE = KS*E;
+  vec2 hs = sphIntersect(o, rd, vec4(0.0, 0.0, 0.0, 1.0)); vec2 hc = sphIntersect(o, rd, vec4(0.0, 0.0, zc(), RC));
+  float ts = (hs.x > 0.0 && (o + rd*hs.x).z < ZL) ? hs.x : 1e9; float tcn = (hc.x > 0.0 && (o + rd*hc.x).z > ZL) ? hc.x : 1e9;
+  if (min(ts, tcn) > 1e8) return studio(rdW);
+  if (ts < tcn){ vec3 p = o + rd*ts, n = normalize(p);
+    float v = smoothstep(.55, .9, fbm(p*9.0))*smoothstep(.55, -.3, p.z); vec3 alb = mix(vec3(.74, .7, .66), vec3(.55, .14, .1), v*.45);
+    alb *= mix(.55, 1.0, smoothstep(ZL - .02, ZL - .18, p.z));
+    vec3 c = shadeS(rd, n, .32, 0.0, alb, vec3(1.0)); float wrap = max((dot(n, KE) + .4)/1.4, 0.0); c += alb*vec3(.5, .18, .12)*wrap*.25;
+    return c; }
+  vec3 p = o + rd*tcn, n = normalize(p - vec3(0.0, 0.0, zc()));
+  vec3 r = refract(rd, n, 1.0/IOR); float F = fresD(dot(-rd, n), IOR);
+  float t0 = 0.0, tEnd = (ZI - .01 - p.z)/r.z; vec3 ir = vec3(.0); float tp = 0.0, dp = 1.0; bool hit = false;
+  for (int i = 0; i < 24; i++){ float t = tEnd*float(i + 1)/24.0; vec3 q = p + r*t; float h = prof(length(q.xy)/RL); float d = q.z - (ZI + h);
+    if (h < 0.0){ t = tEnd; d = -1.0; }
+    if (d < 0.0){ float tt = h < 0.0 ? t : tp + (t - tp)*dp/(dp - d); vec3 qh = p + r*tt; vec2 iq = qh.xy/RL;
+      if (length(iq) < PUP) ir = vec3(.002); else { float rr = length(iq); float e = .01; float dh = (prof(rr + e) - prof(rr - e))/(2.0*e)/RL;
+        vec3 nI = normalize(vec3(-normalize(iq)*dh, 1.0)); float cav = .5 + .5*smoothstep(-.01, .03, prof(rr));
+        ir = irisCol(iq)*(max(dot(nI, KE), 0.0)*2.6 + .12)*cav; }
+      hit = true; break; }
+    tp = t; dp = d; }
+  vec3 c = ir*(1.0 - F) + envS(reflect(rd, n), .01)*F*1.4;
+  c += vec3(8.0)*pow(max(dot(reflect(rd, n), KE), 0.0), 900.0);
+  return c; }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

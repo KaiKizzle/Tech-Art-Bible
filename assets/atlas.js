@@ -167,6 +167,11 @@
   function crumbs() {
     const el = $('.crumbs'); if (!el) return;
     const u = unitMeta(slug), c = u ? CATS.find(x => x.id === u.cat) : null;
+    if (el.closest('.rail-card')) {   // hub-style chips at the top of the chapter card
+      el.innerHTML = `<a class="cr" href="${ROOT}index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>All units</a>` +
+        (c ? `<a class="cr" href="${ROOT}index.html?c=${c.id}" style="--tc:${c.tone || ''}"><i class="dot"></i>${esc(c.name)}</a>` : '');
+      return;
+    }
     el.innerHTML = `<a href="${ROOT}index.html">Tech Art Atlas</a><span>/</span>` + (c ? `<a href="${ROOT}index.html?c=${c.id}">${esc(c.name)}</a><span>/</span>` : '') +
       `<a href="#top">${esc(u ? u.title : document.title.split(' · ')[0])}</a><span>/</span><b id="crumb-chapter"></b>`;
   }
@@ -193,7 +198,7 @@
       const intro = el.dataset.intro || (el.dataset.needs !== undefined ? 'This unit assumes the ideas below. If one is new to you, open it first; each is short.' : '');
       el.innerHTML = `<h3>${esc(title)}</h3>${intro ? `<p class="cap">${esc(intro)}</p>` : ''}<div class="cards-mini">${list.map(r => {
         const l = label(r.s, r.id), u = unitMeta(r.s), c = u ? CATS.find(x => x.id === u.cat) : null;
-        return `<a class="mini" href="${hrefFor(r.s, r.id)}" style="--c:var(--${c ? c.color : 'muted'})"><span class="k">${esc(c ? c.name : '')}</span><b>${esc(r.id ? l.chapter : l.unit)}</b><span>${esc(r.id ? l.unit : (u && u.summary) || '')}</span></a>`;
+        return `<a class="mini" href="${hrefFor(r.s, r.id)}" style="--c:${c && c.tone ? c.tone : 'var(--muted)'}"><span class="k">${esc(c ? c.name : '')}</span><b>${esc(r.id ? l.chapter : l.unit)}</b><span>${esc(r.id ? l.unit : (u && u.summary) || '')}</span></a>`;
       }).join('')}</div>`;
     });
   }

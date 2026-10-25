@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tinting and Clamping Colour · Tech Art Atlas</title>
+<meta name="description" content="Colour maths for tintable materials: why to work in linear, why a multiply tint goes dark, the 50 % grey tint-mask convention, luminance and hue, hue-preserving desaturation, clamping to plausible colours, and other tint tools, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+</head>
+<body data-unit="color-tint" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Tinting and Clamping Colour</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Materials & texture pipeline · 8 chapters</div>
+  <h1>Tinting and Clamping Colour</h1>
+  <p class="lede">Colour maths for tintable materials: why to work in linear, why a multiply tint goes dark, the 50 % grey tint-mask convention, luminance and hue, hue-preserving desaturation, clamping to plausible colours, and other tint tools, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Colour as Numbers. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/color-tint.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One grey iris mask under four tints, each held inside the plausible range.</figcaption></figure>
+</div>
+<div class="needs" data-needs="color-values#linear-srgb"></div>
+
+<section class="chapter" id="linear" data-title="Do colour maths in linear" data-builds="color-values#linear-srgb" data-summary="Tint in linear: lin(tint)·lin(tex). Multiplying sRGB numbers brightens mid tones and shifts hue.">
+  <div class="head"><div class="num"></div><h2>Do colour maths in linear</h2></div>
+
+  <div class="prose">
+    <p>Texture and colour-picker values are stored in sRGB, a curve that spends more numbers on dark tones (<a class="x" href="../color-values/index.html#linear-srgb">linear and sRGB</a>). Light adds and multiplies in linear terms. A shader that tints by multiplying the stored numbers gets a different, usually brighter and hue-shifted, result than one that multiplies light:</p>
+  </div>
+  <div class="fx" data-fx="linmul"></div>
+  <div class="prose"><p>In practice: textures marked as colour (sRGB on) and colour properties arrive in the shader already converted to linear in Unity, Unreal and every modern engine. Do all tint maths there. Only data maps (masks, roughness) skip the conversion, which is why a grey mask used for tinting must be imported with sRGB on if it was painted as brightness.</p></div>
+
+</section>
+<section class="chapter" id="multiply" data-title="Multiply only darkens" data-builds="color-tint#linear" data-summary="tint · tex: a mean of 128 sRGB keeps only ~21 % of the picked colour&#x27;s brightness.">
+  <div class="head"><div class="num"></div><h2>Multiply only darkens</h2></div>
+
+  <div class="prose">
+    <p>The simplest tint multiplies a texture by a colour. White texels become the tint, everything else becomes darker. A typical diffuse texture averages around 50 % grey in sRGB, which is only about 21 % in linear light, so the material ends up far darker than the colour the artist picked:</p>
+  </div>
+  <div class="fx" data-fx="mul"></div>
+  <div class="prose"><p>Artists then compensate with brighter, more saturated picks, and the result depends on each texture's average. A tint control should mean "this is the colour you will see", which needs a convention for the texture.</p></div>
+
+</section>
+<section class="chapter" id="greymask" data-title="The 50 % grey convention" data-builds="color-tint#multiply" data-summary="colour = tint · Y(tex) / 0.214: 128 sRGB in the mask shows exactly the tint; the texture carries detail only.">
+  <div class="head"><div class="num"></div><h2>The 50 % grey convention</h2></div>
+
+  <div class="prose">
+    <p>Treat the texture as a <button type="button" class="term" data-term="greymask">tint mask</button>: a greyscale map whose 50 % grey (128 sRGB, 0.214 linear) means "exactly the tint". Divide the texel's luminance by 0.214 and multiply by the tint. Darker texels (crypts in an iris, the shadow side of a weave) go below the tint, lighter ones above it:</p>
+  </div>
+  <div class="fx" data-fx="greymask"></div>
+  <div class="prose">
+    <p>Two authoring rules make it work. Remove the colour from the texture and keep its variation: a Levels step that centres the histogram on 128 is enough. And keep the contrast moderate; a texel at 255 shows the tint at 4.7× its brightness, which then hits the clamp of the next chapters.</p>
+    <p>The tint is now independent of the texture: swapping in another iris pattern keeps the same eye colour. That is the setup used for the <a class="x" href="../eyes/index.html#tint">iris tint</a>.</p>
+  </div>
+
+</section>
+<section class="chapter" id="luminance" data-title="Luminance and hue" data-builds="color-values#luminance" data-summary="Y = 0.2126R + 0.7152G + 0.0722B (linear); hue = colour / Y can be rescaled to any luminance.">
+  <div class="head"><div class="num"></div><h2>Luminance and hue</h2></div>
+
+  <div class="prose">
+    <p>To limit how bright or how colourful a tint may be, it has to be split into brightness and colour. <button type="button" class="term" data-term="luminance">Luminance</button> Y weighs the channels by how bright they look: green counts most, blue least (<a class="x" href="../color-values/index.html#luminance">luminance</a>). Dividing the colour by Y leaves the hue at luminance 1, a colour direction that can be scaled to any brightness without changing what colour it is:</p>
+  </div>
+  <div class="fx" data-fx="lum"></div>
+  <div class="prose"><p>Pure blue has a luminance of only 0.07; pure green 0.72. That is why "the same" saturated colours in a picker look so different in brightness, and why a clamp must work on luminance, not on the RGB maximum.</p></div>
+
+</section>
+<section class="chapter" id="saturation" data-title="Saturation without hue shifts" data-builds="color-tint#luminance" data-summary="Mix hue (at Y = 1) towards (1,1,1) by k = s_max / ((max − min) − s_max(max − 1)): saturation capped, hue and luminance kept.">
+  <div class="head"><div class="num"></div><h2>Saturation without hue shifts</h2></div>
+
+  <div class="prose">
+    <p>Saturation in HSV terms is (max − min) / max: 0 for grey, 1 when a channel is zero. Lowering it by mixing towards grey is the natural move, but mixing towards a grey of the wrong brightness changes luminance, and clamping channels changes the hue. Mixing the hue-at-luminance-1 towards (1, 1, 1) does neither: grey at luminance 1 is (1, 1, 1), so the luminance stays 1 and the hue direction stays the same. The mix factor k that lands exactly on the cap s<sub>max</sub> follows from the saturation formula:</p>
+  </div>
+  <div class="fx" data-fx="satclamp"></div>
+  <div class="prose"><p>Derivation, for the curious: after the mix, max′ = 1 + k(max − 1) and min′ = 1 + k(min − 1), so the new saturation is k(max − min) / (1 + k(max − 1)). Setting it to s<sub>max</sub> and solving for k gives the formula above. One division, no trigonometry, no HSV round trip.</p></div>
+
+</section>
+<section class="chapter" id="clamp" data-title="Clamping to a plausible range" data-builds="color-tint#saturation pbr-basics#basecolor" data-summary="clamp(Y, Ymin, Ymax), then cap saturation with lerp(s_dark, s_light, smoothstep(0.03, 0.30, Y)).">
+  <div class="head"><div class="num"></div><h2>Clamping to a plausible range</h2></div>
+
+  <div class="prose">
+    <p>Natural materials occupy a small part of the colour space. Irises run from very dark brown to light grey-blue; no iris is neon green. Dark colours can be quite saturated (a deep brown), light ones only mildly (a pale blue). So the clamp has two parts: limit luminance, then cap saturation with a limit that falls as the colour gets lighter:</p>
+  </div>
+  <div class="fx" data-fx="range"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Material</th><th>Luminance (linear Y)</th><th>Saturation cap</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Iris</td><td>0.006 – 0.32</td><td>0.88 dark → 0.55 light</td><td>dark brown to light grey-blue; bright saturated greens and blues do not occur</td></tr>
+      <tr><td>Non-metal base colour (general)</td><td>≈ 0.012 – 0.86 (30 – 240 sRGB)</td><td>case by case</td><td>the PBR rule from <a class="x" href="../pbr-basics/index.html#basecolor">base colour</a></td></tr>
+      <tr><td>Skin (albedo)</td><td>roughly 0.03 – 0.45</td><td>low; a narrow red-orange hue band</td><td>build from references; a hue clamp matters more than saturation</td></tr>
+      <tr><td>Hair (melanin)</td><td>roughly 0.005 – 0.5</td><td>falls with brightness</td><td>dyed hair needs a separate, wider range</td></tr>
+      <tr><td>Team colours, UI-driven tints</td><td>chosen by art direction</td><td>chosen by art direction</td><td>the clamp keeps every player pick readable under the game's lighting</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>The values in the table are starting points from references, not standards; measure your own. The point of the clamp is that it is in the shader: any colour from a picker, a character creator or a script lands somewhere believable, and the hue the user asked for survives.</p></div>
+
+</section>
+<section class="chapter" id="other" data-title="Other tint tools" data-builds="color-tint#greymask" data-summary="Hue rotation (Rodrigues around grey) changes luminance; gradient maps, RGB masks, overlay as alternatives.">
+  <div class="head"><div class="num"></div><h2>Other tint tools</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>Hue rotation</strong> recolours an already coloured texture by rotating every colour around the grey axis. Cheap, but it does not keep luminance: blue turned yellow gets much brighter. Fine for small shifts and variations.</li>
+      <li><strong>Gradient maps</strong> map the mask's grey value through a ramp texture or a few colour stops. They give a dark-to-light colour journey (dark brown crypts, golden collarette) that a single tint cannot.</li>
+      <li><strong>RGB masks</strong> (team colours): three channels of one texture select up to three tint regions; each region is tinted with the grey-mask rule.</li>
+      <li><strong>Overlay and soft light</strong> keep the texture's contrast while pushing towards a colour; they come from image editing and are harder to clamp.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="hue"></div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Grey-mask textures (mean 128 sRGB), TintGreyMask with luminance and saturation clamps, HueShift for coloured textures.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The two functions of this unit as a Custom Function file: a grey-mask tint with plausibility clamps, and a hue shift. They work for irises, skin variations, hair dyes, cloth and team colours. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="hlsl"><b>HLSL file</b><span>Tint.hlsl: TintGreyMask with the clamps, and HueShift.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph with a Color property, a greyscale texture and the clamp ranges as properties.</span></div></div>
+<ol class="impl-steps"><li><div>Author the texture as a tint mask: a greyscale map whose average is 50 % sRGB grey (128). Keep the variation (fibres, weave, freckles) and remove the colour. In Substance or Photoshop, a Levels or Auto-Levels step towards a 128 mean does it.</div></li><li><div>Import it with <em>sRGB (Color Texture)</em> on: it is still perceptual brightness. Put <code>Tint.hlsl</code> in <code>Assets/Shaders/</code>.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Add a Color property <code>Tint</code> (it arrives in linear space) and Floats <code>LumMin</code>, <code>LumMax</code>, <code>SatDark</code>, <code>SatLight</code>. For irises: 0.006, 0.32, 0.88, 0.55. For skin or cloth, pick ranges from references (see the clamping chapter).</div></li><li><div>In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Tint.hlsl</code> and <em>Name</em> to <code>TintGreyMask</code> (without the <code>_float</code> suffix). Add the inputs <b>Texture (Vector 3), Tint (Vector 3), LumMin (Float), LumMax (Float), SatDark (Float), SatLight (Float)</b> and the outputs <b>Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Connect Color to <em>Base Color</em>.</div></li><li><div>Test with extreme picks: pure neon green, pure black, pure white. Each should land inside the range, with its hue kept. If a test colour looks wrong, adjust the range, not the texture.</div></li><li><div>For hue variations of an already coloured texture (a red and a blue version of the same fabric), use In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>Tint.hlsl</code> and <em>Name</em> to <code>HueShift</code> (without the <code>_float</code> suffix). Add the inputs <b>Color (Vector 3), Degrees (Float)</b> and the outputs <b>Result (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li></ol>
+<div class="files"><div class="file" data-name="Tint.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_TINT_INCLUDED
+#define ATLAS_TINT_INCLUDED
+
+static const float3 ATLAS_LUM = float3(0.2126, 0.7152, 0.0722);   // Rec. 709 luminance, linear RGB
+
+// Keep a colour inside a plausible range: luminance between LumMin and LumMax, and saturation (HSV,
+// linear) below a cap that is higher for dark colours than for light ones. Hue and luminance are kept.
+float3 Atlas_ClampPlausible(float3 c, float lumMin, float lumMax, float satDark, float satLight)
+{
+    float y0 = max(dot(c, ATLAS_LUM), 1e-6);
+    float y  = clamp(y0, lumMin, lumMax);
+    float3 h = c / y0;                                   // the hue at luminance 1
+    float mx = max(h.r, max(h.g, h.b)), mn = min(h.r, min(h.g, h.b));
+    float sat = (mx - mn) / max(mx, 1e-6);
+    float satMax = lerp(satDark, satLight, smoothstep(0.03, 0.30, y));
+    float k = sat &gt; satMax ? satMax / ((mx - mn) - satMax * (mx - 1.0)) : 1.0;
+    h = lerp(1.0, h, k);                                 // towards grey: keeps hue and luminance
+    return h * y;
+}
+
+// Tint with a grey texture as the mask: 50 % sRGB grey (0.214 linear) shows exactly the tint colour;
+// lighter texels go above it, darker below. Tint and Texture in linear space.
+void TintGreyMask_float(float3 Texture, float3 Tint, float LumMin, float LumMax, float SatDark, float SatLight,
+                        out float3 Color)
+{
+    float3 tint = Atlas_ClampPlausible(Tint, LumMin, LumMax, SatDark, SatLight);
+    float detail = dot(Texture, ATLAS_LUM) / 0.214;
+    Color = saturate(tint * detail);
+}
+
+// Hue rotation around the grey axis (Rodrigues), cheap and luminance-ish preserving for small angles.
+void HueShift_float(float3 Color, float Degrees, out float3 Result)
+{
+    float a = radians(Degrees);
+    const float3 k = float3(0.57735, 0.57735, 0.57735);
+    float c = cos(a), s = sin(a);
+    Result = Color * c + cross(k, Color) * s + k * dot(k, Color) * (1.0 - c);
+}
+#endif</pre></div></div>
+<p class="note">Clamps run per pixel on a constant colour; the compiler often folds them into a few instructions. If the tint is per material only, you can also clamp in C# when the colour is set, but keeping it in the shader means nobody can bypass it.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical; the file has no HDRP dependencies.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Grey mask with sRGB on, a Tint Vector Parameter, the clamp in a Custom node, exposed in instances.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>The same tint and clamp in a Custom node. Vector Parameters in Unreal hold linear colours, so the maths is identical to the HDRP version. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>TintGreyMask.ush.</span></div><div class="rt" data-k="mat"><b>Material</b><span>A material with a Tint parameter, the grey mask and the range parameters.</span></div></div>
+<ol class="impl-steps"><li><div>Import the grey mask with sRGB on (Compression <code>Default</code> or <code>Grayscale</code>).</div></li><li><div>Add a Vector Parameter <code>Tint</code> and Scalar Parameters <code>LumMin</code>, <code>LumMax</code>, <code>SatDark</code>, <code>SatLight</code>.</div></li><li><div>Add a Custom node with <code>TintGreyMask.ush</code>, inputs as named in the file, Output Type <code>CMOT Float 3</code>, into <em>Base Color</em>.</div></li><li><div>Expose Tint in Material Instances; artists and Blueprints can set any colour and the material keeps it plausible. For runtime colour pickers, the same clamp protects you from extreme player choices.</div></li><li><div>Hue variation of coloured textures: the engine's <em>HueShift</em> material function does a hue rotation; prefer the grey-mask approach when you control the texture.</div></li></ol>
+<div class="files"><div class="file" data-name="TintGreyMask.ush" data-lang="hlsl"><pre>// Custom node &quot;TintGreyMask&quot;. Inputs: Tex (float3, the grey mask sample, Sampler Type Color),
+// Tint (float3, a Vector Parameter: linear), LumMin, LumMax, SatDark, SatLight (float).
+// Output Type: CMOT Float 3.
+const float3 L = float3(0.2126, 0.7152, 0.0722);
+float y0 = max(dot(Tint, L), 1e-6);
+float y  = clamp(y0, LumMin, LumMax);
+float3 h = Tint / y0;                                   // hue at luminance 1
+float mx = max(h.r, max(h.g, h.b)), mn = min(h.r, min(h.g, h.b));
+float sat = (mx - mn) / max(mx, 1e-6);
+float satMax = lerp(SatDark, SatLight, smoothstep(0.03, 0.30, y));
+float k = sat &gt; satMax ? satMax / ((mx - mn) - satMax * (mx - 1.0)) : 1.0;
+float3 tint = lerp(1.0, h, k) * y;                      // desaturated towards grey, hue and luminance kept
+return saturate(tint * dot(Tex, L) / 0.214);            // 50 % sRGB grey in the mask = exactly the tint</pre></div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Spec</span><a href="https://www.itu.int/rec/R-REC-BT.709" rel="noopener">ITU-R BT.709: parameter values for HDTV</a></span><span class="by">ITU</span><span class="why">The luminance weights of linear RGB.</span></li><li><span><span class="kind">Article</span><a href="https://en.wikipedia.org/wiki/SRGB" rel="noopener">sRGB transfer function</a></span><span class="by">Wikipedia</span><span class="why">The curve between stored values and linear light, and 128 → 0.214.</span></li><li><span><span class="kind">Guide</span><a href="https://www.adobe.com/learn/substance-3d-designer/web/the-pbr-guide-part-2" rel="noopener">The PBR Guide, part 2</a></span><span class="by">Wes McDermott · Adobe Substance 3D</span><span class="why">Base colour ranges for non-metals.</span></li><li><span><span class="kind">Article</span><a href="https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula" rel="noopener">Rodrigues' rotation formula</a></span><span class="by">Wikipedia</span><span class="why">The hue rotation around the grey axis.</span></li></ul>
+</section>
+
+<div class="next" data-next="eyes pbr-basics skin"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"greymask": [
+"Tint mask (grey mask)",
+"A greyscale texture where 50 % grey means 'exactly the tint'; it carries variation, the tint carries colour.",
+"#greymask"
+],
+"luminance": [
+"Luminance Y",
+"Perceived brightness of linear RGB: 0.2126 R + 0.7152 G + 0.0722 B.",
+"#luminance"
+],
+"saturation": [
+"Saturation (HSV)",
+"(max − min) / max of the channels; 0 for grey.",
+"#saturation"
+],
+"hue": [
+"Hue at luminance 1",
+"A colour divided by its luminance: the colour direction, independent of brightness.",
+"#luminance"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=76a6bcc6"></script>
+<script src="../../assets/index.js?v=97e4c60c"></script>
+<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="tint.js?v=34209528"></script>
+</body>
+</html>

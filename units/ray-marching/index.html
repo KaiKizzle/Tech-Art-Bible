@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ray Marching · Tech Art Atlas</title>
+<meta name="description" content="The general method behind parallax, clouds, SDF shapes and raymarched eyes: fixed steps, bracketing and secant refinement, sphere tracing distance fields, height fields with bounding slabs, volumes, step budgets and jitter, and loops on a GPU, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+</head>
+<body data-unit="ray-marching" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Ray Marching</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Shading · 8 chapters</div>
+  <h1>Ray Marching</h1>
+  <p class="lede">The general method behind parallax, clouds, SDF shapes and raymarched eyes: fixed steps, bracketing and secant refinement, sphere tracing distance fields, height fields with bounding slabs, volumes, step budgets and jitter, and loops on a GPU, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Rays and Intersections. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/ray-marching.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A sphere-traced blob and torus, with the steps of one ray drawn as shrinking spheres.</figcaption></figure>
+</div>
+<div class="needs" data-needs="rays-math#ray"></div>
+
+<section class="chapter" id="idea" data-title="Marching a ray" data-builds="rays-math#ray" data-summary="P(t) = O + t·D; step, test, stop. Fixed steps: error up to one step, thin features can be skipped.">
+  <div class="head"><div class="num"></div><h2>Marching a ray</h2></div>
+
+  <div class="prose">
+    <p>Many effects need to know where a ray first meets something that has no triangles: a height map under a flat polygon, an iris inside an eyeball, a cloud, a distance field. When there is no formula for the intersection, the shader <button type="button" class="term" data-term="raymarch">marches</button>: it walks along the ray <a class="x" href="../rays-math/index.html#ray">P(t) = O + t·D</a> in steps, tests each point, and stops when the point is inside the surface.</p>
+    <p>The simplest version uses fixed steps. Its weakness shows immediately: the step length decides both the cost and what can be missed.</p>
+  </div>
+  <div class="fx" data-fx="fixed"></div>
+  <div class="prose">
+    <p>Two kinds of error appear. The hit is found up to one step too late (the red dot sits inside the surface, not on it), and anything thinner than a step can be skipped entirely: the spike disappears. Shorter steps fix both and cost more. The rest of this unit is about getting the same answer with fewer steps.</p>
+  </div>
+
+</section>
+<section class="chapter" id="find" data-title="Finding the surface between two steps" data-builds="ray-marching#idea" data-summary="Two points with opposite sign bracket the hit. Bisection halves the error per step; secant (linear interpolation) converges faster on smooth surfaces.">
+  <div class="head"><div class="num"></div><h2>Finding the surface between two steps</h2></div>
+
+  <div class="prose">
+    <p>When a step lands below the surface, the previous one was above it. The surface lies between them: the two points <em>bracket</em> it. Instead of marching on with tiny steps, the shader can narrow that bracket. Write d(t) for the height of the ray above the surface: positive before the hit, negative after.</p>
+    <ul>
+      <li><strong>Bisection</strong>: test the middle, keep the half that still contains the sign change. Each step halves the error.</li>
+      <li><strong>Secant</strong> (or false position): assume d is a straight line between the two points and jump to where that line crosses zero. Near a smooth surface this converges much faster.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="refine"></div>
+  <div class="prose"><p>The usual recipe is coarse steps to find a bracket, then one to three secant steps. Parallax occlusion mapping uses exactly this (<a class="x" href="../fpom/index.html#coarse">fast POM</a>), and so does the <a class="x" href="../eyes/index.html#march">raymarched iris</a>. Secant steps need the surface to be smooth between the two points; on noisy height maps, bisection is the safer choice.</p></div>
+
+</section>
+<section class="chapter" id="sdf" data-title="Sphere tracing distance fields" data-builds="ray-marching#idea ray-sphere#hit" data-summary="t += sdf(p): the biggest safe step. Few steps in open space, many when grazing. Union = min, blends = smooth min.">
+  <div class="head"><div class="num"></div><h2>Sphere tracing distance fields</h2></div>
+
+  <div class="prose">
+    <p>If the scene can tell how far the nearest surface is from any point, the march can take the largest safe step every time. That function is a <button type="button" class="term" data-term="sdf">signed distance field</button> (SDF): negative inside, positive outside, and its value is a distance you can step without hitting anything. Marching by it is <em>sphere tracing</em> (Hart, 1996):</p>
+  </div>
+  <div class="fx" data-fx="sphere"></div>
+  <div class="prose">
+    <p>In open space the steps are huge; near a surface they shrink, so the hit is found precisely without a refinement stage. The expensive case is a ray that grazes a surface without hitting it: every step is short and the step budget runs out. That is why SDF renderings get blotchy at silhouettes when the budget is too low.</p>
+    <p>Distance fields for spheres, boxes, capsules and tori are short formulas, and they combine with min (union) and smooth minimum (blobby blends). Inigo Quilez's list of distance functions is the standard reference. A field that is not an exact distance (scaled, twisted, noisy) needs shorter steps, often 0.5–0.8 of the value, or the march overshoots.</p>
+  </div>
+
+</section>
+<section class="chapter" id="heightfield" data-title="Height fields and bounding slabs" data-builds="parallax#heightmap parallax#adaptive" data-summary="Height fields: march only through the slab between min and max height; steps = H / (cos θ · Δt).">
+  <div class="head"><div class="num"></div><h2>Height fields and bounding slabs</h2></div>
+
+  <div class="prose">
+    <p>A height field stores one height per point on a plane: a parallax map, a terrain, the iris of an eye. It is not a distance field, so sphere tracing does not apply directly, but it has another property worth using: every point of the surface lies between its lowest and highest value. Outside that slab, nothing can be hit.</p>
+  </div>
+  <div class="fx" data-fx="slab"></div>
+  <div class="prose">
+    <p>Start the march where the ray enters the slab and stop where it leaves; the space above is skipped for free. The step count then depends on two things: the slab thickness and the view angle. Looking straight down, the ray crosses the slab quickly; at grazing angles it travels a long way inside it. Good height-field marchers scale their step count with the angle (<a class="x" href="../parallax/index.html#adaptive">adaptive steps</a>).</p>
+    <p>For a texture-based height field each step is a texture fetch. For an analytic height field (a formula) each step is arithmetic, which is usually far cheaper; the <a class="x" href="../eyes/index.html#profile">iris profile</a> is an example.</p>
+  </div>
+
+</section>
+<section class="chapter" id="volumes" data-title="Volumes: integrate instead of stopping" data-builds="glass#colour ray-marching#idea" data-summary="Volumes accumulate: T ∏ e^(−σΔt); midpoint samples beat start-of-step; stop early when T ≈ 0.">
+  <div class="head"><div class="num"></div><h2>Volumes: integrate instead of stopping</h2></div>
+
+  <div class="prose">
+    <p>Fog, clouds and smoke have no surface to hit. Light is absorbed a little at every point, so the march does not stop: it adds up density along the way and multiplies the transmittance by e<sup>−σΔt</sup> for each step (<a class="x" href="../glass/index.html#colour">Beer–Lambert</a>). The result is how much of the background comes through:</p>
+  </div>
+  <div class="fx" data-fx="volume"></div>
+  <div class="prose"><p>Sampling at the start of each step is biased; sampling in the middle is much more accurate for the same count. Real volume renderers add lighting at each sample, which is where most of the cost goes (<a class="x" href="../cloud-march/index.html#transmittance">marching a cloud layer</a>). Two shortcuts carry over from surfaces: stop early once the transmittance is close to zero, and skip empty space with a coarse bound.</p></div>
+
+</section>
+<section class="chapter" id="budget" data-title="Step budgets, banding and jitter" data-builds="ray-marching#volumes" data-summary="Fixed patterns band; per-pixel random start offsets turn bands into noise for TAA. Cost = steps × per-step work.">
+  <div class="head"><div class="num"></div><h2>Step budgets, banding and jitter</h2></div>
+
+  <div class="prose">
+    <p>A fixed step pattern samples every ray at the same depths. With few steps, the error is the same for neighbouring pixels and shows as bands or rings. Offsetting the start of each ray by a random fraction of a step (a different one per pixel, ideally from a blue-noise texture) turns the bands into fine noise, which temporal anti-aliasing averages away over a few frames:</p>
+  </div>
+  <div class="fx" data-fx="jitter"></div>
+  <div class="prose">
+    <p>Cost is steps × the cost per step. Keep the per-step work minimal and move everything else out of the loop:</p>
+    <ul>
+      <li>One evaluation per step. Compute normals, lighting and detail once at the hit.</li>
+      <li>Texture fetches are the expensive part; an analytic function in the loop is usually several times cheaper.</li>
+      <li>Early outs for rays that cannot hit (outside the bounds, pointing away) cost almost nothing and save the most.</li>
+      <li>Scale the budget with what is on screen: fewer steps at a distance, none beyond a fade distance.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="gpu" data-title="Loops on a GPU" data-builds="compute-shaders#waves reading-a-frame#quads" data-summary="Divergence costs the slowest pixel; derivatives are undefined in loops (use SampleGrad); constant loop bounds with break; march in the data&#x27;s space.">
+  <div class="head"><div class="num"></div><h2>Loops on a GPU</h2></div>
+
+  <div class="prose">
+    <p>Three GPU details decide whether a marcher works and how fast it runs:</p>
+    <ul>
+      <li><strong>Divergence.</strong> Pixels run in groups (<a class="x" href="../compute-shaders/index.html#waves">waves</a>) that execute the same instruction. If one pixel needs 30 steps and its neighbours 4, the whole group waits for 30. Coherent step counts (smooth surfaces, adaptive counts from the view angle) keep groups efficient.</li>
+      <li><strong>Derivatives.</strong> Texture mip selection uses ddx and ddy across a 2×2 pixel quad (<a class="x" href="../reading-a-frame/index.html#quads">quads</a>). Inside a loop or branch, neighbours may be in different iterations, and the derivatives become undefined: flickering mips or seams. Take the UV gradients once before the loop and sample with explicit gradients (SampleGrad).</li>
+      <li><strong>Loop bounds.</strong> Give the loop a constant maximum and break early. A loop with a material property as its bound may be unrolled or rejected by some compilers; a constant bound with a break compiles everywhere.</li>
+    </ul>
+    <p>And one space detail: march in the space where the data lives. Height fields in tangent space, an eye in object space, a volume in its own box. Transform the ray once, not the data per step.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A parallax material flickers with blocky mips along steep edges. The texture is sampled with Sample() inside the loop. Fix?", ["More steps", "Compute ddx/ddy of the UV before the loop and use SampleGrad inside", "Use bisection", "Disable mips"], 1, "Derivatives are undefined in divergent loops; explicit gradients restore stable mip selection."], ["An SDF shape shows holes at its silhouette. Cheapest fix?", ["Lower the hit threshold", "Raise the maximum step count, or accept a hit when the step budget runs out near the surface", "Use bisection", "Increase the cube size"], 1, "Grazing rays run out of steps before converging; give them more steps or treat a small final distance as a hit."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="A cube as bounds, a Custom Function sphere trace, alpha clip for misses, the SDF normal for lighting, a step-count debug view.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route builds the sphere-tracing example as a material: a cube mesh is the bounding volume, a Custom Function marches a distance field inside it, and Alpha Clipping discards the pixels that miss. It is the smallest complete ray marcher in Shader Graph and the template for anything SDF-based. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="hlsl"><b>HLSL file</b><span>RayMarchSDF.hlsl: a distance-field scene, sphere tracing and normals.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph on a cube: march, clip misses, light the hit with its own normal.</span></div></div>
+<ol class="impl-steps"><li><div>Put <code>RayMarchSDF.hlsl</code> in <code>Assets/Shaders/</code>. Create a cube (<em>GameObject &gt; 3D Object &gt; Cube</em>); its unit size matches the bounds the file assumes.</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>: enable <em>Alpha Clipping</em>; leave Surface Type Opaque.</div></li><li><div>Add a <em>Position</em> node (Object), a <em>View Direction</em> node (Object), a <em>Time</em> node and two Float properties <code>MaxSteps</code> (default 48) and <code>Epsilon</code> (0.001). In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>RayMarchSDF.hlsl</code> and <em>Name</em> to <code>SphereTrace</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionOS (Vector 3), ViewDirOS (Vector 3), Time (Float), MaxSteps (Float), Epsilon (Float)</b> and the outputs <b>Hit (Float), HitPositionOS (Vector 3), NormalOS (Vector 3), Steps (Float)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect <em>Hit</em> to <em>Alpha</em> and set <em>Alpha Clip Threshold</em> to 0.5: rays that miss leave a hole in the cube.</div></li><li><div>Lighting: transform <em>NormalOS</em> with a <em>Transform</em> node (Object to Tangent, Type Direction) into <em>Normal (Tangent Space)</em>, or set the graph's <em>Fragment Normal Space</em> to Object and connect it directly. Base Color and Smoothness as for any Lit material.</div></li><li><div>Debug the cost: temporarily connect <em>Steps / MaxSteps</em> to <em>Emission</em>. Bright pixels are expensive; they cluster at silhouettes and grazing angles, as the sphere-tracing chapter predicts.</div></li><li><div>Optional: write the hit depth. Enable <em>Depth Offset</em> in the graph settings and feed the distance between the cube surface and the hit along the view ray, so other objects intersect the shape correctly.</div></li></ol>
+<div class="files"><div class="file" data-name="RayMarchSDF.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_RAYMARCH_SDF_INCLUDED
+#define ATLAS_RAYMARCH_SDF_INCLUDED
+
+// Sphere tracing a small signed-distance scene inside a cube mesh (object space, cube from -0.5 to 0.5).
+// Replace Atlas_Scene with your own distance function.
+
+float Atlas_SdSphere(float3 p, float r)  { return length(p) - r; }
+float Atlas_SdTorus(float3 p, float2 t)  { float2 q = float2(length(p.xz) - t.x, p.y); return length(q) - t.y; }
+float Atlas_SmoothMin(float a, float b, float k)
+{
+    float h = saturate(0.5 + 0.5 * (b - a) / k);
+    return lerp(b, a, h) - k * h * (1.0 - h);
+}
+
+float Atlas_Scene(float3 p, float time)
+{
+    float s = Atlas_SdSphere(p - float3(0.0, 0.08 * sin(time), 0.0), 0.2);
+    float t = Atlas_SdTorus(p, float2(0.28, 0.06));
+    return Atlas_SmoothMin(s, t, 0.08);
+}
+
+float3 Atlas_SceneNormal(float3 p, float time)
+{
+    const float2 e = float2(1e-3, 0.0);          // central differences: 6 extra scene evaluations
+    return normalize(float3(Atlas_Scene(p + e.xyy, time) - Atlas_Scene(p - e.xyy, time),
+                            Atlas_Scene(p + e.yxy, time) - Atlas_Scene(p - e.yxy, time),
+                            Atlas_Scene(p + e.yyx, time) - Atlas_Scene(p - e.yyx, time)));
+}
+
+// PositionOS: the cube&#x27;s surface point; ViewDirOS: View Direction node in Object space (towards the camera).
+void SphereTrace_float(float3 PositionOS, float3 ViewDirOS, float Time, float MaxSteps, float Epsilon,
+                       out float Hit, out float3 HitPositionOS, out float3 NormalOS, out float Steps)
+{
+    float3 ro = PositionOS;
+    float3 rd = -normalize(ViewDirOS);           // from the camera into the cube
+    float  t = 0.0;
+    Hit = 0.0; Steps = 0.0;
+
+    [loop]
+    for (int i = 0; i &lt; 128; i++)
+    {
+        if (i &gt;= (int)MaxSteps) break;
+        float d = Atlas_Scene(ro + rd * t, Time);
+        Steps = i + 1;
+        if (d &lt; Epsilon) { Hit = 1.0; break; }   // close enough: call it a hit
+        t += d;                                  // safe step: nothing is closer than d
+        if (t &gt; 1.8) break;                      // left the cube (its diagonal is ~1.73)
+    }
+    HitPositionOS = ro + rd * t;
+    NormalOS = Hit &gt; 0.5 ? Atlas_SceneNormal(HitPositionOS, Time) : float3(0.0, 0.0, 1.0);
+}
+#endif</pre></div></div>
+<p class="note">The loop has a fixed upper bound (128) and breaks early on MaxSteps, which keeps the compiler from unrolling it. The normal costs six extra scene evaluations; for heavy scenes compute it once at the hit, never inside the loop.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: the same file and graph work in a URP Lit graph; enable Alpha Clipping the same way.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="A Masked material, a Custom node with a local struct for the SDF, opacity mask from the hit, world normal, a cost view.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>The same sphere tracer as a Custom node on a cube. Unreal Custom nodes cannot declare functions directly, so the distance functions sit in a local struct, a common pattern for Custom-node code. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>SphereTrace.ush: the scene, the march and the normal.</span></div><div class="rt" data-k="mat"><b>Material</b><span>A Masked material on a cube: Opacity Mask from the hit, normal in world space.</span></div></div>
+<ol class="impl-steps"><li><div>Create a material with <em>Blend Mode</em> <code>Masked</code>, <em>Shading Model</em> <code>Default Lit</code>, and untick <em>Tangent Space Normal</em> (the march returns a world-space normal; the scene here is unrotated, so local and world axes match).</div></li><li><div>Add a <em>Custom</em> node with <code>SphereTrace.ush</code>. Inputs: <code>P</code> from <em>Absolute World Position</em>, <code>O</code> from <em>Object Position</em>, <code>Scale</code> as a scalar (100 for the engine cube), <code>CamVec</code> from <em>CameraVector</em>, <code>Time</code>, <code>MaxSteps</code> (48), <code>Epsilon</code> (0.001). Output Type <code>CMOT Float 1</code>; Additional Outputs <code>NormalWS</code> (Float 3) and <code>Steps</code> (Float 1).</div></li><li><div>Connect the result to <em>Opacity Mask</em> (clip value 0.5) and NormalWS to <em>Normal</em>. Place the material on the engine cube.</div></li><li><div>Cost view: put Steps / MaxSteps into <em>Emissive Color</em> temporarily, or use <em>Shader Complexity</em> view mode, which also reflects the loop.</div></li><li><div>For a rotated or scaled object, transform <code>ro</code> and <code>rd</code> with <em>Transform</em> nodes (World to Local) before the Custom node, and the normal back with Local to World.</div></li></ol>
+<div class="files"><div class="file" data-name="SphereTrace.ush" data-lang="hlsl"><pre>// Custom node &quot;SphereTrace&quot;. Inputs: P (float3, Absolute World Position), O (float3, Object Position),
+// Scale (float, the object&#x27;s size in cm, e.g. 100), CamVec (float3, CameraVector), Time (float),
+// MaxSteps (float), Epsilon (float). Output Type: CMOT Float 1 (hit, use as Opacity Mask).
+// Additional Outputs: NormalWS (CMOT Float 3), Steps (CMOT Float 1).
+// Helper functions live in a local struct: the usual way to define functions inside a Custom node.
+struct SDFScene
+{
+    float SdSphere(float3 p, float r) { return length(p) - r; }
+    float SdTorus(float3 p, float2 t) { float2 q = float2(length(p.xy) - t.x, p.z); return length(q) - t.y; }   // Z-up
+    float SMin(float a, float b, float k) { float h = saturate(0.5 + 0.5 * (b - a) / k); return lerp(b, a, h) - k * h * (1.0 - h); }
+    float Map(float3 p, float time) { return SMin(SdSphere(p - float3(0, 0, 0.08 * sin(time)), 0.2), SdTorus(p, float2(0.28, 0.06)), 0.08); }
+};
+SDFScene s;
+float3 ro = (P - O) / Scale;            // local space, the mesh spans -0.5 .. 0.5
+float3 rd = -normalize(CamVec);         // CameraVector points from the pixel to the camera
+float t = 0.0, hit = 0.0;
+Steps = 0.0;
+for (int i = 0; i &lt; 128; i++)
+{
+    if (i &gt;= (int)MaxSteps) break;
+    float d = s.Map(ro + rd * t, Time);
+    Steps = i + 1;
+    if (d &lt; Epsilon) { hit = 1.0; break; }
+    t += d;
+    if (t &gt; 1.8) break;
+}
+float3 p = ro + rd * t;
+float2 e = float2(1e-3, 0.0);
+NormalWS = normalize(float3(s.Map(p + e.xyy, Time) - s.Map(p - e.xyy, Time),
+                            s.Map(p + e.yxy, Time) - s.Map(p - e.yxy, Time),
+                            s.Map(p + e.yyx, Time) - s.Map(p - e.yyx, Time)));
+return hit;</pre></div></div>
+<p class="note">Pixel Depth Offset can push the depth to the hit so the shape intersects other geometry correctly; it disables some early depth optimisations, so use it only where you see the intersection.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Paper</span><a href="https://link.springer.com/article/10.1007/s003710050084" rel="noopener">Sphere tracing: a geometric method for the antialiased ray tracing of implicit surfaces</a></span><span class="by">John C. Hart · The Visual Computer, 1996</span><span class="why">The original sphere-tracing paper.</span></li><li><span><span class="kind">Article</span><a href="https://iquilezles.org/articles/distfunctions/" rel="noopener">Distance functions</a></span><span class="by">Inigo Quilez</span><span class="why">Exact distance functions for primitives and how to combine them.</span></li><li><span><span class="kind">Article</span><a href="https://iquilezles.org/articles/raymarchingdf/" rel="noopener">Raymarching distance fields</a></span><span class="by">Inigo Quilez</span><span class="why">Practical sphere tracing, normals and step control.</span></li><li><span><span class="kind">Book</span><a href="https://pbr-book.org/4ed/Volume_Scattering" rel="noopener">Physically Based Rendering, 4th edition: volume scattering</a></span><span class="by">Pharr, Jakob, Humphreys</span><span class="why">Transmittance and why marching volumes integrates.</span></li><li><span><span class="kind">Talk</span><a href="https://www.ea.com/frostbite/news/physically-based-sky-atmosphere-and-cloud-rendering" rel="noopener">Physically based sky, atmosphere and cloud rendering in Frostbite</a></span><span class="by">Sébastien Hillaire · SIGGRAPH 2016</span><span class="why">Jittered volume marching with temporal reprojection.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.shadergraph@17.0/manual/Custom-Function-Node.html" rel="noopener">Shader Graph Custom Function node</a></span><span class="by">Unity</span><span class="why">File mode, function naming and texture types used by the build files.</span></li></ul>
+</section>
+
+<div class="next" data-next="fpom parallax eyes"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"raymarch": [
+"Ray marching",
+"Finding where a ray meets something by stepping along it and testing points.",
+"#idea"
+],
+"bracket": [
+"Bracket",
+"Two points on the ray, one above and one below the surface, that enclose the hit.",
+"#find"
+],
+"secant": [
+"Secant step",
+"Refining a bracket by assuming the surface is straight between its ends and jumping to the zero crossing.",
+"#find"
+],
+"sdf": [
+"Signed distance field",
+"A function giving the distance to the nearest surface, negative inside; allows safe large steps.",
+"#sdf"
+],
+"spheretrace": [
+"Sphere tracing",
+"Ray marching with the SDF value as the step length.",
+"#sdf"
+],
+"slab": [
+"Bounding slab",
+"The range between a height field's lowest and highest value; the only place a hit can be.",
+"#heightfield"
+],
+"jitter": [
+"Jitter",
+"A random per-pixel offset of the sample positions that turns banding into noise.",
+"#budget"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=76a6bcc6"></script>
+<script src="../../assets/index.js?v=97e4c60c"></script>
+<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="raymarch.js?v=4020f25c"></script>
+</body>
+</html>

@@ -34,12 +34,13 @@
     { id: 'character-shading', name: 'Character shading', units: ['pbr-brdf', 'skin', 'hair', 'cloth', 'fabric-folds', 'mapping'] },
     { id: 'substance-designer', name: 'Substance Designer from zero', units: ['color-values', 'sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'texture-settings'] },
     { id: 'unity-hygiene', name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] },
-    { id: 'surfaces', name: 'Surfaces: metal, glass and water', units: ['pbr-terms', 'pbr-basics', 'metals', 'reflections', 'glass', 'screen-transparency', 'depth-effects', 'water'] }
+    { id: 'surfaces', name: 'Surfaces: metal, glass and water', units: ['pbr-terms', 'pbr-basics', 'metals', 'reflections', 'glass', 'screen-transparency', 'depth-effects', 'water'] },
+    { id: 'eyes-raymarch', name: 'Ray marching to a realistic eye', units: ['rays-math', 'ray-marching', 'parallax', 'fpom', 'glass', 'color-tint', 'eyes'] }
   ];
 
   /* The banner at the top of the hub. kind 'path' (id from ATLAS_PATHS) or 'unit' (a slug).
      Its picture is assets/img/paths/<id>.webp (or the unit's hero image); a placeholder is drawn until one exists. */
-  window.ATLAS_FEATURED = { kind: 'path', id: 'surfaces', date: '2026-10-22', title: 'Surfaces: metal, glass, water', subtitle: 'Why metals have coloured reflections, how glass bends light, and every trick for water.', button: 'Go to path' };
+  window.ATLAS_FEATURED = { kind: 'path', id: 'eyes-raymarch', date: '2026-10-25', title: 'Ray marching to a realistic eye', subtitle: 'Marching rays and height fields on a budget, tinting colours safely, and an eye shader from a painted sphere to a raymarched iris.', button: 'Go to path' };
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
   window.ATLAS_UNITS = [
@@ -91,6 +92,12 @@
     { slug: 'cloud-march', cat: 'shade', title: 'Marching a Cloud Layer', topic: 'Volumetric clouds', minutes: 70, level: 'Intermediate', engines: ALL,
       summary: 'From the layer interval to a raymarch: step sizes, density from height and noise, transmittance, light marching, phase functions and what it costs.',
       tags: ['clouds', 'volumetric', 'raymarching', 'fbm', 'noise', 'beer lambert', 'henyey greenstein', 'phase function', 'powder', 'transmittance'] },
+    { slug: 'ray-marching', cat: 'shade', title: 'Ray Marching', topic: 'Stepping along a ray until it hits', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'The general method behind POM, clouds and SDF scenes: fixed steps, finding the crossing with bisection and secant steps, sphere tracing distance fields, height fields with bounding slabs, volumes, step budgets, jitter, and loops on the GPU.',
+      tags: ['ray marching', 'raymarch', 'sphere tracing', 'sdf', 'signed distance field', 'secant', 'bisection', 'height field', 'volume', 'step count', 'jitter', 'blue noise', 'loop', 'ddx'] },
+    { slug: 'fpom', cat: 'shade', title: 'Fast Parallax Occlusion Mapping', topic: 'POM with a small budget', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'What makes parallax occlusion mapping fast: adaptive step counts, starting at the highest point, coarse steps with secant refinement, analytic heights instead of fetches, gradients taken once, and distance fades.',
+      tags: ['fpom', 'pom', 'parallax occlusion mapping', 'fast pom', 'height map', 'secant', 'adaptive steps', 'sample grad', 'mip', 'derivatives', 'texture fetch', 'performance'] },
     { slug: 'parallax', cat: 'shade', title: 'Parallax and POM', topic: 'Height maps without geometry', minutes: 55, level: 'Intermediate', engines: ALL,
       summary: 'Offset parallax, steep parallax and parallax occlusion mapping step by step, adaptive step counts, self-shadowing, gradients and depth offset.',
       tags: ['parallax', 'pom', 'parallax occlusion mapping', 'height map', 'steep parallax', 'relief', 'self shadow', 'pixel depth offset'] },
@@ -116,6 +123,9 @@
     { slug: 'texture-memory', cat: 'tex', title: 'Texels on a Budget', topic: 'Texture memory and compression', minutes: 70, level: 'Beginner', engines: ALL,
       summary: 'What a texture costs, mipmaps and texel density, BC1 to BC7 and ASTC, sRGB versus data, channel packing per engine, and normal maps.',
       tags: ['texture', 'compression', 'bc1', 'bc7', 'bc5', 'astc', 'mipmap', 'texel density', 'srgb', 'mask map', 'orm', 'channel packing', 'normal map'] },
+    { slug: 'color-tint', cat: 'tex', title: 'Tinting and Clamping Colour', topic: 'Tint masks, luminance and saturation limits', minutes: 40, level: 'Beginner', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Colour maths for tintable materials: working in linear, multiply tints, the 50 % grey tint-mask convention, luminance, hue-preserving desaturation, clamping colours to a plausible range, and other tint tools.',
+      tags: ['tint', 'tinting', 'colour', 'color', 'luminance', 'saturation', 'desaturate', 'clamp', 'hue', 'grey mask', 'tint mask', 'linear', 'srgb', 'team colour', 'gradient map', 'iris colour'] },
     { slug: 'pbr-basics', cat: 'tex', title: 'PBR Materials: the Basics', topic: 'What each map means', minutes: 45, level: 'Beginner', engines: ALL,
       summary: 'The metal/roughness workflow from the artist side: base colour ranges, metallic as a switch, roughness, normal, AO and height, and how to check values.',
       tags: ['pbr', 'albedo', 'base color', 'metallic', 'roughness', 'smoothness', 'specular gloss', 'ambient occlusion', 'height', 'material validation'] },
@@ -150,6 +160,9 @@
       tags: ['water', 'ocean', 'river', 'fresnel', 'gerstner', 'waves', 'flow map', 'depth', 'absorption', 'beer lambert', 'foam', 'caustics', 'underwater', 'single layer water', 'hdrp water'] },
 
     /* Characters */
+    { slug: 'eyes', cat: 'char', title: 'Eyes: from a Painted Sphere to a Raymarched Iris', topic: 'Cornea refraction, iris depth, tint', minutes: 75, level: 'Advanced', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Eye anatomy in shader terms, then five tiers of eye shader: a painted sphere, parallax offset, two meshes with refraction, one mesh refracted onto an iris plane (HDRP Eye), and an iris raymarched against an analytic profile with one texture fetch. Tinting, mesh conventions and cost.',
+      tags: ['eye', 'eyes', 'iris', 'cornea', 'sclera', 'limbus', 'pupil', 'refraction', 'raymarch', 'fpom', 'parallax', 'hdrp eye', 'cornea refraction', 'iris tint', 'caustic', 'diffusion profile', 'character'] },
     { slug: 'skin', cat: 'char', title: 'Skin: Light Under the Surface', topic: 'Subsurface scattering', minutes: 60, level: 'Intermediate', engines: ALL,
       summary: 'Why skin is not Lambert: wrap lighting, diffusion profiles, screen-space and pre-integrated scattering, transmission through ears, and a dual-lobe specular.',
       tags: ['skin', 'subsurface scattering', 'sss', 'diffusion profile', 'pre-integrated', 'wrap lighting', 'transmission', 'thickness', 'dual specular', 'character'] },
@@ -208,7 +221,8 @@
     '2026-10-17': ['skin', 'hair', 'cloth', 'fabric-folds', 'mapping'],
     '2026-10-18': ['compute-shaders', 'pbr-basics', 'texturing', 'texture-settings'],
     '2026-10-21': ['sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables'],
-    '2026-10-22': ['pbr-terms', 'metals', 'reflections', 'glass', 'screen-transparency', 'water']
+    '2026-10-22': ['pbr-terms', 'metals', 'reflections', 'glass', 'screen-transparency', 'water'],
+    '2026-10-25': ['ray-marching', 'fpom', 'color-tint', 'eyes']
   };
   /* Defaults for the tile badges.
      type: 'unit' (a lesson) or 'workflow' (a step-by-step production recipe).

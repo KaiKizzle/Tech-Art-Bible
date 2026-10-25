@@ -641,3 +641,55 @@ body.app{display:grid;grid-template-columns:76px minmax(0,1fr);min-height:100vh;
 /* unit and legal page header on small screens */
 @media (max-width:760px){ .hubtop{gap:10px} .hubtop .top-search,.hubtop nav .opt{display:none} }
 @media (max-width:440px){ .hubtop nav a:nth-child(2){display:none} .hubtop .btn{padding-inline:10px} .hubtop .logo{font-size:.98rem} }
+
+/* ---------- unit pages v5: the hub's shell, chapter card next to a wider content column ---------- */
+:root{--col:1180px;--railw:268px}
+body.unitpage .topbar,body.legal .topbar{padding-block:10px}
+body.unitpage .searchpill,body.legal .searchpill{height:46px;padding:0 20px}
+.unitpage .page{display:grid;grid-template-columns:var(--railw) minmax(0,var(--col));gap:26px;justify-content:center;margin:0;padding:6px clamp(16px,2.4vw,32px) 0;max-width:none}
+.unitpage .page>main{padding:0 0 96px;max-width:none;min-width:0;container-type:inline-size;container-name:unit}
+.unitpage .page>main>*:not(.topnav){max-width:none;margin-left:0;margin-right:0}
+.unitpage .rail{position:sticky;top:76px;align-self:start;height:auto;border:0;padding:0;overflow:visible;font-size:.92rem}
+.rail-card{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--tc,var(--accent));border-radius:14px;padding:14px 10px 14px;max-height:calc(100vh - 92px);overflow:auto;overscroll-behavior:contain}
+.unitpage .rail .brand{font-family:var(--font-poster);text-transform:uppercase;font-weight:600;font-size:1.28rem;letter-spacing:.01em;line-height:1.08;margin:12px 8px 14px}
+.rail-k{margin:0 10px 6px;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.unitpage .rail a.ch{border-radius:8px;padding:6px 10px;line-height:1.3}
+.unitpage .rail a.ch.current{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent);color:var(--ink)}
+.unitpage .rail .sep{margin:16px 10px 6px;font-size:.7rem;letter-spacing:.1em}
+/* breadcrumb: hub-style chips at the top of the chapter card */
+.unitpage .crumbs{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0 4px;font-size:.8rem}
+.crumbs .cr{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);text-decoration:none;font-weight:600;white-space:nowrap}
+.crumbs .cr:hover{color:var(--ink);border-color:var(--muted)}
+.crumbs .cr .dot{width:8px;height:8px;border-radius:50%;background:var(--tc,var(--accent));display:inline-block}
+.crumbs .cr svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+/* header and key art side by side */
+.unit-top{display:grid;gap:18px;margin-top:6px}
+.unit-top .keyart{margin:0}
+@container unit (min-width:900px){
+  .unit-top{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:26px;align-items:stretch}
+  .unit-top .unit-head{padding-top:14px;align-content:start}
+  .unit-top .unit-head h1{font-size:clamp(2rem,3.2vw,2.7rem)}
+  .unit-top .keyart{aspect-ratio:auto;min-height:260px;height:100%}
+  .unit-top .keyart img{position:absolute;inset:0}
+}
+/* live formulas: controls beside the pictures on wide columns */
+.unitpage .chapter{container-type:inline-size}
+@container (min-width:860px){
+  .fx:has(> .fx-body){grid-template-columns:minmax(0,1fr) minmax(300px,34%);column-gap:20px;align-items:start}
+  .fx:has(> .fx-body)>*{grid-column:1/-1}
+  .fx:has(> .fx-body)>.fx-body{grid-column:1;grid-row:span 2}
+  .fx:has(> .fx-body)>.fx-vars{grid-column:2;border-top:0;padding-top:0;grid-template-columns:1fr!important}
+  .fx:has(> .fx-body)>.fx-ctl,.fx:has(> .fx-body)>p.cap{grid-column:2}
+  .fx:has(> .fx-body) .fx-vars>.fx-var{grid-column:auto!important;grid-template-columns:minmax(2.2em,max-content) minmax(0,1fr) 5.2em!important;grid-template-areas:"s n o" "r r r";row-gap:4px}
+  .fx:has(> .fx-body) .fx-var .fv-s{grid-area:s}.fx:has(> .fx-body) .fx-var .fv-n{grid-area:n}.fx:has(> .fx-body) .fx-var output{grid-area:o}
+  .fx:has(> .fx-body) .fx-var input,.fx:has(> .fx-body) .fx-var .fx-const,.fx:has(> .fx-body) .fx-var .fx-seg{grid-area:r;padding-left:0}
+  .fx:has(> .fx-body) .fx-var.seg output{display:none}
+  .fx:has(> .fx-body) .fx-ctl{flex-wrap:wrap}
+  .fx-body:not(.two) canvas{max-height:440px;width:auto;max-width:100%;margin:0 auto}
+}
+@media (max-width:980px){
+  .unitpage .page{grid-template-columns:minmax(0,1fr);padding:0 16px}
+  .unitpage .rail{display:none}
+  body.unitpage .topbar{position:static}
+}
+.mini{border-top:3px solid var(--c,var(--line))}

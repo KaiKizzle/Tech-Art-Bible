@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Eyes: from a Painted Sphere to a Raymarched Iris · Tech Art Atlas</title>
+<meta name="description" content="Eye anatomy in shader terms, then five tiers of eye shader from the cheapest to a raymarched iris: a painted sphere, a parallax offset, two meshes with refraction, HDRP&#x27;s iris-plane refraction, and an analytic iris marched with one texture fetch, plus tinting, mesh conventions and cost, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+</head>
+<body data-unit="eyes" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Eyes: from a Painted Sphere to a Raymarched Iris</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Characters · 11 chapters</div>
+  <h1>Eyes: from a Painted Sphere to a Raymarched Iris</h1>
+  <p class="lede">Eye anatomy in shader terms, then five tiers of eye shader from the cheapest to a raymarched iris: a painted sphere, a parallax offset, two meshes with refraction, HDRP's iris-plane refraction, and an analytic iris marched with one texture fetch, plus tinting, mesh conventions and cost, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Glass, Ray Marching, Fast POM and Tinting and Clamping Colour. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/eyes.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>An eye in close-up: a recessed iris behind a glossy cornea, seen slightly from the side.</figcaption></figure>
+</div>
+<div class="needs" data-needs="glass#snell ray-marching#heightfield color-tint#greymask"></div>
+
+<section class="chapter" id="anatomy" data-title="The parts that matter for shading" data-builds="glass#snell glass#shapes" data-summary="Sclera, cornea (R ≈ 7.8 mm), limbus, anterior chamber (~3 mm), iris, pupil. Cornea bulge h = R − √(R² − r²).">
+  <div class="head"><div class="num"></div><h2>The parts that matter for shading</h2></div>
+
+  <div class="prose">
+    <p>An eye is a white ball (the <button type="button" class="term" data-term="sclera">sclera</button>) with a clear dome on the front (the <button type="button" class="term" data-term="cornea">cornea</button>). The ring where they meet is the <em>limbus</em>. Behind the cornea is a few millimetres of clear fluid, the <em>anterior chamber</em>, and at its back the <button type="button" class="term" data-term="iris">iris</button>, a muscle disc with a hole, the pupil, through which the lens shows black.</p>
+    <p>The two numbers that decide the look are how far the cornea bulges and how deep the iris sits behind it. Typical adult values are a cornea radius near 7.8 mm, a visible iris about 11.5–12 mm wide, and an anterior chamber around 2.5–3.5 mm deep:</p>
+  </div>
+  <div class="fx" data-fx="cornea"></div>
+  <div class="prose">
+    <p>Everything that makes eyes read as real follows from this geometry: the iris sits several millimetres behind a glossy, refracting surface. It moves against the highlight when the head turns, the pupil stays round from the side, the iris disappears behind the limbus at grazing angles, and light focuses on the far side of the iris (the caustic). Each of the five shader tiers below captures more of it.</p>
+  </div>
+
+</section>
+<section class="chapter" id="painted" data-title="Tier 0: a painted sphere" data-builds="eyes#anatomy mapping#matcap" data-summary="Painted iris on the surface; the real iris shifts d·tan(asin(sin θ / n)), about a third of its radius at 40°.">
+  <div class="head"><div class="num"></div><h2>Tier 0: a painted sphere</h2></div>
+
+  <div class="prose">
+    <p>The cheapest eye is a sphere with the iris painted on it, a glossy material and maybe a painted highlight. Head-on and at a distance it is fine. Turn the head and the illusion breaks, because the painted iris sits on the surface instead of under it. The real iris shifts by this much:</p>
+  </div>
+  <div class="fx" data-fx="shift"></div>
+  <div class="prose">
+    <p>A few tricks stretch tier 0: a separate highlight on a slightly larger transparent sphere (so it moves with the camera, not the iris), a matcap for the reflection (<a class="x" href="../mapping/index.html#matcap">matcaps</a>), and an ambient occlusion shadow from the eyelids painted or computed at the top of the eye. Painted highlights are the one thing to avoid: they stay put when the light moves.</p>
+  </div>
+
+</section>
+<section class="chapter" id="offset" data-title="Tier 1: a parallax offset" data-builds="eyes#painted parallax#offset" data-summary="uv −= V.xy/V.z · d: plain tan θ overshoots; tan θ / n or a clamp is the cheap fix; good to ~30°.">
+  <div class="head"><div class="num"></div><h2>Tier 1: a parallax offset</h2></div>
+
+  <div class="prose">
+    <p>One instruction block fixes most of tier 0: shift the iris UVs against the view direction, as if the iris were a layer under the surface (<a class="x" href="../parallax/index.html#offset">parallax offset</a>). The plain offset uses tan θ, which explodes towards grazing angles. Refraction bends the view ray towards the axis on entering the cornea, so the real shift grows much more slowly. Dividing the offset by the IOR is a cheap middle ground:</p>
+  </div>
+  <div class="fx" data-fx="bump"></div>
+  <div class="prose"><p>Clamp the offset (or fade it towards the limbus) and tier 1 holds up to about 30° off axis, which covers most gameplay cameras. It still treats the iris as a flat sticker and the cornea as flat glass: the pupil turns oval at angles, and the iris never disappears behind the limbus.</p></div>
+
+</section>
+<section class="chapter" id="twomesh" data-title="Tier 2: two meshes and a refractive cornea" data-builds="glass#realtime screen-transparency#copies" data-summary="Opaque eyeball with real iris + transparent cornea shell: correct at every angle; costs a transparent draw and a screen copy.">
+  <div class="head"><div class="num"></div><h2>Tier 2: two meshes and a refractive cornea</h2></div>
+
+  <div class="prose">
+    <p>The physical setup models what is there: an opaque eyeball with a real, recessed iris (a disc or slight cone of geometry, the pupil a hole or a dark texture), plus a separate transparent cornea shell over it. The shell refracts what is behind it like any <a class="x" href="../glass/index.html#realtime">glass</a>, so depth, parallax and the oval-from-the-side look come for free, and the iris can even have real geometry for the collarette.</p>
+    <p>The costs are of a different kind:</p>
+    <ul>
+      <li>Two draws per eye, one of them transparent, with the usual <a class="x" href="../transparency/index.html#order">sorting</a> concerns against eyelashes and the tear line.</li>
+      <li>Screen-space refraction needs a copy of the screen (<a class="x" href="../screen-transparency/index.html#copies">the colour pyramid</a>). If nothing else in the scene refracts, the eyes alone trigger that full-screen work.</li>
+      <li>Refracted reflections and depth of field interact badly with transparent shells in some pipelines.</li>
+    </ul>
+    <p>Offline renderers and some cinematic setups use it. In real-time engines, the single-mesh approaches below are usually cheaper overall because all their work stays inside the eye's own pixels.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A game scene has no glass or water. You add two-mesh eyes with screen refraction. What new cost appears?", ["None", "A full-screen colour copy (and pyramid) every frame, triggered only by the eyes", "More shadow maps", "Larger textures"], 1, "Refraction reads a copy of the screen; something has to produce it."]]</script></details>
+
+</section>
+<section class="chapter" id="plane" data-title="Tier 3: one mesh, refracted onto an iris plane" data-builds="eyes#anatomy glass#snell" data-summary="Refract at the cornea, hit the plane z = −d, use the hit as iris UV. HDRP: Cornea Refraction → Iris UV Location → pupil animation.">
+  <div class="head"><div class="num"></div><h2>Tier 3: one mesh, refracted onto an iris plane</h2></div>
+
+  <div class="prose">
+    <p>HDRP's Eye shader keeps one closed mesh (sclera plus cornea bulge) and computes the iris instead of modelling it. For each cornea pixel, the view ray is refracted at the cornea normal and intersected with a flat plane at the iris depth; the hit point becomes the iris UV:</p>
+  </div>
+  <div class="fx" data-fx="plane"></div>
+  <div class="prose">
+    <p>In Shader Graph that is a short chain of HDRP eye nodes: <em>Cornea Refraction</em> (refract and intersect the plane), <em>Iris UV Location</em> (plane position to UV), <em>Circle Pupil Animation</em> (dilation), <em>Iris Offset</em> (off-centre pupils), and <em>Sclera UV Location</em> for the white. The Eye master stack then lights cornea and iris separately (iris normal, two diffusion profiles), and <em>Eye Cinematic With Caustic</em> adds the light focused through the cornea onto the far side of the iris.</p>
+    <p>The limitation is the word <em>plane</em>. A real iris is a shallow cone, pushed forward at the pupil by the lens and recessed at the root; on a plane the pupil smears into an oval at angles and the iris lacks the depth gradient. Many setups compensate by raising the IOR far above the physical 1.336 (values of 3 or more appear in sample materials), which magnifies and flattens the parallax instead of fixing it.</p>
+  </div>
+
+</section>
+<section class="chapter" id="profile" data-title="Tier 4: the iris is not flat" data-builds="ray-marching#heightfield eyes#plane" data-summary="h(r) = cone·smoothstep(s) + ridge·Gaussian: an analytic height field bounded by a thin slab; detail stays in a texture.">
+  <div class="head"><div class="num"></div><h2>Tier 4: the iris is not flat</h2></div>
+
+  <div class="prose">
+    <p>The step beyond the plane is to give the iris a shape and find where the refracted ray meets it. The shape does not need a texture: three features carry most of the visible depth, and each is a short formula:</p>
+    <ul>
+      <li>A <strong>cone</strong> rising from the recessed root to the pupil margin, which the lens pushes forward. A smoothstep gives it zero slope at both ends, so it blends into the root and the pupil plateau without creases.</li>
+      <li>The <strong>collarette</strong>, a soft ridge about a third of the way out from the pupil: a Gaussian bump.</li>
+      <li>The <strong>pupil</strong> region is the hole; the profile is evaluated in the same radius space as the pupil animation so the shape dilates with the texture.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="profile"></div>
+  <div class="prose"><p>Because the profile is always between 0 and cone + ridge, the surface is guaranteed to lie in a thin slab above the iris root, exactly the bound a <a class="x" href="../ray-marching/index.html#heightfield">height-field march</a> needs. Fine detail (crypts, fibres) stays in a texture and is added once at the end.</p></div>
+
+</section>
+<section class="chapter" id="march" data-title="Marching the iris" data-builds="fpom#coarse fpom#gradients eyes#profile" data-summary="Refract, early out, march the slab with 4–8 ALU steps, 2 secant steps, 1 optional detail fetch; normal from the profile slope.">
+  <div class="head"><div class="num"></div><h2>Marching the iris</h2></div>
+
+  <div class="prose">
+    <p>The march is the <a class="x" href="../fpom/index.html#recap">fast POM</a> recipe in the eye's object space:</p>
+    <ol>
+      <li><strong>Refract</strong> at the cornea, as in tier 3.</li>
+      <li><strong>Early out</strong>: if the refracted ray points away from the iris or lands well outside it on the base plane, return the plane result. The sclera and the outer cornea pay almost nothing.</li>
+      <li><strong>Bound</strong>: start where the ray enters the slab (top of the profile), end at the iris root.</li>
+      <li><strong>Adaptive linear steps</strong> through the slab, 4 when looking straight in and up to 8 at grazing angles, each one an evaluation of the formula, no texture.</li>
+      <li><strong>Two secant steps</strong> between the last point above and the first below.</li>
+      <li><strong>One detail fetch</strong> at the hit: the height texture pushes the hit a little further along the ray (dark = deeper). Skipped entirely when the detail depth is 0.</li>
+    </ol>
+  </div>
+  <div class="fx" data-fx="march"></div>
+  <div class="prose">
+    <p>Two details from building it. The gradients for the one texture fetch are taken from the smooth plane hit before any branch, because inside the loop neighbouring pixels stop at different steps and derivatives become meaningless (<a class="x" href="../fpom/index.html#gradients">gradients</a>). And the iris normal comes from the slope of the profile at the hit, expressed in the cornea's tangent frame, which is what HDRP's Iris Normal input expects; the stock setup lights the iris as if it bulged outward like the cornea.</p>
+    <p>An earlier version marched the iris height texture directly with 9–18 fetches per pixel. The analytic profile gives the depth you notice for none of them; the crypts were never worth 18 dependent reads.</p>
+  </div>
+
+</section>
+<section class="chapter" id="tint" data-title="Tinting the iris" data-builds="color-tint#greymask color-tint#clamp" data-summary="Grey iris texture (mean 128 sRGB) × clamped tint: luminance 0.006–0.32, saturation cap 0.88 → 0.55 with brightness.">
+  <div class="head"><div class="num"></div><h2>Tinting the iris</h2></div>
+
+  <div class="prose">
+    <p>Iris colour is a property players and character artists want to change. The robust setup is the <a class="x" href="../color-tint/index.html#greymask">grey tint mask</a>: the iris texture holds structure only (fibres, crypts, the limbal ring), centred on 50 % grey, and a colour property supplies the hue and brightness. 50 % grey in the texture shows exactly the picked colour.</p>
+    <p>Then the colour is <a class="x" href="../color-tint/index.html#clamp">clamped to what irises can be</a>: luminance between about 0.006 (darkest brown) and 0.32 (lightest grey-blue), and a saturation cap that is higher for dark colours (0.88) than for light ones (0.55), applied in a way that keeps hue and luminance. A pure neon green pick becomes a light jade, pure blue a deep blue-grey, black a very dark brown. Nothing in it depends on a script or a calibration step; it is all in the material.</p>
+    <p>Two related settings: the <em>Iris Clamp Color</em> of HDRP's eye (shown where a grazing ray misses the iris) should follow the tint, and heterochromia is a per-eye tint, easiest with a second material or an eye ID in a vertex channel.</p>
+  </div>
+
+</section>
+<section class="chapter" id="mesh" data-title="Mesh conventions" data-builds="eyes#plane spaces#tangent" data-summary="Closed mesh, dense cornea normals, gaze +Z, limbus z ≈ 0, iris radius 0.22 (mesh-scaled), tangents, separate eye objects.">
+  <div class="head"><div class="num"></div><h2>Mesh conventions</h2></div>
+
+  <div class="prose">
+    <p>Single-mesh eye shaders work in the eye mesh's object space, so the mesh has to follow their conventions:</p>
+    <ul>
+      <li>One closed mesh per eye: sclera sphere plus a cornea cap, no iris geometry, a clean edge loop at the limbus.</li>
+      <li>Smooth, dense normals on the cornea; its normal is the refraction normal, so faceting there turns into a wobbling iris.</li>
+      <li>The gaze along the axis the shader expects (+Z in HDRP's eye), the limbus near z = 0, a known iris radius in mesh units (0.22 after the graph's Mesh Scale in HDRP's setup), uniform scale.</li>
+      <li>Tangents imported, because the iris normal is built in the cornea's tangent frame.</li>
+      <li>Eyes as separate objects parented to eye bones, so gaze is a transform. Eyes merged into a skinned head break the object-space assumptions.</li>
+    </ul>
+    <p>If eyes must stay merged into the head, an import step can bake each eye's frame (centre, gaze axis, limbus) into extra UV channels, fitted per connected component, and the shader reads the frame from the vertex instead of object space. That makes the shader independent of pivots and joins at the cost of a custom importer.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["The iris swims when the character blinks and the eye mesh is part of the skinned head. Why?", ["Wrong IOR", "The shader assumes the eye's object space, but a merged skinned head has the head's object space", "Too few steps", "The tint clamp"], 1, "Separate eye objects on eye bones, or a baked per-vertex eye frame, fix it."]]</script></details>
+
+</section>
+<section class="chapter" id="cost" data-title="Which tier when" data-builds="eyes#march screen-transparency#copies" data-summary="Cost ∝ iris pixels × steps; even a close-up is a few percent of the frame. Mix tiers by distance.">
+  <div class="head"><div class="num"></div><h2>Which tier when</h2></div>
+
+  <div class="prose"><p>Eye cost scales with how much of the screen the irises cover, and in a close-up that is still small compared with full-screen effects:</p></div>
+  <div class="fx" data-fx="eyecost"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Tier</th><th>Meshes and draws</th><th>Per-pixel work</th><th>Full-screen work</th><th>Looks right</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td>0 Painted sphere</td><td>1 opaque</td><td>a texture read</td><td>none</td><td>head-on, at a distance</td><td>crowds, mobile, stylised</td></tr>
+      <tr><td>1 Parallax offset</td><td>1 opaque</td><td>+ a few instructions</td><td>none</td><td>up to ~30° off axis</td><td>most game characters</td></tr>
+      <tr><td>2 Two meshes</td><td>eyeball opaque + cornea transparent</td><td>refraction lookup</td><td>a screen copy (if nothing else needs one)</td><td>all angles, real iris geometry</td><td>offline-like setups, VR with care</td></tr>
+      <tr><td>3 Iris plane (HDRP Eye)</td><td>1 opaque</td><td>refraction + plane hit + eye lighting</td><td>none</td><td>most angles; flat iris</td><td>hero characters</td></tr>
+      <tr><td>4 Raymarched iris</td><td>1 opaque</td><td>tier 3 + 4–8 ALU steps + 0–1 fetch</td><td>none</td><td>all angles, recessed pupil, shaped iris</td><td>close-ups, cinematics</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Mix tiers by distance: tier 4 for the hero in close-ups and cinematics, tier 3 or 1 for the same character in gameplay, tier 0 for crowds. Switch with material LODs or a quality setting rather than shader branches, so each version stays simple.</p></div>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="HDRP Eye graph copy; IrisRaymarch replaces the Cornea Refraction output; IrisCombine for normal and clamped tint; IOR and Iris Plane Offset from the same values.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>This is the setup built for the realistic eye: HDRP's Eye shader graph with its flat iris-plane refraction replaced by the raymarched iris, plus the clamped tint. Everything stays in the eye's pixels: one mesh, one draw, one optional extra texture fetch. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="asset"><b>Asset</b><span>A copy of HDRP's Eye shader graph and its two diffusion profiles (sclera, iris).</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>EyeIrisRaymarch.hlsl: refraction, analytic iris profile, march, detail, normal, cavity.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>IrisCombine.hlsl: normal blend and the plausible-tint clamp.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>Graph changes: the march replaces the Cornea Refraction output; IOR and Iris Plane Offset driven by the same values.</span></div></div>
+<ol class="impl-steps"><li><div>Start from HDRP's eye: <em>Window &gt; Package Management &gt; Package Manager</em>, High Definition RP, <em>Samples &gt; Material Samples &gt; Import</em>. Open the <em>Eye</em> scene, drag an Eye Variant prefab into your scene and press <em>Fix</em> on the material's Sclera and Iris Diffusion Profiles if the eye looks green. Duplicate the sample eye shader graph into <code>Assets/EyeFPOM/Eye_FPOM.shadergraph</code> and point a material copy at it.</div></li><li><div>Check the mesh against the graph's conventions (the mesh chapter): gaze along +Z in object space, limbus at z ≈ 0, iris radius 0.22 in mesh-scaled units (set the graph's <em>Mesh Scale</em> property if your eye is a different size), smooth normals over the cornea, tangents imported, uniform scale.</div></li><li><div>Put <code>EyeIrisRaymarch.hlsl</code> and <code>IrisCombine.hlsl</code> into <code>Assets/EyeFPOM/</code>. In the graph, find the <em>Cornea Refraction</em> node and the mesh-scaled object position that feeds it.</div></li><li><div>Add the material properties: <code>RM Cornea IOR</code> 1.336, <code>RM Iris Depth</code> 0.06, <code>RM Iris Cone Height</code> 0.02, <code>RM Collarette Height</code> 0.004, <code>RM Iris Detail Depth</code> 0.008, <code>RM Min Steps</code> 4, <code>RM Max Steps</code> 8, <code>RM Shape Normal Strength</code> 1, <code>RM Cavity Strength</code> 0.5, a Texture2D <code>RM Iris Height Map</code>, and a Color <code>Iris Tint</code>.</div></li><li><div>In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>EyeIrisRaymarch.hlsl</code> and <em>Name</em> to <code>IrisRaymarch</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionOS (Vector 3, the mesh-scaled position), ViewDirOS (Vector 3), CorneaNormalOS (Vector 3), TangentOS (Vector 3), BitangentOS (Vector 3), CorneaIOR, IrisDepth, IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture (Floats), IrisUVOffset (Vector 2), HeightMap (Texture2D), ConeHeight, CollaretteHeight, DetailDepth, MinSteps, MaxSteps, ShapeNormalStrength, CavityStrength (Floats)</b> and the outputs <b>RefractedPositionOS (Vector 3), IrisShapeNormalTS (Vector 3), Cavity (Float)</b>, in that order and with those types: they must match the function's parameters. View direction, normal, tangent and bitangent nodes in Object space. Pupil values come from the graph's existing pupil properties so the profile follows the pupil animation.</div></li><li><div>Rewire: connect <em>RefractedPositionOS</em> where the Cornea Refraction output went (into <em>Iris UV Location</em>). The stock node can stay; with nothing connected it is stripped at compile time. The iris colour, normal map and pupil animation are now sampled at the marched position.</div></li><li><div>In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>IrisCombine.hlsl</code> and <em>Name</em> to <code>IrisCombine</code> (without the <code>_float</code> suffix). Add the inputs <b>ShapeNormalTS (Vector 3), DetailNormalTS (Vector 3), IrisColor (Vector 3), Tint (Vector 3), Cavity (Float)</b> and the outputs <b>NormalTS (Vector 3), Color (Vector 3)</b>, in that order and with those types: they must match the function's parameters. DetailNormalTS is the sampled iris normal map, IrisColor the sampled iris texture. Connect NormalTS to the <em>Iris Normal</em> path and Color to the iris colour path of the graph.</div></li><li><div>Keep the physics consistent: drive the master stack's <em>IOR</em> block with RM Cornea IOR and the <em>Iris Plane Offset</em> block with RM Iris Depth, so Fresnel and caustics match the march. Set <em>Iris Clamp Color</em> close to the tint: it shows where a grazing ray misses the iris.</div></li><li><div>Material Type: <code>Eye</code> for games, <code>Eye Cinematic</code> for better lighting, <code>Eye Cinematic With Caustic</code> for the caustic on the iris. Author the iris texture as a grey tint mask (mean 128 sRGB) and pick any colour in Iris Tint.</div></li><li><div>Verify: look at the eye from 0°, 30° and 60°. The pupil should stay round and recessed, the iris should slide behind the cornea, and setting RM Iris Detail Depth to 0 should change only fine detail (that is the zero-fetch version).</div></li></ol>
+<div class="files"><div class="file" data-name="EyeIrisRaymarch.hlsl" data-lang="hlsl"><pre>#ifndef EYE_IRIS_RAYMARCH_INCLUDED
+#define EYE_IRIS_RAYMARCH_INCLUDED
+
+// -----------------------------------------------------------------------------
+// Iris raymarch for the HDRP Eye shader (single mesh), low-cost version.
+//   1. physical refraction at the cornea
+//   2. ALU-only adaptive march (+2 secant steps) against an analytic iris profile
+//      (recessed root, pupil margin pushed forward by the lens, collarette ridge)
+//   3. one height fetch at the hit for crypt detail, as a single parallax step;
+//      skipped when Detail Depth is 0
+// Extra texture fetches compared with the stock HDRP eye: 1 (or 0).
+// Space: the Eye graph&#x27;s mesh-scaled object space (limbus z ~ 0, iris radius 0.22).
+// -----------------------------------------------------------------------------
+
+float EyeRM_PupilAnimRadius(float r, float pupilRadius, float aperture, float minAp, float maxAp)
+{
+    float newPupil = aperture &gt; 0.5 ? lerp(pupilRadius, maxAp, (aperture - 0.5) * 2.0)
+                                    : lerp(minAp, pupilRadius, aperture * 2.0);
+    return r &lt; newPupil ? (pupilRadius / max(newPupil, 1e-4)) * r
+                        : 1.0 - ((1.0 - pupilRadius) / max(1.0 - newPupil, 1e-4)) * (1.0 - r);
+}
+
+float EyeRM_Shape(float ra, float pupilRadius, float coneHeight, float collaretteHeight)
+{
+    float s = saturate((1.0 - ra) / max(1.0 - pupilRadius, 1e-3));   // 0 root .. 1 pupil margin
+    float cone = coneHeight * s * s * (3.0 - 2.0 * s);
+    float d = (ra - lerp(pupilRadius, 1.0, 0.35)) * 12.0;
+    return cone + collaretteHeight * exp(-d * d);
+}
+
+float EyeRM_ShapeAt(float2 xy, float irisRadius, float pupilRadius, float aperture, float minAp, float maxAp,
+                    float coneHeight, float collaretteHeight)
+{
+    float ra = EyeRM_PupilAnimRadius(length(xy) / irisRadius, pupilRadius, aperture, minAp, maxAp);
+    return EyeRM_Shape(ra, pupilRadius, coneHeight, collaretteHeight);
+}
+
+void IrisRaymarch_float(
+    float3 PositionOS, float3 ViewDirOS, float3 CorneaNormalOS, float3 TangentOS, float3 BitangentOS,
+    float CorneaIOR, float IrisDepth, float IrisRadius,
+    float PupilRadius, float PupilAperture, float MinPupilAperture, float MaxPupilAperture, float2 IrisUVOffset,
+    UnityTexture2D HeightMap,
+    float ConeHeight, float CollaretteHeight, float DetailDepth,
+    float MinSteps, float MaxSteps, float ShapeNormalStrength, float CavityStrength,
+    out float3 RefractedPositionOS, out float3 IrisShapeNormalTS, out float Cavity)
+{
+    float3 N = normalize(CorneaNormalOS);
+    float3 V = -normalize(ViewDirOS);
+    float3 D = refract(V, N, 1.0 / max(CorneaIOR, 1.0001));
+
+    float zBase = -IrisDepth;
+    float dz = min(D.z, -1e-4);
+    float tPlane = (zBase - PositionOS.z) / dz;
+    float2 xyPlane = PositionOS.xy + D.xy * tPlane;
+
+    // gradients for the single detail fetch, taken before any divergent branch
+    float2 uvPlane = xyPlane / IrisRadius * 0.5 + 0.5;
+    float2 dUVdx = ddx(uvPlane);
+    float2 dUVdy = ddy(uvPlane);
+
+    RefractedPositionOS = float3(D.z &lt; 0.0 ? xyPlane : float2(1.5, 1.5), 0.0);
+    IrisShapeNormalTS = float3(0.0, 0.0, 1.0);
+    Cavity = 1.0;
+
+    // early out: ray points away, or lands well outside the iris (sclera and outer cornea stop here)
+    if (D.z &gt;= -1e-4 || dot(xyPlane, xyPlane) &gt; IrisRadius * IrisRadius * 1.3225)
+        return;
+
+    // ALU-only march through the slab [base, base + cone + collarette]
+    float tTop = max((zBase + ConeHeight + CollaretteHeight - PositionOS.z) / D.z, 0.0);
+    float tBot = tPlane;
+    int steps = (int)max(round(lerp(MaxSteps, MinSteps, saturate(-D.z))), 1.0);
+    float dt = (tBot - tTop) / (float)steps;
+
+    float3 p = PositionOS + D * tTop;
+    float tPrev = tTop;
+    float dPrev = p.z - (zBase + EyeRM_ShapeAt(p.xy, IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight));
+    float tCur = tBot;
+    float dCur = -1e-5;
+
+    [loop]
+    for (int i = 1; i &lt;= steps; i++)
+    {
+        float t = tTop + dt * i;
+        p = PositionOS + D * t;
+        float d = p.z - (zBase + EyeRM_ShapeAt(p.xy, IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight));
+        if (d &lt;= 0.0) { tCur = t; dCur = d; break; }
+        tPrev = t; dPrev = d;
+    }
+
+    [unroll]
+    for (int k = 0; k &lt; 2; k++)
+    {
+        float tm = lerp(tPrev, tCur, dPrev / max(dPrev - dCur, 1e-7));
+        p = PositionOS + D * tm;
+        float dm = p.z - (zBase + EyeRM_ShapeAt(p.xy, IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight));
+        if (dm &gt; 0.0) { tPrev = tm; dPrev = dm; } else { tCur = tm; dCur = dm; }
+    }
+    float tHit = lerp(tPrev, tCur, dPrev / max(dPrev - dCur, 1e-7));
+    float3 hit = PositionOS + D * tHit;
+
+    // detail: one fetch, one parallax-offset step along the refracted ray
+    float lum = 1.0;
+    [branch]
+    if (DetailDepth &gt; 0.0)
+    {
+        float2 c = hit.xy / IrisRadius;
+        float r = max(length(c), 1e-5);
+        float ra = EyeRM_PupilAnimRadius(r, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture);
+        float2 uv = (c / r * ra) * 0.5 + 0.5 + IrisUVOffset;
+        float3 s = SAMPLE_TEXTURE2D_GRAD(HeightMap.tex, HeightMap.samplerstate, uv, dUVdx, dUVdy).rgb;
+        lum = dot(s, float3(0.2126, 0.7152, 0.0722));
+        hit += D * (DetailDepth * (lum - 1.0) / D.z);   // dark = deeper
+    }
+    RefractedPositionOS = float3(hit.xy, 0.0);
+
+    // macro normal from the analytic profile (ALU only), expressed in the cornea&#x27;s tangent frame
+    float e = IrisRadius * 0.01;
+    float hx = EyeRM_ShapeAt(hit.xy + float2(e, 0), IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight)
+             - EyeRM_ShapeAt(hit.xy - float2(e, 0), IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight);
+    float hy = EyeRM_ShapeAt(hit.xy + float2(0, e), IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight)
+             - EyeRM_ShapeAt(hit.xy - float2(0, e), IrisRadius, PupilRadius, PupilAperture, MinPupilAperture, MaxPupilAperture, ConeHeight, CollaretteHeight);
+    float3 nOS = normalize(float3(-hx * ShapeNormalStrength, -hy * ShapeNormalStrength, 2.0 * e));
+    IrisShapeNormalTS = normalize(float3(dot(nOS, normalize(TangentOS)), dot(nOS, normalize(BitangentOS)), dot(nOS, N)));
+
+    // cavity: crypt darkening from the same fetch + iris-root occlusion
+    float root = 1.0 - 0.6 * smoothstep(0.82, 1.0, length(hit.xy) / IrisRadius);
+    Cavity = lerp(1.0, lerp(0.4, 1.0, lum) * root, CavityStrength);
+}
+#endif</pre></div><div class="file" data-name="IrisCombine.hlsl" data-lang="hlsl"><pre>#ifndef EYE_IRIS_COMBINE_INCLUDED
+#define EYE_IRIS_COMBINE_INCLUDED
+
+// Iris normal (macro shape + normal map, reoriented normal mapping) and the clamped tint.
+// IrisColor: the iris texture sampled at the marched UV, authored as a grey tint mask (mean 128 sRGB).
+void IrisCombine_float(float3 ShapeNormalTS, float3 DetailNormalTS, float3 IrisColor, float3 Tint, float Cavity,
+                       out float3 NormalTS, out float3 Color)
+{
+    float3 t = ShapeNormalTS + float3(0.0, 0.0, 1.0);
+    float3 u = DetailNormalTS * float3(-1.0, -1.0, 1.0);
+    NormalTS = normalize(t * dot(t, u) / t.z - u);
+
+    // ---- iris tint, limited to plausible iris colours (linear space) ----
+    const float3 L         = float3(0.2126, 0.7152, 0.0722);
+    const float  LUM_MIN   = 0.006;   // ~ darkest brown irises
+    const float  LUM_MAX   = 0.32;    // ~ lightest grey-blue irises
+    const float  SAT_DARK  = 0.88;    // linear HSV saturation cap for dark irises
+    const float  SAT_LIGHT = 0.55;    // ... for the lightest irises
+    float  y   = clamp(dot(Tint, L), LUM_MIN, LUM_MAX);
+    float3 c   = Tint / max(dot(Tint, L), 1e-6);              // hue at luminance 1
+    float  mx  = max(c.r, max(c.g, c.b));
+    float  mn  = min(c.r, min(c.g, c.b));
+    float  sat = (mx - mn) / max(mx, 1e-6);
+    float  satMax = lerp(SAT_DARK, SAT_LIGHT, smoothstep(0.03, 0.30, y));
+    float  k   = sat &gt; satMax ? satMax / ((mx - mn) - satMax * (mx - 1.0)) : 1.0;
+    c = lerp(1.0, c, k);                                      // towards grey, keeps hue and luminance
+    float3 tint = c * y;
+
+    // ---- texture = tint mask: 50 % sRGB grey (0.214 linear) shows exactly the tint ----
+    float detail = dot(IrisColor, L) / 0.214;
+    Color = saturate(tint * detail) * Cavity;
+}
+#endif</pre></div></div>
+<p class="note">Cost: about 4–8 profile evaluations plus 2 secant steps and 4 for the normal, roughly 300 instructions at worst, on iris pixels only. Sclera and outer cornea leave at the early out. The next optimisation would be an analytic derivative of the profile instead of the four extra evaluations for the normal.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP has no eye master stack. Use a Lit graph with the same Custom Function for the iris UV and a second, transparent cornea mesh for the highlight, or keep the iris lit as a flat Lit surface (tier 1 or 2 of this unit).</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Eye shading model with a subsurface profile; the raymarch Custom node in eye-local space; tint, iris mask and iris normal fed to the Eye inputs.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal has an <em>Eye</em> shading model with two extra inputs, Iris Mask and Iris Distance; the refraction itself is done in the material (Epic's refractive eye materials use a refraction function, MetaHuman eyes a more elaborate setup). The route puts the same raymarched iris into a Custom node and feeds the Eye model. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>M_Eye: Shading Model Eye, a Subsurface Profile, Iris Mask and Iris Distance.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>IrisRaymarch.ush: refraction and the analytic iris march in the eye's local space.</span></div><div class="rt" data-k="mat"><b>Material</b><span>Tint: the TintGreyMask Custom node from the tint unit on the iris colour.</span></div></div>
+<ol class="impl-steps"><li><div>Create <code>M_Eye</code> with <em>Shading Model</em> <code>Eye</code> and a <em>Subsurface Profile</em> (start from an eye profile in Epic's character content or MetaHuman, or a new profile with a short scatter radius). The main node gains <em>Iris Mask</em> and <em>Iris Distance</em>.</div></li><li><div>Local space: the code assumes the gaze along +Z, the limbus at z = 0 and a known iris radius. Bring <em>Absolute World Position</em>, <em>CameraVector</em> and <em>VertexNormalWS</em> into the eye's local space with <em>Transform</em> nodes (World to Local), then swizzle and scale so your mesh matches that convention (a scalar parameter for the mesh scale).</div></li><li><div>Add a Custom node with <code>IrisRaymarch.ush</code>: inputs P, V, N, IOR (1.336), IrisDepth, IrisRadius, PupilRadius, Cone, Collarette, MinSteps (4), MaxSteps (8). Output Type <code>CMOT Float 2</code> (the iris UV); Additional Outputs <code>ShapeNormal</code> (Float 3) and <code>Hit</code> (Float 1).</div></li><li><div>Sample the iris colour and normal maps at the returned UV. Pupil dilation: scale the UV radially before sampling, as HDRP's Circle Pupil Animation does, or feed the dilated pupil radius into the node.</div></li><li><div>Colour: run the iris sample through the <code>TintGreyMask</code> Custom node from the Tinting unit with the iris ranges (0.006, 0.32, 0.88, 0.55), then lerp between sclera colour and iris colour by an iris mask (limbus radius from the local XY). Connect that mask to <em>Iris Mask</em> as well.</div></li><li><div>Normals: the cornea's own normal goes to <em>Normal</em>. Epic's eye materials feed the iris normal through the <em>Tangent</em> input of the Eye model; combine ShapeNormal with the iris normal map (reoriented normal mapping, as in IrisCombine.hlsl), transform it back to the space your material uses and connect it there. <em>Iris Distance</em> controls the concavity the lighting assumes; tune it against the march depth.</div></li><li><div>Check at 0°, 30° and 60° as in the HDRP route, and look at <em>Shader Complexity</em>: only iris pixels should get more expensive.</div></li></ol>
+<div class="files"><div class="file" data-name="IrisRaymarch.ush" data-lang="hlsl"><pre>// Custom node &quot;IrisRaymarch&quot; (Eye shading model material). Work in the eye&#x27;s local space with the gaze along +Z:
+// transform P, V and N into that space before this node (Transform nodes, World to Local) and adjust for your mesh axes.
+// Inputs: P (float3, local position, limbus at z = 0, iris radius = IrisRadius), V (float3, local direction from the
+// pixel to the camera), N (float3, local cornea normal), IOR, IrisDepth, IrisRadius, PupilRadius, Cone, Collarette,
+// MinSteps, MaxSteps (float). Output Type: CMOT Float 2 (iris UV, 0..1 across the iris).
+// Additional Outputs: ShapeNormal (CMOT Float 3, local), Hit (CMOT Float 1, 1 where the iris is seen).
+struct Iris
+{
+    float Shape(float2 xy, float irisR, float pupil, float cone, float ridge)
+    {
+        float ra = length(xy) / irisR;
+        float s = saturate((1.0 - ra) / max(1.0 - pupil, 1e-3));
+        float d = (ra - lerp(pupil, 1.0, 0.35)) * 12.0;
+        return cone * s * s * (3.0 - 2.0 * s) + ridge * exp(-d * d);
+    }
+};
+Iris f;
+float3 D = refract(-normalize(V), normalize(N), 1.0 / max(IOR, 1.0001));
+float zBase = -IrisDepth;
+float tBot = (zBase - P.z) / min(D.z, -1e-4);
+float2 xyPlane = P.xy + D.xy * tBot;
+ShapeNormal = float3(0, 0, 1);
+Hit = 0.0;
+if (D.z &gt;= -1e-4 || dot(xyPlane, xyPlane) &gt; IrisRadius * IrisRadius * 1.3225)
+    return xyPlane / IrisRadius * 0.5 + 0.5;
+float tTop = max((zBase + Cone + Collarette - P.z) / D.z, 0.0);
+int steps = (int)max(round(lerp(MaxSteps, MinSteps, saturate(-D.z))), 1.0);
+float dt = (tBot - tTop) / steps;
+float tPrev = tTop, tCur = tBot, dCur = -1e-5;
+float3 p = P + D * tTop;
+float dPrev = p.z - (zBase + f.Shape(p.xy, IrisRadius, PupilRadius, Cone, Collarette));
+for (int i = 1; i &lt;= 32; i++)
+{
+    if (i &gt; steps) break;
+    float t = tTop + dt * i;
+    p = P + D * t;
+    float d = p.z - (zBase + f.Shape(p.xy, IrisRadius, PupilRadius, Cone, Collarette));
+    if (d &lt;= 0.0) { tCur = t; dCur = d; break; }
+    tPrev = t; dPrev = d;
+}
+for (int k = 0; k &lt; 2; k++)
+{
+    float tm = lerp(tPrev, tCur, dPrev / max(dPrev - dCur, 1e-7));
+    p = P + D * tm;
+    float dm = p.z - (zBase + f.Shape(p.xy, IrisRadius, PupilRadius, Cone, Collarette));
+    if (dm &gt; 0.0) { tPrev = tm; dPrev = dm; } else { tCur = tm; dCur = dm; }
+}
+float3 hit = P + D * lerp(tPrev, tCur, dPrev / max(dPrev - dCur, 1e-7));
+float e = IrisRadius * 0.01;
+float hx = f.Shape(hit.xy + float2(e, 0), IrisRadius, PupilRadius, Cone, Collarette) - f.Shape(hit.xy - float2(e, 0), IrisRadius, PupilRadius, Cone, Collarette);
+float hy = f.Shape(hit.xy + float2(0, e), IrisRadius, PupilRadius, Cone, Collarette) - f.Shape(hit.xy - float2(0, e), IrisRadius, PupilRadius, Cone, Collarette);
+ShapeNormal = normalize(float3(-hx, -hy, 2.0 * e));
+Hit = 1.0;
+return hit.xy / IrisRadius * 0.5 + 0.5;</pre></div></div>
+<p class="note">Unreal's eye lighting and inputs differ between versions and between the legacy and Substrate paths (Substrate has an Eye BSDF node). Treat the shading-model wiring as the version-specific part and the Custom node as the portable part.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/create-an-eye-material.html" rel="noopener">HDRP: create an eye material, Eye master stack</a></span><span class="by">Unity</span><span class="why">Eye, Eye Cinematic and caustic variants, iris normal, IOR and iris plane offset blocks.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.shadergraph@14.0/manual/Cornea-Refraction-Node.html" rel="noopener">Cornea Refraction node</a></span><span class="by">Unity</span><span class="why">Refraction to the iris plane in object space.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.shadergraph@15.0/manual/Iris-UV-Location-Node.html" rel="noopener">Iris UV Location node</a></span><span class="by">Unity</span><span class="why">From the refracted position to iris UVs.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/material-inputs-in-unreal-engine" rel="noopener">Material inputs: Eye shading model</a></span><span class="by">Epic Games</span><span class="why">Iris Mask and Iris Distance.</span></li><li><span><span class="kind">Talk</span><a href="https://www.iryoku.com/stare-into-the-future" rel="noopener">Next-generation character rendering</a></span><span class="by">Jorge Jimenez, Javier von der Pahlen · GDC 2013</span><span class="why">Eye refraction, iris parallax and the caustic in a real-time character.</span></li></ul>
+</section>
+
+<div class="next" data-next="skin hair fpom"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"sclera": [
+"Sclera",
+"The white of the eye; opaque, scattering, with veins.",
+"#anatomy"
+],
+"cornea": [
+"Cornea",
+"The clear dome over the iris; refracts and reflects.",
+"#anatomy"
+],
+"iris": [
+"Iris",
+"The coloured muscle disc behind the anterior chamber, with the pupil in its centre.",
+"#anatomy"
+],
+"limbus": [
+"Limbus",
+"The ring where cornea and sclera meet.",
+"#anatomy"
+],
+"chamber": [
+"Anterior chamber",
+"The fluid-filled space between cornea and iris, about 3 mm deep.",
+"#anatomy"
+],
+"collarette": [
+"Collarette",
+"A ridge on the iris about a third of the way from the pupil to the root.",
+"#profile"
+],
+"caustic": [
+"Iris caustic",
+"Light focused by the cornea onto the side of the iris away from the light.",
+"#plane"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=76a6bcc6"></script>
+<script src="../../assets/index.js?v=97e4c60c"></script>
+<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="eyes.js?v=a5e981a9"></script>
+</body>
+</html>

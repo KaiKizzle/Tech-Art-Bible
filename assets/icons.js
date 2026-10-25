@@ -3,6 +3,10 @@
 (function () {
   'use strict';
   const I = {
+    'ray-marching': '<path d="M6 30h36"/><path d="M6 14l30 16"/><circle cx="12" cy="17" r="1.6"/><circle cx="18" cy="20.3" r="1.6"/><circle cx="24" cy="23.6" r="1.6"/><circle cx="30" cy="26.8" r="1.6"/><circle class="af" cx="36" cy="30" r="3"/><path d="M6 38c8-4 14 2 20-2s10-2 16 0"/>',
+    'fpom': '<path d="M6 34l8-6 6 4 8-10 6 6 8-6"/><path d="M6 40h36"/><path class="a" d="M8 8l14 24"/><path class="a" d="M8 8l6 10" stroke-dasharray="2 3"/>',
+    'color-tint': '<circle cx="18" cy="20" r="10"/><circle cx="30" cy="20" r="10"/><circle class="a" cx="24" cy="30" r="10"/>',
+    'eyes': '<path d="M4 24c6-9 13-13 20-13s14 4 20 13c-6 9-13 13-20 13S10 33 4 24z"/><circle class="a" cx="24" cy="24" r="7"/><circle class="af" cx="24" cy="24" r="2.6"/>',
     'gpu-basics': '<rect x="10" y="10" width="28" height="28" rx="3"/><path d="M16 4v6M24 4v6M32 4v6M16 38v6M24 38v6M32 38v6M4 16h6M4 24h6M4 32h6M38 16h6M38 24h6M38 32h6"/><rect class="a" x="17" y="17" width="14" height="14" rx="1"/>',
     'shader-anatomy': '<path d="M17 12l-9 12 9 12M31 12l9 12-9 12"/><path class="a" d="M27 9l-6 30"/>',
     'vectors': '<path d="M8 40V8M8 40h32"/><path class="a" d="M8 40L34 14M34 14h-9M34 14v9"/>',

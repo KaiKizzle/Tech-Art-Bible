@@ -69,9 +69,13 @@ Topic colours appear only as the tile bar, the dot, the unit header's left borde
   `--accent-ink` for text on dark and light) marks the current item, primary buttons, the logo and focus. Topics have the tones
   above. Links are underlined text, not colored.
   Inside live formulas and labs, colors carry meaning (one per variable, axis colors for X/Y/Z) and stay.
-- Layout: the hub has an icon rail and a top search bar; unit pages a sticky top bar (`.hubtop`) and the chapter rail. Unit content is one
-  centred column (`--col`, 920 px); every chapter is a framed card, and widgets, labs, code and tables inside it are framed again
-  with 1 px lines. Panels have small radii and no shadows.
+- Layout: the hub and the unit pages share the icon rail and the top search bar. A unit page is a centred grid of two
+  columns: a sticky **rail card** (268 px) and the content column (`--col`, up to 1180 px). The rail card holds the breadcrumbs
+  as pill chips ("All units", then the topic with its colour dot), the unit name and the chapter list; the current chapter gets
+  the accent tint and a bar. The unit header and key art sit side by side on wide screens. Every chapter is a framed card;
+  live formulas with a drawing put the canvases left and the sliders right once the chapter is wider than 860 px (container
+  queries), so a widget fits on one screen. Under 980 px the rail card hides and everything is one column.
+  Widgets, labs, code and tables inside a chapter are framed again with 1 px lines. Panels have small radii and no shadows.
 - Dark is the default theme; light is an explicit choice of the reader. Draw lab canvases with `Atlas.col('token')`
   so they follow both.
 

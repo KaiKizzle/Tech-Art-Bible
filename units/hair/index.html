@@ -8,24 +8,36 @@
 <script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 <link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
-<link rel="stylesheet" href="../../assets/atlas.css?v=123dbb24">
+<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
 </head>
-<body data-unit="hair">
-<header class="hubtop">
-  <a class="logo" href="../../index.html"><i aria-hidden="true"></i>Tech Art Atlas</a>
-  <nav aria-label="Site"><a href="../../index.html">All units</a><a href="../../index.html?path=1">Learning paths</a><a class="opt" href="../../index.html#about">About</a></nav>
-  <form class="top-search" action="../../index.html" role="search"><input type="search" name="q" placeholder="Search units" aria-label="Search units"></form>
-  <button type="button" class="btn ghost" data-theme-toggle>Light theme</button>
+<body data-unit="hair" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
 </header>
 <div class="page">
 <nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
   <a class="brand" href="#top">Hair: Strands and Cards</a>
+  <div class="rail-k">Chapters</div>
   <ol id="rail-list"></ol>
+</div>
 </nav>
 
 <main id="top">
 <div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
-<nav class="crumbs" aria-label="Breadcrumb"></nav>
+<div class="unit-top">
 <header class="unit-head">
   <div class="eyebrow">Characters · 7 chapters</div>
   <h1>Hair: Strands and Cards</h1>
@@ -33,6 +45,7 @@
   <p class="meta">Builds on PBR shading and Transparency. Engine notes cover Unity HDRP, Unity URP and Unreal.</p>
 </header>
 <figure class="keyart"><img src="../../assets/keyart/hair.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A lock of strands with Kajiya–Kay shading and two shifted highlights.</figcaption></figure>
+</div>
 <div class="needs" data-needs="pbr-brdf#half transparency#alpha-test spaces#tangent"></div>
 
 <section class="chapter" id="cards" data-title="Strands or cards" data-builds="transparency#alpha reading-a-frame#overdraw" data-summary="Cards: a few thousand textured strips instead of 100 000 strands; the cost is overdraw.">
@@ -221,9 +234,10 @@ public static class HairCardSorter
 <footer class="foot" id="site-foot"></footer>
 </main>
 </div>
-<script src="../../assets/catalog.js?v=61a152e5"></script>
-<script src="../../assets/index.js?v=e04e6fb6"></script>
-<script src="../../assets/atlas.js?v=76ca92fc"></script>
+</div>
+<script src="../../assets/catalog.js?v=76a6bcc6"></script>
+<script src="../../assets/index.js?v=97e4c60c"></script>
+<script src="../../assets/atlas.js?v=6986d9c4"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="hair.js?v=58d40e4c"></script>
 </body>

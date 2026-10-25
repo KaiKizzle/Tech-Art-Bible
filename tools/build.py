@@ -5,7 +5,7 @@ Run after adding or editing a unit:   python tools/build.py
 Only the Python standard library is needed. The site works without running it, but new chapters then have
 no link previews and no "Used in" chips until you do.
 """
-import json, re, pathlib
+import json, re, pathlib, html as htmlmod
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 UNITS = ROOT / 'units'
@@ -24,17 +24,18 @@ for page in sorted(UNITS.glob('*/index.html')):
     if slug.startswith('_'):
         continue
     html = page.read_text(encoding='utf-8')
-    title = re.search(r'<title>(.*?)</title>', html, re.S).group(1).split(' · ')[0].strip()
+    title = re.search(r'<title>(.*?)</title>', html, re.S).group(1).split(' · ')[0].strip(); title = htmlmod.unescape(title)
     chapters, stats = [], {'fx': html.count('class="fx"'), 'labs': html.count('class="lab"'), 'checks': 0}
     for attrs, body in SEC.findall(html):
         cid = (ATTR('id').search(attrs) or [None, None])[1]
         ctitle = (ATTR('data-title').search(attrs) or [None, None])[1]
+        ctitle = htmlmod.unescape(ctitle) if ctitle else ctitle
         if not cid or not ctitle:
             continue
         is_ref = 'data-ref' in attrs
         summ = ATTR('data-summary').search(attrs)
         if summ:
-            summary = summ.group(1)
+            summary = htmlmod.unescape(summ.group(1))
         else:
             p = re.search(r'<p>(.*?)</p>', body, re.S)
             summary = text(p.group(1)) if p else ''

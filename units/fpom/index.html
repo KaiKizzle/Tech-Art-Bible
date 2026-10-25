@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fast Parallax Occlusion Mapping · Tech Art Atlas</title>
+<meta name="description" content="What makes parallax occlusion mapping fast: adaptive step counts, starting at the highest point of the map, coarse steps with secant refinement, analytic heights instead of fetches, gradients taken outside the loop and distance fades, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=eb37583d">
+</head>
+<body data-unit="fpom" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Fast Parallax Occlusion Mapping</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Shading · 8 chapters</div>
+  <h1>Fast Parallax Occlusion Mapping</h1>
+  <p class="lede">What makes parallax occlusion mapping fast: adaptive step counts, starting at the highest point of the map, coarse steps with secant refinement, analytic heights instead of fetches, gradients taken outside the loop and distance fades, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Parallax and POM and Ray Marching. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/fpom.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A cobblestone patch with parallax depth on a single flat quad.</figcaption></figure>
+</div>
+<div class="needs" data-needs="parallax#pom ray-marching#find"></div>
+
+<section class="chapter" id="recap" data-title="POM in one paragraph, and where the time goes" data-builds="parallax#pom parallax#adaptive" data-summary="POM cost ≈ steps × dependent fetch latency. Adaptive steps: lerp(max, min, cos θ).">
+  <div class="head"><div class="num"></div><h2>POM in one paragraph, and where the time goes</h2></div>
+
+  <div class="prose">
+    <p><a class="x" href="../parallax/index.html#pom">Parallax occlusion mapping</a> marches the view ray through a height map in tangent space: step down layer by layer, read the height at each step, stop where the ray drops below it, interpolate. Every step is a texture fetch whose UV depends on the previous step, so the fetches cannot overlap: the cost is close to steps × fetch latency, per pixel, on every pixel of the surface.</p>
+    <p><button type="button" class="term" data-term="fpom">Fast POM</button> is not one algorithm but a set of ways to spend fewer of those steps. The first is the cheapest: use many steps only where the ray is long.</p>
+  </div>
+  <div class="fx" data-fx="adapt"></div>
+  <div class="prose"><p>Looking straight at the surface, the ray crosses the height range over a tiny horizontal distance, and a handful of steps find the hit. At grazing angles the same range spans a long stretch of texture. HDRP's Lit POM and Unreal's ParallaxOcclusionMapping function both do this already, with min and max step counts.</p></div>
+
+</section>
+<section class="chapter" id="start" data-title="Start at the highest point" data-builds="fpom#recap ray-marching#heightfield" data-summary="Start at 1 − Hmax: same precision with N·Hmax layers.">
+  <div class="head"><div class="num"></div><h2>Start at the highest point</h2></div>
+
+  <div class="prose">
+    <p>Standard POM starts the march at height 1, the top of the possible range. Most height maps never use the top: a brick wall that peaks at 0.6 wastes 40 % of its layers on empty space. Store the map's real maximum (one number per texture, from the authoring tool) and start there. This is the <a class="x" href="../ray-marching/index.html#heightfield">bounding slab</a> idea applied to POM:</p>
+  </div>
+  <div class="fx" data-fx="start"></div>
+  <div class="prose"><p>The same goes for the bottom: if the map never goes below 0.2, the ray can be treated as hitting there at the latest. Authoring helps too: normalising the height map to the full 0–1 range in Substance and setting the depth in the material gives the most precision per step.</p></div>
+
+</section>
+<section class="chapter" id="coarse" data-title="Coarse steps, then secant" data-builds="ray-marching#find parallax#pom" data-summary="N coarse steps find a bracket; 2–3 secant steps refine it. Coarse step size set by the thinnest feature.">
+  <div class="head"><div class="num"></div><h2>Coarse steps, then secant</h2></div>
+
+  <div class="prose">
+    <p>Plain POM finds the first layer below the surface and interpolates once between it and the layer before: that is already one <a class="x" href="../ray-marching/index.html#find">secant step</a>. Doing two or three of them, each with a fresh fetch, gets the hit much closer than doubling the linear steps would:</p>
+  </div>
+  <div class="fx" data-fx="coarse"></div>
+  <div class="prose"><p>The catch is thin features: if a ridge is narrower than a coarse step, the linear search walks past it and no refinement brings it back. Choose the coarse step from the smallest feature you need, and let the secant steps buy the precision. Relief mapping (Policarpo and Oliveira) uses binary search for the same refinement; it is more robust on noisy maps and converges more slowly.</p></div>
+
+</section>
+<section class="chapter" id="analytic" data-title="Heights without textures" data-builds="fpom#coarse ray-marching#budget" data-summary="Analytic heights: steps × ALU only. Hybrid: march the formula, one detail fetch at the hit.">
+  <div class="head"><div class="num"></div><h2>Heights without textures</h2></div>
+
+  <div class="prose">
+    <p>When the height can be written as a formula, the loop needs no fetches at all: a sine for waves, a smoothstep cone for an iris, a rounded-box profile for tiles, a distance to a grid for grout. Arithmetic is cheap and its results are available immediately, so a dozen steps of a short formula usually cost less than three dependent fetches:</p>
+  </div>
+  <div class="fx" data-fx="alu"></div>
+  <div class="prose">
+    <p>A hybrid gives most of the look for one fetch: march the analytic macro shape, then read a detail height once at the hit and push the hit along the ray by that amount. The detail shifts with the view like parallax but does not occlude itself, which is rarely noticeable on small features. The <a class="x" href="../eyes/index.html#march">raymarched iris</a> uses exactly this: the iris profile is a formula, the crypts are one fetch.</p>
+  </div>
+
+</section>
+<section class="chapter" id="gradients" data-title="Gradients and mips" data-builds="textures-sampling#mips ray-marching#gpu" data-summary="mip = log2(max |∂uv| · size); UV jumps between loop iterations pick huge mips. Take gradients before the loop and use SampleGrad.">
+  <div class="head"><div class="num"></div><h2>Gradients and mips</h2></div>
+
+  <div class="prose">
+    <p>Texture sampling picks a mip level from how fast the UV changes between neighbouring pixels (<a class="x" href="../textures-sampling/index.html#mips">mips</a>). Inside the POM loop, neighbours stop at different steps, so their UVs jump. The GPU reads those jumps as a fast-changing UV and picks a very blurry mip: the step edges turn into blocky, blurred seams.</p>
+  </div>
+  <div class="fx" data-fx="mip"></div>
+  <div class="prose"><p>The fix is a few characters: compute ddx and ddy of the original UV once, before the loop, and sample with explicit gradients (SampleGrad, <code>SAMPLE_TEXTURE2D_GRAD</code>, <em>Texture2DSampleGrad</em>). The mip then matches the surface, not the march. Do the same for every texture sampled at the parallax UV afterwards.</p></div>
+
+</section>
+<section class="chapter" id="fade" data-title="Fade with distance" data-builds="fpom#recap" data-summary="Fade depth and steps together over d₀…d₁; no march beyond d₁.">
+  <div class="head"><div class="num"></div><h2>Fade with distance</h2></div>
+
+  <div class="prose">
+    <p>Parallax is a close-up effect. A few metres away the offset is a fraction of a pixel and the normal map carries the look alone. Fade the depth and the step count together over a distance range, and skip the march completely beyond it:</p>
+  </div>
+  <div class="fx" data-fx="fade"></div>
+  <div class="prose"><p>Fading only the steps leaves the full depth with too few samples (stair steps at a distance); fading only the depth still pays for the loop. Fade both. A matching fade on the material's displacement or tessellation keeps the transition invisible.</p></div>
+
+</section>
+<section class="chapter" id="recipe" data-title="The recipe" data-builds="fpom#recap" data-summary="Adaptive steps, Hmax start, coarse + secant, analytic heights, gradients outside, distance fade, early outs.">
+  <div class="head"><div class="num"></div><h2>The recipe</h2></div>
+
+  <div class="prose"><p>Each technique attacks a different part of the cost. In order of payoff:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Technique</th><th>Saves</th><th>Costs</th><th>Use when</th></tr></thead>
+    <tbody>
+      <tr><td>Adaptive step count</td><td>steps at steep views (most of the screen)</td><td>one lerp</td><td>always</td></tr>
+      <tr><td>Start at H<sub>max</sub></td><td>the empty top of the range</td><td>one number per map</td><td>maps that never reach white</td></tr>
+      <tr><td>Coarse steps + secant</td><td>most fine steps</td><td>1–3 extra fetches</td><td>smooth height maps</td></tr>
+      <tr><td>Analytic height</td><td>every fetch in the loop</td><td>arithmetic per step</td><td>shapes you can write as a formula (iris, tiles, waves)</td></tr>
+      <tr><td>Gradients outside the loop</td><td>blurry mip seams</td><td>two derivative instructions</td><td>always (it is a correctness fix)</td></tr>
+      <tr><td>Distance fade</td><td>the march on distant pixels</td><td>one distance</td><td>always; fade the depth too</td></tr>
+      <tr><td>Early out</td><td>rays that cannot hit</td><td>one test</td><td>bounded areas (an iris, a decal)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Measure in a GPU capture (RenderDoc, PIX, Unreal Insights, Unity's Frame Debugger with a profiler) rather than by eye: the cost scales with screen coverage, so test with the surface filling the screen at a grazing angle, the worst case.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A cobblestone POM looks right but costs too much on a floor that fills the screen. First two changes?", ["More secant steps and higher resolution", "Adaptive steps and starting at the map's maximum height", "Disable mips", "Use bisection"], 1, "Floors are seen at grazing angles, where the step count is highest; most cobble maps also leave the top of the range unused."], ["Blurry blocky seams appear along the parallax steps. Cause?", ["Too few steps", "Mip selection from derivatives taken inside the loop", "Wrong normal map", "sRGB on the height map"], 1, "Use gradients from before the loop with SampleGrad."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="HDRP Lit pixel displacement for comparison; FPOM.hlsl with MaxHeight start, adaptive steps, secant refinement, one set of gradients, distance fade.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP's Lit shader has POM built in (Displacement Mode: Pixel displacement) with a fixed step range. The custom route adds the optimisations of this unit: a start height from the map's real maximum, adaptive steps, secant refinement, gradients taken once and a distance fade. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>Built-in POM in HDRP Lit, for comparison and as a fallback.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>FPOM.hlsl: the fast march as a Custom Function.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph that samples every map at the parallax UV.</span></div></div>
+<ol class="impl-steps"><li><div>Built-in first: in an HDRP/Lit material set <em>Displacement Mode</em> to <code>Pixel displacement</code>, assign the <em>Height Map</em>, and set <em>Minimum Steps</em> and <em>Maximum Steps</em> (HDRP picks between them by view angle) and the <em>Amplitude</em>. Keep this material to compare cost and look.</div></li><li><div>Find the map's highest value once: open the height map in an image editor (or Substance) and note its maximum; most maps never reach pure white. That number is <code>MaxHeight</code>.</div></li><li><div>Put <code>FPOM.hlsl</code> in <code>Assets/Shaders/</code>. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Add properties: a Texture2D <code>HeightMap</code> (sRGB off at import), Floats <code>Depth</code> (0.05), <code>MaxHeight</code>, <code>MinSteps</code> (4), <code>MaxSteps</code> (16), <code>Refinements</code> (2), <code>FadeStart</code> (5) and <code>FadeEnd</code> (15).</div></li><li><div>Distance: a <em>Distance</em> node between <em>Position</em> (World) and <em>Camera</em> Position, or the length of the View Vector. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>FPOM.hlsl</code> and <em>Name</em> to <code>FPOM</code> (without the <code>_float</code> suffix). Add the inputs <b>HeightMap (Texture2D), UV (Vector 2), ViewDirTS (Vector 3), Depth (Float), MaxHeight (Float), MinSteps (Float), MaxSteps (Float), Refinements (Float), Distance (Float), FadeStart (Float), FadeEnd (Float)</b> and the outputs <b>ParallaxUV (Vector 2), HeightAtHit (Float)</b>, in that order and with those types: they must match the function's parameters. ViewDirTS: <em>View Direction</em> in Tangent space.</div></li><li><div>Sample base colour, normal and mask maps at <em>ParallaxUV</em>. Use the same sampler state; the maps follow the height map exactly.</div></li><li><div>Compare with the built-in material in the <em>Rendering Debugger</em> or a GPU capture: the custom version should need fewer samples at steep views and none beyond FadeEnd.</div></li></ol>
+<div class="files"><div class="file" data-name="FPOM.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_FPOM_INCLUDED
+#define ATLAS_FPOM_INCLUDED
+
+// Fast parallax occlusion mapping for a height map (white = high).
+//   - starts at the highest point the map contains (MaxHeight), not at the top of the box
+//   - adaptive step count from the view angle
+//   - coarse linear steps, then secant refinement
+//   - UV gradients taken once outside the loop (SAMPLE_TEXTURE2D_GRAD), so mips stay stable
+//   - fades the effect out with distance (FadeStart..FadeEnd, in metres)
+// ViewDirTS: View Direction in Tangent space (towards the camera), normalised in here.
+
+void FPOM_float(UnityTexture2D HeightMap, float2 UV, float3 ViewDirTS, float Depth, float MaxHeight,
+                float MinSteps, float MaxSteps, float Refinements, float Distance, float FadeStart, float FadeEnd,
+                out float2 ParallaxUV, out float HeightAtHit)
+{
+    float3 V = normalize(ViewDirTS);
+    float fade = 1.0 - saturate((Distance - FadeStart) / max(FadeEnd - FadeStart, 1e-3));
+    float depth = Depth * fade;
+
+    float2 dUVdx = ddx(UV), dUVdy = ddy(UV);              // once, before any loop or branch
+    ParallaxUV = UV; HeightAtHit = 1.0;
+    [branch] if (depth &lt;= 1e-5) return;                   // far away: no parallax at all
+
+    // UV shift per unit of depth along the view ray (layers go down from the surface)
+    float2 uvPerDepth = -V.xy / max(V.z, 0.05) * depth;
+
+    // the ray can only hit below the highest point of the map
+    float layerStart = 1.0 - saturate(MaxHeight);         // depth (0 top .. 1 bottom) where marching starts
+    int   steps = (int)max(round(lerp(MaxSteps, MinSteps, saturate(V.z))), 1.0);
+    float dl = (1.0 - layerStart) / steps;
+
+    float lPrev = layerStart, hPrev = 1.0;                // h: height of the map minus height of the ray
+    float lCur = 1.0, hCur = -1.0;
+    {
+        float2 uv = UV + uvPerDepth * layerStart;
+        hPrev = (1.0 - layerStart) - SAMPLE_TEXTURE2D_GRAD(HeightMap.tex, HeightMap.samplerstate, uv, dUVdx, dUVdy).r;  // &gt;= 0
+    }
+    [loop]
+    for (int i = 1; i &lt;= 64; i++)
+    {
+        if (i &gt; steps) break;
+        float l = layerStart + dl * i;
+        float2 uv = UV + uvPerDepth * l;
+        float d = (1.0 - l) - SAMPLE_TEXTURE2D_GRAD(HeightMap.tex, HeightMap.samplerstate, uv, dUVdx, dUVdy).r;  // ray height - map height
+        if (d &lt;= 0.0) { lCur = l; hCur = d; break; }
+        lPrev = l; hPrev = d;
+    }
+    // hPrev is the last &quot;above&quot; distance (positive); refine between lPrev and lCur
+    hPrev = max(hPrev, 1e-5);
+    [loop]
+    for (int k = 0; k &lt; 4; k++)
+    {
+        if (k &gt;= (int)Refinements) break;
+        float lm = lerp(lPrev, lCur, hPrev / max(hPrev - hCur, 1e-6));
+        float2 uv = UV + uvPerDepth * lm;
+        float dm = (1.0 - lm) - SAMPLE_TEXTURE2D_GRAD(HeightMap.tex, HeightMap.samplerstate, uv, dUVdx, dUVdy).r;
+        if (dm &gt; 0.0) { lPrev = lm; hPrev = dm; } else { lCur = lm; hCur = dm; }
+    }
+    float lHit = lerp(lPrev, lCur, hPrev / max(hPrev - hCur, 1e-6));
+    ParallaxUV = UV + uvPerDepth * lHit;
+    HeightAtHit = 1.0 - lHit;
+}
+#endif</pre></div></div>
+<p class="note">Depth Offset (graph setting) makes contact shadows and intersections follow the parallax surface; derive it from HeightAtHit. For an analytic height (no texture), replace the samples with a function, as the eye unit does: the loop then costs only arithmetic.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: the <em>Parallax Occlusion Mapping</em> node in Shader Graph (with Steps input) is the built-in equivalent; FPOM.hlsl works unchanged in a URP graph.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Engine POM function for comparison; a Custom node with MaxHeight start, adaptive steps, secant refinement, SampleGrad and a fade.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal ships a <em>ParallaxOcclusionMapping</em> material function with min and max steps; the Custom node below adds the same optimisations as the HDRP route. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mf"><b>Material Function</b><span>ParallaxOcclusionMapping (engine function) for comparison.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>FPOM.ush: the fast march in a Custom node with a Texture Object input.</span></div><div class="rt" data-k="mat"><b>Material</b><span>A material that samples all maps at the parallax UV.</span></div></div>
+<ol class="impl-steps"><li><div>Built-in first: add the <em>ParallaxOcclusionMapping</em> function (Engine content), connect a Texture Object of the height map, set Height Ratio, Min Steps and Max Steps, and use its <em>Parallax UVs</em> output for all texture samples.</div></li><li><div>Custom version: add a <em>Custom</em> node with <code>FPOM.ush</code>. Add an input <code>Tex</code> and connect a <em>Texture Object</em> of the height map; Unreal then makes <code>TexSampler</code> available in the code. Other inputs: <code>UV</code> (TexCoord), <code>V</code>, <code>Depth</code>, <code>MaxHeight</code>, <code>MinSteps</code>, <code>MaxSteps</code>, <code>Refinements</code>, <code>Fade</code>. Output Type <code>CMOT Float 2</code>.</div></li><li><div><code>V</code>: <em>CameraVector</em> through a <em>Transform</em> node (World to Tangent). <code>Fade</code>: 1 − saturate((distance − FadeStart) / (FadeEnd − FadeStart)), with the distance from <em>Camera Position</em> to <em>Absolute World Position</em> in centimetres.</div></li><li><div>Sample base colour, normal and ORM at the output UV. Compare the two versions with <em>Shader Complexity</em> and a GPU capture (ProfileGPU).</div></li></ol>
+<div class="files"><div class="file" data-name="FPOM.ush" data-lang="hlsl"><pre>// Custom node &quot;FPOM&quot;. Inputs: Tex (Texture Object, the height map), TexSampler is created automatically
+// as TexSampler; UV (float2), V (float3, CameraVector transformed to Tangent space), Depth, MaxHeight,
+// MinSteps, MaxSteps, Refinements, Fade (float, 0..1 from distance). Output Type: CMOT Float 2 (parallax UV).
+float3 v = normalize(V);
+float depth = Depth * Fade;
+if (depth &lt;= 1e-5) return UV;
+float2 dx = ddx(UV), dy = ddy(UV);
+float2 uvPerDepth = -v.xy / max(v.z, 0.05) * depth;
+float layerStart = 1.0 - saturate(MaxHeight);
+int steps = (int)max(round(lerp(MaxSteps, MinSteps, saturate(v.z))), 1.0);
+float dl = (1.0 - layerStart) / steps;
+float lPrev = layerStart, lCur = 1.0, hCur = -1.0;
+float hPrev = max((1.0 - layerStart) - Tex.SampleGrad(TexSampler, UV + uvPerDepth * layerStart, dx, dy).r, 1e-5);
+for (int i = 1; i &lt;= 64; i++)
+{
+    if (i &gt; steps) break;
+    float l = layerStart + dl * i;
+    float d = (1.0 - l) - Tex.SampleGrad(TexSampler, UV + uvPerDepth * l, dx, dy).r;
+    if (d &lt;= 0.0) { lCur = l; hCur = d; break; }
+    lPrev = l; hPrev = d;
+}
+for (int k = 0; k &lt; 4; k++)
+{
+    if (k &gt;= (int)Refinements) break;
+    float lm = lerp(lPrev, lCur, hPrev / max(hPrev - hCur, 1e-6));
+    float dm = (1.0 - lm) - Tex.SampleGrad(TexSampler, UV + uvPerDepth * lm, dx, dy).r;
+    if (dm &gt; 0.0) { lPrev = lm; hPrev = dm; } else { lCur = lm; hCur = dm; }
+}
+return UV + uvPerDepth * lerp(lPrev, lCur, hPrev / max(hPrev - hCur, 1e-6));</pre></div></div>
+<p class="note">Pixel Depth Offset from the hit height lets the parallax surface intersect other geometry; enable it only where needed.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Paper</span><a href="https://dl.acm.org/doi/10.1145/1111411.1111423" rel="noopener">Dynamic parallax occlusion mapping with approximate soft shadows</a></span><span class="by">Natalya Tatarchuk · I3D 2006</span><span class="why">POM with adaptive sampling rates.</span></li><li><span><span class="kind">Paper</span><a href="https://dl.acm.org/doi/10.1145/1053427.1053453" rel="noopener">Real-time relief mapping on arbitrary polygonal surfaces</a></span><span class="by">Policarpo, Oliveira, Comba · I3D 2005</span><span class="why">Linear search followed by binary search refinement.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/lit-material-inspector-reference.html" rel="noopener">HDRP Lit: displacement mode and pixel displacement</a></span><span class="by">Unity</span><span class="why">The built-in POM settings used for comparison.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/texturing-material-functions-in-unreal-engine" rel="noopener">Unreal Engine ParallaxOcclusionMapping material function</a></span><span class="by">Epic Games</span><span class="why">The engine function and its inputs.</span></li></ul>
+</section>
+
+<div class="next" data-next="eyes ray-marching parallax"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"fpom": [
+"Fast POM",
+"Parallax occlusion mapping with techniques that cut the number of steps and fetches.",
+"#recap"
+],
+"hmax": [
+"H max",
+"The highest value a height map contains; the march can start there.",
+"#start"
+],
+"samplegrad": [
+"SampleGrad",
+"Texture sampling with explicit UV derivatives instead of hardware derivatives.",
+"#gradients"
+],
+"dependent": [
+"Dependent fetch",
+"A texture read whose UV depends on the result of a previous read; it cannot start early.",
+"#recap"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=76a6bcc6"></script>
+<script src="../../assets/index.js?v=97e4c60c"></script>
+<script src="../../assets/atlas.js?v=6986d9c4"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="fpom.js?v=bf003f85"></script>
+</body>
+</html>
