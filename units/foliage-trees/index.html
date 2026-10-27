@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Procedural Trees: SpeedTree and Houdini · Tech Art Atlas</title>
+<meta name="description" content="How game trees are built procedurally: branch levels and their cost, the pipe model for radii, phyllotaxis, length and gravity profiles, L-systems, leaf cards against meshes, SpeedTree and the Houdini Labs Tree Tools, and the package the engine expects, built for Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-trees" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Procedural Trees: SpeedTree and Houdini</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 10 chapters</div>
+  <h1>Procedural Trees: SpeedTree and Houdini</h1>
+  <p class="lede">How game trees are built procedurally: branch levels and their cost, the pipe model for radii, phyllotaxis, length and gravity profiles, L-systems, leaf cards against meshes, SpeedTree and the Houdini Labs Tree Tools, and the package the engine expects, built for Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Frame Profiling. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-trees.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A procedurally grown broadleaf tree on a grassy studio floor, its branch levels tinted from trunk to twig.</figcaption></figure>
+</div>
+<div class="needs" data-needs="reading-a-frame#lods"></div>
+
+<section class="chapter" id="structure" data-title="Tree structure for games" data-builds="reading-a-frame#lods" data-summary="Each level multiplies the branch count by the children per branch; games model 2–3 levels as geometry and put twigs and leaves on cards.">
+  <div class="head"><div class="num"></div><h2>Tree structure for games</h2></div>
+
+  <div class="prose">
+    <p>A game tree is a hierarchy. The trunk carries first-level branches, those carry second-level branches, and the last levels carry leaves. Generators describe each level once (how many children, where on the parent, at what angle, how long) and repeat the rule, which is why a handful of parameters can make thousands of branches. It is also why trees get expensive fast: every level multiplies the count.</p>
+  </div>
+  <div class="fx" data-fx="levels"></div>
+  <div class="prose">
+    <p>Real-time trees therefore model only the first two or three levels as geometry. Everything finer, twigs with their leaves, is painted into textures and placed on flat cards or small meshes. The split point is the main decision of a game tree: deeper geometry looks better up close and costs vertices everywhere the tree is seen; earlier cards cost overdraw (<a class="x" href="../foliage-cards/index.html#overdraw">foliage overdraw</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="radius" data-title="Branch radius: the pipe model" data-builds="foliage-trees#structure" data-summary="Pipe model: r^Δ = Σ r_i^Δ with Δ ≈ 2, so two equal children get r / √2 each.">
+  <div class="head"><div class="num"></div><h2>Branch radius: the pipe model</h2></div>
+
+  <div class="prose">
+    <p>How thick should a child branch be? Leonardo da Vinci noted that the cross-sections of all branches at one height add up to the trunk's cross-section. Botanists call it the <button type="button" class="term" data-term="pipe">pipe model</button>: a tree behaves like a bundle of pipes that split. Measurements give exponents Δ between about 1.8 and 2.3, close to 2, which keeps the area; Eloy (2011) showed that this is also the shape that resists wind best:</p>
+  </div>
+  <div class="fx" data-fx="pipe"></div>
+  <div class="prose"><p>Generators expose this as a radius falloff or a child-radius scale. Getting it right is the cheapest realism there is: trees whose children are too thick read as cartoon trees, too thin as wire. It also drives LODs, because thin branches are the first geometry to remove.</p></div>
+
+</section>
+<section class="chapter" id="phyllotaxis" data-title="Leaf and branch placement" data-builds="foliage-trees#structure" data-summary="Leaf i at angle i · 137.5° spreads leaves evenly around the stem; rational angles stack them in rows.">
+  <div class="head"><div class="num"></div><h2>Leaf and branch placement</h2></div>
+
+  <div class="prose">
+    <p>Many plants place each new leaf or branch at a fixed angle from the previous one around the stem. The most common angle is the <button type="button" class="term" data-term="golden">golden angle</button>, about 137.5°. Because it is irrational relative to a full turn, no two leaves ever line up exactly, so each leaf shades the ones below as little as possible:</p>
+  </div>
+  <div class="fx" data-fx="phyllo"></div>
+  <div class="prose"><p>For tree generators this is the rotation or phase parameter of a generator level. Setting it to a round number (90°, 120°, 180°) makes visible rows of branches, which look manufactured. Opposite and alternate arrangements (pairs at 180°, as on maples and ashes) are real too, but then every pair is rotated by 90° against the previous one.</p></div>
+
+</section>
+<section class="chapter" id="growth" data-title="Length, angle and gravity" data-builds="foliage-trees#structure" data-summary="Child length follows a profile over the parent, L(t) = L_max · (1 − t)^k; droop grows with length and gravity.">
+  <div class="head"><div class="num"></div><h2>Length, angle and gravity</h2></div>
+
+  <div class="prose">
+    <p>Children are not the same length all along their parent. In a conifer they are longest at the base and shortest at the top; in many broadleaf trees they are short at the base, longest a third of the way up and short again at the tip. Generators describe that with a curve over the parent's length. A second curve bends branches down under their own weight (gravitropism) or up towards the light (phototropism):</p>
+  </div>
+  <div class="fx" data-fx="profile"></div>
+  <div class="prose"><p>These two curves define the silhouette, which is what the player reads first and what survives into the impostor. Tune them on the whole tree from a distance before any leaf detail, and compare against a photo of the species at the same distance.</p></div>
+
+</section>
+<section class="chapter" id="lsystems" data-title="L-systems and space colonisation" data-builds="foliage-trees#structure" data-summary="An L-system rewrites every symbol each step: F → F[+F]F[−F]F gives 5ⁿ segments; space colonisation grows towards a crown shape.">
+  <div class="head"><div class="num"></div><h2>L-systems and space colonisation</h2></div>
+
+  <div class="prose">
+    <p>The classic procedural description of plants is the <button type="button" class="term" data-term="lsystem">L-system</button> (Lindenmayer, 1968; Prusinkiewicz and Lindenmayer, <em>The Algorithmic Beauty of Plants</em>, 1990): a string of symbols and rules that rewrite every symbol at once. A turtle then reads the string and draws it. One rule repeated a few times already looks like a plant:</p>
+  </div>
+  <div class="fx" data-fx="lsys"></div>
+  <div class="prose">
+    <p>Houdini has an L-system node and the Labs Tree Tools; SpeedTree's generators are a more art-directable version of the same idea: per-level rules, with curves instead of symbols. A different family, <em>space colonisation</em> (Runions et al., 2007), grows branches towards a cloud of attraction points that fills the desired crown shape. It is good for matching a given silhouette and for trees that grow around obstacles.</p>
+  </div>
+
+</section>
+<section class="chapter" id="leaves" data-title="Leaves: cards, clusters and meshes" data-builds="foliage-trees#structure foliage-cards#overdraw" data-summary="Leaf meshes cost triangles, cards cost overdraw; N leaves on cards of k leaves need N/k cards.">
+  <div class="head"><div class="num"></div><h2>Leaves: cards, clusters and meshes</h2></div>
+
+  <div class="prose">
+    <p>A mature tree has tens of thousands of leaves. Three ways to represent them:</p>
+    <ul>
+      <li><strong>Leaf cards</strong>: quads or cut-out polygons with a texture of a twig with many leaves. Few triangles, much overdraw.</li>
+      <li><strong>Leaf meshes</strong>: every leaf modelled, a few triangles each, opaque. More vertices, little overdraw; what Nanite foliage is built for.</li>
+      <li><strong>Fronds</strong>: long strips along a branch (palms, ferns, conifer needles), textured with an alpha mask.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="leafcards"></div>
+  <div class="prose"><p>Most shipped trees mix them: cards for the twigs and leaves at LOD0, fewer and larger cluster cards in later LODs, an impostor at the end. Cards are cut close to the painted leaves to waste fewer pixels (<a class="x" href="../foliage-cards/index.html#cutout">tight cutouts</a>).</p></div>
+
+</section>
+<section class="chapter" id="speedtree" data-title="SpeedTree" data-builds="foliage-trees#structure" data-summary="SpeedTree: per-level generators with curves, LODs, built-in wind data, atlases and card baking; exports .st9 for Unity 6 and Unreal.">
+  <div class="head"><div class="num"></div><h2>SpeedTree</h2></div>
+
+  <div class="prose">
+    <p><button type="button" class="term" data-term="speedtree">SpeedTree</button> is the standard tree tool in games (owned by Unity since 2021; the current release is SpeedTree Modeler 10). A tree is a stack of <em>generators</em>: a trunk generator, branch generators for each level, leaf, frond and card generators. Each generator places nodes on its parent and has curves for length, radius, angle, gravity and the rest of this unit, plus hand-drawing and per-node editing when a rule is not enough.</p>
+    <p>What makes it a game tool rather than a modelling tool is the output:</p>
+    <ul>
+      <li><strong>LODs</strong> generated from the same structure: fewer branches, fewer segments and sides, leaves merged.</li>
+      <li><strong>Wind</strong> set up in the Modeler and baked into vertex data that the engine's SpeedTree shaders read, so the engine needs no extra data (<a class="x" href="../foliage-vertex-data/index.html#baking">baking vertex data</a>).</li>
+      <li><strong>Texture atlases</strong> for leaves and a <em>Card generator</em> that renders twigs into cards inside the tool.</li>
+      <li><strong>Export</strong> as <code>.st9</code> for Unreal and Unity 6, the older <code>.st</code> format for earlier versions, or FBX for anything else.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="houdini" data-title="Houdini" data-builds="foliage-trees#lsystems" data-summary="Houdini Labs Tree Tools (controller, trunk, branch generator and placer, leaf generator) output mesh plus curves with hierarchy; attributes become UVs.">
+  <div class="head"><div class="num"></div><h2>Houdini</h2></div>
+
+  <div class="prose">
+    <p>Houdini is used when trees must follow a studio pipeline, be generated in bulk, or carry custom data. The <em>SideFX Labs Tree Tools</em> are a ready-made starting point: a controller, a trunk generator, branch generators, a branch placer and a leaf generator, chained like SpeedTree's generators. They output the mesh plus the internal curves, which is the important part: every point knows which branch it belongs to, where that branch starts and how deep in the hierarchy it is.</p>
+    <p>From there a tree is ordinary geometry processing: attributes for pivot, level, stiffness and phase written to UV sets (<a class="x" href="../foliage-vertex-data/index.html#baking">baking vertex data</a>), cards placed by scattering, normals edited (<a class="x" href="../foliage-shading/index.html#canopy">canopy normals</a>), LODs by removing levels and reducing curves, and cards rendered with the Labs Maps Baker. The whole chain is an HDA that can produce a hundred variations of a species overnight.</p>
+    <p>Other routes exist: Blender's Geometry Nodes and add-ons, Unreal's PCG for scattering (not for growing single trees), and photogrammetry for hero trunks. The data the engine needs is the same in every case.</p>
+  </div>
+
+</section>
+<section class="chapter" id="output" data-title="What the pipeline must deliver" data-builds="foliage-trees#speedtree foliage-trees#houdini" data-summary="LODs, pivots and hierarchy, wind masks, edited normals and AO, atlases, impostors, collision and bounds.">
+  <div class="head"><div class="num"></div><h2>What the pipeline must deliver</h2></div>
+
+  <div class="prose"><p>Whatever tool builds the tree, the engine expects the same package. The rest of the Foliage units explain each item:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Deliverable</th><th>Why the engine needs it</th><th>Where it is explained</th></tr></thead>
+    <tbody>
+      <tr><td>LOD chain</td><td>A tree on screen at 300 m must not cost what it costs at 3 m</td><td><a class="x" href="../foliage-lods/index.html#chain">LOD chains</a></td></tr>
+      <tr><td>Pivots, hierarchy level, stiffness, phase</td><td>The wind shader rotates each branch around its own attachment point</td><td><a class="x" href="../foliage-vertex-data/index.html#pivots">pivots in UV channels</a></td></tr>
+      <tr><td>Masks for flutter and bending</td><td>Leaf edges flutter, the trunk base must not move</td><td><a class="x" href="../foliage-wind/index.html#leaves">leaf flutter</a></td></tr>
+      <tr><td>Edited normals and vertex AO</td><td>Cards lit with their own normals look like a pile of paper</td><td><a class="x" href="../foliage-shading/index.html#canopy">canopy normals</a></td></tr>
+      <tr><td>Leaf atlas, bark textures, material count</td><td>Every extra material is another batch per tree</td><td><a class="x" href="../foliage-cards/index.html#atlas">atlases</a></td></tr>
+      <tr><td>Impostor or billboard</td><td>The last LOD, often for most of the trees on screen</td><td><a class="x" href="../foliage-lods/index.html#impostor">octahedral impostors</a></td></tr>
+      <tr><td>Collision proxy and bounds</td><td>Physics uses a capsule for the trunk; culling bounds must include the wind sway</td><td><a class="x" href="../foliage-instancing/index.html#culling">culling</a></td></tr>
+    </tbody>
+  </table></div>
+  <details class="check"><summary></summary><script type="application/json">[["A tree from your generator looks right but sways as one rigid block in the engine. What is most likely missing?", ["A higher LOD count", "Per-vertex pivot and hierarchy data for the wind shader", "A bigger leaf atlas", "Two-sided normals"], 1, "Without per-branch pivots the shader can only bend the whole tree around its base."], ["A broadleaf tree reads as a cartoon from a distance. Which parameter do you check first?", ["Leaf texture resolution", "Child radius against the pipe model, and the silhouette curves", "The wind phase", "The number of LODs"], 1, "Silhouette and branch thickness are what survives at a distance."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="SpeedTree .st9 through the SpeedTree 9 importer with HDRP SpeedTree shaders and a Wind Zone; FBX trees with an import-rule script and a per-LOD report.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Two routes into Unity: SpeedTree files through Unity's SpeedTree importer, and FBX trees from Houdini (or SpeedTree's FBX export) through the model importer, with an editor script that sets the import rules and reports what each tree contains. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="asset"><b>Asset</b><span>A SpeedTree .st9 file: prefab with LOD Group, materials and wind.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>TreeImportCheck.cs: import rules and a per-tree report for FBX trees.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>A Wind Zone in the scene for SpeedTree wind.</span></div></div>
+<ol class="impl-steps"><li><div><b>SpeedTree route.</b> Export <code>.st9</code> from SpeedTree Modeler (Games export, with the textures) straight into a folder under <code>Assets/</code>. Unity 6 imports it with the <em>SpeedTree 9 Importer</em>: a prefab with a LOD Group, materials and the wind settings from the Modeler.</div></li><li><div>In HDRP, check the generated materials. Extract them from the prefab (<em>Materials</em> tab of the importer) and make sure they use the SpeedTree HDRP shaders; a standard HDRP Lit material loses the SpeedTree wind. The importer's <em>Wind</em> tab sets <em>Strength Response</em>, <em>Direction Response</em> and <em>Randomness</em>.</div></li><li><div>Add a <em>Wind Zone</em> (<em>GameObject &gt; 3D Object &gt; Wind Zone</em>). SpeedTree wind only moves while one exists. Its default <em>Main</em> strength of 1 is strong; start around 0.3.</div></li><li><div><b>FBX route.</b> Put <code>TreeImportCheck.cs</code> in <code>Assets/Editor/</code> and import trees into a folder named <code>Foliage</code>. Name the LOD meshes <code>Oak_LOD0</code>, <code>Oak_LOD1</code> and so on in Houdini or SpeedTree; Unity builds the LOD Group from those names.</div></li><li><div>Read the report in the Console: vertex and triangle counts per LOD, material count, and which UV channels arrived. Channels are counted from 0, as in the Shader Graph UV node and the Unreal TexCoord node. A missing channel 2 means the pivot data for wind did not survive the export. In Houdini the FBX UV sets come from the attributes <code>uv</code>, <code>uv2</code>, <code>uv3</code>…, so channel 2 is the attribute <code>uv3</code>.</div></li><li><div>Open the prefab and set the LOD Group transition heights against the budget in <a class="x" href="../foliage-lods/index.html#count">LOD counts</a>; set <em>Fade Mode</em> to Cross Fade if the shader supports it.</div></li></ol>
+<div class="files"><div class="file" data-name="TreeImportCheck.cs" data-lang="cs"><pre>// Assets/Editor/TreeImportCheck.cs
+// Import rules and a report for trees exported from SpeedTree (as FBX) or Houdini.
+// Applies to models under any folder named &quot;Foliage&quot;. Unity builds a LOD Group by itself
+// when the FBX children are named *_LOD0, *_LOD1, ...
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+public class TreeImportCheck : AssetPostprocessor
+{
+    static bool IsFoliage(string path) =&gt; path.Replace(&#x27;\\&#x27;, &#x27;/&#x27;).Contains(&quot;/Foliage/&quot;);
+
+    void OnPreprocessModel()
+    {
+        if (!IsFoliage(assetPath)) return;
+        var mi = (ModelImporter)assetImporter;
+        mi.meshCompression = ModelImporterMeshCompression.Off;   // keeps pivot data in the UVs at full precision
+        mi.importNormals = ModelImporterNormals.Import;            // edited foliage normals must survive import
+        mi.importTangents = ModelImporterTangents.CalculateMikk;
+        mi.isReadable = false;
+        mi.generateSecondaryUV = false;                            // UV1 may carry wind data: never overwrite it
+        mi.importAnimation = false;
+    }
+
+    void OnPostprocessModel(GameObject root)
+    {
+        if (!IsFoliage(assetPath)) return;
+        var sb = new StringBuilder($&quot;Tree import: {assetPath}\n&quot;);
+        var uv = new List&lt;Vector4&gt;();
+        foreach (var mf in root.GetComponentsInChildren&lt;MeshFilter&gt;(true))
+        {
+            var m = mf.sharedMesh; if (m == null) continue;
+            sb.Append($&quot;  {mf.name}: {m.vertexCount} verts, {m.triangles.Length / 3} tris, {m.subMeshCount} materials, UV channels: &quot;);
+            for (int ch = 0; ch &lt; 8; ch++) { m.GetUVs(ch, uv); if (uv.Count &gt; 0) sb.Append(ch).Append(&#x27; &#x27;); }
+            m.GetUVs(2, uv);
+            if (uv.Count == 0) sb.Append(&quot;  &lt;- no UV channel 2: no pivot data for wind&quot;);
+            sb.Append(&#x27;\n&#x27;);
+        }
+        var lod = root.GetComponent&lt;LODGroup&gt;();
+        sb.Append(lod != null ? $&quot;  LOD Group with {lod.lodCount} levels\n&quot; : &quot;  No LOD Group: name children *_LOD0, *_LOD1, ...\n&quot;);
+        Debug.Log(sb.ToString());
+    }
+}</pre></div></div>
+<p class="note">Mesh compression is switched off on purpose: compressed meshes quantise UV channels, and pivot positions stored there then wobble by centimetres (<a class="x" href="../foliage-vertex-data/index.html#precision">precision</a>).</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: the importer assigns the URP SpeedTree shaders automatically; the FBX route is identical.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="SpeedTree .st9 import with a Wind Directional Source; Houdini FBX with _LOD names, full-precision UVs and checked UV channels.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal imports SpeedTree's <code>.st9</code> files directly and Houdini trees as FBX (or through Houdini Engine). The check is the same: LODs, materials, and the extra UV sets that carry wind data. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="asset"><b>Asset</b><span>An imported SpeedTree or FBX static mesh with LODs.</span></div><div class="rt" data-k="mat"><b>Material</b><span>The generated SpeedTree materials, or your own foliage material.</span></div></div>
+<ol class="impl-steps"><li><div><b>SpeedTree.</b> Drag the <code>.st9</code> file into the Content Browser. The import dialog creates the static mesh with its LODs, the materials with SpeedTree wind, and optionally Nanite. Place a <em>Wind Directional Source</em> actor in the level to drive SpeedTree wind.</div></li><li><div><b>Houdini.</b> Export FBX with the LODs as <code>_LOD0</code>, <code>_LOD1</code> children, or bake through the Houdini Engine plugin. In the import options enable <em>Import Mesh LODs</em>; for foliage disable <em>Generate Lightmap UVs</em> if you rely on another UV index for wind data.</div></li><li><div>Open the static mesh. In <em>LOD Settings</em> check the screen sizes; in each LOD's <em>Build Settings</em> enable <em>Use Full Precision UVs</em> when UV sets carry pivot positions (the default stores UVs as 16-bit floats).</div></li><li><div>In <em>Details &gt; General Settings</em> the <em>UV Channels</em> count must include the wind channels. Use the <em>UV</em> menu of the static mesh editor to display each channel and confirm it holds data, not a copy of UV0.</div></li><li><div>For Nanite trees (opaque leaves, or masked cards where the project accepts the cost), enable Nanite in the import or on the mesh. Nanite meshes ignore the LOD chain and use their own simplification.</div></li></ol>
+<p class="note">SpeedTree's legacy <code>.st</code> import is still documented for older projects; new projects should use <code>.st9</code>.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/speedtree-modeler/manual/toc.html" rel="noopener">SpeedTree Modeler 10 manual</a></span><span class="by">Unity</span><span class="why">Generators, card generator, atlases, wind, LOD and engine export.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/speedtree-modeler/manual/import-to-unity.html" rel="noopener">Importing SpeedTree models into Unity</a></span><span class="by">Unity</span><span class="why">Formats per Unity version, render pipelines, Wind Zones and LOD Groups.</span></li><li><span><span class="kind">Docs</span><a href="https://sidefxlabs.artstation.com/projects/PoLJlo" rel="noopener">Labs Tree Tools</a></span><span class="by">SideFX Labs</span><span class="why">Controller, trunk, branch and leaf generators and the branch placer.</span></li><li><span><span class="kind">Book</span><a href="http://algorithmicbotany.org/papers/#abop" rel="noopener">The Algorithmic Beauty of Plants</a></span><span class="by">Prusinkiewicz, Lindenmayer · 1990</span><span class="why">L-systems and phyllotaxis, free from the authors.</span></li><li><span><span class="kind">Paper</span><a href="https://doi.org/10.1103/PhysRevLett.107.258101" rel="noopener">Leonardo's rule, self-similarity and wind-induced stresses in trees</a></span><span class="by">Christophe Eloy · Physical Review Letters, 2011</span><span class="why">Why branch cross-sections add up, and the measured exponents.</span></li><li><span><span class="kind">Paper</span><a href="https://doi.org/10.2312/NPH/NPH07/063-070" rel="noopener">Modeling trees with a space colonization algorithm</a></span><span class="by">Runions, Lane, Prusinkiewicz · Eurographics NPH 2007</span><span class="why">Growing branches towards attraction points.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-vertex-data foliage-wind foliage-cards"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"pipe": [
+"Pipe model",
+"Branch cross-sections at a fork add up: r^Δ = Σ r_i^Δ with Δ close to 2 (Leonardo's rule).",
+"#radius"
+],
+"golden": [
+"Golden angle",
+"360° · (1 − 1/φ) ≈ 137.5°, the most common divergence between successive leaves.",
+"#phyllotaxis"
+],
+"lsystem": [
+"L-system",
+"A rewriting system: every symbol is replaced by a rule in parallel, then drawn by a turtle.",
+"#lsystems"
+],
+"speedtree": [
+"SpeedTree",
+"The standard tree modelling tool for games and film, with LODs, wind and engine export.",
+"#speedtree"
+],
+"card": [
+"Leaf card",
+"A flat polygon with an alpha-masked texture of a twig or leaf cluster.",
+"#leaves"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="trees.js?v=d422fecd"></script>
+</body>
+</html>

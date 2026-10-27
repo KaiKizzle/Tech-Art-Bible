@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Skinned and Baked Foliage Animation · Tech Art Atlas</title>
+<meta name="description" content="When procedural wind is not enough: bones and skinning, spring simulation, vertex animation textures with their size, precision, modes and playback, Nanite skinning in Unreal, and how to choose, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-animation" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Skinned and Baked Foliage Animation</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 9 chapters</div>
+  <h1>Skinned and Baked Foliage Animation</h1>
+  <p class="lede">When procedural wind is not enough: bones and skinning, spring simulation, vertex animation textures with their size, precision, modes and playback, Nanite skinning in Unreal, and how to choose, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Foliage Wind and Foliage Vertex Data. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-animation.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A young tree caught mid-fall, its earlier positions shown as faint ghosts along the arc.</figcaption></figure>
+</div>
+<div class="needs" data-needs="foliage-wind#cost foliage-vertex-data#precision"></div>
+
+<section class="chapter" id="when" data-title="When procedural wind is not enough" data-builds="foliage-wind#cost" data-summary="Procedural wind for everything; bones for interaction and hero trees; VAT for baked events; Nanite skinning in Unreal 5.7+ (experimental).">
+  <div class="head"><div class="num"></div><h2>When procedural wind is not enough</h2></div>
+
+  <div class="prose">
+    <p>Procedural wind covers almost everything foliage does all day. It cannot react to physics, follow a scripted event exactly, or show motion that has no formula (a tree splitting and falling, a bush blown apart). For those, two other tools exist: <button type="button" class="term" data-term="skinning">skinning</button> with bones, and <button type="button" class="term" data-term="vat">vertex animation textures</button> (VAT) baked from a simulation.</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Method</th><th>Good for</th><th>Cost</th><th>Limits</th></tr></thead>
+    <tbody>
+      <tr><td>Procedural wind (vertex shader)</td><td>Every plant, all the time</td><td>Vertex ALU per pass; no animation data</td><td>Only motion you can write as a formula; no collisions</td></tr>
+      <tr><td>Bones and skinning</td><td>Hero trees, physics interaction, cut and bend, simulated branches</td><td>Bone update and upload per instance per frame, skinning per vertex</td><td>Hard to instance; few hundred animated plants at most on most targets</td></tr>
+      <tr><td>Vertex animation textures</td><td>Scripted events: a tree falling, grass cut by a mower, a bush blown apart</td><td>One or two texture reads per vertex; memory per frame</td><td>Fixed, pre-baked motion; changes need a re-bake</td></tr>
+      <tr><td>Nanite skinning (Unreal 5.7+, experimental)</td><td>Dense Nanite foliage with skeletal wind (Dynamic Wind plugin)</td><td>Skinning in Nanite's GPU pipeline</td><td>Experimental: global wind direction only, no collision yet</td></tr>
+    </tbody>
+  </table></div>
+
+</section>
+<section class="chapter" id="skinning" data-title="Bones and skinning" data-builds="foliage-animation#when spaces#transform" data-summary="p′ = Σ wᵢ Mᵢ p; vertex cost is moderate, but per-instance bone poses break instancing; Nanite Skinning (UE 5.7+, experimental) uses bones for foliage wind.">
+  <div class="head"><div class="num"></div><h2>Bones and skinning</h2></div>
+
+  <div class="prose">
+    <p>A skinned mesh stores, per vertex, up to four bone indices and weights. Each frame the bones' matrices are computed on the CPU (or by an animation system on the GPU) and the vertex is moved by the weighted sum of its bones: p′ = Σ w<sub>i</sub> M<sub>i</sub> p. For a tree, bones follow the branch hierarchy: one per trunk segment and per larger branch. Leaves ride on the nearest bone and add procedural flutter:</p>
+  </div>
+  <div class="fx" data-fx="skin"></div>
+  <div class="prose">
+    <p>The vertex cost is moderate; what limits skinned foliage is the per-instance work: every animated plant needs its own bone pose, updated, uploaded and usually drawn as its own object, which breaks the instancing that makes forests possible (<a class="x" href="../foliage-instancing/index.html#instancing">instancing</a>). Shipped games therefore skin only the plants near the player and fall back to procedural wind or static meshes beyond.</p>
+    <p>Unreal 5.7 brought bones back for foliage at scale: <em>Nanite Foliage</em> drives wind through bone hierarchies (<em>Nanite Skinning</em> with the <em>Dynamic Wind</em> plugin) instead of World Position Offset, so Nanite can keep tight cluster bounds. It is experimental; Epic lists global wind direction only, no collision with characters and no near-field simulation yet.</p>
+  </div>
+
+</section>
+<section class="chapter" id="simulation" data-title="Driving the bones" data-builds="foliage-animation#skinning" data-summary="Each bone as a damped spring: x″ = ω²(F − x) − 2ζωx′; branches: low damping, 0.2 Hz trunks to several Hz twigs.">
+  <div class="head"><div class="num"></div><h2>Driving the bones</h2></div>
+
+  <div class="prose">
+    <p>Bones need something to move them. For branches the standard model is a damped spring per bone: the wind pushes, the branch's stiffness pulls back, damping takes energy out. Two numbers per branch, natural frequency and damping ratio, set its character:</p>
+  </div>
+  <div class="fx" data-fx="spring"></div>
+  <div class="prose">
+    <p>Real branches have natural frequencies from around 0.2 Hz (trunks) to several hertz (twigs) and low damping, which is why they keep swinging after a gust. Springs on a bone chain also carry motion from parent to child with a delay, the look that procedural wind fakes with phase offsets. In Unity this is a few lines in a job or an Animation Rigging constraint; in Unreal, Control Rig or the Dynamic Wind plugin's simulation groups. Character collision adds a push force on the bones within reach.</p>
+  </div>
+
+</section>
+<section class="chapter" id="vat" data-title="Vertex animation textures" data-builds="foliage-animation#when textures-sampling#filter" data-summary="One texel per vertex per frame, read by a lookup UV; size = min(V, w_max) × ⌈V/w_max⌉·F; uncompressed, no mips, point filtering.">
+  <div class="head"><div class="num"></div><h2>Vertex animation textures</h2></div>
+
+  <div class="prose">
+    <p>A VAT stores a whole animation in textures: one texel per vertex, one row (or block of rows) per frame. The vertex shader looks up its own texel for the current frame and moves the vertex there; a second texture holds the normals. Houdini's SideFX Labs VAT tool bakes this from any simulation and exports the mesh, the textures and matching shaders for Unity and Unreal:</p>
+  </div>
+  <div class="fx" data-fx="vatsize"></div>
+  <div class="prose">
+    <p>Each vertex needs to know which column it reads. Tools store that as a lookup UV in a spare channel; reading by vertex index works only if the engine keeps the vertex order (mesh optimisation on import reorders vertices). The data must be exact, so VAT textures are uncompressed, without mipmaps, sampled with point filtering, and with sRGB off.</p>
+  </div>
+
+</section>
+<section class="chapter" id="precision" data-title="Precision and bounds" data-builds="foliage-vertex-data#precision" data-summary="Store offsets from rest, normalised to the animation bounds for 16-bit formats; normals in 8 bits; bounds must cover the whole motion.">
+  <div class="head"><div class="num"></div><h2>Precision and bounds</h2></div>
+
+  <div class="prose">
+    <p>Positions in a VAT have the same precision rules as pivots in UVs. Storing offsets from the rest pose instead of absolute positions keeps the values small, and normalising them to the animation's bounds lets 16-bit integer formats keep a constant step:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Precision: 8-bit steps are range/255, normalised 16-bit range/65535, half floats keep 11 significant bits so the step grows with the value.</p></div><a class="x refto" href="../foliage-vertex-data/index.html#precision">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>A falling tree moves several metres: half floats then step by millimetres to centimetres near the end of the fall, normalised 16-bit by fractions of a millimetre. Normals tolerate 8 bits per channel. Whatever the format, the renderer's bounds must cover the whole animation, or the tree is culled mid-fall.</p>
+  </div>
+
+</section>
+<section class="chapter" id="modes" data-title="Soft body, rigid pieces and remeshing" data-builds="foliage-animation#vat foliage-vertex-data#pivots" data-summary="Soft body stores V·F positions; rigid pieces store P·F positions and rotations, often 100× less; remeshing and sprites for fluids and particles.">
+  <div class="head"><div class="num"></div><h2>Soft body, rigid pieces and remeshing</h2></div>
+
+  <div class="prose">
+    <p>VAT tools offer several modes, each storing different data:</p>
+    <ul>
+      <li><strong>Soft body</strong>: every vertex every frame. Any deformation; most memory.</li>
+      <li><strong>Rigid pieces</strong>: one position and rotation per piece per frame; the shader rotates each piece's vertices around its pivot. For things that break into rigid parts: a tree splitting into trunk sections, a fence shattering.</li>
+      <li><strong>Dynamic remeshing</strong> (fluids): the vertex count changes per frame, so the mesh is a pool of triangles and the texture says where each one goes.</li>
+      <li><strong>Sprites</strong>: particles as camera-facing cards.</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="rigid"></div>
+
+</section>
+<section class="chapter" id="playback" data-title="Playing it back" data-builds="foliage-animation#vat foliage-wind#normals" data-summary="Lerp two neighbouring frames; per-instance start time; motion vectors from the previous frame; LOD lookups; swap meshes around the event.">
+  <div class="head"><div class="num"></div><h2>Playing it back</h2></div>
+
+  <div class="prose">
+    <p>Baked frames are discrete. Snapping to the nearest one stutters; blending the two neighbouring frames costs a second texture read and removes most of the error:</p>
+  </div>
+  <div class="fx" data-fx="interp"></div>
+  <div class="prose">
+    <ul>
+      <li><strong>Time per instance.</strong> A shared animation looks cloned; offset the start time by a hash of the position, or set it when the event triggers.</li>
+      <li><strong>Motion vectors</strong>: read the previous frame's position too and output the difference, as for wind (<a class="x" href="../foliage-wind/index.html#normals">motion vectors</a>).</li>
+      <li><strong>LODs</strong> need their own lookup UVs pointing at the vertices they keep, or their own bake.</li>
+      <li><strong>Swap in and out</strong>: show the VAT mesh only during the event and swap back to the normal instanced plant (or its fallen state) afterwards.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="choose" data-title="Choosing a method" data-builds="foliage-animation#when" data-summary="Procedural for ambient wind, bones for interaction and hero plants, VAT for baked events, swapped in only when needed.">
+  <div class="head"><div class="num"></div><h2>Choosing a method</h2></div>
+
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>You need</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>Wind on every plant in the level</td><td>Procedural (<a class="x" href="../foliage-wind/index.html#field">Foliage Wind</a>)</td></tr>
+      <tr><td>A tree that falls the same way every time</td><td>Rigid-piece VAT, or a skinned mesh with a baked animation</td></tr>
+      <tr><td>Grass that is cut and stays cut</td><td>Swap to a cut mesh or scale the blades in the shader with an interaction texture; VAT only for the cutting motion</td></tr>
+      <tr><td>Branches that react to a character pushing through</td><td>Bones with spring simulation on the few nearby plants, procedural wind on the rest</td></tr>
+      <tr><td>A cinematic hero tree in a storm</td><td>Bones driven by a simulation, or an Alembic or VAT bake from Houdini</td></tr>
+    </tbody>
+  </table></div>
+  <details class="check"><summary></summary><script type="application/json">[["A level has 30 000 trees that sway, and 5 trees that fall when hit. Best combination?", ["Skin all trees", "Procedural wind on all trees; VAT or a skinned animation only on the falling tree, swapped in on impact", "VAT wind on all trees", "Nanite skinning on mobile"], 1, "Wind on everything is procedural; event animation is per event, swapped in only when needed."], ["A VAT tree is culled halfway through its fall. Why?", ["The texture is compressed", "The renderer's bounds cover the rest pose, not the whole animation", "Missing normals", "The frame rate is too low"], 1, "Culling uses the renderer bounds; expand them to the animation's extent."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Labs VAT bake, lossless texture import, Custom Function playback with two-frame blending, motion vectors, enlarged bounds, swap in on the event.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route bakes a falling tree in Houdini with the Labs VAT tool, imports the textures with lossless settings, plays them back in a Custom Function with frame blending, and swaps the animated mesh in only while the event runs. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>Labs Vertex Animation Textures ROP: mesh, position and normal textures.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>VATSoft.hlsl: playback with frame blending.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>VATTrigger.cs: swaps the static plant for the animated one.</span></div></div>
+<ol class="impl-steps"><li><div>In Houdini, simulate the event (Vellum for soft deformation, RBD for a tree breaking into pieces). Add a <em>Labs Vertex Animation Textures</em> ROP, choose the mode (Soft-Body or Rigid-Body) and Unity as the target, and render. It writes an FBX with a lookup UV and the textures, and reports the frame count and bounds the shader needs.</div></li><li><div>Import the textures: <em>Texture Type</em> Default, <em>sRGB</em> off, <em>Generate Mip Maps</em> off, <em>Filter Mode</em> Point, <em>Wrap Mode</em> Clamp, <em>Compression</em> None, and for the EXR position texture the format <em>RGBA Half</em>. Import the FBX with <em>Optimize Mesh</em> off so vertices keep the baked order.</div></li><li><div>SideFX ships matching Shader Graphs for Unity; use them, or build your own with the file here: In the vertex stage, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>VATSoft.hlsl</code> and <em>Name</em> to <code>VATSoft</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionTex (Texture2D), NormalTex (Texture2D), PositionOS (Vector 3), LookupUV (Vector 2), Frames (Float), FPS (Float), FrameHeight (Float), Time (Float), StartTime (Float), Loop (Float), Normalised (Float), BoundsMin (Vector 3), BoundsMax (Vector 3)</b> and the outputs <b>OutPositionOS (Vector 3), OutNormalOS (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Feed LookupUV from the UV channel the baker wrote, and Frames, FPS, FrameHeight and the bounds from the values the baker reports.</div></li><li><div>Connect the outputs to <em>Vertex Position</em> and <em>Vertex Normal</em>; enable <em>Motion Vector For Vertex Animation</em> on the material. Expose <code>_StartTime</code> as a Float property and connect it to StartTime.</div></li><li><div>Enlarge the renderer bounds to the animation's extent (the baked bounds plus the rest mesh). Put <code>VATTrigger.cs</code> on the tree and call <code>Play()</code> from gameplay.</div></li></ol>
+<div class="files"><div class="file" data-name="VATSoft.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_VAT_SOFT_INCLUDED
+#define ATLAS_VAT_SOFT_INCLUDED
+
+// Soft-body vertex animation texture playback with frame blending.
+// PositionTex: RGBA16F, offset from the rest position (object space, metres), normalised to the bounds
+//              when Normalised = 1 (stored 0..1 -&gt; BoundsMin..BoundsMax), raw half floats when 0.
+// NormalTex:   RGBA8, normal * 0.5 + 0.5.
+// LookupUV:    the vertex&#x27;s texel centre in frame 0 (a spare UV channel written by the baker).
+// FrameHeight: height of one frame in UV units (rows per frame / texture height).
+// Time is in seconds; StartTime lets each instance or event begin on its own.
+void VATSoft_float(UnityTexture2D PositionTex, UnityTexture2D NormalTex, float3 PositionOS, float2 LookupUV,
+                   float Frames, float FPS, float FrameHeight, float Time, float StartTime, float Loop,
+                   float Normalised, float3 BoundsMin, float3 BoundsMax,
+                   out float3 OutPositionOS, out float3 OutNormalOS)
+{
+    float t = max(Time - StartTime, 0.0) * FPS;
+    t = Loop &gt; 0.5 ? fmod(t, Frames) : min(t, Frames - 1.0);
+    float f0 = floor(t), f1 = Loop &gt; 0.5 ? fmod(f0 + 1.0, Frames) : min(f0 + 1.0, Frames - 1.0), k = t - f0;
+
+    float2 uv0 = LookupUV + float2(0.0, f0 * FrameHeight);
+    float2 uv1 = LookupUV + float2(0.0, f1 * FrameHeight);
+    float3 o0 = SAMPLE_TEXTURE2D_LOD(PositionTex.tex, PositionTex.samplerstate, uv0, 0).rgb;
+    float3 o1 = SAMPLE_TEXTURE2D_LOD(PositionTex.tex, PositionTex.samplerstate, uv1, 0).rgb;
+    if (Normalised &gt; 0.5) { o0 = lerp(BoundsMin, BoundsMax, o0); o1 = lerp(BoundsMin, BoundsMax, o1); }
+    float3 n0 = SAMPLE_TEXTURE2D_LOD(NormalTex.tex, NormalTex.samplerstate, uv0, 0).rgb * 2.0 - 1.0;
+    float3 n1 = SAMPLE_TEXTURE2D_LOD(NormalTex.tex, NormalTex.samplerstate, uv1, 0).rgb * 2.0 - 1.0;
+
+    OutPositionOS = PositionOS + lerp(o0, o1, k);        // blend two frames: no stutter
+    OutNormalOS   = normalize(lerp(n0, n1, k));
+}
+#endif</pre></div><div class="file" data-name="VATTrigger.cs" data-lang="cs"><pre>// Assets/Scripts/VATTrigger.cs: starts a baked event (a falling tree) on this renderer only.
+// Uses a material instance for the few objects that are mid-event; the rest keep the shared material.
+using UnityEngine;
+
+public class VATTrigger : MonoBehaviour
+{
+    public Renderer vatRenderer;          // the VAT version of the plant, disabled until the event
+    public Renderer staticRenderer;       // the normal instanced plant
+    public float duration = 5f;           // seconds of baked animation
+    static readonly int StartId = Shader.PropertyToID(&quot;_StartTime&quot;);
+
+    public void Play()
+    {
+        staticRenderer.enabled = false;
+        vatRenderer.enabled = true;
+        vatRenderer.material.SetFloat(StartId, Time.timeSinceLevelLoad);   // .material creates an instance for this object only
+        Invoke(nameof(Finish), duration);
+    }
+
+    void Finish() { /* swap to the fallen-state mesh here, or leave the last frame playing (Loop = 0 holds it) */ }
+}</pre></div></div>
+<p class="note">Bones in Unity: a SkinnedMeshRenderer with a few bones per tree, driven by a job that integrates one damped spring per bone, works for the handful of plants around the player. Keep everything further away on the instanced, procedurally animated path.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical; use Additional Motion Vectors = Custom and output the difference between this frame's and the previous frame's position, or Time-Based when the start time is constant.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Labs VAT or a Custom node into World Position Offset with lossless textures; skeletal meshes near the player; Nanite Foliage with Dynamic Wind as an experimental path.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Three routes in Unreal: VAT through the Labs material functions or a Custom node, skeletal meshes with Control Rig or physics for interaction, and the experimental Nanite Foliage path with skeletal Dynamic Wind. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>VATSoft.ush: two-frame VAT playback as World Position Offset.</span></div><div class="rt" data-k="plugin"><b>Engine plugin</b><span>Nanite Foliage and the Dynamic Wind plugin (experimental).</span></div><div class="rt" data-k="bp"><b>Blueprint</b><span>A Blueprint that swaps the static plant for the animated one.</span></div></div>
+<ol class="impl-steps"><li><div>Bake with the Labs VAT ROP targeting Unreal. Import the EXR with <em>Compression Settings</em> <code>HDR</code> (or <code>RGBA16F</code>), <em>Mip Gen Settings</em> <code>NoMipmaps</code>, <em>Filter</em> <code>Nearest</code>, sRGB off; the normal texture likewise with <code>VectorDisplacementmap</code> compression. Import the FBX with full-precision UVs so the lookup UV stays exact.</div></li><li><div>Use the Labs VAT material functions, or a Custom node with <code>VATSoft.ush</code>: transform its output with <em>TransformVector</em> Local to World into <em>World Position Offset</em>, untick <em>Tangent Space Normal</em> and feed the decoded normal (transformed to world) into <em>Normal</em>. Enable velocities for vertex deformation in the project settings.</div></li><li><div>Event playback: a Blueprint hides the instanced plant, spawns the VAT static mesh, and sets <code>StartTime</code> on a dynamic material instance to the current game time. Increase the mesh's <em>Bounds Scale</em> so it is not culled mid-fall.</div></li><li><div><b>Skeletal foliage</b> for interaction: a Skeletal Mesh per plant with a Physics Asset (capsules on branches) or Control Rig springs. Use it only near the player and swap to the instanced static mesh beyond.</div></li><li><div><b>Nanite Foliage</b> (experimental, 5.7+): enable it in <em>Project Settings &gt; Rendering</em> and restart; enable the <em>Dynamic Wind</em> plugin; create a <em>Dynamic Wind Skeletal Data</em> asset whose Simulation Groups classify the bones (trunk, branches, leaves) and set their wind influence. Skinning stops below <em>Animation Min Screen Size</em>. Read the current documentation first: the feature and its limits are changing between releases.</div></li></ol>
+<div class="files"><div class="file" data-name="VATSoft.ush" data-lang="hlsl"><pre>// Custom node &quot;VATSoft&quot; (World Position Offset). Inputs: PosTex, NrmTex (Texture Object; Unreal adds PosTexSampler and NrmTexSampler),
+// LookupUV (float2, TexCoord index written by the baker), Frames, FPS, FrameHeight, Time, StartTime (float),
+// BoundsMin, BoundsMax (float3, cm, local). Output: CMOT Float 3 = local offset (Local -&gt; World with TransformVector).
+// Additional Output: Normal (Float 3, local).
+float t = max(Time - StartTime, 0.0) * FPS;
+t = min(t, Frames - 1.0);
+float f0 = floor(t), f1 = min(f0 + 1.0, Frames - 1.0), k = t - f0;
+float2 uv0 = LookupUV + float2(0.0, f0 * FrameHeight), uv1 = LookupUV + float2(0.0, f1 * FrameHeight);
+float3 o0 = lerp(BoundsMin, BoundsMax, Texture2DSampleLevel(PosTex, PosTexSampler, uv0, 0).rgb);
+float3 o1 = lerp(BoundsMin, BoundsMax, Texture2DSampleLevel(PosTex, PosTexSampler, uv1, 0).rgb);
+float3 n0 = Texture2DSampleLevel(NrmTex, NrmTexSampler, uv0, 0).rgb * 2.0 - 1.0;
+float3 n1 = Texture2DSampleLevel(NrmTex, NrmTexSampler, uv1, 0).rgb * 2.0 - 1.0;
+Normal = normalize(lerp(n0, n1, k));
+return lerp(o0, o1, k);</pre></div></div>
+<p class="note">Unreal also ships an <em>AnimToTexture</em> plugin that bakes skeletal animation into textures inside the editor, useful for animated props without Houdini.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://www.sidefx.com/forum/topic/81422/" rel="noopener">Official Labs Vertex Animation Textures 3.0 FAQ and links</a></span><span class="by">SideFX</span><span class="why">Modes, engine shaders and setup for Unity and Unreal.</span></li><li><span><span class="kind">Tutorial</span><a href="https://sidefxlabs.artstation.com/projects/5XJZV8" rel="noopener">Labs Vertex Animation Textures 3.0, part 2: soft-body deformation</a></span><span class="by">SideFX Labs</span><span class="why">The soft-body workflow, lookup UVs and import settings.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-foliage" rel="noopener">Nanite Foliage</a></span><span class="by">Epic Games</span><span class="why">Nanite Assemblies, Nanite Skinning with Dynamic Wind, Nanite Voxels, and their limits.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-6-gpu-generated-procedural-wind-animations-trees" rel="noopener">GPU Gems 3, chapter 6: GPU-generated procedural wind animations for trees</a></span><span class="by">Renaldas Zioma · NVIDIA</span><span class="why">Branch hierarchies simulated as springs on the GPU.</span></li><li><span><span class="kind">Article</span><a href="https://en.wikipedia.org/wiki/Damping" rel="noopener">Damping ratio</a></span><span class="by">Wikipedia</span><span class="why">Damped oscillators and the overshoot formula.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-shading foliage-instancing"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"skinning": [
+"Skinning",
+"Moving each vertex by the weighted sum of a few bone transforms.",
+"#skinning"
+],
+"vat": [
+"Vertex animation texture (VAT)",
+"An animation baked into textures, one texel per vertex per frame, read in the vertex shader.",
+"#vat"
+],
+"damping": [
+"Damping ratio",
+"How quickly a spring loses energy: below 1 it oscillates, at 1 it returns without overshoot.",
+"#simulation"
+],
+"lookup": [
+"Lookup UV",
+"A UV channel that tells each vertex which texel of a VAT to read.",
+"#vat"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="anim.js?v=05de853a"></script>
+</body>
+</html>

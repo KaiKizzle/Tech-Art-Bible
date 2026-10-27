@@ -1309,6 +1309,223 @@ vec3 render(vec2 frag){
   c += vec3(8.0)*pow(max(dot(reflect(rd, n), KE), 0.0), 900.0);
   return c; }`
   });
+  /* Foliage units: a small procedural tree as capsules and leaf clusters, grass shells, cards. Shared code in FOL. */
+  const FOL = SURF + `
+float sdCap(vec3 p, vec3 a, vec3 b, float r){ vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba)/dot(ba, ba), 0.0, 1.0); return length(pa - ba*h) - r; }
+vec3 BARK = vec3(.12, .075, .045), LEAF = vec3(.045, .11, .018), LEAF2 = vec3(.10, .16, .03);
+// x: distance, y: level (0 trunk, 1 branch, 2 twig, 3 leaves). detail: 0 = trunk only + crown blob, 1 = branches + clusters, 2 = full
+vec2 tree(vec3 p, float seed, float leaves, float detail){
+  vec2 r = vec2(sdCap(p, vec3(0.0), vec3(0.0, 2.4, 0.0), 0.15 - p.y*.02), 0.0);
+  if (detail < 0.5){ float c = length((p - vec3(0.0, 2.9, 0.0))*vec3(1.0, 1.25, 1.0)) - 1.45; if (leaves > .5 && c < r.x) r = vec2(c, 3.0); return r; }
+  if (length(p - vec3(0.0, 2.5, 0.0)) > 3.6) return vec2(min(r.x, length(p - vec3(0.0, 2.5, 0.0)) - 3.3), r.y);
+  for (int i = 0; i < 6; i++){
+    float fi = float(i), a = fi*2.39996 + seed;
+    vec3 b0 = vec3(0.0, 1.15 + fi*.24, 0.0);
+    vec3 d = normalize(vec3(cos(a), .7 + .12*fi, sin(a)));
+    vec3 b1 = b0 + d*(1.55 - fi*.13);
+    float db = sdCap(p, b0, b1, .075 - fi*.007); if (db < r.x) r = vec2(db, 1.0);
+    for (int j = 0; j < 3; j++){
+      float fj = float(j);
+      if (detail < 1.5 && j > 0) break;
+      vec3 c0 = mix(b0, b1, .45 + .25*fj); float a2 = a + (fj - 1.0)*1.2;
+      vec3 c1 = c0 + normalize(vec3(cos(a2), .95, sin(a2)))*(.62 - .1*fj);
+      if (detail > 1.5){ float dc = sdCap(p, c0, c1, .03); if (dc < r.x) r = vec2(dc, 2.0); }
+      if (leaves > .5){ vec3 lc = detail > 1.5 ? c1 : b1; float rad = detail > 1.5 ? .46 : .78; float dl = length(p - lc) - rad;
+        if (dl < .25) dl += (noise3(p*5.0 + seed) - .5)*.32 + (noise3(p*11.0) - .5)*.12; if (dl < r.x) r = vec2(dl*.8, 3.0); }
+    }
+  }
+  return r;
+}
+vec3 treeNormal(vec3 p, float seed, float leaves, float detail){ vec2 e = vec2(.004, 0.0);
+  return normalize(vec3(tree(p + e.xyy, seed, leaves, detail).x - tree(p - e.xyy, seed, leaves, detail).x,
+                        tree(p + e.yxy, seed, leaves, detail).x - tree(p - e.yxy, seed, leaves, detail).x,
+                        tree(p + e.yyx, seed, leaves, detail).x - tree(p - e.yyx, seed, leaves, detail).x)); }
+vec3 foliageShade(vec3 rd, vec3 n, vec3 p, vec3 c, float lvl, float sh){
+  if (lvl > 2.5){ vec3 alb = mix(LEAF, LEAF2, noise3(p*3.0)); float wrap = max((dot(n, KS) + .5)/1.5, 0.0); float back = pow(max(dot(rd, KS), 0.0), 4.0);
+    float ao = clamp(length(p - c)/1.9, .25, 1.0);
+    return alb*(vec3(1.9, 1.8, 1.6)*wrap*sh + vec3(.14, .17, .22)*ao) + vec3(.22, .32, .03)*back*sh; }
+  vec3 alb = lvl < .5 ? BARK : (lvl < 1.5 ? BARK*1.15 : BARK*1.3);
+  return shadeS(rd, n, .8, 0.0, alb, vec3(1.0))*mix(.35, 1.0, sh); }
+`;
+  Object.assign(SCENES, {
+    /* A procedurally grown tree, branch levels tinted from trunk to twig. */
+    'foliage-trees': FOL + `
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(1.2, 2.2, 6.6); mat3 cam = lookAt(ro, vec3(.15, 2.35, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.1));
+  float t = 0.0, hit = -1.0; vec2 h;
+  for (int i = 0; i < 110; i++){ vec3 p = ro + rd*t; h = tree(p, 0.0, 1.0, 2.0); if (h.x < .002*t){ hit = t; break; } t += h.x; if (t > 18.0) break; }
+  vec3 col;
+  float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (hit > 0.0 && hit < tf){ vec3 p = ro + rd*hit, n = treeNormal(p, 0.0, 1.0, 2.0);
+    float sh = 1.0, s = .05; for (int k = 0; k < 24; k++){ float d = tree(p + KS*s, 0.0, 1.0, 2.0).x; sh = min(sh, 6.0*d/s); s += clamp(d, .05, .4); if (sh < .02 || s > 6.0) break; } sh = clamp(sh, 0.0, 1.0);
+    vec3 tint = h.y < .5 ? vec3(1.0) : (h.y < 1.5 ? vec3(1.3, .9, .55) : (h.y < 2.5 ? vec3(1.5, 1.25, .45) : vec3(1.0)));
+    col = foliageShade(rd, n, p, vec3(0.0, 2.6, 0.0), h.y, sh)*tint; }
+  else if (tf < 1e8){ vec3 p = ro + rd*tf; float sh = 1.0, s = .05 + .05*hash12(frag); for (int k = 0; k < 36; k++){ float d = tree(p + KS*s, 0.0, 1.0, 2.0).x; sh = min(sh, 4.0*d/s); s += clamp(d, .04, .4); if (sh < .02 || s > 7.0) break; }
+    float g = noise3(vec3(p.xz*9.0, 1.0)); vec3 grass = mix(vec3(.025, .05, .015), vec3(.05, .09, .025), g);
+    col = mix(grass*(vec3(2.4)*max(KS.y, 0.0)*clamp(sh, 0.0, 1.0) + vec3(.15)), studio(rd), smoothstep(4.0, 11.0, length(p.xz))); }
+  else col = studio(rd);
+  return col; }`,
+
+    /* The same tree without leaves, branch levels coloured, a glowing marker at every pivot. */
+    'foliage-vertex-data': FOL + `
+float pivots(vec3 p){ float d = 1e9; for (int i = 0; i < 6; i++){ float fi = float(i), a = fi*2.39996; vec3 b0 = vec3(0.0, 1.15 + fi*.24, 0.0); vec3 dd = normalize(vec3(cos(a), .7 + .12*fi, sin(a))); vec3 b1 = b0 + dd*(1.55 - fi*.13);
+  d = min(d, length(p - b0) - .09); for (int j = 0; j < 3; j++){ float fj = float(j); d = min(d, length(p - mix(b0, b1, .45 + .25*fj)) - .055); } } return d; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(-1.2, 2.7, 5.0); mat3 cam = lookAt(ro, vec3(.2, 2.25, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.0));
+  float t = 0.0, hit = -1.0; vec2 h; float glow = 0.0;
+  for (int i = 0; i < 110; i++){ vec3 p = ro + rd*t; h = tree(p, 0.0, 0.0, 2.0); float pv = pivots(p); glow += .02/(.01 + pv*pv*60.0);
+    if (pv < h.x){ h = vec2(pv, 5.0); } if (h.x < .002*t){ hit = t; break; } t += h.x; if (t > 16.0) break; }
+  vec3 col = studio(rd);
+  float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (tf < 1e8 && (hit < 0.0 || tf < hit)){ vec3 p = ro + rd*tf; col = floorS(p, rd, 1.0); }
+  if (hit > 0.0 && hit < tf){ vec3 p = ro + rd*hit, n = treeNormal(p, 0.0, 0.0, 2.0);
+    vec3 lc = h.y < .5 ? vec3(.22, .22, .24) : (h.y < 1.5 ? vec3(.03, .14, .42) : (h.y < 2.5 ? vec3(.07, .30, .03) : vec3(1.0)));
+    col = h.y > 4.5 ? vec3(3.0, 1.2, .25) : shadeS(rd, n, .45, 0.0, lc, vec3(1.0)); }
+  return col + vec3(1.2, .45, .1)*glow*.05; }`,
+
+    /* Grass shells bending under a gust that travels from left to right. */
+    'foliage-wind': FOL + `
+float gustAt(vec2 xz){ return .1 + .9*smoothstep(.3, .75, noise3(vec3(xz.x*.7 - 1.3, xz.y*.25, 2.0))); }
+float blades(vec3 p, float t, out float hgtOut, out float gOut){
+  const float C = .075; vec2 base = floor(p.xz/C); float d = 1e9; hgtOut = 0.0; gOut = 0.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){
+    vec2 cell = base + vec2(float(i), float(j));
+    vec2 jit = vec2(hash12(cell), hash12(cell + 5.3)) - .5;
+    vec3 b = vec3((cell.x + .5 + jit.x*.8)*C, 0.0, (cell.y + .5 + jit.y*.8)*C);
+    float hgt = .22 + .3*hash12(cell + 9.1), g = gustAt(b.xz);
+    vec3 bend = vec3(1.0, 0.0, .2)*g*hgt*1.1;
+    vec3 m = b + vec3(0.0, hgt*.55, 0.0) + bend*.25, tip = b + vec3(0.0, hgt*(1.0 - .45*g), 0.0) + bend;
+    float r = .0032 + t*.0011;
+    float dd = min(sdCap(p, b, m, r*1.4), sdCap(p, m, tip, r*.7));
+    if (dd < d){ d = dd; hgtOut = clamp(p.y/hgt, 0.0, 1.0); gOut = g; } }
+  return d; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, .85, 3.0); mat3 cam = lookAt(ro, vec3(0.0, .1, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.1));
+  if (rd.y >= 0.0) return studio(rd);
+  float tTop = (.56 - ro.y)/rd.y, tG = -ro.y/rd.y; float t = max(tTop, 0.0); float h = 0.0, g = 0.0; bool hit = false;
+  for (int i = 0; i < 140; i++){ vec3 p = ro + rd*t; if (t > tG) break; float d = blades(p, t, h, g); if (d < .0008 + t*.0008){ hit = true; break; } t += max(d*.9, .002); }
+  vec3 gp = ro + rd*tG;
+  vec3 ground = vec3(.018, .03, .01)*(.6 + .4*noise3(vec3(gp.xz*8.0, 1.0)));
+  vec3 col = ground;
+  if (hit){ vec3 p = ro + rd*t; float ao = .25 + .75*h;
+    float v = hash12(floor(p.xz/.075)); vec3 c = mix(vec3(.02, .045, .01), mix(vec3(.07, .15, .02), vec3(.13, .16, .03), v), h)*(.7 + .5*v);
+    col = c*(vec3(1.4, 1.3, 1.15)*(.35 + .65*h)*(1.0 + .9*g*h) + vec3(.05, .07, .09))*ao; }
+  return mix(col, studio(rd), smoothstep(6.0, 16.0, t)); }`,
+
+    /* A young tree mid-fall, earlier positions as faint ghosts along the arc. */
+    'foliage-animation': FOL + `
+mat3 rotZ(float a){ float c = cos(a), s = sin(a); return mat3(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0); }
+vec2 fallen(vec3 p, float ang){ return tree(rotZ(ang)*(p - vec3(-1.8, 0.0, 0.0)), 1.3, 1.0, 1.0); }
+float march(vec3 ro, vec3 rd, float ang, out vec2 hh){ float t = 0.0; for (int i = 0; i < 80; i++){ vec3 p = ro + rd*t; hh = fallen(p, ang); if (hh.x < .003*t) return t; t += hh.x; if (t > 20.0) break; } return -1.0; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(.6, 2.2, 9.5); mat3 cam = lookAt(ro, vec3(.6, 1.9, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.3));
+  vec3 col = studio(rd); float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (tf < 1e8){ vec3 p = ro + rd*tf; col = floorS(p, rd, 1.0 - .6*exp(-pow(length(p.xz - vec2(1.2, 0.0)), 2.0)*.25)); }
+  vec2 hh; float th = 1e9;
+  float t = march(ro, rd, -.95, hh);
+  if (t > 0.0 && t < tf){ vec3 p = ro + rd*t; vec2 e = vec2(.004, 0.0); vec3 n = normalize(vec3(fallen(p + e.xyy, -.95).x - fallen(p - e.xyy, -.95).x, fallen(p + e.yxy, -.95).x - fallen(p - e.yxy, -.95).x, fallen(p + e.yyx, -.95).x - fallen(p - e.yyx, -.95).x));
+    col = foliageShade(rd, n, p, vec3(0.0, 2.6, 0.0), hh.y, 1.0); th = t; }
+  for (int g = 0; g < 3; g++){ float ang = -.18 - float(g)*.26; vec2 hg; float tg = march(ro, rd, ang, hg);
+    if (tg > 0.0 && tg < min(th, tf)) col = mix(col, vec3(.16, .6, .1)*(.35 + .1*float(g)), .22 + .06*float(g)); }
+  return col; }`,
+
+    /* A backlit bush: leaves glow where the sun shines through, shading as one soft volume. */
+    'foliage-shading': FOL + `
+vec3 SUNB = normalize(vec3(.35, .45, -1.0));
+float bush(vec3 p){ float d = 1e9; for (int i = 0; i < 7; i++){ float fi = float(i), a = fi*2.39996; vec3 c = vec3(cos(a)*.8*sqrt(fi/7.0), .9 + .35*sin(fi*1.7), sin(a)*.6*sqrt(fi/7.0)); d = min(d, length(p - c) - (.75 - fi*.04)); }
+  d = min(d, length((p - vec3(0.0, 1.0, 0.0))*vec3(.85, 1.1, .9)) - 1.05);
+  if (d < .3) d += (noise3(p*6.0) - .5)*.38 + (noise3(p*15.0) - .5)*.14; return d*.75; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.25, 5.2); mat3 cam = lookAt(ro, vec3(0.0, 1.0, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.4));
+  vec3 bg = studio(rd) + vec3(1.6, 1.2, .6)*pow(max(dot(rd, SUNB), 0.0), 40.0)*.6 + vec3(.03, .025, .012)*pow(max(dot(rd, SUNB), 0.0), 3.0);
+  float t = 0.0, hit = -1.0;
+  for (int i = 0; i < 90; i++){ vec3 p = ro + rd*t; float d = bush(p); if (d < .002*t){ hit = t; break; } t += d; if (t > 12.0) break; }
+  float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  if (hit > 0.0 && hit < tf){ vec3 p = ro + rd*hit; vec2 e = vec2(.005, 0.0);
+    vec3 n = normalize(vec3(bush(p + e.xyy) - bush(p - e.xyy), bush(p + e.yxy) - bush(p - e.yxy), bush(p + e.yyx) - bush(p - e.yyx)));
+    vec3 ns = normalize(p - vec3(0.0, 1.0, 0.0)); vec3 nn = normalize(mix(n, ns, .7));
+    float depth = clamp(1.2 - length((p - vec3(0.0, 1.0, 0.0))*vec3(.9, 1.0, .9)), 0.0, 1.0);
+    vec3 alb = mix(LEAF, LEAF2, noise3(p*4.0));
+    float front = max((dot(nn, SUNB) + .4)/1.4, 0.0);
+    float edge = pow(1.0 - abs(dot(nn, -rd)), 2.0);
+    float back = pow(clamp(dot(rd, SUNB), 0.0, 1.0), 3.0);
+    float thin = smoothstep(.0, .9, 1.0 - depth)*(.25 + .75*edge)*(.6 + .8*noise3(p*9.0));
+    vec3 trans = vec3(.30, .42, .04)*back*thin*1.6;
+    return alb*(vec3(1.4, 1.3, 1.1)*front*.6 + vec3(.08, .1, .13)*(1.0 - depth*.7)) + trans; }
+  if (tf < 1e8){ vec3 p = ro + rd*tf; float sh = 1.0 - .75*exp(-dot(p.xz - vec2(-.4, .9), p.xz - vec2(-.4, .9))*.7); return mix(vec3(.02, .025, .015)*(1.0 + 2.0*sh*max(SUNB.y, 0.0)), bg, smoothstep(3.0, 9.0, length(p.xz))); }
+  return bg; }`,
+
+    /* Leaf cards as a debug split: lit foliage on the left, overdraw heat on the right. */
+    'foliage-cards': FOL + `
+float leafMask(vec2 q, float s){ float a = 0.0; for (int i = 0; i < 5; i++){ float fi = float(i) + s; vec2 c = vec2(hash12(vec2(fi, 1.0)), hash12(vec2(fi, 2.0)))*1.2 - .6; float ang = hash12(vec2(fi, 3.0))*6.28;
+  vec2 d = mat2(cos(ang), -sin(ang), sin(ang), cos(ang))*(q - c); float l = length(d*vec2(1.0, 2.3)); a = max(a, smoothstep(.36, .32, l)); } return a; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 1.6, 5.0); mat3 cam = lookAt(ro, vec3(0.0, 1.6, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.2));
+  bool heat = frag.x > uRes.x*.5;
+  float best = 1e9; vec3 bn = vec3(0.0); float layers = 0.0, passed = 0.0; vec3 bp = vec3(0.0);
+  for (int i = 0; i < 64; i++){
+    float fi = float(i); vec3 c = vec3(hash12(vec2(fi, 4.0)) - .5, hash12(vec2(fi, 5.0)) - .5, hash12(vec2(fi, 6.0)) - .5)*vec3(3.2, 2.2, 2.2) + vec3(0.0, 1.6, 0.0);
+    if (length((c - vec3(0.0, 1.6, 0.0))*vec3(.7, 1.0, .9)) > 1.25) continue;
+    float a1 = hash12(vec2(fi, 7.0))*6.28, a2 = (hash12(vec2(fi, 8.0)) - .5)*2.2;
+    vec3 n = normalize(vec3(cos(a1)*cos(a2), sin(a2), sin(a1)*cos(a2)));
+    vec3 u = normalize(cross(n, vec3(0.0, 1.0, .01))), v = cross(n, u);
+    float dn = dot(rd, n); if (abs(dn) < 1e-3) continue;
+    float t = dot(c - ro, n)/dn; if (t < 0.0) continue;
+    vec3 p = ro + rd*t; vec2 q = vec2(dot(p - c, u), dot(p - c, v))/.55;
+    if (abs(q.x) > 1.0 || abs(q.y) > 1.0) continue;
+    layers += 1.0; float m = leafMask(q, fi*7.0);
+    if (m > .5){ passed += 1.0; if (t < best){ best = t; bn = dn > 0.0 ? -n : n; bp = p; } }
+  }
+  if (heat){ vec3 hc = mix(vec3(.02, .03, .08), vec3(.1, .35, .9), smoothstep(0.0, 3.0, layers)); hc = mix(hc, vec3(1.0, .75, .1), smoothstep(3.0, 7.0, layers)); hc = mix(hc, vec3(1.4, .2, .1), smoothstep(7.0, 12.0, layers));
+    vec3 c = layers > 0.0 ? hc*1.2 : studio(rd); if (abs(frag.x - uRes.x*.5) < 2.0) c = vec3(.6); return c; }
+  if (best < 1e8){ vec3 ns = normalize(bp - vec3(0.0, 1.6, 0.0)); vec3 nn = normalize(mix(bn, ns, .7));
+    vec3 alb = mix(LEAF, LEAF2, hash12(floor(bp.xy*9.0))); return alb*(vec3(2.6, 2.4, 2.1)*max((dot(nn, KS) + .4)/1.4, 0.0) + vec3(.12, .15, .2)); }
+  return studio(rd); }`,
+
+    /* One tree at four LODs side by side, from full branches to a single impostor card. */
+    'foliage-lods': FOL + `
+vec2 scene(vec3 p){ vec2 r = vec2(1e9, 0.0);
+  vec2 a = tree(p - vec3(-6.0, 0.0, 0.0), 0.0, 1.0, 2.0); if (a.x < r.x) r = a;
+  vec2 b = tree(p - vec3(-2.0, 0.0, 0.0), 0.0, 1.0, 1.0); if (b.x < r.x) r = b;
+  vec2 c = tree(p - vec3(2.0, 0.0, 0.0), 0.0, 1.0, 0.0); if (c.x < r.x) r = c;
+  vec3 q = p - vec3(6.0, 2.2, 0.0); float card = max(abs(q.z) - .02, max(abs(q.x) - 1.7, abs(q.y) - 2.2)); if (card < r.x) r = vec2(card, 9.0);
+  return r; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 2.8, 12.5); mat3 cam = lookAt(ro, vec3(0.0, 2.3, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.05));
+  float t = 0.0, hit = -1.0; vec2 h;
+  for (int i = 0; i < 120; i++){ vec3 p = ro + rd*t; h = scene(p); if (h.x < .002*t){ hit = t; break; } t += h.x; if (t > 40.0) break; }
+  float tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9; vec3 col = studio(rd);
+  if (tf < 1e8){ vec3 p = ro + rd*tf; col = floorS(p, rd, 1.0); }
+  if (hit > 0.0 && hit < tf){ vec3 p = ro + rd*hit; vec2 e = vec2(.004, 0.0);
+    vec3 n = normalize(vec3(scene(p + e.xyy).x - scene(p - e.xyy).x, scene(p + e.yxy).x - scene(p - e.yxy).x, scene(p + e.yyx).x - scene(p - e.yyx).x));
+    if (h.y > 8.5){ vec3 q = p - vec3(6.0, 2.2, 0.0); vec2 c = q.xy; float crown = length((c - vec2(0.0, .5))*vec2(1.0, 1.15)) - 1.5 + (noise3(vec3(c*3.0, 1.0)) - .5)*.4; float trunk = max(abs(c.x) - .13, c.y + 0.3);
+      if (min(crown, trunk) > 0.0 && q.y > -2.19) return col; vec3 pc = vec3(c.x, 0.0, sqrt(max(0.0, 1.0 - dot(c - vec2(0.0, .5), c - vec2(0.0, .5))/2.4)));
+      return crown < 0.0 ? mix(LEAF, LEAF2, noise3(vec3(c*4.0, 2.0)))*(vec3(1.8)*max((dot(normalize(vec3(c - vec2(0.0, .5), .9)), KS) + .4)/1.4, 0.0) + .12) : BARK*1.2; }
+    col = foliageShade(rd, n, p, vec3(floor((p.x + 8.0)/4.0)*4.0 - 6.0, 2.6, 0.0), h.y, 1.0); }
+  return col; }`,
+
+    /* A forest from above, each instance tinted by the batch it belongs to. */
+    'foliage-instancing': FOL + `
+vec3 batchCol(float k){ if (k < .25) return vec3(.05, .13, .025); if (k < .5) return vec3(.025, .08, .11); if (k < .75) return vec3(.13, .11, .02); return vec3(.11, .04, .07); }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 26.0, 22.0); mat3 cam = lookAt(ro, vec3(0.0, 0.0, -2.0)); vec3 rd = cam*normalize(vec3(uv, 2.0));
+  float tg = -ro.y/rd.y; vec3 pg = ro + rd*tg;
+  float best = tg; vec3 bn = vec3(0.0, 1.0, 0.0); float bk = -1.0; vec3 bc = vec3(0.0);
+  vec2 base = floor(pg.xz/2.2);
+  for (int j = -3; j <= 3; j++) for (int i = -3; i <= 3; i++){
+    vec2 cell = base + vec2(float(i), float(j)); float occ = hash12(cell*1.31 + 2.0); if (occ < .18) continue;
+    vec2 jit = vec2(hash12(cell), hash12(cell + 4.1)) - .5; float r = .8 + .45*hash12(cell + 9.3);
+    vec3 c = vec3((cell.x + .5 + jit.x*.7)*2.2, 1.6 + r*.6, (cell.y + .5 + jit.y*.7)*2.2);
+    vec2 q = sphIntersect(ro, rd, vec4(c, r)); if (q.x > 0.0 && q.x < best){ best = q.x; vec3 p = ro + rd*q.x; bn = normalize(p - c); bk = hash12(cell + 17.0); bc = c; } }
+  vec3 col;
+  if (bk >= 0.0){ vec3 p = ro + rd*best; vec3 n = normalize(bn + (vec3(noise3(p*4.0), noise3(p*4.0 + 3.0), noise3(p*4.0 + 6.0)) - .5)*.9);
+    vec3 alb = mix(vec3(dot(batchCol(bk), vec3(.33))), batchCol(bk), .7)*(.75 + .4*noise3(p*6.0))*.7; float wrap = max((dot(n, KS) + .4)/1.4, 0.0);
+    col = alb*(vec3(2.0, 1.9, 1.7)*wrap + vec3(.12, .14, .18)*(.5 + .5*n.y)); }
+  else { float sh = 1.0; vec2 b2 = floor(pg.xz/2.2); for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){ vec2 cell = b2 + vec2(float(i), float(j)); if (hash12(cell*1.31 + 2.0) < .18) continue;
+      vec2 jit = vec2(hash12(cell), hash12(cell + 4.1)) - .5; float r = .8 + .45*hash12(cell + 9.3); vec3 c = vec3((cell.x + .5 + jit.x*.7)*2.2, 1.6 + r*.6, (cell.y + .5 + jit.y*.7)*2.2); sh = min(sh, sphSoftShadow(pg, KS, vec4(c, r), 4.0)); }
+    col = vec3(.03, .04, .02)*(vec3(2.4)*max(KS.y, 0.0)*sh + vec3(.2)); }
+  return mix(col, studio(rd), smoothstep(30.0, 60.0, length(pg.xz))); }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

@@ -21,6 +21,7 @@
     { id: 'char', name: 'Characters', tone: '#e06cae', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
     { id: 'perf', name: 'Performance & tools', tone: '#e05a4f', blurb: 'Finding what is slow in a frame and the tools that show it.' },
     { id: 'sd', name: 'Substance Designer', tone: '#d9822b', blurb: 'Procedural materials in Substance 3D Designer: what the numbers in a graph mean, how the core nodes combine them, how to keep graphs fast, and how to ship the result.' },
+    { id: 'foli', name: 'Foliage', tone: '#9cc04a', blurb: 'Trees, grass and bushes for games: procedural generation in SpeedTree and Houdini, vertex data and wind, shading, overdraw, LODs and impostors, and rendering thousands of instances.' },
     { id: 'proj', name: 'Unity projects & assets', tone: '#5b6ee8', blurb: 'How a Unity project keeps track of its files: GUIDs and .meta files, prefabs and variants, scenes and Addressables, and why references break.' }
   ];
 
@@ -35,12 +36,13 @@
     { id: 'substance-designer', name: 'Substance Designer from zero', units: ['color-values', 'sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'texture-settings'] },
     { id: 'unity-hygiene', name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] },
     { id: 'surfaces', name: 'Surfaces: metal, glass and water', units: ['pbr-terms', 'pbr-basics', 'metals', 'reflections', 'glass', 'screen-transparency', 'depth-effects', 'water'] },
-    { id: 'eyes-raymarch', name: 'Ray marching to a realistic eye', units: ['rays-math', 'ray-marching', 'parallax', 'fpom', 'glass', 'color-tint', 'eyes'] }
+    { id: 'eyes-raymarch', name: 'Ray marching to a realistic eye', units: ['rays-math', 'ray-marching', 'parallax', 'fpom', 'glass', 'color-tint', 'eyes'] },
+    { id: 'foliage', name: 'Foliage from tree to forest', units: ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing'] }
   ];
 
   /* The banner at the top of the hub. kind 'path' (id from ATLAS_PATHS) or 'unit' (a slug).
      Its picture is assets/img/paths/<id>.webp (or the unit's hero image); a placeholder is drawn until one exists. */
-  window.ATLAS_FEATURED = { kind: 'path', id: 'eyes-raymarch', date: '2026-10-25', title: 'Ray marching to a realistic eye', subtitle: 'Marching rays and height fields on a budget, tinting colours safely, and an eye shader from a painted sphere to a raymarched iris.', button: 'Go to path' };
+  window.ATLAS_FEATURED = { kind: 'path', id: 'foliage', date: '2026-10-26', title: 'Foliage from tree to forest', subtitle: 'Procedural trees, vertex data and wind, foliage shading, overdraw and atlases, LODs and impostors, and instancing thousands of plants.', button: 'Go to path' };
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
   window.ATLAS_UNITS = [
@@ -159,6 +161,32 @@
       summary: 'A water material from the ground up: Fresnel between reflection and refraction, normals and waves, depth from the depth buffer, per-channel absorption, shoreline foam, refraction without leaks, caustics and underwater fog.',
       tags: ['water', 'ocean', 'river', 'fresnel', 'gerstner', 'waves', 'flow map', 'depth', 'absorption', 'beer lambert', 'foam', 'caustics', 'underwater', 'single layer water', 'hdrp water'] },
 
+    /* Foliage */
+    { slug: 'foliage-trees', cat: 'foli', title: 'Procedural Trees: SpeedTree and Houdini', topic: 'Tree structure, growth rules, generators', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'How game trees are built: branch levels, the pipe model for radii, phyllotaxis, length and gravity profiles, L-systems, leaf cards against leaf meshes, SpeedTree and the Houdini Labs Tree Tools, and what the pipeline must hand to the engine.',
+      tags: ['tree', 'foliage', 'vegetation', 'speedtree', 'houdini', 'labs tree', 'l-system', 'phyllotaxis', 'golden angle', 'branch', 'leaf cards', 'procedural'] },
+    { slug: 'foliage-vertex-data', cat: 'foli', title: 'Foliage Vertex Data: Pivots and Hierarchy', topic: 'Pivots, hierarchy and masks in UVs and colours', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'What a wind shader needs per vertex and where to store it: vertex colours, UV channels and textures, precision of 8-bit, half and float data, pivot layouts for branch hierarchies, Pivot Painter 2, baking in Houdini, and what breaks the data.',
+      tags: ['foliage', 'pivot', 'pivot painter', 'uv channel', 'vertex color', 'hierarchy', 'wind data', 'precision', 'half float', 'static batching', 'houdini'] },
+    { slug: 'foliage-wind', cat: 'foli', title: 'Foliage Wind', topic: 'Procedural wind in the vertex shader', minutes: 55, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Layered procedural wind: a wind field with gusts, trunk bending with length preservation, branch rotation around stored pivots, leaf flutter, wave functions, normals and motion vectors, interaction, and what wind costs per pass.',
+      tags: ['wind', 'foliage', 'vertex animation', 'world position offset', 'wpo', 'bend', 'gust', 'flutter', 'crysis', 'motion vectors', 'taa', 'interaction', 'wind zone'] },
+    { slug: 'foliage-animation', cat: 'foli', title: 'Skinned and Baked Foliage Animation', topic: 'Bones, simulation and vertex animation textures', minutes: 45, level: 'Advanced', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'When procedural wind is not enough: bones and skinning, spring simulation, vertex animation textures (layout, precision, soft-body and rigid modes, playback), Nanite skinning, and how to choose.',
+      tags: ['vat', 'vertex animation texture', 'skinning', 'bones', 'skeletal', 'foliage', 'houdini', 'labs vat', 'falling tree', 'spring', 'nanite skinning', 'dynamic wind'] },
+    { slug: 'foliage-shading', cat: 'foli', title: 'Foliage Shading: Normals and Translucency', topic: 'Normal manipulation, two-sided leaves, translucency', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Why card normals fail and how to fix them: grass normals toward up or the terrain, spherical and proxy normals for canopies, flip and mirror for back faces, thin translucency, occlusion and colour variation per instance.',
+      tags: ['foliage', 'normals', 'spherical normals', 'grass', 'translucency', 'two sided', 'double sided', 'foliage shading', 'subsurface', 'variation', 'ao'] },
+    { slug: 'foliage-cards', cat: 'foli', title: 'Foliage Cards, Overdraw and Atlases', topic: 'Alpha test, cutouts, prepass, atlases', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Why foliage is alpha-tested and why its overdraw costs more, tight cutouts against wasted pixels, depth prepasses, shadow casters, and one atlas per species against shared atlases and texture arrays.',
+      tags: ['foliage', 'overdraw', 'alpha test', 'alpha clip', 'cutout', 'depth prepass', 'early z', 'atlas', 'texture array', 'leaf cards', 'shadow'] },
+    { slug: 'foliage-lods', cat: 'foli', title: 'Foliage LODs, Impostors and Budgets', topic: 'LOD chains, impostors, voxels, budgets', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'LOD chains for trees, how the number of LODs changes draw calls and batches, cross-fades, billboards, octahedral impostors, voxels and Nanite Foliage, and how to set and check foliage budgets.',
+      tags: ['lod', 'foliage', 'impostor', 'octahedral', 'billboard', 'voxel', 'nanite foliage', 'cross-fade', 'dither', 'budget', 'draw calls', 'batches'] },
+    { slug: 'foliage-instancing', cat: 'foli', title: 'Foliage Rendering and Instancing', topic: 'Draw calls, instancing, culling, Unity setup', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Rendering thousands of plants: draw calls per pass, GPU instancing and per-instance data, GPU-driven indirect drawing, culling, terrain trees and details, memory, and a profiling routine, built with the GPU Resident Drawer and a compute-culled renderer in Unity HDRP and with the Foliage tool, PCG and Nanite in Unreal.',
+      tags: ['instancing', 'gpu instancing', 'gpu resident drawer', 'batchrenderergroup', 'indirect', 'culling', 'terrain', 'details', 'grass', 'foliage', 'hism', 'pcg', 'draw calls'] },
+
     /* Characters */
     { slug: 'eyes', cat: 'char', title: 'Eye Shading', topic: 'Cornea refraction, iris depth, tint', minutes: 75, level: 'Advanced', engines: ALL, software: ['any', 'unity', 'unreal'],
       summary: 'Eye anatomy in shader terms, then five tiers of eye shader: a painted sphere, parallax offset, two meshes with refraction, one mesh refracted onto an iris plane (HDRP Eye), and an iris raymarched against an analytic profile with one texture fetch. Tinting, mesh conventions and cost.',
@@ -222,7 +250,8 @@
     '2026-10-18': ['compute-shaders', 'pbr-basics', 'texturing', 'texture-settings'],
     '2026-10-21': ['sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables'],
     '2026-10-22': ['pbr-terms', 'metals', 'reflections', 'glass', 'screen-transparency', 'water'],
-    '2026-10-25': ['ray-marching', 'fpom', 'color-tint', 'eyes']
+    '2026-10-25': ['ray-marching', 'fpom', 'color-tint', 'eyes'],
+    '2026-10-26': ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing']
   };
   /* Defaults for the tile badges.
      type: 'unit' (a lesson) or 'workflow' (a step-by-step production recipe).

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage Cards, Overdraw and Atlases · Tech Art Atlas</title>
+<meta name="description" content="Why foliage is alpha-tested and why its overdraw costs more, tight cutouts against wasted pixels, depth prepasses, shadow casters, one atlas per species against shared atlases and texture arrays, and mipmaps for foliage atlases, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-cards" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage Cards, Overdraw and Atlases</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 8 chapters</div>
+  <h1>Foliage Cards, Overdraw and Atlases</h1>
+  <p class="lede">Why foliage is alpha-tested and why its overdraw costs more, tight cutouts against wasted pixels, depth prepasses, shadow casters, one atlas per species against shared atlases and texture arrays, and mipmaps for foliage atlases, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Transparency and Alpha and Frame Profiling. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-cards.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Leaf cards seen as a debug split: lit foliage on one side, overdraw heat on the other.</figcaption></figure>
+</div>
+<div class="needs" data-needs="transparency#alpha-test reading-a-frame#overdraw"></div>
+
+<section class="chapter" id="masked" data-title="Alpha test, not blending" data-builds="transparency#alpha-test" data-summary="Foliage is opaque with an alpha test: depth, shadows and effects work; blending only for special cases. Coverage-preserving mips keep it dense.">
+  <div class="head"><div class="num"></div><h2>Alpha test, not blending</h2></div>
+
+  <div class="prose">
+    <p>Foliage in games is almost always <em>opaque with an alpha test</em> (alpha clip, masked): each pixel is either fully leaf or discarded. Alpha blending would need sorting thousands of intersecting cards back to front, which is impossible per pixel, and blended surfaces do not write depth, so shadows, ambient occlusion, depth of field, fog and temporal effects would all ignore them. Blending is reserved for special cases: soft grass tips in a cinematic, a few hero plants.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Alpha test: clip(alpha − cutoff) gives opaque, sortable cutouts; mip averaging thins them in the distance unless coverage is preserved in the mips.</p></div><a class="x refto" href="../transparency/index.html#alpha-test">Open the full explanation</a></aside>
+  <div class="prose"><p>Two related tools from the same unit: <a class="x" href="../transparency/index.html#a2c">alpha to coverage</a> softens cut edges with MSAA (rare in deferred renderers), and <a class="x" href="../transparency/index.html#dither">dithered transparency</a>, which TAA turns into smooth fades, is how foliage cross-fades between LODs.</p></div>
+
+</section>
+<section class="chapter" id="overdraw" data-title="Why foliage overdraw is expensive" data-builds="reading-a-frame#overdraw foliage-cards#masked" data-summary="Clip/discard prevents early depth writes, so layered cards run the shader many times; levers: fewer layers, tighter cutouts, a depth prepass.">
+  <div class="head"><div class="num"></div><h2>Why foliage overdraw is expensive</h2></div>
+
+  <div class="prose">
+    <p>Overdraw costs every renderer (<a class="x" href="../reading-a-frame/index.html#overdraw">overdraw</a>), but alpha-tested foliage has an extra problem. For opaque geometry the GPU can test depth before the pixel shader and skip hidden pixels. A shader that may discard a pixel can only write depth after it has run, so the GPU cannot reject later layers until the earlier ones have finished, and many GPUs then run the shader for most of the layers. A crown is many layers of cards, each mostly transparent:</p>
+  </div>
+  <div class="fx" data-fx="overdraw"></div>
+  <div class="prose"><p>Three levers: fewer layers (fewer, better-placed cards; LODs that merge them), less transparent area per card (<a href="#cutout">tight cutouts</a>), and making sure only one layer is fully shaded (<a href="#prepass">depth prepass</a>). Sorting instances roughly front to back helps too, where the engine allows it.</p></div>
+
+</section>
+<section class="chapter" id="cutout" data-title="Tight cutouts: vertices against transparent pixels" data-builds="foliage-cards#overdraw reading-a-frame#quads" data-summary="Transparent share = 1 − f·(π/n)/tan(π/n): 6–8 vertices around a cluster remove most of a quad&#x27;s wasted pixels; distant LODs go back to quads.">
+  <div class="head"><div class="num"></div><h2>Tight cutouts: vertices against transparent pixels</h2></div>
+
+  <div class="prose">
+    <p>A leaf cluster on a quad leaves the corners transparent, yet every pixel of the quad runs at least the alpha test. Cutting the card along the cluster's outline with a few more vertices removes most of that waste. Vertices are processed once per card per pass, pixels many times, so up to a point the trade is very favourable:</p>
+  </div>
+  <div class="fx" data-fx="cutout"></div>
+  <div class="prose">
+    <p>Card generators in SpeedTree and the Unreal and Unity community tools fit outlines automatically, typically with 6–8 vertices. Do not go further than the screen size justifies: below about ten pixels per triangle, triangle rasterisation gets inefficient (<a class="x" href="../reading-a-frame/index.html#quads">quads and tiny triangles</a>), so the distant LODs go back to simple quads or to an impostor.</p>
+  </div>
+
+</section>
+<section class="chapter" id="prepass" data-title="Depth prepass" data-builds="foliage-cards#overdraw depth-effects#what-depth" data-summary="Prepass: alpha-only depth pass, then full shading with depth-equal; pays when several layers are shaded and the vertex shader is light.">
+  <div class="head"><div class="num"></div><h2>Depth prepass</h2></div>
+
+  <div class="prose">
+    <p>A depth prepass draws the foliage twice: first with a shader that only reads the alpha texture, clips and writes depth; then with the full shader and the depth test set to <em>equal</em>, so only the one visible fragment per pixel is shaded, and that pass needs no clip. The price is a second geometry pass, including the wind in the vertex shader:</p>
+  </div>
+  <div class="fx" data-fx="prepass"></div>
+  <div class="prose">
+    <p>Deferred renderers usually already have one: HDRP renders alpha-tested opaque materials in its depth prepass, and Unreal's early depth pass can include masked meshes (<em>Early Z-pass</em> = Opaque and masked meshes). Forward renderers often make it a choice per material. Whether it pays depends on how many layers get shaded and how heavy the vertex shader is; profile both.</p>
+  </div>
+
+</section>
+<section class="chapter" id="shadows" data-title="Shadow casters" data-builds="shadow-maps#cost foliage-cards#overdraw" data-summary="Shadow triangles = plants × triangles × cascades × share; no shadows for grass, shadow proxies, shorter distances, cached cascades.">
+  <div class="head"><div class="num"></div><h2>Shadow casters</h2></div>
+
+  <div class="prose">
+    <p>Every foliage instance in a shadow cascade is drawn again into the shadow map, with its wind and its alpha test. Shadow passes are often a larger share of foliage cost than the main view:</p>
+  </div>
+  <div class="fx" data-fx="shadows"></div>
+  <div class="prose">
+    <ul>
+      <li>No shadows from grass and small plants; let a contact-shadow or AO term darken their base.</li>
+      <li>A simpler LOD or a dedicated shadow proxy for shadow casting (lower LOD bias in shadow passes, or a separate shadow-only mesh).</li>
+      <li>Shorter shadow distances for foliage than for buildings; distant trees can cast from an impostor or not at all.</li>
+      <li>Cached or static shadow cascades for vegetation that only sways slightly (HDRP and Unreal both offer cached shadow maps).</li>
+    </ul>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Shadow cost: draws ≈ casters × (cascades + spot lights + 6 · point lights).</p></div><a class="x refto" href="../shadow-maps/index.html#cost">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="atlas" data-title="One atlas per species or shared atlases" data-builds="texturing#reuse texture-memory#cost" data-summary="Per-species atlases: simple, more materials; shared atlases: fewer batches, lower density; texture arrays: one material at full resolution.">
+  <div class="head"><div class="num"></div><h2>One atlas per species or shared atlases</h2></div>
+
+  <div class="prose">
+    <p>Each distinct material is at least one more batch per LOD (<a class="x" href="../foliage-lods/index.html#count">batches</a>), so foliage texture layout is a draw-call decision as much as a memory one:</p>
+  </div>
+  <div class="fx" data-fx="atlas"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Layout</th><th>Batches</th><th>Sharpness</th><th>Authoring</th><th>Typical use</th></tr></thead>
+    <tbody>
+      <tr><td>One leaf atlas per species, bark as a tiling texture</td><td>2 materials per tree (bark, leaves), per LOD</td><td>Full</td><td>Simple: each species is self-contained</td><td>Most projects; hero trees</td></tr>
+      <tr><td>Shared atlases (several species, or a whole biome)</td><td>Fewer materials; species batch together</td><td>Lower: each species gets part of the atlas</td><td>Every change touches all species on the atlas</td><td>Grass, flowers, small plants, mobile</td></tr>
+      <tr><td>Texture array, one slice per species</td><td>One material for all slices</td><td>Full</td><td>Same size and format for every slice; a slice index per vertex or instance</td><td>Large biomes with one foliage shader</td></tr>
+      <tr><td>Trim sheet for bark and branches</td><td>Shared across species</td><td>Tiling</td><td>Modelled to fit the trims</td><td>Branch and trunk geometry (<a class="x" href="../texturing/index.html#reuse">trim sheets</a>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>The common production setup: bark as tiling textures or trims shared across species, one leaf atlas per tree species, and shared atlases or a texture array for grass, flowers and small plants, where the number of species is large and each needs little resolution.</p></div>
+
+</section>
+<section class="chapter" id="mips" data-title="Atlases and mipmaps" data-builds="foliage-cards#atlas texturing#padding transparency#alpha-test" data-summary="Pad atlas tiles 8–16 texels with dilated colour; preserve alpha coverage in mips; texture arrays avoid bleeding entirely.">
+  <div class="head"><div class="num"></div><h2>Atlases and mipmaps</h2></div>
+
+  <div class="prose"><p>Two mip problems are specific to foliage atlases. Neighbouring tiles bleed into each other in small mips unless they are padded, and alpha-tested leaves thin out in the distance as the mips average their alpha:</p></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Padding: at mip k a texel covers 2^k texels, so padding p keeps tiles clean down to mip ⌊log₂ p⌋.</p></div><a class="x refto" href="../texturing/index.html#padding">Open the full explanation</a></aside>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Coverage: rescale the alpha of each mip so the share of texels above the cutoff stays the same (Unity: Mip Maps Preserve Coverage).</p></div><a class="x refto" href="../transparency/index.html#alpha-test">Open the full explanation</a></aside>
+  <div class="prose"><p>Texture arrays avoid the bleeding: each slice has its own mip chain. For atlases, pad generously (8–16 texels) and fill the padding with dilated leaf colour, so pixels near the cutout edge never pick up the background colour.</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A forest is GPU-bound and the profiler shows the leaf shader running far more often than there are pixels. First two changes?", ["Higher-resolution leaf textures and more LODs", "Tighter card cutouts and a depth prepass for the foliage", "Alpha blending for the leaves", "Disable mipmaps"], 1, "Both reduce the number of fragments that run the full shader."], ["Twelve grass species each have their own 1K atlas and material. The grass is CPU-bound by batches. What helps without losing resolution?", ["One shared 1K atlas", "A texture array with a slice per species and one material", "Alpha blending", "More LODs"], 1, "One material for all species, each slice at full resolution."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Alpha Clipping with a shadow threshold and coverage-preserving mips, depth prepass in Frame Settings, Quad Overdraw debugging, shadow-only proxies, a texture array builder.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route sets up alpha-tested foliage in HDRP, measures its overdraw with the Rendering Debugger, moves shadow casting to a cheaper proxy, and builds a texture array for grass and small plants. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sg"><b>Shader Graph</b><span>Foliage Lit graph: Alpha Clipping, a separate shadow clip threshold.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Frame Settings: depth prepass; Rendering Debugger: Quad Overdraw.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>TextureArrayBuilder.cs: one Texture2DArray from same-size atlases.</span></div></div>
+<ol class="impl-steps"><li><div>In the foliage graph enable <em>Alpha Clipping</em> and keep Surface Type <em>Opaque</em>. Enable <em>Use Shadow Threshold</em> and set a slightly higher threshold for shadows: shadow maps are low resolution, and thin alpha there only adds cost. Import the leaf atlas with <em>Mip Maps Preserve Coverage</em> and the material's cutoff as <em>Alpha Cutoff Value</em>.</div></li><li><div>Depth prepass: in <em>HDRP Global Settings &gt; Frame Settings (Camera)</em>, Deferred mode renders alpha-clipped opaque objects in the depth prepass when <em>Depth Prepass within Deferred</em> is on; Forward mode always renders a depth prepass. Compare GPU time with it on and off on your worst foliage view.</div></li><li><div>Measure: <em>Window &gt; Analysis &gt; Rendering Debugger &gt; Rendering &gt; Fullscreen Debug Mode</em> = <em>Quad Overdraw</em>. Hot areas over crowns show where cutouts or fewer cards pay off. Check the same view in the GPU profiler or RenderDoc for the foliage passes' time.</div></li><li><div>Shadow proxy: give a tree a second, much simpler mesh (merged cluster cards or a few branch quads) with <em>Cast Shadows</em> = <em>Shadows Only</em>, and set <em>Cast Shadows</em> = Off on the visible LODs. For grass, turn shadow casting off entirely.</div></li><li><div>Texture array: put <code>TextureArrayBuilder.cs</code> in <code>Assets/Editor</code>, select the grass atlases (same size, format and mip count) and run <em>Assets &gt; Create &gt; Foliage Texture Array</em>. In the graph, add a <em>Texture 2D Array</em> property and a <em>Sample Texture 2D Array</em> node; feed the slice index from vertex colour, a UV channel or a per-instance property.</div></li></ol>
+<div class="files"><div class="file" data-name="TextureArrayBuilder.cs" data-lang="cs"><pre>// Assets/Editor/TextureArrayBuilder.cs: select leaf atlases of the same size and format,
+// then Assets &gt; Create &gt; Foliage Texture Array. Slice order = selection order sorted by name.
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Experimental.Rendering;   // GraphicsFormatUtility
+
+public static class TextureArrayBuilder
+{
+    [MenuItem(&quot;Assets/Create/Foliage Texture Array&quot;)]
+    static void Build()
+    {
+        var tex = Selection.objects.OfType&lt;Texture2D&gt;().OrderBy(t =&gt; t.name).ToArray();
+        if (tex.Length == 0) { Debug.LogError(&quot;Select the textures first.&quot;); return; }
+        var first = tex[0];
+        foreach (var t in tex)
+            if (t.width != first.width || t.height != first.height || t.format != first.format || t.mipmapCount != first.mipmapCount)
+            { Debug.LogError($&quot;{t.name}: size, format and mip count must match {first.name}.&quot;); return; }
+
+        var arr = new Texture2DArray(first.width, first.height, tex.Length, first.format, first.mipmapCount &gt; 1,
+                                     !GraphicsFormatUtility.IsSRGBFormat(first.graphicsFormat))
+        { wrapMode = first.wrapMode, filterMode = first.filterMode, anisoLevel = first.anisoLevel };
+        for (int s = 0; s &lt; tex.Length; s++)
+            for (int m = 0; m &lt; first.mipmapCount; m++)
+                Graphics.CopyTexture(tex[s], 0, m, arr, s, m);   // copies compressed data as is: no re-encode
+
+        string path = AssetDatabase.GetAssetPath(first).Replace(first.name, &quot;LeafArray&quot;);
+        path = System.IO.Path.ChangeExtension(path, &quot;.asset&quot;);
+        AssetDatabase.CreateAsset(arr, path);
+        Debug.Log($&quot;Texture array with {tex.Length} slices: {path}\n&quot; + string.Join(&quot;\n&quot;, tex.Select((t, i) =&gt; $&quot;  {i}: {t.name}&quot;)));
+    }
+}</pre></div></div>
+<p class="note">The builder copies compressed mip data unchanged, so the array costs exactly what the separate textures cost; it saves materials and batches, not memory.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: Forward+ renders a depth prepass when a feature needs it (or set Depth Priming); the rest is identical.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Masked two-sided material with coverage-preserving mips, Early Z-pass for masked meshes, Quad Overdraw and Shader Complexity views, per-type shadow settings, Texture 2D Arrays.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal's foliage is masked opaque by default. The settings that matter are the early depth pass, the overdraw view modes, shadow settings per foliage type, and texture arrays for many small species. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>Masked foliage material with a tuned Opacity Mask Clip Value.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Project Settings: Early Z-pass for masked meshes.</span></div><div class="rt" data-k="asset"><b>Asset</b><span>Texture 2D Array for grass and small plants.</span></div></div>
+<ol class="impl-steps"><li><div>Material: <em>Blend Mode</em> Masked, <em>Two Sided</em>, <em>Opacity Mask Clip Value</em> around 0.33–0.5. In the texture, enable <em>Preserve Alpha Coverage</em> with the same value (Unreal names it <em>Alpha Coverage Thresholds</em> in recent versions) so distant foliage keeps its density.</div></li><li><div><em>Project Settings &gt; Rendering &gt; Optimizations &gt; Early Z-pass</em>: <em>Opaque and masked meshes</em> renders masked foliage into the depth prepass, so the base pass shades each pixel once. Compare GPU time with <em>stat gpu</em> or Unreal Insights.</div></li><li><div>Overdraw: the viewport's <em>Optimization Viewmodes &gt; Quad Overdraw</em> and <em>Shader Complexity</em> show where cards stack. Tighter card outlines from SpeedTree or your card generator reduce both.</div></li><li><div>Shadows per foliage type or HISM component: turn off <em>Cast Shadow</em> for grass, use <em>Cast Dynamic Shadow</em> only where needed, and rely on Virtual Shadow Map caching for slowly moving foliage. A low-detail shadow-only mesh works as in Unity (a second component with <em>Hidden Shadow</em>).</div></li><li><div>Texture arrays: create a <em>Texture 2D Array</em> asset from same-size textures, sample it with <em>Texture Sample</em> on a <em>Texture2DArray</em> parameter and a slice index from <em>PerInstanceRandom</em>, vertex colour or a UV channel.</div></li></ol>
+<p class="note">With Nanite, masked materials need programmable rasterisation and cost more than opaque Nanite geometry; Epic's guidance for Nanite foliage is modelled, opaque leaves where the triangle budget allows.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://app.cinevva.com/blog/2026-05-11-foliage-overdraw" rel="noopener">How modern engines beat foliage overdraw</a></span><span class="by">Cinevva · 2026</span><span class="why">An overview of discard and early depth, prepasses, impostors and visibility buffers, with links to the original talks.</span></li><li><span><span class="kind">Article</span><a href="https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f" rel="noopener">Anti-aliased alpha test: the esoteric alpha to coverage</a></span><span class="by">Ben Golus</span><span class="why">Alpha test, coverage-preserving mips and alpha to coverage for foliage.</span></li><li><span><span class="kind">Talk</span><a href="https://gdcvault.com/play/1025066/Between-Tech-and-Art-The" rel="noopener">Between Tech and Art: The Vegetation of Horizon Zero Dawn</a></span><span class="by">Gilbert Sanders · GDC 2018</span><span class="why">Overdraw, card shapes and shadow costs in a dense open world.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/impostor-baker-plugin-in-unreal-engine" rel="noopener">Impostor Baker plugin (billboard overdraw notes)</a></span><span class="by">Epic Games</span><span class="why">Masked overdraw of billboards against impostors.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Texture2DArray.html" rel="noopener">Texture2DArray</a></span><span class="by">Unity</span><span class="why">Creating and filling texture arrays from script.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-lods foliage-instancing"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"masked": [
+"Masked (alpha-tested)",
+"Opaque rendering where pixels below an alpha cutoff are discarded.",
+"#masked"
+],
+"depthcomplexity": [
+"Depth complexity",
+"How many surfaces cover one pixel.",
+"#overdraw"
+],
+"prepass": [
+"Depth prepass",
+"A pass that writes depth only, so the main pass shades only visible pixels.",
+"#prepass"
+],
+"texarray": [
+"Texture array",
+"A stack of same-size textures sampled with a slice index; one material can use all slices.",
+"#atlas"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="cards.js?v=c7366ace"></script>
+</body>
+</html>

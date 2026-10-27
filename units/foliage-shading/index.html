@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage Shading: Normals and Translucency · Tech Art Atlas</title>
+<meta name="description" content="Why card normals fail and how to fix them: grass normals toward up or the terrain, spherical and proxy normals for canopies, flip and mirror for back faces, thin translucency, occlusion and per-instance variation, and specular without sparkle, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-shading" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage Shading: Normals and Translucency</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 8 chapters</div>
+  <h1>Foliage Shading: Normals and Translucency</h1>
+  <p class="lede">Why card normals fail and how to fix them: grass normals toward up or the terrain, spherical and proxy normals for canopies, flip and mirror for back faces, thin translucency, occlusion and per-instance variation, and specular without sparkle, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Dot and Cross Product and Skin Shading. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-shading.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A backlit bush whose leaves glow where the sun shines through them, shading as one soft volume.</figcaption></figure>
+</div>
+<div class="needs" data-needs="dot-cross#lambert skin#transmission"></div>
+
+<section class="chapter" id="problem" data-title="Why card normals fail" data-builds="dot-cross#lambert" data-summary="Card normals point anywhere and make crowns noisy; blend them toward the normal of a proxy shape around the crown.">
+  <div class="head"><div class="num"></div><h2>Why card normals fail</h2></div>
+
+  <div class="prose">
+    <p>A leaf card's normal points wherever the card happens to face. Lit with those normals, two neighbouring cards can be bright and dark, the crown reads as a pile of paper, and every card's flat shape is visible. A real crown, seen from a few metres, shades like a soft volume: bright on the sun side, dark inside and on the far side. The fix is to replace or blend the card normals with the normals of a simple shape around the crown:</p>
+  </div>
+  <div class="fx" data-fx="cards"></div>
+  <div class="prose"><p>Most foliage pipelines do this in the tree tool, so the engine gets edited normals in the mesh; the shader then only needs normal maps and the usual lighting. Blending is a trade: full canopy normals look soft and volumetric but lose the detail of individual leaves; card normals keep detail but sparkle. Values around 0.6–0.9 are common, with the leaf normal map adding the detail back.</p></div>
+
+</section>
+<section class="chapter" id="grass" data-title="Grass: normals toward up or the terrain" data-builds="foliage-shading#problem" data-summary="n = normalize(lerp(n_blade, n_terrain, k)) with k ≈ 0.7–1 removes the seam between grass and ground.">
+  <div class="head"><div class="num"></div><h2>Grass: normals toward up or the terrain</h2></div>
+
+  <div class="prose">
+    <p>Grass blades are mostly vertical, so their own normals face sideways and light them differently from the ground they grow on: a seam between grass and terrain, worst on slopes and at low sun. Grass meshes therefore usually have their normals set straight up, or blended toward the terrain normal under each blade:</p>
+  </div>
+  <div class="fx" data-fx="grass"></div>
+  <div class="prose">
+    <p>Up-facing normals are baked in the mesh. The terrain normal is better on slopes and is read at runtime: Unity's terrain <em>Grass</em> detail mode uses up-facing normals; custom grass samples the terrain normal map at the blade's root position in the vertex shader. Blend back toward the blade's own normal near the tips if close-up grass needs some side lighting.</p>
+  </div>
+
+</section>
+<section class="chapter" id="canopy" data-title="Canopies: spherical and proxy normals" data-builds="foliage-shading#problem foliage-trees#houdini" data-summary="Replacement normals come from a fitted proxy (ellipsoid, cluster spheres or a smoothed hull), transferred and blended in the tree tool.">
+  <div class="head"><div class="num"></div><h2>Canopies: spherical and proxy normals</h2></div>
+
+  <div class="prose">
+    <p>For trees and bushes, the replacement normal comes from a proxy: a sphere or ellipsoid around the crown, or one per branch cluster, or a smooth shrink-wrapped hull. The normal at a vertex is the proxy's normal at the closest point (or the direction from the proxy centre). Proxy shape matters for tall crowns:</p>
+  </div>
+  <div class="fx" data-fx="proxy"></div>
+  <div class="prose">
+    <p>In Houdini this is an attribute transfer from a smoothed, convex hull of the crown (VDB from the leaves, close, smooth, convert back, transfer <code>N</code> by proximity), blended with the original normals. SpeedTree has its own controls for leaf lighting normals, and 3ds Max and Blender users often use a modifier that copies normals from a proxy mesh. Do it per cluster for large trees, or the whole tree shades like one ball.</p>
+  </div>
+
+</section>
+<section class="chapter" id="twosided" data-title="Two-sided leaves: flip or mirror" data-builds="spaces#tangent" data-summary="Back faces: flip (−n, the consistent default for leaves), mirror (only the out-of-surface component flips), none (dark backs).">
+  <div class="head"><div class="num"></div><h2>Two-sided leaves: flip or mirror</h2></div>
+
+  <div class="prose">
+    <p>Leaf cards are drawn double-sided, so the back faces need normals too. Engines offer three modes: <em>flip</em> (the back uses −n, the normal of the same thin surface seen from behind), <em>mirror</em> (only the component out of the surface changes sign, so normal-map slopes keep their direction in tangent space) and <em>none</em> (the back uses the front normal):</p>
+  </div>
+  <div class="fx" data-fx="twosided"></div>
+  <div class="prose"><p>Flip is the physically consistent choice for a thin sheet and the usual default for foliage. Mirror changes how the normal map's detail lights on the back; use it when the back side looks wrong under flip, which depends on how the textures were authored. <em>None</em> leaves backs dark when the light is on their side and is only right for single-sided geometry. HDRP calls these the <em>Double-Sided Normal Mode</em>; Unreal flips the normal on back faces of two-sided materials, and the <em>Two Sided Foliage</em> shading model adds transmission.</p></div>
+
+</section>
+<section class="chapter" id="translucency" data-title="Thin translucency" data-builds="skin#transmission foliage-shading#twosided" data-summary="Back light = lerp(wrapped back diffuse, (V·−L)⁴, view dependency) · transmission; HDRP Translucent with thickness, Unreal Two Sided Foliage.">
+  <div class="head"><div class="num"></div><h2>Thin translucency</h2></div>
+
+  <div class="prose">
+    <p>Leaves are thin, and a good part of the light that reaches their back comes through. A leaf between you and the sun glows yellow-green. The physics is the same as transmission through skin, with a much thinner layer:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Transmission: light that crosses a thin layer is attenuated per colour channel with thickness, T = e^(−thickness / ℓ), and lit from behind with max(0, −N·L).</p></div><a class="x refto" href="../skin/index.html#transmission">Open the full explanation</a></aside>
+  <div class="prose"><p>Games approximate it with a back-lighting term. Crysis blends a wrapped back diffuse with a view-dependent term that peaks when you look towards the light, scaled by a thickness or transmission map painted per leaf:</p></div>
+  <div class="fx" data-fx="transl"></div>
+  <div class="prose"><p>Engines expose it directly: HDRP's <em>Translucent</em> material type with a <em>Thickness</em> map and a diffusion profile (HDRP ships a <em>Foliage</em> profile), Unreal's <em>Two Sided Foliage</em> shading model with a <em>Subsurface Color</em>. Keep the transmission colour more saturated and yellower than the leaf albedo, and darker for thick leaves and needles.</p></div>
+
+</section>
+<section class="chapter" id="variation" data-title="Occlusion and colour variation" data-builds="foliage-shading#canopy" data-summary="Per-vertex crown AO in vertex colour alpha; per-instance hue and brightness from a position hash, kept small and clamped.">
+  <div class="head"><div class="num"></div><h2>Occlusion and colour variation</h2></div>
+
+  <div class="prose">
+    <p>Two cheap terms do a lot for a forest. <strong>Occlusion</strong>: the inside of a crown receives little sky light. Bake it per vertex as a function of depth inside the crown (or with a ray-traced AO bake in the tree tool) into the vertex colour alpha, and use it for ambient light only. <strong>Variation</strong>: identical trees side by side read as copies. Shift hue and brightness per instance from a hash of the instance position, and add a dry/healthy mask driven by height or a world-space noise:</p>
+  </div>
+  <div class="fx" data-fx="variation"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Clamping: keep varied colours inside a plausible range of luminance and saturation, so random variation never produces a neon tree.</p></div><a class="x refto" href="../color-tint/index.html#clamp">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="specular" data-title="Specular, roughness and sparkle" data-builds="foliage-shading#variation reflections#occlusion" data-summary="Leaves: roughness ~0.3–0.6, F0 ~0.03–0.04; fade normal maps and raise roughness with distance; occlude specular with crown AO.">
+  <div class="head"><div class="num"></div><h2>Specular, roughness and sparkle</h2></div>
+
+  <div class="prose">
+    <p>Leaves have a waxy cuticle: their reflection is visible and surprisingly bright at grazing angles, roughness around 0.3–0.6 depending on the species, with an F0 near 0.03–0.04. Grass is rougher. Two problems are specific to foliage:</p>
+    <ul>
+      <li><strong>Sparkle</strong>: a detailed leaf normal map on small, moving cards produces pixel-sized highlights that flicker. Fade the normal map strength with distance and raise roughness in the distance (or use the engine's specular anti-aliasing, which HDRP has per material).</li>
+      <li><strong>Specular occlusion</strong>: the inside of a crown should not reflect the bright sky; multiply the specular by the vertex AO (<a class="x" href="../reflections/index.html#occlusion">specular occlusion</a>).</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Grass in a field shows a brighter band where it meets bare ground on a hillside. Fix?", ["More grass density", "Blend the grass normals toward the terrain normal", "A darker albedo", "Disable shadows"], 1, "Blade normals face sideways; the terrain's normal makes grass and ground shade alike."], ["A tree's crown looks like a pile of shiny paper pieces up close. Which two fixes?", ["Higher-resolution leaf textures and more LODs", "Blend card normals toward a canopy proxy and fade normal-map strength or raise roughness for small cards", "Turn off double-sided rendering", "Use mirror mode"], 1, "Canopy normals give one volume; reducing small-scale normal detail removes the sparkle."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Proxy normals in Houdini; HDRP Translucent with the Foliage diffusion profile, double-sided Flip, thickness, vertex AO, per-instance hue, runtime grass normals and a detail fade.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Normals are best edited in the tree tool, so the route starts in Houdini. The HDRP graph then sets up translucency, double-sided normals and a distance fade against sparkle, with runtime normal edits available for grass and quick tests. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>CanopyNormals: a Houdini wrangle that blends leaf normals toward a fitted ellipsoid.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>FoliageNormals.hlsl: grass and canopy normals at runtime, detail fade.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>An HDRP Lit graph: Translucent, double-sided Flip, thickness, AO from vertex colour.</span></div></div>
+<ol class="impl-steps"><li><div>In Houdini, run <code>CanopyNormals</code> on the leaf cards with the crown's centre and radii (or per cluster). Start with blend 0.8. Export with normals; the <a class="x" href="../foliage-trees/index.html#implement">tree import script</a> keeps them (<em>Normals: Import</em>).</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>: <em>Material Type</em> Translucent, <em>Double-Sided</em> on with <em>Double-Sided Normal Mode</em> Flip, <em>Alpha Clipping</em> on, and <em>Specular Occlusion Mode</em> From AO.</div></li><li><div>Assign a diffusion profile: HDRP ships a <em>Foliage</em> profile; add it to the HDRP Global Settings' diffusion profile list if it is not there, and set it on the material. Connect a thickness map (or a constant around 0.3 for leaves, 0.8 for needles) to <em>Thickness</em>.</div></li><li><div>Connect vertex colour alpha (crown AO) to <em>Ambient Occlusion</em>. Add per-instance variation: hash the plant origin (Transform node, Object to Absolute World, of (0, 0, 0)) and shift hue with a <em>Hue</em> node by a few degrees, brightness by ±10 %.</div></li><li><div>For grass or quick tests without edited meshes: In the vertex stage, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>FoliageNormals.hlsl</code> and <em>Name</em> to <code>GrassNormal</code> (without the <code>_float</code> suffix). Add the inputs <b>NormalOS (Vector 3), TerrainNormalOS (Vector 3), Blend (Float)</b> and the outputs <b>Out (Vector 3)</b>, in that order and with those types: they must match the function's parameters. Feed (0, 1, 0) for straight up, and connect Out to <em>Vertex Normal</em>. <code>CanopyNormal</code> works the same with a crown centre and radii.</div></li><li><div>Against sparkle: compute the camera distance (Position node in World, length, since HDRP world space is camera-relative) and use <code>FoliageDetailFade</code> to scale the <em>Normal Strength</em> node and lower Smoothness (1 − OutRoughness) in the distance. Enable <em>Specular AA</em> in the graph settings as well.</div></li></ol>
+<div class="files"><div class="file" data-name="CanopyNormals.vex" data-lang="hlsl"><pre>// Houdini Attribute Wrangle (Run Over: Points) on the leaf cards: CanopyNormals
+// Blends each leaf normal toward the normal of an ellipsoid fitted to the crown.
+// Parameters: centre (vector), radii (vector), blend (float 0..1).
+// For big trees, run it per cluster (use a cluster id to look up a centre and radii per cluster).
+vector c = chv(&quot;centre&quot;);
+vector r = max(chv(&quot;radii&quot;), {0.01, 0.01, 0.01});
+float  k = chf(&quot;blend&quot;);
+vector q = (@P - c) / (r * r);                 // gradient of the ellipsoid function at the point
+vector ne = normalize(q);
+@N = normalize(lerp(normalize(@N), ne, k));</pre></div><div class="file" data-name="FoliageNormals.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_FOLIAGE_NORMALS_INCLUDED
+#define ATLAS_FOLIAGE_NORMALS_INCLUDED
+
+// Runtime normal edits for foliage (object space), when the mesh does not already carry edited normals.
+// Grass: blend toward up (or a terrain normal you pass in).  Canopy: blend toward an ellipsoid around the crown.
+void GrassNormal_float(float3 NormalOS, float3 TerrainNormalOS, float Blend, out float3 Out)
+{
+    Out = normalize(lerp(NormalOS, TerrainNormalOS, saturate(Blend)));
+}
+
+void CanopyNormal_float(float3 PositionOS, float3 NormalOS, float3 CrownCentreOS, float3 CrownRadii, float Blend, out float3 Out)
+{
+    float3 q = (PositionOS - CrownCentreOS) / max(CrownRadii * CrownRadii, 1e-4);
+    Out = normalize(lerp(NormalOS, normalize(q), saturate(Blend)));
+}
+
+// Distance fade for normal-map strength and a roughness floor, against sparkle on small cards.
+void FoliageDetailFade_float(float Distance, float FadeStart, float FadeEnd, float Roughness, float FarRoughness,
+                             out float NormalStrength, out float OutRoughness)
+{
+    float t = saturate((Distance - FadeStart) / max(FadeEnd - FadeStart, 1e-3));
+    NormalStrength = 1.0 - t;
+    OutRoughness = lerp(Roughness, max(Roughness, FarRoughness), t);
+}
+#endif</pre></div></div>
+<p class="note">Check the result under several sun angles and from below: canopy normals that are too strong make crowns look like painted balloons; back off the blend until leaf groups read again.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: no Translucent material type; use a Lit graph with a back-lighting term in a Custom Function (the Crysis formula from the translucency chapter) added to Emission, scaled by the main light.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Masked, two-sided, Two Sided Foliage with a subsurface colour; edited normals from the DCC or a vertex-interpolated canopy normal; per-instance variation and a detail fade.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal has a dedicated <em>Two Sided Foliage</em> shading model. Normal edits come from the tree tool, or are applied in the material as a world-space normal computed per vertex. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>A foliage material: Masked, Two Sided, Two Sided Foliage shading model.</span></div><div class="rt" data-k="mf"><b>Material Function</b><span>Optional: canopy or grass normals per vertex through a Vertex Interpolator.</span></div></div>
+<ol class="impl-steps"><li><div>Material: <em>Blend Mode</em> Masked, <em>Two Sided</em> on, <em>Shading Model</em> <em>Two Sided Foliage</em>. Connect a <em>Subsurface Color</em> (a saturated yellow-green, darker for thick leaves) to set how much light passes through.</div></li><li><div>Import the tree with edited normals (<em>Import Normals</em>, or Import Normals and Tangents). Unreal flips the normal on back faces of two-sided materials automatically.</div></li><li><div>Runtime canopy normals: compute <code>normalize((LocalPosition − Centre) / Radii²)</code> in the vertex stage, pass it through a <em>Vertex Interpolator</em>, transform Local to World, lerp with the vertex normal and the normal map result, untick <em>Tangent Space Normal</em> and connect the world normal. For grass, lerp toward (0, 0, 1) or a landscape normal sampled at the root.</div></li><li><div>Variation: <em>PerInstanceRandom</em> drives a small hue shift and brightness change. Crown AO from the vertex colour alpha goes into <em>Ambient Occlusion</em>.</div></li><li><div>Against sparkle: fade the normal map toward a flat normal and raise roughness with <em>PixelDepth</em> or camera distance; Unreal's <em>Normal Curvature to Roughness</em> option on the material also helps.</div></li></ol>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch16.html" rel="noopener">GPU Gems 3, chapter 16: Vegetation procedural animation and shading in Crysis</a></span><span class="by">Tiago Sousa · NVIDIA</span><span class="why">The back-lighting term, vertex AO and leaf shading.</span></li><li><span><span class="kind">Talk</span><a href="https://gdcvault.com/play/1025066/Between-Tech-and-Art-The" rel="noopener">Between Tech and Art: The Vegetation of Horizon Zero Dawn</a></span><span class="by">Gilbert Sanders · GDC 2018</span><span class="why">Normal editing, translucency and colour variation at production scale.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/lit-material-inspector-reference.html" rel="noopener">Lit shader: Double-Sided Normal Mode and Translucent material type</a></span><span class="by">Unity</span><span class="why">Flip, mirror and none; thickness and diffusion profiles.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/shading-models-in-unreal-engine" rel="noopener">Shading models: Two Sided Foliage</a></span><span class="by">Epic Games</span><span class="why">Subsurface colour and transmission for foliage.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity.com/en-us/engine/6000.3/manual/creating-environments/script-terrain/terrain-grass" rel="noopener">Grass and other details</a></span><span class="by">Unity</span><span class="why">The Grass detail mode with up-facing normals, and instanced details.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-cards foliage-lods"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"proxy": [
+"Proxy normals",
+"Normals copied from a simple shape (sphere, ellipsoid, smoothed hull) around a crown onto the leaf cards.",
+"#canopy"
+],
+"dsnm": [
+"Double-sided normal mode",
+"How back faces get their normal: flip (−n), mirror (only the out-of-surface part flips), or none.",
+"#twosided"
+],
+"translucency": [
+"Thin translucency",
+"Light that passes through a thin leaf and lights its back side.",
+"#translucency"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="fshading.js?v=fdce1f8e"></script>
+</body>
+</html>

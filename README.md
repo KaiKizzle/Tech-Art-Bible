@@ -15,7 +15,7 @@ Every unit ends with an implementation chapter (**Build it in Unity HDRP**, or *
 The Surfaces units explain the theory renderer-neutrally first (with OpenPBR as the reference), then have a full
 **Build it in Unity HDRP** chapter and a full **Build it in Unreal Engine** chapter.
 Ray Marching, Fast POM, Colour Tinting and Clamping, and Eye Shading follow the same pattern and form the learning path
-**Ray marching to a realistic eye** (featured on the hub).
+**Ray marching to a realistic eye**. The eight Foliage units form the path **Foliage from tree to forest** (featured on the hub).
 
 | Category | Unit | Folder |
 |---|---|---|
@@ -70,6 +70,14 @@ Ray Marching, Fast POM, Colour Tinting and Clamping, and Eye Shading follow the 
 | Surfaces | Glass (Fresnel, Snell, shapes, absorption, screen refraction, frost, cheap glass) | `units/glass/` |
 | Surfaces | Screen-Space Transparency (copies, masks, leaks, thickness) | `units/screen-transparency/` |
 | Surfaces | Water (waves, depth, absorption, foam, refraction, caustics, underwater, tiers) | `units/water/` |
+| Foliage | Procedural Trees: SpeedTree and Houdini (structure, pipe model, phyllotaxis, L-systems, cards, tool output) | `units/foliage-trees/` |
+| Foliage | Foliage Vertex Data: Pivots and Hierarchy (UV channels, precision, layouts, Pivot Painter 2, pitfalls) | `units/foliage-vertex-data/` |
+| Foliage | Foliage Wind (wind field, bend, branch sway, flutter, motion vectors, interaction, cost) | `units/foliage-wind/` |
+| Foliage | Skinned and Baked Foliage Animation (bones, springs, vertex animation textures, Nanite skinning) | `units/foliage-animation/` |
+| Foliage | Foliage Shading: Normals and Translucency (grass and canopy normals, two-sided modes, translucency, variation) | `units/foliage-shading/` |
+| Foliage | Foliage Cards, Overdraw and Atlases (alpha test, cutouts, prepass, shadows, atlases, texture arrays) | `units/foliage-cards/` |
+| Foliage | Foliage LODs, Impostors and Budgets (LOD chains, LOD count vs batches, impostors, voxels, budgets) | `units/foliage-lods/` |
+| Foliage | Foliage Rendering and Instancing (draw calls, instancing, GPU-driven drawing, culling, placement, profiling) | `units/foliage-instancing/` |
 
 Interior Mapping was written against Unity HDRP; its maths carries over to other engines, and the catalogue
 says so on its card. Every other unit has notes for all three engines.

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage Vertex Data: Pivots and Hierarchy · Tech Art Atlas</title>
+<meta name="description" content="What a wind shader needs per vertex and where to store it: vertex colours, UV channels and textures, the precision of 8-bit, half and float data, a pivot layout for branch hierarchies, Pivot Painter 2, baking in tree tools, and what breaks the data, built for Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-vertex-data" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage Vertex Data: Pivots and Hierarchy</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 9 chapters</div>
+  <h1>Foliage Vertex Data: Pivots and Hierarchy</h1>
+  <p class="lede">What a wind shader needs per vertex and where to store it: vertex colours, UV channels and textures, the precision of 8-bit, half and float data, a pivot layout for branch hierarchies, Pivot Painter 2, baking in tree tools, and what breaks the data, built for Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Coordinate Spaces and Procedural Trees. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-vertex-data.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A tree split into its hierarchy: trunk, branches and twigs coloured by level, with a marker at every pivot.</figcaption></figure>
+</div>
+<div class="needs" data-needs="spaces#transform foliage-trees#output"></div>
+
+<section class="chapter" id="why" data-title="Data a wind shader needs per vertex" data-builds="spaces#transform" data-summary="Rotations need the branch pivot; a vertex only knows its own position, so the pivot travels with the vertex.">
+  <div class="head"><div class="num"></div><h2>Data a wind shader needs per vertex</h2></div>
+
+  <div class="prose">
+    <p>A vertex shader sees one vertex at a time: its position, normal, UVs and colour. To bend a branch it must rotate that vertex around the point where the branch is attached. Nothing in a normal mesh says where that is. Rotating around the object origin, the only point the shader knows, tears branches off the trunk:</p>
+  </div>
+  <div class="fx" data-fx="pivot"></div>
+  <div class="prose"><p>So foliage meshes carry extra data per vertex: the <button type="button" class="term" data-term="pivot">pivot</button> of the branch the vertex belongs to, and often the pivots of its parents, a random phase so branches do not move in sync, and masks that say how stiff the part is. Tree tools write this data; the shader reads it (<a class="x" href="../foliage-wind/index.html#branches">branch sway</a>).</p></div>
+
+</section>
+<section class="chapter" id="channels" data-title="Where the data can live" data-builds="buffers#vertex-index" data-summary="Vertex colour (8-bit masks), UV channels (positions), textures indexed by UV (Pivot Painter 2), per-instance data; extra bytes cost bandwidth in every pass.">
+  <div class="head"><div class="num"></div><h2>Where the data can live</h2></div>
+
+  <div class="prose"><p>Five places can carry extra data, with different precision and cost:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Where</th><th>Format</th><th>Typical foliage use</th><th>Limits</th></tr></thead>
+    <tbody>
+      <tr><td>Vertex colour</td><td>RGBA, 8 bits per channel (0–1)</td><td>Masks: flutter, stiffness, phase, AO</td><td>256 levels: fine for masks, too coarse for positions</td></tr>
+      <tr><td>UV channels</td><td>Unity: up to 8 channels of up to 4 floats. Unreal: up to 8 channels of 2 floats</td><td>Pivots, hierarchy level, branch phase</td><td>Unreal stores UVs as 16-bit floats unless <em>Use Full Precision UVs</em> is on; Unity mesh compression can quantise them</td></tr>
+      <tr><td>Normals and tangents</td><td>3–4 floats</td><td>Not free: lighting needs them</td><td>Do not hide data here</td></tr>
+      <tr><td>Textures, indexed by a UV</td><td>Any texture format</td><td>Pivot Painter 2: pivots, axes, parent index per element</td><td>One vertex texture fetch per lookup; needs nearest filtering and no mips</td></tr>
+      <tr><td>Per-instance data</td><td>Instance buffer</td><td>Random phase, colour variation, wind strength per tree</td><td>Same for the whole mesh: not per branch</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Extra data costs memory per vertex, once per mesh. Instances share it, so it rarely matters for memory; it matters for vertex fetch bandwidth, which every pass pays (main, depth, shadows, motion vectors):</p></div>
+  <div class="fx" data-fx="vbytes"></div>
+
+</section>
+<section class="chapter" id="precision" data-title="Precision: 8-bit, 16-bit and 32-bit" data-builds="foliage-vertex-data#channels" data-summary="8-bit: range/255; normalised 16-bit: range/65535; half float: step grows with the value (~8 mm at 18 m). Pivots need 16-bit normalised or 32-bit.">
+  <div class="head"><div class="num"></div><h2>Precision: 8-bit, 16-bit and 32-bit</h2></div>
+
+  <div class="prose">
+    <p>Positions need more precision than masks. An 8-bit vertex colour has 256 levels, a centimetre-scale step on a small plant and decimetres on a tree. A 16-bit half float keeps 11 significant bits, so its step grows with the value: around a millimetre near 1 m, about 8 mm at 18 m. Normalised 16-bit values store the position relative to the bounds and keep a constant step:</p>
+  </div>
+  <div class="fx" data-fx="precision"></div>
+  <div class="prose">
+    <p>Two practical consequences. In Unreal, enable <em>Use Full Precision UVs</em> on foliage meshes that store pivots in UVs, or accept half-float steps on large trees. In Unity, keep <em>Mesh Compression</em> off on those meshes and check that the Player setting <em>Vertex Compression</em> excludes the UV channels you use. Masks, phases and stiffness are fine in 8 bits.</p>
+  </div>
+
+</section>
+<section class="chapter" id="pivots" data-title="Pivots in UV channels" data-builds="foliage-vertex-data#channels foliage-vertex-data#precision" data-summary="Count floats per level; this unit uses UV2.xy+UV3.x (branch pivot), UV3.y (phase), UV4.xy+UV5.x (twig pivot), UV5.y (level), vertex colour for masks.">
+  <div class="head"><div class="num"></div><h2>Pivots in UV channels</h2></div>
+
+  <div class="prose">
+    <p>The common approach writes each vertex's pivot into spare UV channels. A level-1 branch needs three floats for its pivot, a level-2 twig another three, plus whatever else should vary per part. Count the floats before choosing a layout, because Unreal's UV channels hold two floats each:</p>
+  </div>
+  <div class="fx" data-fx="layout"></div>
+  <div class="prose"><p>The Foliage units use one layout throughout, chosen to work in both engines (two floats per channel, UV1 left free for lightmaps):</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Data</th><th>Channel</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Texture coordinates</td><td>UV0</td><td>Albedo, normal and mask maps</td></tr>
+      <tr><td>Lightmap UVs</td><td>UV1</td><td>Left free: Unity and Unreal both use this index for lightmaps</td></tr>
+      <tr><td>Branch pivot (level 1)</td><td>UV2.xy, UV3.x</td><td>Object-space position where the branch leaves the trunk</td></tr>
+      <tr><td>Branch phase</td><td>UV3.y</td><td>Random 0–1 per branch, so neighbours do not sway in sync</td></tr>
+      <tr><td>Twig or card pivot (level 2)</td><td>UV4.xy, UV5.x</td><td>Where the twig or leaf card attaches to its branch</td></tr>
+      <tr><td>Hierarchy level</td><td>UV5.y</td><td>0 trunk, 1 branch, 2 twig or card</td></tr>
+      <tr><td>Masks</td><td>Vertex colour</td><td>R flutter (leaf edges), G per-leaf phase, B stiffness (1 = stiff), A ambient occlusion</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Trunk vertices store the object origin and level 0. A branch's own pivot is stored on every vertex of that branch, including the vertices of its twigs, which also store their own level-2 pivot. The rotation axis does not need to be stored: the wind shader builds it from the wind direction and the up axis, which is accurate enough for sway.</p></div>
+
+</section>
+<section class="chapter" id="hierarchy" data-title="Hierarchy: parents move children" data-builds="foliage-vertex-data#pivots spaces#chain" data-summary="Apply rotations from the finest level outwards: twig, then branch, then trunk; each level carries its children.">
+  <div class="head"><div class="num"></div><h2>Hierarchy: parents move children</h2></div>
+
+  <div class="prose">
+    <p>A twig on a swaying branch must sway with the branch and add its own motion. The shader therefore applies rotations from the finest level outwards: the twig around its pivot, then the result around the branch pivot, then around the trunk base. Each stored pivot is in the rest pose; because the parents' rotations are applied afterwards, they carry the twig's pivot along with everything else:</p>
+  </div>
+  <div class="fx" data-fx="hierarchy"></div>
+  <div class="prose"><p>Two or three levels are enough for almost every game tree: trunk, branches, and leaves or twigs. Pivot Painter 2's foliage shader supports four. Each level costs one rotation per vertex in every pass that runs the vertex shader.</p></div>
+
+</section>
+<section class="chapter" id="textures" data-title="Data in textures: Pivot Painter 2" data-builds="foliage-vertex-data#hierarchy buffers#structured" data-summary="Pivot Painter 2: element index in a UV, pivots and axes in textures (16-bit and 8-bit, no mips, nearest), up to four levels.">
+  <div class="head"><div class="num"></div><h2>Data in textures: Pivot Painter 2</h2></div>
+
+  <div class="prose">
+    <p>UV channels run out quickly when every level needs pivot, axis, length and parent. Unreal's <button type="button" class="term" data-term="pp2">Pivot Painter 2</button> takes the other route: each element (branch, twig, leaf) gets an index, the mesh stores only that index in one UV channel, and the data lives in textures, one texel per element. The vertex shader looks the element up, reads its parent index, and walks up the hierarchy:</p>
+  </div>
+  <div class="fx" data-fx="pptex"></div>
+  <div class="prose">
+    <p>Pivot Painter 2 writes a 16-bit texture with pivot positions and parent indices and an 8-bit texture with the element's X axis and extent, stored without mips and sampled with nearest filtering. Its <em>PivotPainter2FoliageShader</em> material function handles up to four levels. The cost moves from vertex memory to vertex texture fetches: one or two per level per vertex.</p>
+    <p>The same idea works in Unity with a small custom texture or a structured buffer indexed by element (<a class="x" href="../buffers/index.html#structured">structured buffers</a>); there is no built-in tool.</p>
+  </div>
+
+</section>
+<section class="chapter" id="baking" data-title="Baking the data in tree tools" data-builds="foliage-trees#houdini" data-summary="SpeedTree bakes its own layout; Houdini writes branch roots to uv2…; Blender via Geometry Nodes; Pivot Painter 2 from 3ds Max.">
+  <div class="head"><div class="num"></div><h2>Baking the data in tree tools</h2></div>
+
+  <div class="prose">
+    <ul>
+      <li><strong>SpeedTree</strong> writes its own wind data into the mesh when exporting for its engine shaders; the layout belongs to the SpeedTree shaders, so use those shaders or export FBX and bake your own.</li>
+      <li><strong>Houdini</strong>: the tree tools know each point's branch, level and root. An Attribute Wrangle copies the root position of the point's branch into vector attributes, and the FBX export turns attributes named <code>uv2</code>, <code>uv3</code>… into extra UV sets. The build chapter has the wrangle.</li>
+      <li><strong>Blender</strong>: Geometry Nodes can capture each branch's start position and store it as a 2D vector attribute, which exports as a UV map.</li>
+      <li><strong>3ds Max</strong>: Pivot Painter 2's MAXScript writes the textures for Unreal from a hierarchy of separate objects.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="pitfalls" data-title="What breaks the data" data-builds="foliage-vertex-data#pivots" data-summary="Static batching and mesh combining, axis and unit conversion, compression, LOD tools and non-uniform scale break object-space pivots.">
+  <div class="head"><div class="num"></div><h2>What breaks the data</h2></div>
+
+  <div class="prose">
+    <p>Pivot data is stored in object space, and plenty of tools change object space without touching UVs:</p>
+    <ul>
+      <li><strong>Static batching and mesh combining</strong> transform vertices into world or combined space, but the stored pivots stay in the old object space. Every branch then rotates around a point near the world origin. Keep wind foliage out of static batching and combine tools; instancing keeps object space intact.</li>
+      <li><strong>Axis and unit conversion.</strong> FBX import converts positions to the engine's axes and units (Unity mirrors from right-handed FBX; Unreal converts to Z-up centimetres), but UV data is copied as is. Either write the pivots in engine space in the DCC tool or convert them in the shader, and verify with a test branch.</li>
+      <li><strong>Compression and quantisation</strong>: mesh compression, 16-bit UVs (<a href="#precision">precision</a>).</li>
+      <li><strong>LOD and optimisation tools</strong> that rebuild meshes and drop or average extra UV channels. Check the LODs, not only LOD0.</li>
+      <li><strong>Non-uniform scale</strong> on instances distorts rotations; scale uniformly and vary size per instance.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Wind looked correct in a test scene. In the level, every tree swings around a point near the world origin. Cause?", ["The wind zone is too strong", "The trees were statically batched, so object space changed but the stored pivots did not", "Half-float UVs", "Missing vertex colours"], 1, "Static batching bakes the transform into the vertices; pivots stored in object space no longer match."], ["Which data is fine in 8-bit vertex colour?", ["Branch pivot positions", "Flutter mask, phase and stiffness", "Twig pivots on an 18 m tree", "None"], 1, "Masks need 256 levels at most; positions need 16-bit normalised or 32-bit storage."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Houdini wrangle writes pivots, phase and level to uv3–uv6 (channels 2–5); Unity import without compression; Shader Graph decode; a gizmo to verify.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route bakes the layout in Houdini, keeps it intact through the Unity import, decodes it in Shader Graph and makes it visible with a gizmo, so a wrong pivot is found before wind is added. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="sd"><b>Substance Designer</b><span>BakePivots: a Houdini Attribute Wrangle that writes pivots, phase and level to UV sets.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>FoliagePivots.hlsl: decodes the layout in a Custom Function.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>PivotGizmos.cs: draws every stored pivot on the selected tree.</span></div></div>
+<ol class="impl-steps"><li><div>In Houdini, after the tree is built, make sure every point has <code>i@branch_id</code> and <code>i@level</code>, and that the branch curves (the Labs Tree Tools output them) carry <code>branch_id</code> and <code>parent_id</code>. Add an Attribute Wrangle with the <code>BakePivots</code> code, the mesh in input 0 and the curves in input 1. Leave <em>space</em> at 0 for Unity.</div></li><li><div>Export FBX. Houdini names UV sets after the attributes <code>uv</code>, <code>uv2</code>, <code>uv3</code>…, so the wrangle writes <code>uv3</code>–<code>uv6</code> to land in channels 2–5 and leave channel 1 free for lightmaps.</div></li><li><div>Import into Unity with <em>Mesh Compression</em> off (the <a class="x" href="../foliage-trees/index.html#implement">tree import script</a> does it). In <em>Project Settings &gt; Player &gt; Other Settings &gt; Vertex Compression</em>, untick the TexCoord channels that hold pivots.</div></li><li><div>Add <code>PivotGizmos.cs</code> to an instance of the tree and select it. Cyan spheres must sit where branches leave the trunk, green ones where twigs leave branches. If they appear mirrored, toggle <em>Mirror X</em>; if they float far away, the mesh was combined or batched.</div></li><li><div>In the foliage graph, add four <em>UV</em> nodes (channels UV2, UV3, UV4, UV5) and a Float property <code>MirrorX</code> (default 1). In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>FoliagePivots.hlsl</code> and <em>Name</em> to <code>FoliagePivots</code> (without the <code>_float</code> suffix). Add the inputs <b>UV2 (Vector 4), UV3 (Vector 4), UV4 (Vector 4), UV5 (Vector 4), MirrorX (Float)</b> and the outputs <b>BranchPivot (Vector 3), BranchPhase (Float), TwigPivot (Vector 3), Level (Float)</b>, in that order and with those types: they must match the function's parameters. These outputs feed the wind function in <a class="x" href="../foliage-wind/index.html#implement">Foliage Wind</a>.</div></li><li><div>Mark wind foliage as not <em>Batching Static</em> (Static Editor Flags), or keep it on terrain or an instanced renderer, so object space stays intact.</div></li></ol>
+<div class="files"><div class="file" data-name="BakePivots.vex" data-lang="hlsl"><pre>// Houdini Attribute Wrangle (Run Over: Points) on the tree mesh: BakePivots
+// Input 0: the tree mesh. Each point has i@branch_id (which branch it belongs to) and i@level (0 trunk, 1 branch, 2 twig/card).
+// Input 1: one polyline per branch, ordered root -&gt; tip, with prim attributes i@branch_id and i@parent_id (-1 for the trunk).
+// Writes the layout used by the Foliage units:
+//   channel 2 = (L1 pivot x, L1 pivot y)   channel 3 = (L1 pivot z, branch phase)
+//   channel 4 = (L2 pivot x, L2 pivot y)   channel 5 = (L2 pivot z, level)
+// FBX UV sets follow the attribute names: &quot;uv&quot; is channel 0, &quot;uv2&quot; channel 1, &quot;uv3&quot; channel 2 ...
+// so the four attributes go to uv3..uv6, landing in channels 2..5 (channel 1 stays free for lightmaps).
+
+int space = chi(&quot;space&quot;);          // 0 = engine-neutral (Houdini metres, Y-up), 1 = Unreal (x, z, y) * 100
+
+vector to_engine(vector p; int space)
+{
+    if (space == 1) return set(p.x, p.z, p.y) * 100.0;   // as Houdini Engine maps to Unreal; FBX import may add a mirror: verify
+    return p;
+}
+
+int  bid   = i@branch_id;
+int  lvl   = i@level;
+int  prim  = findattribval(1, &quot;prim&quot;, &quot;branch_id&quot;, bid);
+vector root = prim &gt;= 0 ? point(1, &quot;P&quot;, primpoint(1, prim, 0)) : {0, 0, 0};
+int  parent = prim &gt;= 0 ? prim(1, &quot;parent_id&quot;, prim) : -1;
+int  pprim  = parent &gt;= 0 ? findattribval(1, &quot;prim&quot;, &quot;branch_id&quot;, parent) : -1;
+vector proot = pprim &gt;= 0 ? point(1, &quot;P&quot;, primpoint(1, pprim, 0)) : {0, 0, 0};
+
+vector L1 = {0, 0, 0}, L2 = {0, 0, 0};
+float phase = 0;
+if (lvl == 1) { L1 = root;  phase = rand(bid * 13.17); }
+if (lvl &gt;= 2) { L1 = proot; L2 = root; phase = rand(parent * 13.17); }
+
+L1 = to_engine(L1, space);
+L2 = to_engine(L2, space);
+v@uv3 = set(L1.x, L1.y, 0);        // channel 2
+v@uv4 = set(L1.z, phase, 0);       // channel 3
+v@uv5 = set(L2.x, L2.y, 0);        // channel 4
+v@uv6 = set(L2.z, lvl, 0);         // channel 5</pre></div><div class="file" data-name="FoliagePivots.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_FOLIAGE_PIVOTS_INCLUDED
+#define ATLAS_FOLIAGE_PIVOTS_INCLUDED
+
+// Decodes the Foliage-unit layout from UV channels 2..5 (object space):
+//   UV2.xy, UV3.x  branch pivot     UV3.y  branch phase
+//   UV4.xy, UV5.x  twig pivot       UV5.y  hierarchy level (0, 1, 2)
+// MirrorX: 1 if the importer mirrored the mesh&#x27;s X axis (Unity does for right-handed FBX), else 0.
+// Verify once with a test tree: draw the pivots with the PivotGizmos script.
+void FoliagePivots_float(float4 UV2, float4 UV3, float4 UV4, float4 UV5, float MirrorX,
+                         out float3 BranchPivot, out float BranchPhase, out float3 TwigPivot, out float Level)
+{
+    float sx = MirrorX &gt; 0.5 ? -1.0 : 1.0;
+    BranchPivot = float3(UV2.x * sx, UV2.y, UV3.x);
+    BranchPhase = UV3.y;
+    TwigPivot   = float3(UV4.x * sx, UV4.y, UV5.x);
+    Level       = UV5.y;
+}
+#endif</pre></div><div class="file" data-name="PivotGizmos.cs" data-lang="cs"><pre>// Assets/Scripts/PivotGizmos.cs: add to a tree in the scene to see the stored pivots.
+// Draws a sphere at every distinct branch pivot (UV2.xy, UV3.x) and twig pivot (UV4.xy, UV5.x).
+using System.Collections.Generic;
+using UnityEngine;
+
+[ExecuteAlways]
+public class PivotGizmos : MonoBehaviour
+{
+    public bool mirrorX = true;      // must match the material&#x27;s MirrorX
+    public float size = 0.05f;
+    readonly List&lt;Vector2&gt; a = new(), b = new(), c = new(), d = new();
+
+    void OnDrawGizmosSelected()
+    {
+        var mf = GetComponentInChildren&lt;MeshFilter&gt;(); if (mf == null || mf.sharedMesh == null) return;
+        var m = mf.sharedMesh; m.GetUVs(2, a); m.GetUVs(3, b); m.GetUVs(4, c); m.GetUVs(5, d);
+        if (a.Count == 0 || b.Count == 0) return;
+        var seen = new HashSet&lt;Vector3Int&gt;();
+        Gizmos.matrix = mf.transform.localToWorldMatrix;
+        float sx = mirrorX ? -1f : 1f;
+        for (int i = 0; i &lt; a.Count; i++)
+        {
+            Draw(new Vector3(a[i].x * sx, a[i].y, b[i].x), Color.cyan, seen);
+            if (c.Count &gt; i &amp;&amp; d.Count &gt; i &amp;&amp; d[i].y &gt; 1.5f) Draw(new Vector3(c[i].x * sx, c[i].y, d[i].x), Color.green, seen);
+        }
+    }
+
+    void Draw(Vector3 p, Color col, HashSet&lt;Vector3Int&gt; seen)
+    {
+        if (!seen.Add(Vector3Int.RoundToInt(p * 1000f))) return;   // one sphere per distinct pivot
+        Gizmos.color = col; Gizmos.DrawSphere(p, size);
+    }
+}</pre></div></div>
+<p class="note">Why not world space? Instances share one mesh, so the data must be relative to the mesh. The shader adds the instance transform like it does for every other position.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical; the UV nodes and Custom Function work the same.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="TexCoord 2–5 decoded in a Custom node with full-precision UVs, or Pivot Painter 2 textures and its foliage material function.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Two routes in Unreal: the same UV layout read with TexCoord nodes, or Pivot Painter 2 with its textures and material functions. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>FoliagePivots.ush: decodes the UV layout.</span></div><div class="rt" data-k="mf"><b>Material Function</b><span>Or PivotPainter2FoliageShader with the Pivot Painter 2 textures.</span></div></div>
+<ol class="impl-steps"><li><div>Bake with <em>space</em> = 1 in the Houdini wrangle so pivots are written in Unreal's Z-up centimetres. Import the FBX and, in each LOD's <em>Build Settings</em>, enable <em>Use Full Precision UVs</em>; check <em>UV Channels</em> = 6 in the static mesh details.</div></li><li><div>Place a test tree, then verify: in the material, output the distance between <em>Pre-Skinned Local Position</em> and the decoded branch pivot as Emissive. It must be near zero at the base of every branch. A pattern that looks mirrored means the FBX import added a mirror: negate the matching axis in the Custom node.</div></li><li><div>Add a <em>Custom</em> node with <code>FoliagePivots.ush</code>, inputs from <em>TexCoord</em> nodes with coordinate indices 2–5. The outputs feed the wind setup in <a class="x" href="../foliage-wind/index.html#unreal">Foliage Wind</a>.</div></li><li><div><b>Pivot Painter 2 route.</b> Run the Pivot Painter 2 MAXScript on a hierarchy of separate objects in 3ds Max (or a Blender port), export the mesh and the two textures. Import the textures with the settings the tool states: no mipmaps, <em>Nearest</em> filter, sRGB off, HDR compression for the 16-bit EXR. Use <em>PivotPainter2FoliageShader</em> in the material and untick <em>Tangent Space Normal</em> as its documentation describes.</div></li><li><div>Foliage painted with the Foliage tool is instanced (Instanced or Hierarchical Instanced Static Mesh), which keeps local space intact. Avoid merging wind foliage with <em>Merge Actors</em>.</div></li></ol>
+<div class="files"><div class="file" data-name="FoliagePivots.ush" data-lang="hlsl"><pre>// Custom node &quot;FoliagePivots&quot;. Inputs: UV2, UV3, UV4, UV5 (float2, TexCoord[2..5]).
+// Output Type: CMOT Float 3 (branch pivot, local space, cm). Additional Outputs: BranchPhase (Float 1),
+// TwigPivot (Float 3), Level (Float 1).
+// Assumes the pivots were written in Unreal space in Houdini (space = 1 in BakePivots). Use them with
+// Local Position (Pre-Skinned Local Position) and transform the offset to world with TransformVector.
+BranchPhase = UV3.y;
+TwigPivot   = float3(UV4.x, UV4.y, UV5.x);
+Level       = UV5.y;
+return float3(UV2.x, UV2.y, UV3.x);</pre></div></div>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/unreal-engine/pivot-painter-tool-2.0-in-unreal-engine" rel="noopener">Pivot Painter Tool 2.0</a></span><span class="by">Epic Games</span><span class="why">Texture layout, formats, element limits and the foliage material function.</span></li><li><span><span class="kind">Article</span><a href="https://80.lv/articles/working-with-pivot-painter-2-0-in-unreal/" rel="noopener">Working with Pivot Painter 2.0 in Unreal</a></span><span class="by">80 Level</span><span class="why">A walkthrough of the tool and the wind material.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch16.html" rel="noopener">GPU Gems 3, chapter 16: Vegetation procedural animation and shading in Crysis</a></span><span class="by">Tiago Sousa · NVIDIA</span><span class="why">Vertex colour masks for edge stiffness, phase and branch stiffness.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Mesh.GetUVs.html" rel="noopener">Mesh.GetUVs and UV channels</a></span><span class="by">Unity</span><span class="why">Up to eight UV channels of up to four components.</span></li><li><span><span class="kind">Article</span><a href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format" rel="noopener">Half-precision floating-point format</a></span><span class="by">Wikipedia</span><span class="why">Why the step of a half float grows with the value.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-wind foliage-animation"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"pivot": [
+"Pivot",
+"The point a part rotates around: for a branch, where it leaves its parent.",
+"#why"
+],
+"pp2": [
+"Pivot Painter 2",
+"Unreal's tool and material functions that store per-element pivots and axes in textures.",
+"#textures"
+],
+"half": [
+"Half float",
+"16-bit floating point: 11 significant bits, so the step grows with the value.",
+"#precision"
+],
+"vcol": [
+"Vertex colour",
+"Four 8-bit channels per vertex, usually used for masks.",
+"#channels"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="vdata.js?v=4502aff2"></script>
+</body>
+</html>

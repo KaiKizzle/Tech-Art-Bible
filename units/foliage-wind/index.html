@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage Wind · Tech Art Atlas</title>
+<meta name="description" content="Layered procedural wind for foliage: a wind field with travelling gusts, trunk bending with length preservation, branch rotation around stored pivots, leaf flutter, wave functions, normals and motion vectors, interaction, and what wind costs per pass, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-wind" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage Wind</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 9 chapters</div>
+  <h1>Foliage Wind</h1>
+  <p class="lede">Layered procedural wind for foliage: a wind field with travelling gusts, trunk bending with length preservation, branch rotation around stored pivots, leaf flutter, wave functions, normals and motion vectors, interaction, and what wind costs per pass, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Foliage Vertex Data. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-wind.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A field of grass bending under a gust that travels from left to right.</figcaption></figure>
+</div>
+<div class="needs" data-needs="foliage-vertex-data#pivots spaces#transform"></div>
+
+<section class="chapter" id="field" data-title="The wind field" data-builds="mapping#flow" data-summary="Global direction and strength plus a scrolling gust noise sampled at the plant&#x27;s world position; three layers: bend, sway, flutter.">
+  <div class="head"><div class="num"></div><h2>The wind field</h2></div>
+
+  <div class="prose">
+    <p>Foliage wind is almost always procedural: a vertex shader offsets each vertex from a few global parameters and the data stored in the mesh. It splits into three layers that each answer to a different part of the wind:</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Layer</th><th>What moves</th><th>Driven by</th><th>Frequency</th></tr></thead>
+    <tbody>
+      <tr><td>Main bend</td><td>The whole plant leans away from the wind</td><td>Wind strength, height above the base</td><td>Slow: follows gusts (seconds)</td></tr>
+      <tr><td>Branch sway</td><td>Each branch rotates around its pivot</td><td>Pivot and phase per branch, stiffness</td><td>Medium: about 0.3–1 Hz</td></tr>
+      <tr><td>Leaf flutter</td><td>Leaf edges and card corners shiver</td><td>Edge mask and phase in vertex colour</td><td>Fast: several Hz, small amplitude</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>The input is a <button type="button" class="term" data-term="windfield">wind field</button>: a global direction and base strength (from a Wind Zone in Unity, a Wind Directional Source or a material parameter collection in Unreal, or gameplay code), plus gusts. Gusts come from a tiling noise texture sampled at the plant's world position and scrolled along the wind direction, so a gust visibly travels across a field instead of every plant pulsing at once:</p>
+  </div>
+  <div class="fx" data-fx="field"></div>
+  <div class="prose"><p>Read the gust once per instance (at the object's origin) for the main bend, so a tree does not bend differently at its top and bottom, and add a per-instance phase from a hash of the position for the faster layers.</p></div>
+
+</section>
+<section class="chapter" id="bend" data-title="Trunk bend with length preservation" data-builds="foliage-wind#field vectors#normalize" data-summary="Offset ∝ f(h) = ((1+h)⁴ − (1+h)²)/12 along the wind, then renormalise to the original distance from the base (Crysis).">
+  <div class="head"><div class="num"></div><h2>Trunk bend with length preservation</h2></div>
+
+  <div class="prose">
+    <p>The main bend pushes every vertex along the wind, more the higher it is. Crysis (Sousa, <em>GPU Gems 3</em>, 2007) uses a curve that stays flat near the ground and rises steeply at the top. An offset alone stretches the trunk, so the bent position is rescaled to its original distance from the base. The tip then moves on a circle and sinks as the plant leans, which is what makes the bend read as bending and not as shearing:</p>
+  </div>
+  <div class="fx" data-fx="bend"></div>
+  <div class="prose"><p>The bend is the same for the whole plant, so it needs no per-vertex data beyond the position: height above the base and distance from it. Keep it small for trees (a few degrees in a storm) and larger for grass and bushes; too much bend is what makes wind look fake.</p></div>
+
+</section>
+<section class="chapter" id="branches" data-title="Branch sway around pivots" data-builds="foliage-vertex-data#pivots foliage-vertex-data#hierarchy" data-summary="Rotate around the stored pivot by θ = amplitude · wave(t + phase) · (1 − stiffness); offsets stretch branches.">
+  <div class="head"><div class="num"></div><h2>Branch sway around pivots</h2></div>
+
+  <div class="prose">
+    <p>Branches rotate around the point where they leave the trunk, each with its own phase, by an angle scaled by the wind and by its stiffness. This is where the <a class="x" href="../foliage-vertex-data/index.html#pivots">stored pivots</a> are used. Rotating keeps branches rigid; adding an offset instead (still common in simple shaders) stretches them:</p>
+  </div>
+  <div class="fx" data-fx="sway"></div>
+  <div class="prose">
+    <p>The rotation axis is built in the shader: perpendicular to the wind and to up, cross(up, windDir), with a second smaller rotation around the branch's own direction for a twist. Rotating around an axis through a pivot is the Rodrigues formula, or a rotation matrix built once per vertex. Twigs repeat the same step with their own pivot first, then the branch's (<a class="x" href="../foliage-vertex-data/index.html#hierarchy">hierarchy</a>).</p>
+    <p>Stiffness comes from vertex colour or from the hierarchy level: trunks barely move, thin branches move most. The phase per branch, from the layout or a hash of the pivot position, keeps neighbouring branches out of sync.</p>
+  </div>
+
+</section>
+<section class="chapter" id="leaves" data-title="Leaf flutter" data-builds="foliage-vertex-data#channels" data-summary="offset = N · A · mask · wave(f·t + phase): several Hz, centimetres, masked by vertex colour; off in lower LODs.">
+  <div class="head"><div class="num"></div><h2>Leaf flutter</h2></div>
+
+  <div class="prose">
+    <p>The fastest layer moves only the leaves: a small offset along the normal at several hertz, masked so the stem stays still and the leaf edge moves most. The mask and a per-leaf phase sit in the vertex colour (Crysis: R edge stiffness, G phase, B branch stiffness, A ambient occlusion):</p>
+  </div>
+  <div class="fx" data-fx="flutter"></div>
+  <div class="prose"><p>Flutter is cheap and contributes much of the impression of life up close, and almost nothing at a distance. It is the first layer to switch off in lower LODs.</p></div>
+
+</section>
+<section class="chapter" id="waves" data-title="Wave functions" data-builds="shader-anatomy#functions" data-summary="tri(x) = |frac(x + ½)·2 − 1|, smoothed by x²(3 − 2x); summed at 1.975, 0.793, 0.375, 0.193 so the motion does not repeat.">
+  <div class="head"><div class="num"></div><h2>Wave functions</h2></div>
+
+  <div class="prose">
+    <p>Every layer needs a periodic signal. A single sine repeats visibly: every plant pumps in the same rhythm. Crysis sums smoothed triangle waves at frequencies with no simple ratio between them, so the sum never visibly repeats, and triangle waves avoid the sine instruction:</p>
+  </div>
+  <div class="fx" data-fx="waves"></div>
+  <div class="prose"><p>Drive the time input with the gust strength (faster in strong wind), and add each part's phase. A scrolling noise texture is the alternative when the motion should look turbulent rather than periodic; it costs a texture read per vertex.</p></div>
+
+</section>
+<section class="chapter" id="normals" data-title="Normals and motion vectors" data-builds="foliage-wind#branches" data-summary="Rotate normals with branches; output motion vectors for vertex animation (evaluate the wind with last frame&#x27;s time too), or TAA smears leaves.">
+  <div class="head"><div class="num"></div><h2>Normals and motion vectors</h2></div>
+
+  <div class="prose">
+    <p>Two things go wrong when vertices move in the vertex shader.</p>
+    <p><strong>Normals.</strong> A rotated branch should rotate its normals by the same rotation, which costs one extra matrix multiply. Flutter offsets are too small to matter; skip their normals. Grass and canopies whose normals were replaced (<a class="x" href="../foliage-shading/index.html#grass">foliage normals</a>) keep the replaced normals.</p>
+    <p><strong>Motion vectors.</strong> Temporal anti-aliasing, motion blur and upscalers need to know where each pixel was last frame. The engine knows how objects moved, not how the vertex shader moved their vertices. Without motion vectors for the vertex animation, swaying leaves smear and ghost under TAA:</p>
+  </div>
+  <div class="fx" data-fx="mv"></div>
+  <div class="prose">
+    <p>The fix is to evaluate the wind twice, with this frame's and last frame's time and wind parameters, and output the difference. Unity 6 does it for you when the motion depends only on time (HDRP: <em>Motion Vector For Vertex Animation</em> on the material; URP Shader Graph: <em>Additional Motion Vectors</em> = <em>Time-Based</em>). Unreal writes velocity for World Position Offset when <em>Output velocities due to vertex deformation</em> is enabled in the project settings. Wind parameters that change from gameplay need their previous values passed in as well.</p>
+  </div>
+
+</section>
+<section class="chapter" id="interaction" data-title="Interaction: bending away from characters" data-builds="foliage-wind#bend buffers#structured" data-summary="offset = normalize(p − c) · max(0, r − |p − c|) · k · height mask; many interactors via a buffer or a top-down texture.">
+  <div class="head"><div class="num"></div><h2>Interaction: bending away from characters</h2></div>
+
+  <div class="prose">
+    <p>Grass that parts around a character is a push away from a sphere, scaled by how close the blade is and masked by height so the root stays planted:</p>
+  </div>
+  <div class="fx" data-fx="push"></div>
+  <div class="prose">
+    <p>One or two interactors fit in shader parameters. For many (every character, projectiles, vehicles), write their positions into a small buffer (<a class="x" href="../buffers/index.html#structured">structured buffer</a>) or render them into a top-down <em>interaction texture</em> around the camera, which the grass reads by world position. Let that texture fade back over a few seconds and trampled grass recovers slowly instead of snapping back.</p>
+  </div>
+
+</section>
+<section class="chapter" id="cost" data-title="What wind costs" data-builds="foliage-wind#field reading-a-frame#shader-cost" data-summary="Vertex runs = verts × plants × passes (prepass, cascades, motion vectors, main); fade wind out with distance and drop layers per LOD.">
+  <div class="head"><div class="num"></div><h2>What wind costs</h2></div>
+
+  <div class="prose">
+    <p>Wind is vertex shader work, and the vertex shader runs in every pass that draws the plant: depth prepass, each shadow cascade, the motion vector pass, the main pass. Shadows must move with the plant, so they cannot skip the wind:</p>
+  </div>
+  <div class="fx" data-fx="cost"></div>
+  <div class="prose">
+    <ul>
+      <li>Fade wind out with distance and switch it off beyond (Unreal: <em>World Position Offset Disable Distance</em> on instances; Unity: a distance fade in the shader, or LODs with a simpler material).</li>
+      <li>Drop layers per LOD: flutter only on LOD0, branch sway on LOD0–1, the main bend on all.</li>
+      <li>Enlarge culling bounds by the sway, or plants pop out at the screen edge.</li>
+      <li>On Nanite, World Position Offset makes clusters' bounds conservative and costs culling efficiency; Unreal's newer Nanite Foliage moves wind to bones for that reason (<a class="x" href="../foliage-animation/index.html#skinning">skinned foliage</a>).</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Leaves look sharp in screenshots but smear when the wind blows in play. First thing to check?", ["Texture mipmaps", "Motion vectors for the vertex animation", "The shadow cascades", "The LOD bias"], 1, "TAA reprojects with motion vectors; vertex animation needs its own."], ["Profiling shows foliage vertex work is high mostly in shadow passes. Which change helps most?", ["More flutter frequencies", "Turning wind off beyond a distance and using simpler LODs for distant shadow casters", "Higher shadow resolution", "Adding a depth prepass"], 1, "Distant plants fill the large cascades; cheaper or static vertex shaders there remove most of the cost."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="One Custom Function in the vertex stage (flutter, twig and branch rotation, bend), globals from a Wind Zone driver, motion vectors for vertex animation, bounds and a distance fade.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route builds the three wind layers as one Custom Function in the vertex stage of a foliage graph, fed by the pivots from <a class="x" href="../foliage-vertex-data/index.html#implement">Foliage Vertex Data</a> and by a Wind Zone through a small driver script. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="hlsl"><b>HLSL file</b><span>FoliageWind.hlsl: flutter, twig and branch rotation, main bend.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>WindDriver.cs: Wind Zone and gust noise to shader globals.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>The foliage Lit graph: wind in the vertex stage, motion vectors on.</span></div></div>
+<ol class="impl-steps"><li><div>Put <code>FoliageWind.hlsl</code> next to <code>FoliagePivots.hlsl</code>. Add a <em>Wind Zone</em> (Directional) to the scene and a GameObject with <code>WindDriver.cs</code>; assign the zone and a tiling noise texture (import it with sRGB off, wrap Repeat).</div></li><li><div>Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>: Material Type <em>Translucent</em> for leaves (see <a class="x" href="../foliage-shading/index.html#implement">Foliage Shading</a>), <em>Alpha Clipping</em> on, <em>Double-Sided</em> on.</div></li><li><div>In the vertex stage, decode the pivots with the FoliagePivots Custom Function. Add a <em>Transform</em> node from Object to Absolute World, type Position, with input (0, 0, 0): the plant's origin. The wind direction is a global read inside the file and converted to object space there, so rotated instances bend downwind; do not add it as a graph property (the names would clash).</div></li><li><div>Add Float properties <code>PlantHeight</code> (the mesh height in metres), <code>BendAmount</code> (0.05 for trees, 0.3 for grass), <code>BranchAngle</code> (in radians, 0.15), <code>FlutterAmplitude</code> (0.01) and <code>FlutterFrequency</code> (4). In the vertex stage, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>FoliageWind.hlsl</code> and <em>Name</em> to <code>FoliageWind</code> (without the <code>_float</code> suffix). Add the inputs <b>PositionOS (Vector 3), NormalOS (Vector 3), BranchPivot (Vector 3), BranchPhase (Float), TwigPivot (Vector 3), Level (Float), VertexColor (Vector 4), PlantOriginWS (Vector 3), Time (Float), PlantHeight (Float), BendAmount (Float), BranchAngle (Float), FlutterAmplitude (Float), FlutterFrequency (Float)</b> and the outputs <b>OutPositionOS (Vector 3), OutNormalOS (Vector 3)</b>, in that order and with those types: they must match the function's parameters.</div></li><li><div>Connect <em>OutPositionOS</em> to the master stack's <em>Vertex Position</em> and <em>OutNormalOS</em> to <em>Vertex Normal</em>. Feed <em>Time</em> from the Time node.</div></li><li><div>On the material, enable <em>Motion Vector For Vertex Animation</em> (Surface Options). HDRP then evaluates the vertex stage again with the previous frame's time, so TAA does not smear leaves. Changes of the global wind from script are not part of that history; the driver eases them to keep the error small.</div></li><li><div>Enlarge the renderer's bounds by the maximum sway (<em>Renderer &gt; Bounds</em> override or a slightly larger LOD Group size) and fade the wind out with distance: multiply BendAmount and BranchAngle by a distance fade from the camera, or give far LODs a material without the Custom Function.</div></li></ol>
+<div class="files"><div class="file" data-name="FoliageWind.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_FOLIAGE_WIND_INCLUDED
+#define ATLAS_FOLIAGE_WIND_INCLUDED
+
+// Layered foliage wind in object space: leaf flutter, twig and branch rotation around stored pivots,
+// and a Crysis-style main bend with length preservation.
+// Globals, set by WindDriver.cs:
+float4 _AtlasWind;                 // xyz: wind direction (world, normalised), w: base strength
+float4 _AtlasGust;                 // x: gust strength, y: gust speed (m/s), z: gust size (m)
+TEXTURE2D(_AtlasGustTex);          // tiling greyscale noise, linear, wrap
+SAMPLER(sampler_AtlasGustTex);
+
+float Atlas_SmoothTri(float x)     // smoothed triangle wave, -1..1 (GPU Gems 3, ch. 16)
+{
+    float t = abs(frac(x + 0.5) * 2.0 - 1.0);
+    return t * t * (3.0 - 2.0 * t) * 2.0 - 1.0;
+}
+
+float3 Atlas_RotateAround(float3 p, float3 pivot, float3 axis, float angle)   // Rodrigues, axis normalised
+{
+    float3 v = p - pivot; float s, c; sincos(angle, s, c);
+    return pivot + v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+}
+
+// PositionOS, NormalOS: Position and Normal nodes (Object).  Pivots, phase, level: from FoliagePivots.
+// VertexColor: R flutter mask, G leaf phase, B stiffness (1 = stiff), A AO.
+// PlantOriginWS: Transform node, (0,0,0) from Object to Absolute World (Position).
+// The wind direction is converted to object space in here, so rotated instances bend the right way.
+void FoliageWind_float(float3 PositionOS, float3 NormalOS, float3 BranchPivot, float BranchPhase, float3 TwigPivot, float Level,
+                       float4 VertexColor, float3 PlantOriginWS, float Time,
+                       float PlantHeight, float BendAmount, float BranchAngle, float FlutterAmplitude, float FlutterFrequency,
+                       out float3 OutPositionOS, out float3 OutNormalOS)
+{
+    // wind strength at this plant: base plus a gust that travels along the wind direction
+    float2 gustUV = (PlantOriginWS.xz - _AtlasWind.xz * _AtlasGust.y * Time) / max(_AtlasGust.z, 0.01);
+    float  gust   = SAMPLE_TEXTURE2D_LOD(_AtlasGustTex, sampler_AtlasGustTex, gustUV, 0).r;
+    float  w      = _AtlasWind.w + _AtlasGust.x * gust;
+
+    float3 WindDirOS  = normalize(TransformWorldToObjectDir(_AtlasWind.xyz) + float3(1e-5, 0.0, 0.0));
+    float  plantPhase = frac(dot(PlantOriginWS, float3(0.137, 0.0, 0.271)));   // different per instance
+    float3 axis = normalize(cross(float3(0.0, 1.0, 0.0), WindDirOS) + float3(1e-5, 0.0, 0.0));  // positive angle leans downwind
+    float  stiff = VertexColor.b;
+    float3 p = PositionOS, n = NormalOS;
+
+    // 1. leaf flutter: small offset along the normal, masked to the leaf edges
+    float leafPhase = VertexColor.g + BranchPhase + plantPhase;
+    p += NormalOS * (FlutterAmplitude * VertexColor.r * w * Atlas_SmoothTri(Time * FlutterFrequency + leafPhase * 7.0));
+
+    // 2. twig or card around its own pivot (children first)
+    if (Level &gt; 1.5)
+    {
+        float a = 0.6 * BranchAngle * w * (1.0 - stiff) * (0.5 + 0.5 * Atlas_SmoothTri(Time * 0.793 + leafPhase * 3.1));
+        p = Atlas_RotateAround(p, TwigPivot, axis, a); n = Atlas_RotateAround(n, 0, axis, a);
+    }
+    // 3. branch around its pivot: carries its twigs along
+    if (Level &gt; 0.5)
+    {
+        float wave = Atlas_SmoothTri(Time * 0.375 + BranchPhase * 5.3 + plantPhase) * 0.6 + Atlas_SmoothTri(Time * 0.193 + BranchPhase * 2.1) * 0.4;
+        float a = BranchAngle * w * (1.0 - stiff) * (0.55 + 0.45 * wave);
+        p = Atlas_RotateAround(p, BranchPivot, axis, a); n = Atlas_RotateAround(n, 0, axis, a);
+    }
+    // 4. main bend, then back to the original distance from the base
+    float h    = saturate(p.y / max(PlantHeight, 0.01));
+    float bend = (pow(1.0 + h, 4.0) - pow(1.0 + h, 2.0)) / 12.0 * BendAmount * w * PlantHeight;
+    float len  = length(p);
+    float3 bent = p + WindDirOS * bend;
+    p = len &gt; 1e-4 ? normalize(bent) * len : bent;
+
+    OutPositionOS = p;
+    OutNormalOS   = normalize(n);
+}
+#endif</pre></div><div class="file" data-name="WindDriver.cs" data-lang="cs"><pre>// Assets/Scripts/WindDriver.cs: feeds a Wind Zone into the globals the foliage shaders read.
+using UnityEngine;
+
+[ExecuteAlways]
+public class WindDriver : MonoBehaviour
+{
+    public WindZone zone;                 // a Directional Wind Zone; its forward axis is the wind direction
+    public Texture2D gustNoise;           // tiling greyscale noise, imported as linear (sRGB off), wrap mode Repeat
+    [Range(0, 2)] public float gustStrength = 0.6f;
+    public float gustSpeed = 6f;          // m/s across the field
+    public float gustSize = 12f;          // m per noise tile
+    [Range(0.1f, 10f)] public float response = 2f;   // how fast the base strength follows the zone (per second)
+
+    float strength;
+    static readonly int WindId = Shader.PropertyToID(&quot;_AtlasWind&quot;), GustId = Shader.PropertyToID(&quot;_AtlasGust&quot;), TexId = Shader.PropertyToID(&quot;_AtlasGustTex&quot;);
+
+    void Update()
+    {
+        if (zone == null) return;
+        float target = zone.windMain + zone.windTurbulence * 0.5f;
+        strength = Mathf.Lerp(strength, target, 1f - Mathf.Exp(-response * Time.deltaTime));   // smooth, no jumps
+        Vector3 d = zone.transform.forward; d.y = 0f; d = d.sqrMagnitude &gt; 1e-6f ? d.normalized : Vector3.forward;
+        Shader.SetGlobalVector(WindId, new Vector4(d.x, d.y, d.z, strength));
+        Shader.SetGlobalVector(GustId, new Vector4(gustStrength * zone.windPulseMagnitude, gustSpeed, gustSize, 0f));
+        if (gustNoise != null) Shader.SetGlobalTexture(TexId, gustNoise);
+    }
+}</pre></div></div>
+<p class="note">Grass needs only the bend and the flutter: set Level to 0 (or skip the pivot decode) and use a higher BendAmount. The interaction push from the interaction chapter is one more line before the bend: <code>p += normalize(p − c) * max(0, r − distance) * k * h</code>, with the character position in object space.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical Custom Function; set Graph Settings &gt; Additional Motion Vectors to <em>Time-Based</em> for the motion vectors.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Custom node offset in local space, MPC for global wind and gusts, velocities for vertex deformation, WPO disable distance on instances.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal moves vertices through <em>World Position Offset</em>. The same layers go into a Custom node, the global wind lives in a Material Parameter Collection, and the instances switch wind off at a distance. Engine alternatives: <em>SimpleGrassWind</em> for grass and <em>PivotPainter2FoliageShader</em> for Pivot Painter trees. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>FoliageWind.ush: the wind layers as a local offset.</span></div><div class="rt" data-k="mat"><b>Material</b><span>Foliage material: Custom node → TransformVector → World Position Offset.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Project setting for velocities, WPO disable distance on instances.</span></div></div>
+<ol class="impl-steps"><li><div>Create a <em>Material Parameter Collection</em> <code>MPC_Wind</code> with a vector <code>WindDirection</code> (xyz, w = base strength) and scalars <code>GustStrength</code>, <code>GustSpeed</code>, <code>GustSize</code>. Set them from a Blueprint (Set Vector Parameter Value on the collection), for example from a <em>Wind Directional Source</em>'s direction and strength, easing changes over a second.</div></li><li><div>In the material: sample a tiling gust noise texture at <code>(ObjectPosition.xy − WindDirection.xy · GustSpeed · Time) / GustSize</code> (Object Position is in cm, so scale GustSize accordingly) and build <code>W = WindDirection.w + GustStrength · noise</code>. A <em>PerInstanceRandom</em> node gives <code>PlantPhase</code>.</div></li><li><div>Transform the wind direction with <em>TransformVector</em> World to Local and normalise. Decode the pivots with <code>FoliagePivots.ush</code>.</div></li><li><div>Add a <em>Custom</em> node with <code>FoliageWind.ush</code> and the inputs listed in its header; feed <em>P</em> from <em>Pre-Skinned Local Position</em> and <em>N</em> from <em>Pre-Skinned Local Normal</em>. Transform the result with <em>TransformVector</em> Local to World and connect it to <em>World Position Offset</em>.</div></li><li><div>In <em>Project Settings &gt; Rendering</em>, set <em>Output velocities due to vertex deformation</em> so TAA and TSR receive motion vectors for the wind.</div></li><li><div>On the foliage type or HISM component set <em>World Position Offset Disable Distance</em> (for example 5000 cm for grass, 15000 for trees). Instances beyond it skip the vertex animation entirely, including in shadow passes.</div></li></ol>
+<div class="files"><div class="file" data-name="FoliageWind.ush" data-lang="hlsl"><pre>// Custom node &quot;FoliageWind&quot; (World Position Offset). All positions in local space, centimetres.
+// Inputs: P (float3, Pre-Skinned Local Position), N (float3, Pre-Skinned Local Normal),
+//   BranchPivot, TwigPivot (float3), BranchPhase, Level (float)  -- from FoliagePivots.ush
+//   VC (float4, Vertex Color), WindLocal (float3, wind direction transformed World-&gt;Local, normalised),
+//   W (float, wind strength incl. gust, from the MPC and a gust texture), Time (float), PlantPhase (float),
+//   PlantHeight (float, cm), BendAmount, BranchAngle (rad), FlutterAmp (cm), FlutterFreq (Hz)
+// Output: CMOT Float 3 = local offset. Transform it Local-&gt;World (TransformVector) and plug into World Position Offset.
+// Z is up in Unreal.
+struct WindFns
+{
+    float SmoothTri(float x) { float t = abs(frac(x + 0.5) * 2.0 - 1.0); return t * t * (3.0 - 2.0 * t) * 2.0 - 1.0; }
+    float3 Rot(float3 p, float3 piv, float3 ax, float a) { float3 v = p - piv; float s, c; sincos(a, s, c); return piv + v * c + cross(ax, v) * s + ax * dot(ax, v) * (1.0 - c); }
+};
+WindFns f;
+float3 axis = normalize(cross(float3(0, 0, 1), WindLocal) + float3(1e-5, 0, 0));
+float3 p = P;
+float leafPhase = VC.g + BranchPhase + PlantPhase;
+p += N * (FlutterAmp * VC.r * W * f.SmoothTri(Time * FlutterFreq + leafPhase * 7.0));
+if (Level &gt; 1.5) p = f.Rot(p, TwigPivot, axis, 0.6 * BranchAngle * W * (1.0 - VC.b) * (0.5 + 0.5 * f.SmoothTri(Time * 0.793 + leafPhase * 3.1)));
+if (Level &gt; 0.5)
+{
+    float wave = f.SmoothTri(Time * 0.375 + BranchPhase * 5.3 + PlantPhase) * 0.6 + f.SmoothTri(Time * 0.193 + BranchPhase * 2.1) * 0.4;
+    p = f.Rot(p, BranchPivot, axis, BranchAngle * W * (1.0 - VC.b) * (0.55 + 0.45 * wave));
+}
+float h = saturate(p.z / max(PlantHeight, 1.0));
+float bend = (pow(1.0 + h, 4.0) - pow(1.0 + h, 2.0)) / 12.0 * BendAmount * W * PlantHeight;
+float len = length(p);
+float3 bent = p + WindLocal * bend;
+p = len &gt; 0.01 ? normalize(bent) * len : bent;
+return p - P;</pre></div></div>
+<p class="note">For Nanite meshes, World Position Offset needs <em>Evaluate World Position Offset</em> and makes cluster culling conservative; keep the offsets small or use the experimental Nanite Foliage skinning path described in <a class="x" href="../foliage-animation/index.html#unreal">Skinned and Baked Foliage Animation</a>.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch16.html" rel="noopener">GPU Gems 3, chapter 16: Vegetation procedural animation and shading in Crysis</a></span><span class="by">Tiago Sousa · NVIDIA</span><span class="why">Main bending with length preservation, detail bending, vertex colour masks and the smoothed triangle waves.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-6-gpu-generated-procedural-wind-animations-trees" rel="noopener">GPU Gems 3, chapter 6: GPU-generated procedural wind animations for trees</a></span><span class="by">Renaldas Zioma · NVIDIA</span><span class="why">Hierarchical branch simulation on the GPU.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/urp/features/motion-vectors-shader-support.html" rel="noopener">Motion vectors in Shader Graph (Additional Motion Vectors)</a></span><span class="by">Unity</span><span class="why">Time-Based and Custom motion vectors for vertex animation.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/SpeedTreeImporter-Wind.html" rel="noopener">SpeedTree Importer: Wind tab</a></span><span class="by">Unity</span><span class="why">Strength and direction response, randomness.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/unreal-engine/pivot-painter-tool-2.0-in-unreal-engine" rel="noopener">Pivot Painter Tool 2.0: foliage shader and wind settings</a></span><span class="by">Epic Games</span><span class="why">Wind setting groups per hierarchy level, turbulence and gust textures.</span></li><li><span><span class="kind">Talk</span><a href="https://gdcvault.com/play/1025066/Between-Tech-and-Art-The" rel="noopener">Between Tech and Art: The Vegetation of Horizon Zero Dawn</a></span><span class="by">Gilbert Sanders · GDC 2018</span><span class="why">Production foliage: wind, shading and performance at scale.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-animation foliage-shading foliage-lods"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"windfield": [
+"Wind field",
+"The global wind direction and strength plus a scrolling gust pattern that plants sample by position.",
+"#field"
+],
+"wpo": [
+"World Position Offset",
+"Unreal's material output for moving vertices in the vertex shader.",
+"#cost"
+],
+"flutter": [
+"Flutter",
+"Fast, small motion of leaf edges, masked by vertex colour.",
+"#leaves"
+],
+"mv": [
+"Motion vectors",
+"Per-pixel screen motion since last frame, used by TAA, motion blur and upscalers.",
+"#normals"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="wind.js?v=183c152a"></script>
+</body>
+</html>

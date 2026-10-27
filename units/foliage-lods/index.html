@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage LODs, Impostors and Budgets · Tech Art Atlas</title>
+<meta name="description" content="LOD chains for trees, how the number of LODs changes draws and batches, transitions with cross-fades, billboards, octahedral impostors, voxels and Nanite Foliage, and how to set and check foliage budgets, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-lods" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage LODs, Impostors and Budgets</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 8 chapters</div>
+  <h1>Foliage LODs, Impostors and Budgets</h1>
+  <p class="lede">LOD chains for trees, how the number of LODs changes draws and batches, transitions with cross-fades, billboards, octahedral impostors, voxels and Nanite Foliage, and how to set and check foliage budgets, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Frame Profiling and Procedural Trees. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-lods.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One tree shown at four LODs side by side, from full branches to a single impostor card.</figcaption></figure>
+</div>
+<div class="needs" data-needs="reading-a-frame#lods reading-a-frame#drawcalls"></div>
+
+<section class="chapter" id="chain" data-title="An LOD chain for a tree" data-builds="reading-a-frame#lods foliage-trees#structure" data-summary="Each LOD keeps ~40–60 % of the previous; branches and leaves go first, the last level is an impostor; shading and wind drop with the geometry.">
+  <div class="head"><div class="num"></div><h2>An LOD chain for a tree</h2></div>
+
+  <div class="prose">
+    <p>A tree's LODs remove detail in the order it stops being visible: thin branches and individual leaves first, then branch levels, until only the crown's shape is left as a picture. Each level typically keeps 40–60 % of the previous one's triangles and switches by screen size, not distance (<a class="x" href="../reading-a-frame/index.html#lods">LODs and screen size</a>):</p>
+  </div>
+  <div class="fx" data-fx="chain"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Level</th><th>Geometry</th><th>Shading and animation</th></tr></thead>
+    <tbody>
+      <tr><td>LOD0</td><td>All modelled branch levels, individual twig cards or leaf meshes</td><td>Full material, all wind layers, shadows</td></tr>
+      <tr><td>LOD1</td><td>Thin branches removed, fewer sides and segments, cards merged into larger clusters</td><td>No leaf flutter</td></tr>
+      <tr><td>LOD2</td><td>Trunk and main branches only, large cluster cards for the crown</td><td>Main bend only; simple or proxy shadows</td></tr>
+      <tr><td>Last</td><td>Billboard or impostor (2–8 triangles)</td><td>No wind or a sway of the whole card; baked lighting terms</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Shading and animation drop with the geometry. A far LOD with full flutter, translucency and a detailed normal map pays for detail nobody sees, in every pass. SpeedTree and the Houdini tree tools generate the chain from the same structure, which keeps the silhouettes of the levels close and the switches quiet.</p></div>
+
+</section>
+<section class="chapter" id="count" data-title="More LODs or fewer: draw calls and batches" data-builds="foliage-lods#chain reading-a-frame#drawcalls" data-summary="Per object: draws = N·m·P regardless of LOD count. Instanced: batches = L·m·P, so each LOD adds m·P batches; cross-fades draw two LODs.">
+  <div class="head"><div class="num"></div><h2>More LODs or fewer: draw calls and batches</h2></div>
+
+  <div class="prose">
+    <p>"More LODs mean more draw calls" is true only for part of the picture. Drawn one object at a time, a tree draws exactly one LOD per pass, so the number of draws does not depend on how many LODs exist. Instanced, every LOD level that is visible somewhere becomes its own batch, per material and pass, because a batch is one mesh with one material:</p>
+  </div>
+  <div class="fx" data-fx="count"></div>
+  <div class="prose">
+    <p>The trade-off: more levels give a smoother triangle falloff and smaller pops, but add batches per pass with instancing, add mesh memory, and multiply the work of authoring and checking. Cross-fades draw two LODs for every instance in a transition band. Most game trees use 3–4 mesh LODs plus an impostor; grass uses 1–2 and fades out. GPU-driven renderers (Nanite, the GPU Resident Drawer, indirect drawing) reduce the CPU side of batches, not the GPU cost of each one.</p>
+  </div>
+
+</section>
+<section class="chapter" id="transition" data-title="Transitions: pops, cross-fades and dithering" data-builds="foliage-lods#count transparency#dither" data-summary="Pop size = error · H / (2 d tan(fov/2)); keep switches under 1–2 px or cross-fade with dithering; hysteresis against flicker.">
+  <div class="head"><div class="num"></div><h2>Transitions: pops, cross-fades and dithering</h2></div>
+
+  <div class="prose">
+    <p>An LOD switch is visible when the shape change, projected to the screen, is larger than a pixel or two:</p>
+  </div>
+  <div class="fx" data-fx="pop"></div>
+  <div class="prose">
+    <p>Cross-fading hides the rest: both LODs are drawn for a short band, with complementary dither patterns that TAA smooths into a fade (<a class="x" href="../transparency/index.html#dither">dithered transparency</a>). SpeedTree also offers <em>smooth LOD</em>, which morphs vertices of one level toward the next. Add hysteresis (switch back at a slightly different distance) so a tree at the threshold does not flicker, and keep the fade band short, since it doubles the cost of the instances inside it.</p>
+  </div>
+
+</section>
+<section class="chapter" id="billboards" data-title="Billboards" data-builds="foliage-lods#chain" data-summary="n views around a tree: worst error 180°/n; texture = n views; billboards fail from above.">
+  <div class="head"><div class="num"></div><h2>Billboards</h2></div>
+
+  <div class="prose">
+    <p>The classic last LOD is a billboard: one or a few quads with pictures of the tree. A camera-facing quad with one picture is the cheapest; a set of views around the tree (often eight) picks the one closest to the camera direction:</p>
+  </div>
+  <div class="fx" data-fx="billboard"></div>
+  <div class="prose"><p>Billboards fail from above and pop between views. Crossed quads (two or three quads through the trunk) avoid the camera-facing rotation but show their edges. Both are fine for grass and small plants, and for trees that are only ever seen at eye level.</p></div>
+
+</section>
+<section class="chapter" id="impostor" data-title="Octahedral impostors" data-builds="foliage-lods#billboards" data-summary="Hemi-octahedral mapping: p = d.xz/(|x|+|y|+|z|), uv = (p.x+p.z, p.x−p.z)/2+½; blend 3 nearest of N×N frames; 12×12 at 2048² is common.">
+  <div class="head"><div class="num"></div><h2>Octahedral impostors</h2></div>
+
+  <div class="prose">
+    <p>An <button type="button" class="term" data-term="impostor">impostor</button> captures the tree from many directions on a hemisphere (or a full sphere) and stores the pictures in one texture. The direction to the camera is mapped to a 2D grid with an octahedral mapping, the shader blends the three nearest frames on a single quad, and depth stored with the colour lets it add parallax and correct depth:</p>
+  </div>
+  <div class="fx" data-fx="octa"></div>
+  <div class="prose">
+    <p>Ryan Brucks' impostor baker for Unreal (now a plugin) made the technique standard; Epic uses 12 × 12 frames at 2048² for most distant foliage in Fortnite, upper hemisphere for trees on terrain. Amplify Impostors does the same for Unity. Impostors usually bake base colour and normals (plus depth and other channels as needed), so they relight with the scene, and they cost one quad of geometry and a heavier pixel shader than a billboard.</p>
+  </div>
+
+</section>
+<section class="chapter" id="voxels" data-title="Voxels and Nanite Foliage" data-builds="foliage-lods#impostor" data-summary="Below ~1 px per leaf only coverage and colour remain; Nanite Voxels (UE 5.7+, experimental) switch distant clusters to voxels; elsewhere impostors.">
+  <div class="head"><div class="num"></div><h2>Voxels and Nanite Foliage</h2></div>
+
+  <div class="prose">
+    <p>At a distance, a leaf covers less than a pixel. Triangles or cards for individual leaves then only alias and waste rasteriser work; what is visible is the crown's coverage and average colour:</p>
+  </div>
+  <div class="fx" data-fx="subpixel"></div>
+  <div class="prose">
+    <p>Impostors handle that with pictures. Unreal 5.7 introduced another answer in its experimental <em>Nanite Foliage</em>: <em>Nanite Voxels</em> switch distant clusters from triangles to voxels when that gives a lower error, keeping the silhouette, the animation and a distribution of normals for shading, so distant trees keep their volume without billboards or LOD meshes. Together with <em>Nanite Assemblies</em> (a tree built from instanced parts) and <em>Nanite Skinning</em> (wind through bones, <a class="x" href="../foliage-animation/index.html#skinning">skinned foliage</a>) it is aimed at dense, fully modelled forests.</p>
+    <p>As of Unreal 5.8 the whole system is experimental. Unity has no built-in equivalent; there, impostors remain the standard last LOD. The idea behind voxels, representing many sub-pixel elements by their aggregate density and orientation, is also how volumetric clouds and hair at a distance are shaded.</p>
+  </div>
+
+</section>
+<section class="chapter" id="budgets" data-title="Budgets" data-builds="foliage-lods#count reading-a-frame#budget" data-summary="Visible trees = view area × density; triangles = trees × average after LODs + grass; set budgets from a profiled worst case.">
+  <div class="head"><div class="num"></div><h2>Budgets</h2></div>
+
+  <div class="prose">
+    <p>A foliage budget starts from what is visible at once, not from single assets. Density, draw distance and the average cost per instance after LODs decide the total:</p>
+  </div>
+  <div class="fx" data-fx="budget"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Item</th><th>Ballpark for a current-generation PC or console game</th><th>Check with</th></tr></thead>
+    <tbody>
+      <tr><td>GPU time for all foliage (main view, prepass, shadows)</td><td>a few milliseconds of a 16.7 ms frame</td><td>GPU profiler, passes grouped by foliage materials</td></tr>
+      <tr><td>Hero tree LOD0</td><td>tens of thousands of triangles; far LODs a few hundred; impostor 2–8</td><td>Import report per LOD</td></tr>
+      <tr><td>Grass clump</td><td>tens to a few hundred triangles; no shadows</td><td>Mesh statistics</td></tr>
+      <tr><td>Foliage batches</td><td>species × LOD levels × materials × passes; a few hundred at most</td><td>Frame Debugger, RenderDoc</td></tr>
+      <tr><td>Overdraw on crowns</td><td>a handful of shaded layers in the worst view</td><td>Quad overdraw view</td></tr>
+      <tr><td>Texture memory per species</td><td>one leaf atlas set and shared bark</td><td>Memory profiler</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>The numbers vary by platform and genre; treat the table as a starting point and set your own from a profiled worst-case view: a dense forest at the target resolution, sun low enough that all cascades are full. Then give each asset type its share and check new assets against it on import (<a class="x" href="../foliage-trees/index.html#implement">import report</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["Trees are instanced. Going from 3 to 6 LODs per tree type mostly changes…", ["Nothing: draws do not depend on LOD count", "The number of batches per pass (one per visible LOD level and material), mesh memory, and smoothness of the transitions", "Only the shadow cost", "The texture memory"], 1, "With instancing, each visible LOD level is its own batch."], ["Distant trees shimmer and the GPU profile shows millions of tiny triangles there. What is the standard fix outside Nanite?", ["More LODs with more triangles", "Switch to impostors earlier", "Higher anisotropic filtering", "Disable the shadows"], 1, "Below a pixel per leaf, an impostor represents the crown better and cheaper."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="LOD Groups with animated cross-fades and quality-dependent bias, an LOD report against the budget, octahedral impostors as the last level.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route configures LOD Groups with cross-fades and a quality-dependent bias, reports each tree's chain against the budget, and adds an octahedral impostor as the last level, baked with an impostor tool and drawn with a small helper file. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>LOD Group: Cross Fade, animated fades; HDRP Frame Settings: LOD Cross Fade, LOD Bias.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>LODReport.cs: triangles, materials and switch heights per level.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>OctaImpostor.hlsl: billboard orientation and frame selection for impostors.</span></div></div>
+<ol class="impl-steps"><li><div>On each tree prefab's LOD Group set <em>Fade Mode</em> to <em>Cross Fade</em> and enable <em>Animate Cross-fading</em> (a time-based fade, independent of how fast the camera moves). In the foliage Shader Graph enable <em>Support LOD CrossFade</em> in the Graph Settings, and keep <em>LOD Cross Fade</em> on in HDRP's Frame Settings. If you use the GPU Resident Drawer, check that animated cross-fades work in your Unity version; there have been issues with that combination.</div></li><li><div>Set the transition heights from the budget: put <code>LODReport.cs</code> in <code>Assets/Editor</code>, select the trees and run <em>Tools &gt; Foliage &gt; LOD Report</em>. Levels that keep more than about 65 % of the previous one are flagged; material counts show where an LOD still uses two materials when one would do.</div></li><li><div>Scale for quality: <em>Project Settings &gt; Quality &gt; LOD Bias</em> per quality level, or per camera in HDRP <em>Frame Settings &gt; LOD Bias Mode</em> and <em>Maximum LOD Level</em> (for example a lower bias for reflection probes and planar reflections).</div></li><li><div>Impostor: bake the last LOD with an impostor tool (Amplify Impostors: Octahedral or Hemi-Octahedral, 12 × 12 frames at 2048 for trees, colour and normal and depth). Use the tool's shader, or build your own Unlit or Lit graph with <code>OctaImpostor.hlsl</code>: In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>OctaImpostor.hlsl</code> and <em>Name</em> to <code>OctaFrames</code> (without the <code>_float</code> suffix). Add the inputs <b>ViewDirOS (Vector 3), QuadUV (Vector 2), Frames (Float)</b> and the outputs <b>UV0 (Vector 2), UV1 (Vector 2), UV2 (Vector 2), UV3 (Vector 2), Weights (Vector 4)</b>, in that order and with those types: they must match the function's parameters. Sample the impostor textures four times and blend with the weights; <code>OctaBillboard</code> turns the quad toward the camera in the vertex stage.</div></li><li><div>Put the impostor in the last LOD slot and disable shadow casting on it, or let it cast as a simple shadow-only quad. Cull the tree completely at the distance where it is smaller than a few pixels (<em>Culled</em> threshold of the LOD Group).</div></li></ol>
+<div class="files"><div class="file" data-name="LODReport.cs" data-lang="cs"><pre>// Assets/Editor/LODReport.cs: select prefabs or scene objects with LOD Groups, then Tools &gt; Foliage &gt; LOD Report.
+// Lists triangles, materials and transition heights per level, and flags levels that keep too much.
+using System.Linq;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+public static class LODReport
+{
+    const float MaxKeep = 0.65f;   // a level should keep at most ~65 % of the previous level&#x27;s triangles
+
+    [MenuItem(&quot;Tools/Foliage/LOD Report&quot;)]
+    static void Run()
+    {
+        var sb = new StringBuilder();
+        foreach (var go in Selection.gameObjects)
+            foreach (var g in go.GetComponentsInChildren&lt;LODGroup&gt;(true))
+            {
+                var lods = g.GetLODs();
+                sb.AppendLine($&quot;{g.name}: {lods.Length} levels, fade {g.fadeMode}, animate cross-fade {g.animateCrossFading}&quot;);
+                long prev = -1;
+                for (int i = 0; i &lt; lods.Length; i++)
+                {
+                    var rs = lods[i].renderers.Where(r =&gt; r != null).ToArray();
+                    long tris = rs.Select(r =&gt; r.GetComponent&lt;MeshFilter&gt;()?.sharedMesh).Where(m =&gt; m != null).Sum(m =&gt; (long)m.triangles.Length / 3);
+                    int mats = rs.SelectMany(r =&gt; r.sharedMaterials).Where(m =&gt; m != null).Distinct().Count();
+                    string flag = prev &gt; 0 &amp;&amp; tris &gt; prev * MaxKeep ? &quot;   &lt;- keeps more than 65 % of the previous level&quot; : &quot;&quot;;
+                    sb.AppendLine($&quot;  LOD{i}: {tris} tris, {mats} materials, switches below {lods[i].screenRelativeTransitionHeight * 100f:0.#} % screen height{flag}&quot;);
+                    prev = tris;
+                }
+            }
+        Debug.Log(sb.Length &gt; 0 ? sb.ToString() : &quot;Select objects with LOD Groups.&quot;);
+    }
+}</pre></div><div class="file" data-name="OctaImpostor.hlsl" data-lang="hlsl"><pre>#ifndef ATLAS_OCTA_IMPOSTOR_INCLUDED
+#define ATLAS_OCTA_IMPOSTOR_INCLUDED
+
+// Hemi-octahedral impostor helpers (Y up, object space). Frames x Frames views of the upper hemisphere;
+// frame (i, j) is the view from Atlas_HemiOctDecode(float2(i, j) / (Frames - 1)), so the grid&#x27;s border frames
+// sit on the horizon. Bakers differ (some use (i + 0.5) / Frames): match the convention of the tool you bake with.
+
+float2 Atlas_HemiOctEncode(float3 d)                  // direction -&gt; 0..1
+{
+    d.y = max(d.y, 0.0);
+    d /= (abs(d.x) + abs(d.y) + abs(d.z));
+    return float2(d.x + d.z, d.x - d.z) * 0.5 + 0.5;
+}
+
+float3 Atlas_HemiOctDecode(float2 uv)                 // 0..1 -&gt; direction
+{
+    float2 a = uv * 2.0 - 1.0;
+    float3 d = float3((a.x + a.y) * 0.5, 0.0, (a.x - a.y) * 0.5);
+    d.y = 1.0 - abs(d.x) - abs(d.z);
+    return normalize(d);
+}
+
+// Vertex stage: turn the impostor quad (QuadUV 0..1, size Size) to face the camera direction ViewDirOS.
+void OctaBillboard_float(float2 QuadUV, float Size, float3 ViewDirOS, out float3 PositionOS)
+{
+    float3 f = normalize(ViewDirOS);
+    float3 r = normalize(cross(float3(0, 1, 0), f) + float3(1e-5, 0, 0));
+    float3 u = cross(f, r);
+    float2 q = (QuadUV - 0.5) * Size;
+    PositionOS = r * q.x + u * q.y + float3(0, Size * 0.5, 0);
+}
+
+// Pixel stage: the four frames around the view direction and their bilinear weights.
+// Sample the impostor texture at UV0..UV3 and blend with Weights (x, y, z, w).
+void OctaFrames_float(float3 ViewDirOS, float2 QuadUV, float Frames,
+                      out float2 UV0, out float2 UV1, out float2 UV2, out float2 UV3, out float4 Weights)
+{
+    float2 g = Atlas_HemiOctEncode(normalize(ViewDirOS)) * (Frames - 1.0);   // frame centres at integer positions
+    float2 f0 = floor(g), t = g - f0;
+    float2 f1 = min(f0 + 1.0, Frames - 1.0);
+    float inv = 1.0 / Frames;
+    UV0 = (float2(f0.x, f0.y) + QuadUV) * inv;
+    UV1 = (float2(f1.x, f0.y) + QuadUV) * inv;
+    UV2 = (float2(f0.x, f1.y) + QuadUV) * inv;
+    UV3 = (float2(f1.x, f1.y) + QuadUV) * inv;
+    Weights = float4((1 - t.x) * (1 - t.y), t.x * (1 - t.y), (1 - t.x) * t.y, t.x * t.y);
+}
+#endif</pre></div></div>
+<p class="note">Four-frame bilinear blending is the simplest smooth version; Epic's impostor material blends the three nearest frames on the octahedron and adds parallax from the baked depth, which looks better from more angles.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical LOD Group settings; cross-fade needs Support LOD CrossFade in the graph and LOD Cross Fade enabled in the URP asset.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Static mesh LOD screen sizes and LOD group presets, dithered LOD transitions, Impostor Baker for the last level, cull distances and scalability; Nanite or Nanite Foliage as alternatives.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal generates and switches LODs per static mesh, bakes impostors with the Impostor Baker plugin, and for Nanite projects offers Nanite Foliage, which replaces the LOD chain entirely. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="asset"><b>Asset</b><span>Static mesh LOD settings: screen sizes, reduction, LOD groups.</span></div><div class="rt" data-k="plugin"><b>Engine plugin</b><span>Impostor Baker plugin: upper-hemisphere impostors as the last LOD.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Foliage cull distances; Nanite Foliage as the experimental alternative.</span></div></div>
+<ol class="impl-steps"><li><div>In the static mesh editor, <em>LOD Settings</em>: import the LODs from SpeedTree or Houdini, or use <em>Number of LODs</em> with reduction settings for quick tests. Set <em>Screen Size</em> per LOD from the budget; <em>LOD Group</em> presets (Foliage, HighDetail, …) give consistent defaults across meshes.</div></li><li><div>Cross-fading: Unreal dithers between LODs for materials with <em>Dithered LOD Transition</em> enabled; turn it on in the foliage material.</div></li><li><div>Impostor: enable the <em>Impostor Baker</em> plugin, open its map, choose <em>Upper Hemisphere</em>, FramesXY 12, resolution 2048, and bake BaseColor, Normal and the packed depth or opacity. Add the generated impostor as the last LOD (or as the mesh of a distant foliage type).</div></li><li><div>Foliage types and HISM components: set <em>Cull Distance</em> (start and end) so plants fade out and disappear at distance; grass types use short distances. <em>Scalability</em> settings (<code>foliage.LODDistanceScale</code>, <code>foliage.DensityScale</code> in the scalability groups) scale them per quality level.</div></li><li><div>Nanite projects: modelled, opaque trees can use Nanite instead of a hand-made chain. The experimental <em>Nanite Foliage</em> (5.7+) adds Voxels for distant clusters (<em>Nanite Settings &gt; Shape Preservation &gt; Voxelize</em> per mesh after enabling it in Project Settings). Validate performance on target hardware first.</div></li></ol>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/impostor-baker-plugin-in-unreal-engine" rel="noopener">Impostor Baker plugin</a></span><span class="by">Epic Games</span><span class="why">Full and upper-hemisphere impostors, billboards, frame counts, Fortnite settings.</span></li><li><span><span class="kind">Article</span><a href="https://80.lv/articles/impostor-baker-for-ue4/" rel="noopener">Impostor Baker for UE4</a></span><span class="by">80 Level · Ryan Brucks</span><span class="why">The octahedral impostor technique as introduced.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-foliage" rel="noopener">Nanite Foliage</a></span><span class="by">Epic Games</span><span class="why">Nanite Voxels, Assemblies and Skinning; experimental status.</span></li><li><span><span class="kind">Tool</span><a href="https://amplify.pt/_AI" rel="noopener">Amplify Impostors</a></span><span class="by">Amplify Creations</span><span class="why">Octahedral impostors for Unity.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/lod/lod-transitions-lod-group.html" rel="noopener">LOD Group and LOD transitions</a></span><span class="by">Unity</span><span class="why">Cross-fade and fade modes in Unity 6.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/speedtree-modeler/manual/toc.html" rel="noopener">SpeedTree Modeler: level of detail</a></span><span class="by">Unity</span><span class="why">LOD generation and smooth LOD.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-instancing foliage-cards"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"impostor": [
+"Impostor",
+"A single quad that shows pre-rendered views of an object, picked and blended by view direction.",
+"#impostor"
+],
+"hemioct": [
+"Hemi-octahedral mapping",
+"Maps directions on a hemisphere to a square: divide by |x|+|y|+|z|, rotate 45°.",
+"#impostor"
+],
+"crossfade": [
+"Cross-fade",
+"Drawing two LODs with complementary dither patterns during a switch.",
+"#transition"
+],
+"hysteresis": [
+"Hysteresis",
+"Switching back at a different threshold than switching forward, to avoid flicker.",
+"#transition"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="lods.js?v=e9000db4"></script>
+</body>
+</html>

@@ -56,6 +56,7 @@ class `a`. No fills except one accent dot (`af`), no text, no perspective tricks
 | Characters | `#e06cae` |
 | Performance | `#e05a4f` |
 | Substance Designer | `#d9822b` |
+| Foliage | `#9cc04a` |
 | Unity projects & assets | `#5b6ee8` |
 
 Topic colours appear only as the tile bar, the dot, the unit header's left border and the placeholder tint, never as text colour.

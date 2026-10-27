@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Foliage Rendering and Instancing · Tech Art Atlas</title>
+<meta name="description" content="Rendering thousands of plants: draw calls per pass, GPU instancing and per-instance data, GPU-driven indirect drawing, culling, placement with terrain systems and procedural rules, and a profiling routine, built with the GPU Resident Drawer and a chunked instanced renderer in Unity HDRP and with the Foliage tool, Landscape Grass, PCG and Nanite in Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="foliage-instancing" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Foliage Rendering and Instancing</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Foliage · 7 chapters</div>
+  <h1>Foliage Rendering and Instancing</h1>
+  <p class="lede">Rendering thousands of plants: draw calls per pass, GPU instancing and per-instance data, GPU-driven indirect drawing, culling, placement with terrain systems and procedural rules, and a profiling routine, built with the GPU Resident Drawer and a chunked instanced renderer in Unity HDRP and with the Foliage tool, Landscape Grass, PCG and Nanite in Unreal.</p>
+  <p class="meta">Builds on Frame Profiling and Buffers and Render Targets. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/foliage-instancing.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A forest seen from above, each instance tinted by the draw batch it belongs to.</figcaption></figure>
+</div>
+<div class="needs" data-needs="reading-a-frame#drawcalls buffers#structured"></div>
+
+<section class="chapter" id="problem" data-title="A forest is a draw-call problem" data-builds="reading-a-frame#drawcalls" data-summary="Draws = types × instances × materials × passes; instancing turns instances into one draw per mesh, material, LOD and pass.">
+  <div class="head"><div class="num"></div><h2>A forest is a draw-call problem</h2></div>
+
+  <div class="prose">
+    <p>Every draw call costs CPU time to validate and submit, and foliage multiplies draws in every direction: plant types × instances × materials × passes. Drawn one object at a time, a modest forest already costs more CPU time than the whole frame budget:</p>
+  </div>
+  <div class="fx" data-fx="draws"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Draw calls: CPU cost ≈ draws · t_draw + state changes · t_change; sort, keep material data resident, instance.</p></div><a class="x refto" href="../reading-a-frame/index.html#drawcalls">Open the full explanation</a></aside>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Method</th><th>What it saves</th><th>Fits foliage?</th></tr></thead>
+    <tbody>
+      <tr><td>SRP Batcher (Unity)</td><td>State changes between draws with the same shader variant; still one draw per object</td><td>Helps everything, does not reduce the draw count</td></tr>
+      <tr><td>Static batching</td><td>Merges static meshes into big buffers</td><td>No for wind foliage: it changes object space (<a class="x" href="../foliage-vertex-data/index.html#pitfalls">pivots break</a>) and costs memory per copy</td></tr>
+      <tr><td>GPU instancing</td><td>One draw for many copies of one mesh and material</td><td>Yes: the standard for foliage</td></tr>
+      <tr><td>GPU-driven / indirect (BatchRendererGroup, GPU Resident Drawer, RenderMeshIndirect; Unreal HISM and Nanite)</td><td>CPU culling and submission; the GPU culls and writes draw arguments</td><td>Yes, for large counts</td></tr>
+    </tbody>
+  </table></div>
+
+</section>
+<section class="chapter" id="instancing" data-title="GPU instancing and per-instance data" data-builds="foliage-instancing#problem buffers#structured" data-summary="One draw, many copies; transforms (48–64 bytes) plus a few bytes of extras per instance; variation from instance data or position hashes.">
+  <div class="head"><div class="num"></div><h2>GPU instancing and per-instance data</h2></div>
+
+  <div class="prose">
+    <p>Instancing draws one mesh many times in one call. The shader reads each copy's data, at least a transform, from a buffer indexed by the instance ID. Everything else in the draw is shared: mesh, material, textures. That is why variation per instance must come from that small block of data or from a hash of the position, not from separate materials:</p>
+  </div>
+  <div class="fx" data-fx="instdata"></div>
+  <div class="prose">
+    <p>Classic instancing APIs pass the instance data in constant buffers with a size limit (Unity's classic <code>Graphics.DrawMeshInstanced</code> takes at most 1023 per call, and terrain details draw in batches of up to 1023). Structured buffers remove the limit (<a class="x" href="../buffers/index.html#structured">structured buffers</a>). Unity's SRP Batcher and per-object material property blocks interact: a material property block on an instanced renderer can break batching, so per-instance values belong in instance data or are derived in the shader.</p>
+  </div>
+
+</section>
+<section class="chapter" id="gpudriven" data-title="GPU-driven rendering" data-builds="foliage-instancing#instancing buffers#append compute-shaders#cpu" data-summary="A compute pass culls instances and writes indirect draw arguments; Unity GPU Resident Drawer and RenderMeshIndirect, Unreal HISM and Nanite.">
+  <div class="head"><div class="num"></div><h2>GPU-driven rendering</h2></div>
+
+  <div class="prose">
+    <p>With hundreds of thousands of instances, even deciding what to draw is too slow on the CPU. GPU-driven rendering moves it to a compute pass: test every instance against the frustum, distance and occlusion, append the visible ones to a list (<a class="x" href="../buffers/index.html#append">append buffers</a>), write the instance count into an arguments buffer, and issue an <em>indirect</em> draw whose size the CPU never learns:</p>
+  </div>
+  <div class="fx" data-fx="gpucull"></div>
+  <div class="prose">
+    <p>Engines package this. Unity 6's <em>GPU Resident Drawer</em> collects ordinary MeshRenderers into BatchRendererGroup batches with GPU instancing and adds GPU occlusion culling; it needs Forward+ in URP, works in HDRP, and helps most in large scenes where many objects share a mesh. For custom systems, <code>Graphics.RenderMeshIndirect</code> with a compute culling pass is the building block (<a class="x" href="../compute-shaders/index.html#cpu">dispatch from C#</a>). Unreal's foliage uses Hierarchical Instanced Static Meshes, and Nanite does the culling per cluster on the GPU.</p>
+  </div>
+
+</section>
+<section class="chapter" id="culling" data-title="Culling" data-builds="foliage-instancing#gpudriven foliage-wind#cost" data-summary="Visible = ρ · π D² · fov/360 · (1 − occluded); short cull distances per type, frustum with sway bounds, GPU occlusion, screen-size culling.">
+  <div class="head"><div class="num"></div><h2>Culling</h2></div>
+
+  <div class="prose">
+    <p>The cheapest instance is one that is never drawn. Four culls, in order of payoff for foliage:</p>
+    <ul>
+      <li><strong>Distance per type</strong>: grass at tens of metres, bushes further, trees at the horizon. The count falls with the square of the distance.</li>
+      <li><strong>Frustum</strong>: bounds per instance or per cell of instances, enlarged by the wind sway. Shadow passes use the light's frustum and need casters outside the camera view.</li>
+      <li><strong>Occlusion</strong>: terrain and buildings hide much of a forest. GPU occlusion against the previous frame's depth (Unity 6 GPU occlusion culling, Unreal's hierarchical Z) suits instances well.</li>
+      <li><strong>Screen size</strong>: below a few pixels, drop or fade the instance (the LOD Group's culled threshold, Unreal's cull distances).</li>
+    </ul>
+  </div>
+  <div class="fx" data-fx="cull"></div>
+
+</section>
+<section class="chapter" id="placement" data-title="Placing foliage" data-builds="foliage-instancing#culling" data-summary="Rules over masks and slopes, minimum spacing caps density (~1.15/r² for perfect packing); store trees, generate grass around the camera.">
+  <div class="head"><div class="num"></div><h2>Placing foliage</h2></div>
+
+  <div class="prose">
+    <p>Foliage placement is rules over a terrain: density from a mask, exclusion around roads and buildings, slope and height limits, minimum spacing between plants, and variation in scale and rotation. A minimum spacing caps the density:</p>
+  </div>
+  <div class="fx" data-fx="scatter"></div>
+  <div class="prose">
+    <ul>
+      <li><strong>Unity terrain</strong>: <em>Trees</em> (painted instances with LOD and billboards) and <em>Details</em> (grass and small meshes). Use the <em>Instanced Mesh</em> detail mode with an instancing-capable shader: it is Unity's recommended mode, works in every render pipeline, draws in batches of up to 1023, and leaves colour variation to your shader.</li>
+      <li><strong>Unreal</strong>: the Foliage mode paints instanced foliage types; <em>Landscape Grass Types</em> spawn grass from landscape layers around the camera at runtime; PCG graphs place everything else procedurally.</li>
+      <li><strong>Houdini or custom tools</strong> bake placements into instance data per world cell, streamed with the level.</li>
+    </ul>
+    <p>Store trees and large plants; generate dense ground cover around the camera at runtime from the same masks. Storing millions of grass instances per square kilometre costs memory and streaming for something that is only visible within a few tens of metres.</p>
+  </div>
+
+</section>
+<section class="chapter" id="profiling" data-title="Profiling a forest" data-builds="foliage-instancing#problem reading-a-frame#routine" data-summary="Count draws and batches, split CPU from GPU, find the expensive pass, check overdraw and wind; each answer points to one fix.">
+  <div class="head"><div class="num"></div><h2>Profiling a forest</h2></div>
+
+  <div class="prose"><p>Work through the questions in order; each answer tells you which unit to open next:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Question</th><th>Unity</th><th>Unreal</th></tr></thead>
+    <tbody>
+      <tr><td>How many draws and batches does foliage cost?</td><td>Frame Debugger, Rendering Debugger statistics</td><td><code>stat rhi</code>, <code>stat foliage</code>, Unreal Insights</td></tr>
+      <tr><td>Is the cost CPU (submission) or GPU?</td><td>Profiler: render thread against GPU time</td><td><code>stat unit</code></td></tr>
+      <tr><td>Which pass is expensive: shadows, prepass, main?</td><td>GPU profiler markers, RenderDoc</td><td><code>stat gpu</code>, <code>ProfileGPU</code></td></tr>
+      <tr><td>Overdraw and shading cost on crowns</td><td>Rendering Debugger: Quad Overdraw</td><td>Quad Overdraw and Shader Complexity views</td></tr>
+      <tr><td>Vertex cost of wind</td><td>Toggle wind off in the material and compare</td><td>World Position Offset disable distance 0 and compare</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>CPU-bound: fewer types and materials, instancing or GPU-driven drawing, shorter cull distances. GPU-bound in the main pass: overdraw (<a class="x" href="../foliage-cards/index.html#overdraw">cards</a>) or LODs (<a class="x" href="../foliage-lods/index.html#chain">chains</a>). GPU-bound in shadows: shadow casters (<a class="x" href="../foliage-cards/index.html#shadows">shadows</a>). Vertex-bound: wind and LOD triangle counts (<a class="x" href="../foliage-wind/index.html#cost">wind cost</a>).</p></div>
+  <details class="check"><summary></summary><script type="application/json">[["A forest scene is CPU-bound with 40 000 draws. The trees use 2 materials and 4 LODs, and static batching is on. First steps?", ["More LODs", "Turn static batching off for foliage and use GPU instancing or the GPU Resident Drawer", "Higher shadow resolution", "Bigger atlases"], 1, "Instancing removes the per-instance draws; static batching also breaks wind pivots."], ["Grass is placed as 6 million stored instances. Memory is tight. Better approach?", ["Store them at lower precision", "Generate grass around the camera from density masks at runtime", "Use more LODs", "Use one material"], 1, "Ground cover is only visible nearby; generate it from the same masks."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="GPU Resident Drawer for prefabs, Instanced Mesh terrain details for grass, a chunked RenderMeshInstanced renderer for dense custom foliage, profiled in the Frame Debugger.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Three layers of the same idea in HDRP: the GPU Resident Drawer for ordinary MeshRenderers (trees placed as prefabs), terrain details in Instanced Mesh mode for grass, and a small chunked renderer for dense plants that should not exist as GameObjects at all. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="settings"><b>Engine settings</b><span>GPU Resident Drawer, BatchRendererGroup variants, static batching off.</span></div><div class="rt" data-k="asset"><b>Asset</b><span>Terrain details in Instanced Mesh mode.</span></div><div class="rt" data-k="cs"><b>C# script</b><span>FoliageChunkRenderer.cs: scatter, chunk culling, per-chunk LOD, RenderMeshInstanced.</span></div></div>
+<ol class="impl-steps"><li><div><b>GPU Resident Drawer.</b> In <em>Project Settings &gt; Graphics</em>, set <em>BatchRendererGroup Variants</em> to <em>Keep All</em>. In the HDRP Asset, under <em>Rendering</em>, set the <em>GPU Resident Drawer</em> to <em>Instanced Drawing</em> and enable GPU occlusion culling if your version offers it. In <em>Player Settings</em>, turn <em>Static Batching</em> off. Ordinary MeshRenderers with instancing-compatible materials are now drawn as instanced batches.</div></li><li><div>Check with the Frame Debugger: tree prefabs of one type should appear as a handful of instanced draws per LOD, material and pass. MaterialPropertyBlocks or per-object material copies break that grouping; move variation into the shader.</div></li><li><div><b>Grass.</b> On the terrain, add details with <em>Add Detail Mesh</em>, enable <em>Use GPU Instancing</em> (the Instanced Mesh mode) with an instancing-capable Shader Graph material. Colour variation must come from the shader (a hash of the world position), because the Healthy/Dry colours are not applied in this mode. Set <em>Detail Distance</em> and density in the terrain settings.</div></li><li><div><b>Dense custom foliage.</b> Add <code>FoliageChunkRenderer.cs</code> to an empty GameObject, assign the terrain, the LOD meshes with their distances and an instanced material, then <em>Rebuild</em> from the component's context menu. It scatters on a jittered grid, skips steep slopes, and draws visible chunks with <code>Graphics.RenderMeshInstanced</code>, choosing one LOD per chunk.</div></li><li><div>Profile: compare CPU render-thread time and GPU time with the GPU Resident Drawer on and off, and with the chunk renderer's cull distance halved. Shadows from plants outside the view are culled by this simple renderer; extend the cull test with the light's frustum if they matter.</div></li></ol>
+<div class="files"><div class="file" data-name="FoliageChunkRenderer.cs" data-lang="cs"><pre>// Assets/Scripts/FoliageChunkRenderer.cs: scatters one plant type over a terrain in chunks and draws it
+// with GPU instancing: chunk-level frustum and distance culling, one LOD per chunk, no GameObjects.
+// The material must have &quot;Enable GPU Instancing&quot; ticked.
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+[ExecuteAlways]
+public class FoliageChunkRenderer : MonoBehaviour
+{
+    [System.Serializable] public class Lod { public Mesh mesh; public float maxDistance = 30f; }
+    public Lod[] lods;                                  // LOD0 first; the last one is used up to cullDistance
+    public Material material;
+    public ShadowCastingMode shadows = ShadowCastingMode.Off;
+    public Terrain terrain;
+    public int seed = 1;
+    public float spacing = 1.5f;                        // metres between candidate positions (jittered grid)
+    public float maxSlope = 35f;                        // degrees
+    public float chunkSize = 16f;
+    public Vector2 scaleRange = new(0.8f, 1.2f);
+    public float cullDistance = 120f;
+    public float swayMargin = 1f;                       // bounds padding for wind
+
+    class Chunk { public Bounds bounds; public Matrix4x4[] m; }
+    readonly List&lt;Chunk&gt; chunks = new();
+    readonly Plane[] planes = new Plane[6];
+
+    void OnEnable()  { Build(); RenderPipelineManager.beginCameraRendering += Draw; }
+    void OnDisable() { RenderPipelineManager.beginCameraRendering -= Draw; }
+
+    [ContextMenu(&quot;Rebuild&quot;)]
+    public void Build()
+    {
+        chunks.Clear();
+        if (terrain == null) return;
+        var td = terrain.terrainData; var origin = terrain.transform.position; var rnd = new System.Random(seed);
+        int nx = Mathf.CeilToInt(td.size.x / chunkSize), nz = Mathf.CeilToInt(td.size.z / chunkSize);
+        for (int cz = 0; cz &lt; nz; cz++)
+        for (int cx = 0; cx &lt; nx; cx++)
+        {
+            var list = new List&lt;Matrix4x4&gt;(); var b = new Bounds(); bool first = true;
+            for (float z = cz * chunkSize; z &lt; (cz + 1) * chunkSize; z += spacing)
+            for (float x = cx * chunkSize; x &lt; (cx + 1) * chunkSize; x += spacing)
+            {
+                float jx = x + (float)rnd.NextDouble() * spacing * 0.8f, jz = z + (float)rnd.NextDouble() * spacing * 0.8f;
+                float u = jx / td.size.x, v = jz / td.size.z;
+                if (u &gt; 1f || v &gt; 1f || td.GetSteepness(u, v) &gt; maxSlope) continue;
+                var p = origin + new Vector3(jx, td.GetInterpolatedHeight(u, v), jz);
+                float s = Mathf.Lerp(scaleRange.x, scaleRange.y, (float)rnd.NextDouble());
+                list.Add(Matrix4x4.TRS(p, Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f), Vector3.one * s));
+                var pb = new Bounds(p + Vector3.up * s, Vector3.one * (2f * s + swayMargin));
+                if (first) { b = pb; first = false; } else b.Encapsulate(pb);
+            }
+            if (list.Count &gt; 0) chunks.Add(new Chunk { bounds = b, m = list.ToArray() });
+        }
+    }
+
+    void Draw(ScriptableRenderContext ctx, Camera cam)
+    {
+        if (material == null || lods == null || lods.Length == 0) return;
+        GeometryUtility.CalculateFrustumPlanes(cam, planes);
+        var cp = cam.transform.position;
+        foreach (var c in chunks)
+        {
+            float d = Mathf.Sqrt(c.bounds.SqrDistance(cp));
+            if (d &gt; cullDistance || !GeometryUtility.TestPlanesAABB(planes, c.bounds)) continue;   // shadows outside the view are skipped too
+            int li = 0; while (li &lt; lods.Length - 1 &amp;&amp; d &gt; lods[li].maxDistance) li++;
+            var rp = new RenderParams(material)
+            {
+                camera = cam, worldBounds = c.bounds, shadowCastingMode = shadows, receiveShadows = true,
+                layer = gameObject.layer, motionVectorMode = MotionVectorGenerationMode.Camera   // static instances: camera motion only
+            };
+            for (int start = 0; start &lt; c.m.Length; start += 1023)
+                Graphics.RenderMeshInstanced(rp, lods[li].mesh, 0, c.m, Mathf.Min(1023, c.m.Length - start), start);
+        }
+    }
+}</pre></div></div>
+<p class="note">Next step for very large counts: move the culling into a compute shader that appends visible instances to a buffer and draws with <code>Graphics.RenderMeshIndirect</code>, reading transforms from a StructuredBuffer in the shader. That needs procedural instancing setup in the shader; the GPU Resident Drawer is the built-in alternative.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: the GPU Resident Drawer additionally requires the Forward+ rendering path and the SRP Batcher; the rest is identical.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Foliage mode with HISM and per-type cull distances and WPO settings, Landscape Grass Types around the camera, PCG for procedural placement, Nanite as the GPU-driven path.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal instances foliage by default: the Foliage mode creates Hierarchical Instanced Static Mesh components, Landscape Grass Types generate grass around the camera, and PCG places everything procedurally. Nanite moves culling and LOD to the GPU. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Foliage mode: foliage types with cull distances, shadows and WPO settings.</span></div><div class="rt" data-k="asset"><b>Asset</b><span>Landscape Grass Type driven by landscape layers.</span></div><div class="rt" data-k="actor"><b>Level actor</b><span>A PCG volume and graph for procedural placement.</span></div></div>
+<ol class="impl-steps"><li><div><b>Foliage mode.</b> Add foliage types for each mesh; set <em>Density</em>, <em>Radius</em> (minimum spacing), scale and rotation ranges, slope and height limits, <em>Cull Distance</em>, <em>Cast Shadow</em> and <em>World Position Offset Disable Distance</em>. Painted instances land in HISM components per type and level cell.</div></li><li><div><b>Grass.</b> Create a <em>Landscape Grass Type</em> with grass meshes, density and cull distances, and connect it to a <em>Landscape Grass Output</em> node in the landscape material, driven by the layer weights. The engine generates the instances around the camera at runtime, so they cost no stored data.</div></li><li><div><b>PCG.</b> Add a PCG Volume, sample the landscape surface, filter by slope, height and masks, apply a self-pruning or distance filter for spacing, and spawn with a <em>Static Mesh Spawner</em> (instanced output). Regenerate per partition cell with World Partition.</div></li><li><div><b>Nanite.</b> Opaque, modelled foliage can be Nanite: GPU culling per cluster, no LOD chain. Masked materials and World Position Offset work but cost more under Nanite; the experimental Nanite Foliage path addresses both.</div></li><li><div>Profile with <code>stat unit</code>, <code>stat rhi</code>, <code>stat foliage</code> and <code>ProfileGPU</code>; compare with foliage hidden through the show flags (<code>ShowFlag.InstancedFoliage 0</code>, <code>ShowFlag.InstancedGrass 0</code>) to get its total cost.</div></li></ol>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/6000.3/Documentation/Manual/urp/gpu-resident-drawer.html" rel="noopener">GPU Resident Drawer</a></span><span class="by">Unity</span><span class="why">Requirements, settings and limitations.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity.com/en-us/engine/6000.3/manual/creating-environments/script-terrain/terrain-grass" rel="noopener">Grass and other details</a></span><span class="by">Unity</span><span class="why">Instanced Mesh detail mode, batches of 1023, density settings.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Graphics.RenderMeshIndirect.html" rel="noopener">Graphics.RenderMeshIndirect</a></span><span class="by">Unity</span><span class="why">Indirect instanced drawing with arguments from a buffer.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Graphics.RenderMeshInstanced.html" rel="noopener">Graphics.RenderMeshInstanced</a></span><span class="by">Unity</span><span class="why">Instanced drawing from a list of transforms.</span></li><li><span><span class="kind">Talk</span><a href="https://advances.realtimerendering.com/s2015/index.html" rel="noopener">GPU-driven rendering pipelines</a></span><span class="by">Ulrich Haar, Sebastian Aaltonen · SIGGRAPH 2015</span><span class="why">GPU culling and indirect drawing at scale (Assassin's Creed Unity).</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-foliage" rel="noopener">Nanite Foliage</a></span><span class="by">Epic Games</span><span class="why">The experimental Nanite path for dense foliage.</span></li></ul>
+</section>
+
+<div class="next" data-next="foliage-lods foliage-cards foliage-wind"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"instancing": [
+"GPU instancing",
+"Drawing many copies of one mesh and material in one call, with per-copy data in a buffer.",
+"#instancing"
+],
+"indirect": [
+"Indirect draw",
+"A draw whose instance count and ranges come from a GPU buffer, written by a compute pass.",
+"#gpudriven"
+],
+"grd": [
+"GPU Resident Drawer",
+"Unity 6 system that draws MeshRenderers through BatchRendererGroup with instancing and GPU occlusion culling.",
+"#gpudriven"
+],
+"hism": [
+"HISM",
+"Hierarchical Instanced Static Mesh: Unreal's instanced component with a culling and LOD hierarchy, used by the Foliage tool.",
+"#gpudriven"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=09bdab48"></script>
+<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="inst.js?v=da6cc656"></script>
+</body>
+</html>

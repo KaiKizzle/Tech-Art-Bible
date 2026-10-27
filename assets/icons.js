@@ -3,6 +3,14 @@
 (function () {
   'use strict';
   const I = {
+    'foliage-trees': '<path d="M24 44V24M24 32l-8-6M24 28l7-5"/><path d="M14 22a10 10 0 0 1 20 0"/><circle class="a" cx="24" cy="14" r="8"/>',
+    'foliage-vertex-data': '<path d="M10 40L38 12"/><path d="M19 31l11 3M27 23l3-11"/><circle class="af" cx="19" cy="31" r="2.6"/><circle class="af" cx="27" cy="23" r="2.6"/>',
+    'foliage-wind': '<path d="M6 14h18a5 5 0 1 0-5-5"/><path d="M6 22h26a5 5 0 1 1-5 5"/><path class="a" d="M34 44c0-8 2-14 8-18M27 44c0-6 1-10 4-13"/>',
+    'foliage-animation': '<path d="M6 42h36"/><path d="M14 42L28 12"/><path class="a" d="M14 42l26-10"/><path d="M28 12a30 30 0 0 1 12 20" stroke-dasharray="2 3"/>',
+    'foliage-shading': '<path d="M8 38C8 20 20 10 40 8c-2 20-12 32-28 32z"/><path d="M12 36L36 12"/><path class="a" d="M22 22l-5-9M29 28l9-4"/>',
+    'foliage-cards': '<rect x="8" y="16" width="22" height="22" rx="2"/><rect x="18" y="8" width="22" height="22" rx="2"/><path class="a" d="M22 22c4-6 10-6 14-2-4 6-10 6-14 2z"/>',
+    'foliage-lods': '<circle cx="11" cy="19" r="7"/><path d="M11 26v14"/><circle cx="26" cy="24" r="5"/><path d="M26 29v11"/><rect class="a" x="37" y="24" width="6" height="16"/>',
+    'foliage-instancing': '<circle cx="12" cy="14" r="4"/><circle cx="24" cy="14" r="4"/><circle cx="36" cy="14" r="4"/><circle cx="12" cy="28" r="4"/><circle cx="36" cy="28" r="4"/><circle class="a" cx="24" cy="28" r="4"/><path d="M8 40h32"/>',
     'ray-marching': '<path d="M6 30h36"/><path d="M6 14l30 16"/><circle cx="12" cy="17" r="1.6"/><circle cx="18" cy="20.3" r="1.6"/><circle cx="24" cy="23.6" r="1.6"/><circle cx="30" cy="26.8" r="1.6"/><circle class="af" cx="36" cy="30" r="3"/><path d="M6 38c8-4 14 2 20-2s10-2 16 0"/>',
     'fpom': '<path d="M6 34l8-6 6 4 8-10 6 6 8-6"/><path d="M6 40h36"/><path class="a" d="M8 8l14 24"/><path class="a" d="M8 8l6 10" stroke-dasharray="2 3"/>',
     'color-tint': '<circle cx="18" cy="20" r="10"/><circle cx="30" cy="20" r="10"/><circle class="a" cx="24" cy="30" r="10"/>',
