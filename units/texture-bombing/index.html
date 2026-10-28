@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Texture and Cell Bombing · Tech Art Atlas</title>
+<meta name="description" content="Why tiling shows, random offsets per cell, texture bombing and Voronoi cell bombing, hex tiling and histogram-preserving blending, gradients that keep cell borders clean, normal maps in rotated cells, and what it all costs against cheaper alternatives, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="texture-bombing" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Texture and Cell Bombing</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 8 chapters</div>
+  <h1>Texture and Cell Bombing</h1>
+  <p class="lede">Why tiling shows, random offsets per cell, texture bombing and Voronoi cell bombing, hex tiling and histogram-preserving blending, gradients that keep cell borders clean, normal maps in rotated cells, and what it all costs against cheaper alternatives, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Textures and Sampling and Texture Mapping Techniques. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/texture-bombing.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>One pebble texture on a floor: plain tiling on the left, hex tiling on the right.</figcaption></figure>
+</div>
+<div class="needs" data-needs="textures-sampling#mips textures-sampling#wrap"></div>
+
+<section class="chapter" id="repeat" data-title="Why tiling shows" data-builds="textures-sampling#wrap" data-summary="Repeats in view ≈ (W/T)²; a few copies and one stand-out feature reveal the grid. Fix the texture, or change UVs per region in the shader at the cost of extra samples.">
+  <div class="head"><div class="num"></div><h2>Why tiling shows</h2></div>
+
+  <div class="prose">
+    <p>A tiling texture is a cheap way to cover a large surface at high density, but the eye is very good at finding repetition. It needs only a few copies in view and one feature that stands out: a dark stone, a bright crack, a stain. The problem grows with the area in view, so it is worst on terrain, floors, large walls and seen from a distance:</p>
+  </div>
+  <div class="fx" data-fx="repeat"></div>
+  <div class="prose">
+    <p>Two ways around it. Make the texture itself less memorable (no stand-out features, even contrast, larger tiles), and break the grid in the shader: change the texture coordinates per region so neighbouring copies differ. That second family is called <em>texture bombing</em>, <em>cell bombing</em>, <em>stochastic</em> or <em>anti-tiling</em> sampling. All of it costs extra texture samples, so it is usually applied only to the maps that show the repetition.</p>
+  </div>
+
+</section>
+<section class="chapter" id="offset" data-title="Random offsets per cell" data-builds="texture-bombing#repeat" data-summary="Cell = ⌊uv⌋, offset = hash(cell); 1 sample with hard seams, or 4 samples blended with smoothstep (Quilez technique 1); mirroring is free variation.">
+  <div class="head"><div class="num"></div><h2>Random offsets per cell</h2></div>
+
+  <div class="prose">
+    <p>The simplest version splits UV space into cells, the size of one tile, and shifts the texture by a random offset per cell, from a hash of the cell's integer coordinates. On its own that leaves a hard seam at every cell border. Inigo Quilez's first technique reads the texture with the offsets of the four nearest cells and blends them with a smoothstep, so the borders dissolve:</p>
+  </div>
+  <div class="fx" data-fx="offset"></div>
+  <div class="prose">
+    <p>Random mirroring per cell (flipping U or V) increases the variation for almost no cost; random rotation does too, but needs the normal map to be rotated back (<a href="#normals">normals</a>). Wide blends hide the borders but mix several copies, which blurs details and lowers contrast in those zones: the general weakness of linear blending of textures, which the next techniques reduce.</p>
+  </div>
+
+</section>
+<section class="chapter" id="bombing" data-title="Texture bombing and cell bombing" data-builds="texture-bombing#offset" data-summary="GPU Gems bombing: stamps per cell, 9 or 4 neighbours, priorities; cell bombing: Voronoi cells with their own offset, 9 samples weighted exp(−k·d²) and normalised.">
+  <div class="head"><div class="num"></div><h2>Texture bombing and cell bombing</h2></div>
+
+  <div class="prose">
+    <p><em>Texture bombing</em>, as described in GPU Gems (2004), places small images on a grid of cells: each cell drops one or more copies of an image at a random position, with a random priority, scale or colour, and each pixel checks the neighbouring cells for copies that reach it: 9 cells if images may cross into any neighbour, 4 if they are kept to one side. The same loop gives Voronoi cells: keep the nearest feature point instead of the highest priority. The chapter's examples needed 8 texture samples and 44–62 instructions per pixel.</p>
+    <p>For whole surfaces, the Voronoi variant is the useful one, and it is what <em>cell bombing</em> usually means in a shader: each Voronoi cell gets its own random UV offset (and possibly rotation), and the pixel blends the nine surrounding cells by distance to their feature points. Quilez's second technique weighs them with exp(−k·d²) and divides by the total weight so the brightness stays right:</p>
+  </div>
+  <div class="fx" data-fx="voronoi"></div>
+  <div class="prose"><p>Voronoi cells have no grid direction, so they hide repetition better than square cells. Nine samples per map is expensive, though, which is why hex tiling, which gets a similar result from three, has largely replaced it.</p></div>
+
+</section>
+<section class="chapter" id="hex" data-title="Hex tiling" data-builds="texture-bombing#bombing" data-summary="Three samples on a triangle grid of hex tiles; weights = barycentric^γ (γ = 7) × luminance, optional contrast; histogram-preserving blending needs a precomputed Gaussian texture and LUT.">
+  <div class="head"><div class="num"></div><h2>Hex tiling</h2></div>
+
+  <div class="prose">
+    <p>Morten Mikkelsen's hex tiling (JCGT 2022) places the texture copies on a lattice of hexagons. Every point lies inside one triangle of the dual triangle grid, so it is covered by exactly three hex tiles: three samples, each with a random offset (and optionally a rotation), blended by the point's barycentric weights. Two refinements make the blend look less washed out. The weights are raised to a power (γ = 7 in the paper), which narrows the blend zones, and multiplied by the luminance of each sample (or the slope of each normal), so bright, prominent features win over flat background instead of averaging into grey. An optional contrast curve sharpens the transitions further:</p>
+  </div>
+  <div class="fx" data-fx="hex"></div>
+  <div class="prose">
+    <p>Hex tiling is a practical form of the histogram-preserving blending of Heitz and Neyret (2018). Their method transforms the texture so its values follow a Gaussian distribution, blends three samples in that space with variance-preserving weights, and maps the result back with a lookup table; this keeps the contrast and the histogram of stochastic textures (gravel, sand, grain) almost perfectly. It needs a precomputed transformed texture and lookup table per input, and Unity's prototype implementation generated two intermediate textures per input for that. Mikkelsen's version samples the original texture directly, so it drops into any shader; the paper reports nearly identical results on normal maps and an acceptable difference on colour. Rotation per tile is possible only without histogram preservation, because rotated samples are directional.</p>
+  </div>
+
+</section>
+<section class="chapter" id="derivs" data-title="Gradients: no seams at cell borders" data-builds="textures-sampling#mips texture-bombing#offset" data-summary="Cell borders make UV derivatives jump: λ = log₂(Δuv · S) selects a tiny mip, a line. Compute ddx/ddy from the original UV, rotate them with the cell, sample with SampleGrad.">
+  <div class="head"><div class="num"></div><h2>Gradients: no seams at cell borders</h2></div>
+
+  <div class="prose">
+    <p>Every one of these techniques gives neighbouring pixels very different UVs where they fall into different cells. The GPU picks the mip level from the UV difference between neighbouring pixels, so at every cell border it sees a huge change and reads a tiny, blurred mip:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>The GPU measures texels per pixel from the screen-space derivatives ddx(uv), ddy(uv) of each 2 × 2 quad; a UV that jumps looks like a huge change and selects a tiny mip, which shows as a line.</p></div><a class="x refto" href="../textures-sampling/index.html#mips">Open the full explanation</a></aside>
+  <div class="fx" data-fx="mipseam"></div>
+  <div class="prose">
+    <p>The fix is the same everywhere: compute <code>ddx(uv)</code> and <code>ddy(uv)</code> once from the original, continuous UV, and pass them to every sample with <code>SampleGrad</code> (HLSL) or <code>textureGrad</code> (GLSL). With rotation, rotate the two gradient vectors by the same angle as the UV. Offsets and mirroring leave the gradient's length unchanged, so the unmodified gradients are correct for them.</p>
+  </div>
+
+</section>
+<section class="chapter" id="normals" data-title="Normal maps in rotated and blended cells" data-builds="texture-bombing#hex spaces#tangent" data-summary="Rotate and mirror each sampled normal back into the surface frame; blend normals as gradients (−xy/z), not vectors.">
+  <div class="head"><div class="num"></div><h2>Normal maps in rotated and blended cells</h2></div>
+
+  <div class="prose">
+    <p>A normal map stores directions relative to the texture's U and V axes. When a cell reads the texture rotated or mirrored, the normals it returns are rotated or mirrored with it, and the bumps light from the wrong side. Before blending, each sample's tangent-space normal must be turned back by the cell's rotation and mirroring. Then blend the three or four normals as surface gradients (the normal's slope, −xy / z), which adds bumps the way height maps add, instead of averaging the vectors, which flattens them:</p>
+  </div>
+  <pre class="code" data-lang="hlsl">// A tangent-space normal read from a rotated (and optionally mirrored) cell must be turned back
+// into the surface&#x27;s tangent frame before it is blended with the others.
+float3 UnrotateNormal(float3 nTS, float angle, float2 mirror)   // mirror = (+1 or -1, +1 or -1)
+{
+    nTS.xy *= mirror;                          // undo the mirroring of U and V
+    float c = cos(angle), s = sin(angle);
+    nTS.xy = float2(c * nTS.x - s * nTS.y,      // undo the rotation of the UVs
+                    s * nTS.x + c * nTS.y);
+    return nTS;
+}
+// Blend normals as surface gradients (derivatives), not as vectors:
+float2 ToDeriv(float3 n) { return -n.xy / max(n.z, 1e-3); }
+float3 FromDeriv(float2 d) { return normalize(float3(-d, 1)); }
+// n = FromDeriv(w1 * ToDeriv(n1) + w2 * ToDeriv(n2) + w3 * ToDeriv(n3));</pre>
+  <div class="prose"><p>Offset-only variants (no rotation, no mirroring) need neither step for the direction; the gradient blend is still better than a plain average.</p></div>
+
+</section>
+<section class="chapter" id="cost" data-title="Cost and cheaper alternatives" data-builds="texture-bombing#hex mapping#detail" data-summary="Samples = pixels · technique · maps · layers; macro variation, detail maps, mismatched tiling scales and decals first; bombing on colour and normal of large ground materials.">
+  <div class="head"><div class="num"></div><h2>Cost and cheaper alternatives</h2></div>
+
+  <div class="prose"><p>Anti-tiling multiplies the samples of every map it is applied to, for every layer that uses it:</p></div>
+  <div class="fx" data-fx="bombcost"></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Technique</th><th>Samples per map</th><th>Precomputation</th><th>Look</th></tr></thead>
+    <tbody>
+      <tr><td>Random offset per cell, hard borders</td><td>1</td><td>None</td><td>Visible seams on a grid</td></tr>
+      <tr><td>Two versions of the pattern blended by a noise (Quilez, technique 3)</td><td>2 + 1 small noise lookup</td><td>None</td><td>Cheap; repetition at a larger scale remains</td></tr>
+      <tr><td>Hex tiling (Mikkelsen 2022)</td><td>3</td><td>None</td><td>Good for most textures, rotation possible</td></tr>
+      <tr><td>Histogram-preserving blending (Heitz &amp; Neyret 2018)</td><td>3 + a lookup table</td><td>Gaussianised texture and inverse lookup table per input</td><td>Keeps contrast best on stochastic textures (gravel, sand, noise)</td></tr>
+      <tr><td>Random offset per cell, blended (Quilez, technique 1)</td><td>4</td><td>None</td><td>Smooth, some blurring in the blend zones</td></tr>
+      <tr><td>Voronoi cell bombing (Quilez, technique 2)</td><td>9</td><td>None</td><td>Organic cells; the most expensive</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>Cheaper tools often solve most of the problem first:</p>
+    <ul>
+      <li><b>Macro variation</b>: one low-resolution texture or noise at a much larger scale that varies colour, roughness and the blend between materials. One extra sample for the whole material.</li>
+      <li><b>Detail maps</b>: a second tiling texture at a different scale on top of the base (<a class="x" href="../mapping/index.html#detail">detail maps</a>).</li>
+      <li><b>Several tiling scales</b> whose repeats do not line up, blended by masks (<a href="../layered-tiling/index.html#scales">detail that does not repeat</a>).</li>
+      <li><b>Decals and props</b> that break up the most visible areas.</li>
+    </ul>
+    <p>Use bombing where those are not enough, typically on the colour and normal of large ground materials, and fade it out at a distance where the repetition is hidden by the macro variation anyway.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A hex-tiled ground shows thin dark lines along a hexagonal pattern. What is missing?", ["A higher γ", "Sampling with the gradients of the original UV (SampleGrad)", "Random rotation", "Mipmaps"], 1, "The cell borders make the hardware derivatives jump; explicit gradients fix it."], ["Rocks in a rotated hex-tiled normal map are lit from different directions in each tile. Why?", ["The normal map is compressed", "The sampled normals were not rotated back by each tile's rotation", "The exponent is too low", "The texture is not tileable"], 1, "A rotated read returns rotated normals; turn them back before blending."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="TileBreak.hlsl with offset-blend and hex-tiling reads using SAMPLE_TEXTURE2D_GRAD; colour and normal Custom Functions in a Lit graph; compare cost; fade by distance.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>One HLSL file adds three anti-tiling reads to any Shader Graph: the four-sample offset blend, hex tiling for colour and masks, and hex tiling for normal maps. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="hlsl"><b>HLSL file</b><span>TileBreak.hlsl: TileBreakOffset, TileBreakHex, TileBreakHexNormal.</span></div><div class="rt" data-k="sg"><b>Shader Graph</b><span>A Lit graph that reads colour and normal through the custom functions.</span></div></div>
+<ol class="impl-steps"><li><div>Put <code>TileBreak.hlsl</code> in <code>Assets/Shaders/</code>. Create the graph: in the Project window, <em>Create &gt; Shader Graph &gt; HDRP &gt; Lit Shader Graph</em>. Open it and check the <em>Graph Inspector &gt; Graph Settings</em>. Add properties: Texture2D <code>BaseMap</code>, Texture2D <code>NormalMap</code> (Mode: Normal Map), Floats <code>Tiling</code> (4), <code>Rotation</code> (0–1, default 0.3), <code>Contrast</code> (0.5–0.9, default 0.7), <code>NormalStrength</code> (1).</div></li><li><div>UV: <em>UV</em> node (UV0) × <code>Tiling</code>. For ground meshes without UVs, use <em>Position</em> (World) .xz × Tiling instead.</div></li><li><div>Colour: In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>TileBreak.hlsl</code> and <em>Name</em> to <code>TileBreakHex</code> (without the <code>_float</code> suffix). Add the inputs <b>Tex (Texture2D), UV (Vector 2), RotStrength (Float), Contrast (Float)</b> and the outputs <b>Color (Vector 4)</b>, in that order and with those types: they must match the function's parameters. Connect Color.rgb to <em>Base Color</em>. Mask maps go through the same function (Rotation is fine for masks that have no direction).</div></li><li><div>Normal: a second Custom Function with Name <code>TileBreakHexNormal</code>, inputs <b>NormalMap (Texture2D), UV (Vector 2), RotStrength (Float), Strength (Float)</b>, output <b>NormalTS (Vector 3)</b>, into <em>Normal (Tangent Space)</em>. Use the same Rotation value as for colour so the bumps line up with the colour.</div></li><li><div>Compare: switch the Custom Functions for plain <em>Sample Texture 2D</em> nodes and look at a large ground plane from above; then check the cost in a GPU capture. TileBreakOffset (4 samples, BlendWidth 0.3–0.5) is the alternative for textures where hex tiling's luminance weighting picks the wrong features.</div></li><li><div>Fade it out: beyond the distance where macro variation hides the repetition, blend to a plain sample (for example by distance through a <em>Branch</em> on a material keyword, or lerp weights) to save the extra samples.</div></li></ol>
+<div class="files"><div class="file" data-name="TileBreak.hlsl" data-lang="hlsl"><pre>// TileBreak.hlsl: anti-tiling texture reads for Shader Graph (Custom Function, Type: File).
+//   TileBreakOffset_float     4 samples: random offset per cell, blended near the borders (after Quilez)
+//   TileBreakHex_float        3 samples: hex tiling with luminance-weighted blending (after Mikkelsen 2022)
+//   TileBreakHexNormal_float  3 samples: hex tiling for tangent-space normal maps, rotation undone,
+//                             blended as surface gradients
+// Every read uses SAMPLE_TEXTURE2D_GRAD with the derivatives of the continuous UV, so cell
+// borders do not select tiny mips. Hex tiling follows the structure of Mikkelsen&#x27;s MIT-licensed
+// reference code.
+#ifndef ATLAS_TILEBREAK_INCLUDED
+#define ATLAS_TILEBREAK_INCLUDED
+
+static const float3 TB_LUM = float3(0.299, 0.587, 0.114);
+
+float2 TB_Hash2(float2 p)
+{
+    return frac(sin(mul(float2x2(127.1, 311.7, 269.5, 183.3), p)) * 43758.5453);
+}
+
+void TileBreakOffset_float(UnityTexture2D Tex, float2 UV, float BlendWidth, out float4 Color)
+{
+    float2 dx = ddx(UV), dy = ddy(UV);
+    float2 i = floor(UV), f = frac(UV);
+    float b = max(BlendWidth, 1e-3) * 0.5;
+    float4 c00 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, UV + TB_Hash2(i),                dx, dy);
+    float4 c10 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, UV + TB_Hash2(i + float2(1, 0)), dx, dy);
+    float4 c01 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, UV + TB_Hash2(i + float2(0, 1)), dx, dy);
+    float4 c11 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, UV + TB_Hash2(i + float2(1, 1)), dx, dy);
+    float2 w = smoothstep(0.5 - b, 0.5 + b, f);
+    Color = lerp(lerp(c00, c10, w.x), lerp(c01, c11, w.x), w.y);
+}
+
+// ---- hex tiling ----
+struct TB_Hex { float3 w; float2 uv1, uv2, uv3; float2x2 r1, r2, r3; };
+
+float2 TB_Center(float2 v) { return mul(float2x2(1.0, 0.5, 0.0, 0.8660254), v) / 3.4641016; }
+
+float2x2 TB_Rot(float2 v, float strength)
+{
+    float a = abs(v.x * v.y) + abs(v.x + v.y) + PI;
+    a = fmod(a, 2.0 * PI); if (a &lt; 0.0) a += 2.0 * PI; if (a &gt; PI) a -= 2.0 * PI;
+    a *= strength;
+    float c = cos(a), s = sin(a);
+    return float2x2(c, -s, s, c);
+}
+
+TB_Hex TB_HexSetup(float2 uv, float rotStrength)
+{
+    TB_Hex h;
+    float2 st = uv * 3.4641016;                                            // 2 * sqrt(3)
+    float2 skew = float2(st.x - 0.57735027 * st.y, 1.15470054 * st.y);    // triangle grid
+    float2 base = floor(skew);
+    float3 t = float3(frac(skew), 0.0); t.z = 1.0 - t.x - t.y;
+    float s = step(0.0, -t.z), s2 = 2.0 * s - 1.0;
+    h.w = float3(-t.z * s2, s - t.y * s2, s - t.x * s2);                   // barycentric weights
+    float2 v1 = base + float2(s, s), v2 = base + float2(s, 1.0 - s), v3 = base + float2(1.0 - s, s);
+    h.r1 = TB_Rot(v1, rotStrength); h.r2 = TB_Rot(v2, rotStrength); h.r3 = TB_Rot(v3, rotStrength);
+    float2 c1 = TB_Center(v1), c2 = TB_Center(v2), c3 = TB_Center(v3);
+    h.uv1 = mul(uv - c1, h.r1) + c1 + TB_Hash2(v1);
+    h.uv2 = mul(uv - c2, h.r2) + c2 + TB_Hash2(v2);
+    h.uv3 = mul(uv - c3, h.r3) + c3 + TB_Hash2(v3);
+    return h;
+}
+
+float3 TB_Gain3(float3 x, float r)        // r &gt; 0.5 sharpens the blend
+{
+    float k = log(1.0 - r) / log(0.5);
+    float3 s = 2.0 * step(0.5, x), m = 2.0 * (1.0 - s);
+    float3 res = 0.5 * s + 0.25 * m * pow(max(0.0, s + x * m), k);
+    return res / (res.x + res.y + res.z);
+}
+
+void TileBreakHex_float(UnityTexture2D Tex, float2 UV, float RotStrength, float Contrast, out float4 Color)
+{
+    float2 dx = ddx(UV), dy = ddy(UV);
+    TB_Hex h = TB_HexSetup(UV, RotStrength);
+    float4 c1 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, h.uv1, mul(dx, h.r1), mul(dy, h.r1));
+    float4 c2 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, h.uv2, mul(dx, h.r2), mul(dy, h.r2));
+    float4 c3 = SAMPLE_TEXTURE2D_GRAD(Tex.tex, Tex.samplerstate, h.uv3, mul(dx, h.r3), mul(dy, h.r3));
+    float3 lum = float3(dot(c1.rgb, TB_LUM), dot(c2.rgb, TB_LUM), dot(c3.rgb, TB_LUM));
+    float3 W = lerp(1.0, lum, 0.6) * pow(h.w, 7.0);
+    W /= (W.x + W.y + W.z);
+    if (Contrast &gt; 0.5) W = TB_Gain3(W, Contrast);
+    Color = W.x * c1 + W.y * c2 + W.z * c3;
+}
+
+float2 TB_Deriv(float3 n) { return -n.xy / max(n.z, 1e-3); }
+
+void TileBreakHexNormal_float(UnityTexture2D NormalMap, float2 UV, float RotStrength, float Strength, out float3 NormalTS)
+{
+    float2 dx = ddx(UV), dy = ddy(UV);
+    TB_Hex h = TB_HexSetup(UV, RotStrength);
+    float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D_GRAD(NormalMap.tex, NormalMap.samplerstate, h.uv1, mul(dx, h.r1), mul(dy, h.r1)));
+    float3 n2 = UnpackNormal(SAMPLE_TEXTURE2D_GRAD(NormalMap.tex, NormalMap.samplerstate, h.uv2, mul(dx, h.r2), mul(dy, h.r2)));
+    float3 n3 = UnpackNormal(SAMPLE_TEXTURE2D_GRAD(NormalMap.tex, NormalMap.samplerstate, h.uv3, mul(dx, h.r3), mul(dy, h.r3)));
+    // undo each tile&#x27;s rotation: gradients turn back with the same matrix
+    float2 d1 = mul(h.r1, TB_Deriv(n1)), d2 = mul(h.r2, TB_Deriv(n2)), d3 = mul(h.r3, TB_Deriv(n3));
+    // weight by slope (sine of the angle to the surface normal), as the paper does for normal maps
+    float3 slope = float3(length(n1.xy), length(n2.xy), length(n3.xy));
+    float3 W = lerp(1.0, slope, 0.6) * pow(h.w, 7.0);
+    W /= (W.x + W.y + W.z);
+    float2 d = (W.x * d1 + W.y * d2 + W.z * d3) * Strength;
+    NormalTS = normalize(float3(-d, 1.0));
+}
+
+#endif</pre></div></div>
+<p class="note">The luminance weighting assumes colour where bright features matter; for height or roughness maps, the plain barycentric weights (set the 0.6 factor to 0) can be more neutral.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: TileBreak.hlsl works unchanged in a URP graph; <code>UnpackNormal</code> handles both normal-map encodings.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="HexTile Custom node with Texture2DSampleGrad; colour and masks; normals without rotation; compare with Shader Complexity; macro variation first on landscapes.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>The same hex tiling as a Custom node with a Texture Object input. For normal maps, run it on the normal texture and set the rotation to 0, or port the normal variant from TileBreak.hlsl the same way. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>HexTile.ush: three-sample hex tiling with SampleGrad.</span></div><div class="rt" data-k="mat"><b>Material</b><span>A ground material that reads colour (and, unrotated, normals) through it.</span></div></div>
+<ol class="impl-steps"><li><div>Add a <em>Custom</em> node with the code of <code>HexTile.ush</code>. Inputs: <code>Tex</code> from a <em>Texture Object</em> (Unreal then provides <code>TexSampler</code>), <code>UV</code> from <em>TexCoord</em> × a Tiling scalar (or <em>Absolute World Position</em>.xy / tile size in cm for ground), <code>RotStrength</code>, <code>Contrast</code>. Output Type <code>CMOT Float 4</code>.</div></li><li><div>Colour: connect the result's RGB to <em>Base Color</em>. Masks (roughness, AO) can go through a second node with their own Texture Object.</div></li><li><div>Normals: a second HexTile node on the normal map with <code>RotStrength</code> 0 gives correct directions (offsets do not change them); set the Texture Object's sampler type to <em>Normal</em> and feed the result to <em>Normal</em>. With rotation, the sampled vectors must be rotated back as in <code>TileBreakHexNormal</code>.</div></li><li><div>Compare with plain <em>Texture Sample</em> nodes on a large landscape or floor, and check the cost with <em>Shader Complexity</em> and <em>ProfileGPU</em>.</div></li><li><div>Landscape: most landscape materials add a macro variation texture and distance blending first; use hex tiling on the one or two layers that still show repetition.</div></li></ol>
+<div class="files"><div class="file" data-name="HexTile.ush" data-lang="hlsl"><pre>// Custom node &quot;HexTile&quot;. Inputs: Tex (Texture Object), UV (float2), RotStrength (float), Contrast (float).
+// Output Type: CMOT Float 4. Helper functions live in a local struct, the usual way to define
+// functions inside a Custom node. Same maths as TileBreak.hlsl.
+struct HexTileFns
+{
+    float2 Hash2(float2 p) { return frac(sin(mul(float2x2(127.1, 311.7, 269.5, 183.3), p)) * 43758.5453); }
+    float2 Center(float2 v) { return mul(float2x2(1.0, 0.5, 0.0, 0.8660254), v) / 3.4641016; }
+    float2x2 Rot(float2 v, float k)
+    {
+        float a = abs(v.x * v.y) + abs(v.x + v.y) + 3.14159265;
+        a = fmod(a, 6.2831853); if (a &gt; 3.14159265) a -= 6.2831853;
+        a *= k; float c = cos(a), s = sin(a);
+        return float2x2(c, -s, s, c);
+    }
+    float3 Gain3(float3 x, float r)
+    {
+        float k = log(1.0 - r) / log(0.5);
+        float3 s = 2.0 * step(0.5, x), m = 2.0 * (1.0 - s);
+        float3 res = 0.5 * s + 0.25 * m * pow(max(0.0, s + x * m), k);
+        return res / (res.x + res.y + res.z);
+    }
+};
+HexTileFns F;
+float2 dx = ddx(UV), dy = ddy(UV);
+float2 st = UV * 3.4641016;
+float2 skew = float2(st.x - 0.57735027 * st.y, 1.15470054 * st.y);
+float2 b = floor(skew);
+float3 t = float3(frac(skew), 0.0); t.z = 1.0 - t.x - t.y;
+float s = step(0.0, -t.z), s2 = 2.0 * s - 1.0;
+float3 w = float3(-t.z * s2, s - t.y * s2, s - t.x * s2);
+float2 v1 = b + float2(s, s), v2 = b + float2(s, 1.0 - s), v3 = b + float2(1.0 - s, s);
+float2x2 r1 = F.Rot(v1, RotStrength), r2 = F.Rot(v2, RotStrength), r3 = F.Rot(v3, RotStrength);
+float2 c1 = F.Center(v1), c2 = F.Center(v2), c3 = F.Center(v3);
+float4 a1 = Texture2DSampleGrad(Tex, TexSampler, mul(UV - c1, r1) + c1 + F.Hash2(v1), mul(dx, r1), mul(dy, r1));
+float4 a2 = Texture2DSampleGrad(Tex, TexSampler, mul(UV - c2, r2) + c2 + F.Hash2(v2), mul(dx, r2), mul(dy, r2));
+float4 a3 = Texture2DSampleGrad(Tex, TexSampler, mul(UV - c3, r3) + c3 + F.Hash2(v3), mul(dx, r3), mul(dy, r3));
+float3 L = float3(dot(a1.rgb, float3(0.299, 0.587, 0.114)), dot(a2.rgb, float3(0.299, 0.587, 0.114)), dot(a3.rgb, float3(0.299, 0.587, 0.114)));
+float3 W = lerp(1.0, L, 0.6) * pow(w, 7.0);
+W /= (W.x + W.y + W.z);
+if (Contrast &gt; 0.5) W = F.Gain3(W, Contrast);
+return W.x * a1 + W.y * a2 + W.z * a3;</pre></div></div>
+<p class="note">Unreal units are centimetres: for world-space UVs divide the position by the tile size in cm (for example 200 for a 2 m tile).</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Article</span><a href="https://iquilezles.org/articles/texturerepetition" rel="noopener">Texture repetition</a></span><span class="by">Inigo Quilez</span><span class="why">Three techniques: per-tile offsets (4 samples), smooth Voronoi (9 samples), two-pattern blend (2 samples), with textureGrad.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems/part-iii-materials/chapter-20-texture-bombing" rel="noopener">Texture Bombing (GPU Gems, chapter 20)</a></span><span class="by">R. Steven Glanville · NVIDIA · 2004</span><span class="why">Cells, neighbours, priorities, Voronoi variant, cost and mip problems.</span></li><li><span><span class="kind">Paper</span><a href="https://jcgt.org/published/0011/03/05/" rel="noopener">Practical Real-Time Hex-Tiling</a></span><span class="by">Morten S. Mikkelsen · JCGT 2022</span><span class="why">Three-sample hex tiling, luminance-weighted blending, rotation, gradients, normal maps.</span></li><li><span><span class="kind">Paper</span><a href="https://hal.archives-ouvertes.fr/LJK/hal-01824773v1" rel="noopener">High-Performance By-Example Noise using a Histogram-Preserving Blending Operator</a></span><span class="by">Eric Heitz, Fabrice Neyret · HPG 2018</span><span class="why">Gaussianised texture, variance-preserving blend and inverse lookup table.</span></li><li><span><span class="kind">Article</span><a href="https://unity.com/blog/engine-platform/procedural-stochastic-texturing-in-unity" rel="noopener">Procedural Stochastic Texturing in Unity</a></span><span class="by">Unity</span><span class="why">The histogram-preserving method as a Shader Graph node: three samples and precomputed intermediate textures.</span></li><li><span><span class="kind">Code</span><a href="https://github.com/UnityLabs/procedural-stochastic-texturing" rel="noopener">procedural-stochastic-texturing</a></span><span class="by">Unity Labs</span><span class="why">Reference implementation (archived 2025).</span></li></ul>
+</section>
+
+<div class="next" data-next="layered-tiling atlas-array"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"bombing": [
+"Texture bombing",
+"Scattering copies of an image over cells of a grid, each with random placement, priority or colour.",
+"#bombing"
+],
+"cellbombing": [
+"Cell bombing",
+"Giving each cell (square or Voronoi) its own random UV offset or rotation and blending the neighbours.",
+"#bombing"
+],
+"hextiling": [
+"Hex tiling",
+"Three samples per pixel from randomly offset hex tiles, blended by sharpened barycentric weights.",
+"#hex"
+],
+"histogram": [
+"Histogram-preserving blending",
+"Blending in a Gaussianised space so the blend keeps the texture's contrast and histogram.",
+"#hex"
+],
+"samplegrad": [
+"SampleGrad",
+"A texture read with explicit UV derivatives, so the mip level does not jump with the UVs.",
+"#derivs"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="bomb.js?v=d4a9c965"></script>
+</body>
+</html>

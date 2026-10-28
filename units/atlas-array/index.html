@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atlases, Texture Arrays and Unique Textures · Tech Art Atlas</title>
+<meta name="description" content="Four containers for many objects&#x27; textures, what a shared texture actually saves with each kind of batching, the costs of atlases (padding, mips, tiling), texture arrays and their limits, when unique textures win, bindless and virtual texturing, and a decision table, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="atlas-array" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Atlases, Texture Arrays and Unique Textures</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 8 chapters</div>
+  <h1>Atlases, Texture Arrays and Unique Textures</h1>
+  <p class="lede">Four containers for many objects' textures, what a shared texture actually saves with each kind of batching, the costs of atlases (padding, mips, tiling), texture arrays and their limits, when unique textures win, bindless and virtual texturing, and a decision table, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Frame Profiling, Texturing a Game Asset and Texture Memory. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/atlas-array.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Props textured three ways: unique textures, one atlas, and the slices of a texture array.</figcaption></figure>
+</div>
+<div class="needs" data-needs="reading-a-frame#drawcalls texturing#padding texture-memory#streaming"></div>
+
+<section class="chapter" id="options" data-title="Four ways to give many objects their textures" data-builds="texturing#reuse textures-sampling#texture" data-summary="Unique, atlas, array, bindless/virtual: materials, streaming and shader work differ; tiling and trims avoid per-asset textures entirely.">
+  <div class="head"><div class="num"></div><h2>Four ways to give many objects their textures</h2></div>
+
+  <div class="prose">
+    <p>When many objects need different textures, there are four containers to put them in. The choice changes how many materials the scene has, how textures stream, and what the shader has to do:</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Layout</th><th>What it is</th><th>Shader sees</th><th>Main limits</th></tr></thead>
+    <tbody>
+      <tr><td>Unique textures</td><td>One texture set per asset</td><td>A different texture per material</td><td>One material per texture set</td></tr>
+      <tr><td>Atlas</td><td>Several assets' textures packed into rectangles of one texture</td><td>One texture; UVs point into a rectangle</td><td>Padding and mip bleeding, no hardware wrap inside a rectangle, all assets stream together</td></tr>
+      <tr><td>Texture array</td><td>A stack of same-size, same-format textures (slices)</td><td>One array; a slice index picks the layer</td><td>Same size, format and mip count; the array is one resource</td></tr>
+      <tr><td>Bindless / virtual texturing</td><td>Textures picked by index from a global table, or tiles of a huge virtual texture</td><td>An index or a page-table lookup</td><td>Engine and platform support; an extra indirection</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Tiling materials and trim sheets are a fifth answer, avoiding per-asset textures altogether (<a class="x" href="../texturing/index.html#reuse">unique, tiling and trim sheets</a>); this unit is about the cases where each asset still has its own texels.</p></div>
+
+</section>
+<section class="chapter" id="batching" data-title="What a shared texture actually saves" data-builds="reading-a-frame#drawcalls atlas-array#options" data-summary="With SRP Batcher sharing saves little; with static batching or merged meshes one material = one draw; instancing groups by mesh + material; Nanite by material.">
+  <div class="head"><div class="num"></div><h2>What a shared texture actually saves</h2></div>
+
+  <div class="prose">
+    <p>The usual reason for an atlas or array is draw calls: one material instead of many. Whether that saves anything depends on how the engine batches:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>A draw is cheap; changing shader, textures and constants before it costs CPU time. Batching sorts by state, keeps material data on the GPU (SRP Batcher), or instances one mesh with one material.</p></div><a class="x refto" href="../reading-a-frame/index.html#drawcalls">Open the full explanation</a></aside>
+  <div class="fx" data-fx="batch"></div>
+  <div class="prose">
+    <ul>
+      <li><b>Persistent material data</b> (Unity's SRP Batcher, similar systems elsewhere) already makes switching between materials of the same shader cheap; each object is still its own draw. Sharing textures saves little CPU time here.</li>
+      <li><b>Static batching and mesh merging</b> combine different meshes into one draw per material. Here one shared material pays fully: forty props with forty materials become forty merged draws, with one atlas or array they become one.</li>
+      <li><b>Instancing</b> (GPU instancing, Unity's GPU Resident Drawer, Unreal's instanced static meshes) groups by mesh and material. Different meshes stay different draws whatever the textures; a shared array helps when one mesh has several texture variants, picked per instance.</li>
+      <li><b>Nanite</b> draws by material: fewer materials mean fewer material passes.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="atlas" data-title="Atlases: padding, mips and tiling" data-builds="texturing#padding atlas-array#options texture-bombing#derivs" data-summary="Clean mips = ⌊log₂ p⌋ + 1; padding share = 1 − (t − 2p)²/t²; tiling inside a rectangle needs frac() and SampleGrad; one streaming unit for all its assets.">
+  <div class="head"><div class="num"></div><h2>Atlases: padding, mips and tiling</h2></div>
+
+  <div class="prose">
+    <p>An atlas packs the textures of several assets into rectangles of one texture, and each asset's UVs are remapped into its rectangle. Three costs come with it. Neighbouring rectangles bleed into each other in the small mips, because a mip texel averages texels across the rectangle borders; padding pushes that down, but only to a point:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Padding: at mip k a texel covers 2ᵏ texels, so p texels of padding keep the edges clean down to mip log₂ p.</p></div><a class="x refto" href="../texturing/index.html#padding">Open the full explanation</a></aside>
+  <div class="fx" data-fx="atlasmip"></div>
+  <div class="prose">
+    <p>Second, the hardware wrap mode works on the whole atlas, not on a rectangle: a texture that tiles cannot repeat inside its rectangle unless the shader wraps the UV itself, and that wrap is a jump that needs explicit gradients (<a href="../texture-bombing/index.html#derivs">gradients at cell borders</a>):</p>
+  </div>
+  <pre class="code" data-lang="hlsl">// Tiling inside an atlas rectangle: wrap in the shader, and keep the derivatives of the
+// continuous UV so the mip does not jump at the wrap (otherwise: a line at every tile border).
+float4 SampleAtlasTiled(Texture2D atlas, SamplerState s, float2 uv, float4 rect, float inset)
+{
+    // rect.xy = rectangle origin, rect.zw = rectangle size (both 0..1); inset in UV keeps bilinear
+    // filtering inside the padding
+    float2 dx = ddx(uv) * rect.zw, dy = ddy(uv) * rect.zw;
+    float2 local = frac(uv) * (rect.zw - 2 * inset) + inset;
+    return atlas.SampleGrad(s, rect.xy + local, dx, dy);
+}</pre>
+  <div class="prose"><p>Third, an atlas is one texture for streaming and memory: it is loaded at the resolution its closest user needs, for all assets on it. Pack assets that appear together (one room, one kit, one level area), not assets that only share a shader.</p></div>
+
+</section>
+<section class="chapter" id="array" data-title="Texture arrays" data-builds="atlas-array#options textures-sampling#mips" data-summary="Same size/format/mips, slice index per vertex, instance or material; no bleeding, wrap per slice, up to 2048 slices; resident as a whole (Unity: no mip streaming for arrays).">
+  <div class="head"><div class="num"></div><h2>Texture arrays</h2></div>
+
+  <div class="prose">
+    <p>A texture array is a stack of textures of identical size, format and mip count, bound as one resource. The shader samples it with a third coordinate, the slice index, which can come from a vertex channel, a per-instance property, a material constant or a mask. Each slice has its own mip chain and its own wrap, so there is no bleeding and tiling works as usual. Arrays hold up to 2048 slices on desktop APIs (D3D11 and D3D12). Their limits are different from an atlas's:</p>
+  </div>
+  <div class="fx" data-fx="arraymem"></div>
+  <div class="prose">
+    <ul>
+      <li>All slices must match: a 4K hero texture cannot sit in an array of 1K slices, and a BC5 normal map cannot share an array with BC7 colours (use one array per map type).</li>
+      <li>The array is one resource. Unity's mipmap streaming does not support texture arrays at all, so the whole array is resident at full resolution; group slices by where they are used.</li>
+      <li>Shaders must be written for arrays (<code>Texture2DArray</code>, <code>SAMPLE_TEXTURE2D_ARRAY</code>); a slice index from interpolated data must be rounded and constant across a triangle.</li>
+    </ul>
+    <p>The foliage unit has an editor script that builds an array from same-size textures (<a class="x" href="../foliage-cards/index.html#implement">TextureArrayBuilder</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="unique" data-title="When unique textures win" data-builds="texture-memory#streaming atlas-array#batching" data-summary="Unique textures stream individually, can differ in size and format, never bleed; modern batching shrinks their CPU cost; atlases/arrays for merging, variants, draw-bound platforms.">
+  <div class="head"><div class="num"></div><h2>When unique textures win</h2></div>
+
+  <div class="prose">
+    <p>Separate textures are the default for good reasons. Streaming works per texture, so memory follows what is near the camera; each texture can have its own size, format and compression settings; and nothing bleeds:</p>
+  </div>
+  <div class="fx" data-fx="stream"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Texture streaming keeps only the mips the camera needs inside a fixed memory pool; virtual texturing goes further and streams fixed-size tiles of each mip.</p></div><a class="x refto" href="../texture-memory/index.html#streaming">Open the full explanation</a></aside>
+  <div class="prose"><p>With modern batching (persistent material data, GPU-driven rendering) the CPU cost of many materials has shrunk, which moves the balance further toward unique textures for anything that is large or seen up close. Atlases and arrays remain the right tool where meshes are merged, where one mesh needs many variants, and on platforms where every draw still counts.</p></div>
+
+</section>
+<section class="chapter" id="bindless" data-title="Bindless and virtual textures" data-builds="atlas-array#options texture-memory#streaming" data-summary="Bindless: textures by index from a global table (Doom Eternal), material switches shrink; virtual texturing: an automatic, streamed atlas of pages with an extra lookup.">
+  <div class="head"><div class="num"></div><h2>Bindless and virtual textures</h2></div>
+
+  <div class="prose">
+    <p>Two newer techniques remove part of the problem. With <em>bindless</em> resources the shader reads textures from one global table by index, so a draw no longer has to bind its textures and the material switch between draws shrinks to a different index. id Software's Doom Eternal keeps such a global texture descriptor list and updates it as textures stream in and out; its GPU-driven batching relies on it. Engines expose bindless to different degrees, so check the target platforms and engine version.</p>
+    <p><em>Virtual texturing</em> treats many textures (or one enormous one) as a single address space split into small pages; a page table maps the pages that are needed into a physical cache texture. It works like an automatic atlas that streams only the visible pages at the needed mip, at the cost of an extra lookup per sample and pages that occasionally arrive late. Unreal has streaming and runtime virtual textures; HDRP has streaming virtual texturing through Shader Graph's <em>Sample Virtual Texture</em> node.</p>
+  </div>
+
+</section>
+<section class="chapter" id="decide" data-title="Which one wins" data-builds="atlas-array#batching atlas-array#atlas atlas-array#array atlas-array#unique" data-summary="Unique for heroes and close-ups; atlas for merged small props and UI; array for layers, variants per instance and tiling sets; never atlas tiling textures.">
+  <div class="head"><div class="num"></div><h2>Which one wins</h2></div>
+
+  <div class="prose"><p>A starting point for each common case:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Case</th><th>Usually wins</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Hero props, characters, anything seen up close</td><td>Unique</td><td>Streams by distance, no size constraints, no bleeding</td></tr>
+      <tr><td>Many small props merged into one mesh or static batch</td><td>Atlas</td><td>One material means one merged draw; the props are small, so the lost small mips do not matter</td></tr>
+      <tr><td>Terrain layers, material layers, many variants of one shader</td><td>Array</td><td>One material, full resolution per layer, wrap works per slice</td></tr>
+      <tr><td>One mesh with several texture variants (crates, signs, clutter) drawn instanced</td><td>Array with a per-instance slice index</td><td>Instancing needs one material; the index picks the variant</td></tr>
+      <tr><td>Tiling surfaces</td><td>Separate tiling textures or an array, never an atlas</td><td>An atlas rectangle cannot wrap without shader work and seams</td></tr>
+      <tr><td>Foliage</td><td>Per-species atlas, arrays for grass</td><td><a class="x" href="../foliage-cards/index.html#atlas">Foliage atlases</a></td></tr>
+      <tr><td>UI, sprites, fonts</td><td>Atlas</td><td>2D batching; no mips needed or tiles rendered at fixed size</td></tr>
+    </tbody>
+  </table></div>
+  <details class="check"><summary></summary><script type="application/json">[["Forty small props, each with a 512 px texture set, are merged into one static mesh per room. What reduces their draws to one?", ["Keep separate materials", "Pack their textures into one atlas (or array) so the merged mesh has one material", "Use bigger textures", "Turn on mip streaming"], 1, "Merged meshes produce one draw per material."], ["A stone wall material must tile across large walls and belongs to a set of eight wall materials sharing one shader. Atlas or array?", ["Atlas, because it saves draws", "Array, because each slice keeps its own wrap; an atlas rectangle cannot tile without shader work and seams", "Neither works", "Unique textures cannot tile"], 1, "Arrays wrap per slice."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Frame Debugger first; AtlasBaker.cs for merged props (Base Color and Mask, remapped UVs, one material); normals from source; texture arrays for variants; AtlasTile.hlsl with SampleGrad.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The route bakes an atlas for a set of small props that will be merged or statically batched, adds tiling inside an atlas rectangle for the rare case that needs it, and points to the texture-array builder for variants and layers. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>AtlasBaker.cs: Base Color and Mask atlases, remapped meshes, one material.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>AtlasTile.hlsl: tiling inside an atlas rectangle with explicit gradients.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>TextureArrayBuilder.cs from the foliage unit for arrays.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Frame Debugger: draws and batches before and after.</span></div></div>
+<ol class="impl-steps"><li><div>Measure first: open <em>Window &gt; Analysis &gt; Frame Debugger</em> in the view where the props are and count their draws and SRP Batcher batches. If they are already batched per shader and the scene is not CPU-bound, an atlas will not change much (<a href="#batching">what sharing saves</a>).</div></li><li><div>Atlas for merged or statically batched props: put <code>AtlasBaker.cs</code> in <code>Assets/Editor</code>, select the props (HDRP/Lit materials, unique UVs inside 0–1) and run <em>Tools &gt; Optimization &gt; Bake Atlas</em>. It writes the atlases, remapped mesh copies and one material to <code>Assets/Atlases</code> and assigns them with Undo. Then mark the props <em>Static &gt; Batching Static</em> or merge them.</div></li><li><div>Normal maps: the tool prints each material's rectangle; pack the normal maps from their source files into the same rectangles in your texture tool, then assign the result as the shared material's normal map. Alternatively keep separate normal textures by using a texture array for the set.</div></li><li><div>Texture arrays for variants of one mesh or for material layers: build the array with <a class="x" href="../foliage-cards/index.html#implement">TextureArrayBuilder.cs</a> and sample it with a <em>Sample Texture 2D Array</em> node. Drive the slice index from a vertex colour or UV channel (one material for all variants, so batching and instancing keep working), rounded with <em>Round</em> so it is constant across each triangle.</div></li><li><div>Tiling inside an atlas (avoid where possible): In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>AtlasTile.hlsl</code> and <em>Name</em> to <code>AtlasTile</code> (without the <code>_float</code> suffix). Add the inputs <b>Atlas (Texture2D), UV (Vector 2), Rect (Vector 4), Inset (Float)</b> and the outputs <b>Color (Vector 4)</b>, in that order and with those types: they must match the function's parameters. Set the atlas texture's Wrap Mode to Clamp.</div></li><li><div>Check the result in the Frame Debugger again, and the memory in the Memory Profiler: atlases and arrays are resident as a whole.</div></li></ol>
+<div class="files"><div class="file" data-name="AtlasBaker.cs" data-lang="cs"><pre>// Assets/Editor/AtlasBaker.cs
+// Select prefabs or scene objects whose renderers use HDRP/Lit with unique (0..1) UVs,
+// then Tools &gt; Optimization &gt; Bake Atlas. It packs their Base Color and Mask maps into one atlas
+// each, remaps UV0 of copies of their meshes into the atlas rectangles, and creates one shared
+// material. Normal maps are listed but not packed: pack them from their source files with the
+// printed rectangles, or use a texture array, which keeps BC5 data untouched.
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+public static class AtlasBaker
+{
+    const int MaxSize = 4096, Padding = 8;
+    const string Out = &quot;Assets/Atlases&quot;;
+
+    [MenuItem(&quot;Tools/Optimization/Bake Atlas&quot;)]
+    static void Bake()
+    {
+        var renderers = Selection.GetFiltered&lt;MeshRenderer&gt;(SelectionMode.Deep)
+            .Where(r =&gt; r.sharedMaterial &amp;&amp; r.sharedMaterial.HasProperty(&quot;_BaseColorMap&quot;) &amp;&amp; r.sharedMaterial.GetTexture(&quot;_BaseColorMap&quot;)).ToList();
+        var mats = renderers.Select(r =&gt; r.sharedMaterial).Distinct().ToList();
+        if (mats.Count &lt; 2) { Debug.LogError(&quot;Bake Atlas: select objects with at least two different Lit materials.&quot;); return; }
+        foreach (var r in renderers)
+        {
+            var uv = new List&lt;Vector2&gt;(); r.GetComponent&lt;MeshFilter&gt;().sharedMesh.GetUVs(0, uv);
+            if (uv.Any(u =&gt; u.x &lt; -0.001f || u.y &lt; -0.001f || u.x &gt; 1.001f || u.y &gt; 1.001f))
+            { Debug.LogError($&quot;{r.name}: UV0 leaves 0..1 (tiling). Tiling textures cannot go into an atlas.&quot;); return; }
+        }
+        Directory.CreateDirectory(Out);
+
+        // layout from the base colour maps
+        var bases = mats.Select(m =&gt; Readable((Texture2D)m.GetTexture(&quot;_BaseColorMap&quot;), -1, -1, true)).ToArray();
+        var layout = new Texture2D(8, 8);
+        Rect[] rects = layout.PackTextures(bases, Padding, MaxSize, false);
+        int W = layout.width, H = layout.height;
+
+        Texture2D Build(string prop, bool srgb, Color fill)
+        {
+            var atlas = new Texture2D(W, H, TextureFormat.RGBA32, false, !srgb);
+            var px = Enumerable.Repeat((Color32)fill, W * H).ToArray();
+            for (int i = 0; i &lt; mats.Count; i++)
+            {
+                var src = mats[i].HasProperty(prop) ? mats[i].GetTexture(prop) as Texture2D : null;
+                int x0 = Mathf.RoundToInt(rects[i].x * W), y0 = Mathf.RoundToInt(rects[i].y * H);
+                int w = Mathf.RoundToInt(rects[i].width * W), h = Mathf.RoundToInt(rects[i].height * H);
+                var tile = src ? Readable(src, w, h, srgb).GetPixels32() : Enumerable.Repeat((Color32)fill, w * h).ToArray();
+                // copy, then extend the edges into the padding so small mips bleed less
+                for (int y = -Padding / 2; y &lt; h + Padding / 2; y++)
+                    for (int x = -Padding / 2; x &lt; w + Padding / 2; x++)
+                    {
+                        int ax = x0 + x, ay = y0 + y; if (ax &lt; 0 || ay &lt; 0 || ax &gt;= W || ay &gt;= H) continue;
+                        px[ay * W + ax] = tile[Mathf.Clamp(y, 0, h - 1) * w + Mathf.Clamp(x, 0, w - 1)];
+                    }
+            }
+            atlas.SetPixels32(px); atlas.Apply(false);
+            string path = $&quot;{Out}/Atlas{prop}.png&quot;;
+            File.WriteAllBytes(path, atlas.EncodeToPNG()); AssetDatabase.ImportAsset(path);
+            var ti = (TextureImporter)AssetImporter.GetAtPath(path); ti.sRGBTexture = srgb; ti.maxTextureSize = MaxSize; ti.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath&lt;Texture2D&gt;(path);
+        }
+        var baseAtlas = Build(&quot;_BaseColorMap&quot;, true, Color.gray);
+        var maskAtlas = Build(&quot;_MaskMap&quot;, false, new Color(0f, 1f, 1f, 0.5f));   // metallic 0, AO 1, detail 1, smoothness 0.5
+
+        var shared = new Material(mats[0]) { name = &quot;AtlasMaterial&quot; };
+        shared.SetTexture(&quot;_BaseColorMap&quot;, baseAtlas); shared.SetTexture(&quot;_MaskMap&quot;, maskAtlas); shared.SetTexture(&quot;_NormalMap&quot;, null);
+        shared.SetTextureScale(&quot;_BaseColorMap&quot;, Vector2.one); shared.SetTextureOffset(&quot;_BaseColorMap&quot;, Vector2.zero);
+        AssetDatabase.CreateAsset(shared, $&quot;{Out}/AtlasMaterial.mat&quot;);
+
+        var done = new Dictionary&lt;Mesh, Mesh&gt;();
+        foreach (var r in renderers)
+        {
+            var mf = r.GetComponent&lt;MeshFilter&gt;(); var src = mf.sharedMesh; var rect = rects[mats.IndexOf(r.sharedMaterial)];
+            if (!done.TryGetValue(src, out var dst))
+            {
+                dst = Object.Instantiate(src); dst.name = src.name + &quot;_Atlas&quot;;
+                var uv = new List&lt;Vector2&gt;(); dst.GetUVs(0, uv);
+                for (int i = 0; i &lt; uv.Count; i++) uv[i] = rect.position + Vector2.Scale(uv[i], rect.size);
+                dst.SetUVs(0, uv);
+                AssetDatabase.CreateAsset(dst, AssetDatabase.GenerateUniqueAssetPath($&quot;{Out}/{dst.name}.asset&quot;));
+                done[src] = dst;
+            }
+            Undo.RecordObject(mf, &quot;Bake atlas&quot;); mf.sharedMesh = dst;
+            Undo.RecordObject(r, &quot;Bake atlas&quot;); r.sharedMaterial = shared;
+        }
+        Debug.Log($&quot;Atlas {W} x {H}, {mats.Count} materials -&gt; 1:\n&quot; + string.Join(&quot;\n&quot;, mats.Select((m, i) =&gt;
+            $&quot;  {m.name}: rect {rects[i]}&quot; + (m.GetTexture(&quot;_NormalMap&quot;) ? $&quot;, normal map {m.GetTexture(&quot;_NormalMap&quot;).name} not packed&quot; : &quot;&quot;))));
+    }
+
+    // a readable, uncompressed copy at the given size (or the source size), without touching import settings
+    static Texture2D Readable(Texture2D src, int w, int h, bool srgb)
+    {
+        w = w &gt; 0 ? w : src.width; h = h &gt; 0 ? h : src.height;
+        var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, srgb ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear);
+        Graphics.Blit(src, rt);
+        var prev = RenderTexture.active; RenderTexture.active = rt;
+        var t = new Texture2D(w, h, TextureFormat.RGBA32, false, !srgb); t.ReadPixels(new Rect(0, 0, w, h), 0, 0); t.Apply(false);
+        RenderTexture.active = prev; RenderTexture.ReleaseTemporary(rt);
+        return t;
+    }
+}</pre></div><div class="file" data-name="AtlasTile.hlsl" data-lang="hlsl"><pre>// AtlasTile.hlsl: tiling inside an atlas rectangle, for Shader Graph (Custom Function, Type: File).
+// Rect.xy = rectangle origin, Rect.zw = rectangle size (0..1). Inset (in UV of the atlas, about
+// half a texel at the mip you care about) keeps bilinear filtering inside the padding.
+#ifndef ATLAS_ATLASTILE_INCLUDED
+#define ATLAS_ATLASTILE_INCLUDED
+
+void AtlasTile_float(UnityTexture2D Atlas, float2 UV, float4 Rect, float Inset, out float4 Color)
+{
+    float2 dx = ddx(UV) * Rect.zw, dy = ddy(UV) * Rect.zw;        // derivatives of the continuous UV
+    float2 local = frac(UV) * (Rect.zw - 2.0 * Inset) + Inset;
+    Color = SAMPLE_TEXTURE2D_GRAD(Atlas.tex, Atlas.samplerstate, Rect.xy + local, dx, dy);
+}
+#endif</pre></div></div>
+<p class="note">Mipmap streaming does not support texture arrays, and an atlas streams as one texture: keep both to what is used together. HDRP's Streaming Virtual Texturing (Shader Graph <em>Sample Virtual Texture</em>) is the alternative for very large unique sets.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: replace the property names with URP Lit's (<code>_BaseMap</code>, <code>_MetallicGlossMap</code>); the rest of the tool is identical.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Measure draws; Merge Actors with Merge Materials for atlases; Texture 2D Array with a per-instance slice index; Nanite material count; AtlasTile.ush.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal builds atlases as part of merging actors, has a Texture 2D Array asset for arrays, and with Nanite and instancing the material count is the number to watch. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Merge Actors with Merge Materials: one mesh, one atlas material.</span></div><div class="rt" data-k="asset"><b>Asset</b><span>Texture 2D Array from same-size textures.</span></div><div class="rt" data-k="ush"><b>Custom node HLSL</b><span>AtlasTile.ush: tiling inside an atlas rectangle.</span></div></div>
+<ol class="impl-steps"><li><div>Measure: <em>stat SceneRendering</em> (mesh draw calls) and <em>stat RHI</em>, or a GPU capture, in the view where the props are.</div></li><li><div>Atlas by merging: select the props and open <em>Tools &gt; Merge Actors</em>, mode <em>Merge</em>, enable <em>Merge Materials</em> (material baking) with a texture size, and merge. The result is one static mesh with one atlas material; use it for distant or static groups (HLODs are built the same way).</div></li><li><div>Texture arrays: create a <em>Texture 2D Array</em> asset (Content Browser, textures category), add same-size, same-format textures to its <em>Source Textures</em>, and sample it with a <em>Texture Sample</em> on a Texture2DArray parameter; the slice index comes from <em>PerInstanceCustomData</em>, <em>PerInstanceRandom</em> or a vertex colour channel.</div></li><li><div>Material count with Nanite: fewer distinct materials mean fewer material passes; material instances of one parent still count separately when their textures differ. Arrays let many variants share one material.</div></li><li><div>Tiling inside an atlas: a <em>Custom</em> node with <code>AtlasTile.ush</code>; set the texture's address mode to Clamp.</div></li></ol>
+<div class="files"><div class="file" data-name="AtlasTile.ush" data-lang="hlsl"><pre>// Custom node &quot;AtlasTile&quot;. Inputs: Tex (Texture Object), UV (float2), Rect (float4: origin xy, size zw),
+// Inset (float). Output Type: CMOT Float 4. Tiling inside an atlas rectangle with explicit gradients.
+float2 dx = ddx(UV) * Rect.zw, dy = ddy(UV) * Rect.zw;
+float2 local = frac(UV) * (Rect.zw - 2.0 * Inset) + Inset;
+return Texture2DSampleGrad(Tex, TexSampler, Rect.xy + local, dx, dy);</pre></div></div>
+<p class="note">Streaming and Runtime Virtual Textures are Unreal's answer for very large unique sets and for caching blended materials on large surfaces; they trade an extra page-table lookup for streaming at page granularity.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Texture2DArray.html" rel="noopener">Texture2DArray</a></span><span class="by">Unity</span><span class="why">Creating arrays, slices and their constraints.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/TextureStreaming-introduction.html" rel="noopener">Introduction to mipmap streaming</a></span><span class="by">Unity</span><span class="why">Unsupported cases, including texture arrays.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Texture2D.PackTextures.html" rel="noopener">Texture2D.PackTextures</a></span><span class="by">Unity</span><span class="why">Packing textures into an atlas and getting their rectangles.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/SRPBatcher.html" rel="noopener">Scriptable Render Pipeline Batcher</a></span><span class="by">Unity</span><span class="why">Persistent material data and batching by shader variant.</span></li><li><span><span class="kind">Talk</span><a href="https://advances.realtimerendering.com/s2020/RenderingDoomEternal.pdf" rel="noopener">Rendering the Hellscape of Doom Eternal</a></span><span class="by">Jean Geffroy, Yixin Wang, Axel Gneiting · SIGGRAPH 2020</span><span class="why">Bindless resources and a global texture descriptor list kept in sync with streaming.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/merging-actors-in-unreal-engine" rel="noopener">Merging actors</a></span><span class="by">Epic Games</span><span class="why">Merging meshes and baking their materials into one atlas material.</span></li><li><span><span class="kind">Book</span><a href="https://developer.nvidia.com/gpugems/gpugems/part-iii-materials/chapter-20-texture-bombing" rel="noopener">Texture Bombing (GPU Gems, chapter 20)</a></span><span class="by">NVIDIA · 2004</span><span class="why">Atlas borders and clamping for mipmapped sub-images.</span></li></ul>
+</section>
+
+<div class="next" data-next="layered-tiling texture-bombing"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"atlas": [
+"Texture atlas",
+"One texture holding several assets' textures in rectangles.",
+"#atlas"
+],
+"array": [
+"Texture array",
+"A stack of same-size, same-format textures sampled with a slice index.",
+"#array"
+],
+"slice": [
+"Slice",
+"One layer of a texture array.",
+"#array"
+],
+"bindless": [
+"Bindless",
+"Shaders read textures by index from a global table instead of per-draw bindings.",
+"#bindless"
+],
+"vt": [
+"Virtual texturing",
+"Textures split into pages streamed into a cache, found through a page table.",
+"#bindless"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="atlas.js?v=9c0e9a40"></script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bevels and Custom Normals · Tech Art Atlas</title>
+<meta name="description" content="Why sharp edges look wrong, three ways to round an edge, what chamfers really cost in vertices, face-weighted normals and the mid-poly workflow, baking bevels into normal maps, transferring normals from proxies, and what destroys custom normals, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="bevels-normals" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Bevels and Custom Normals</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 9 chapters</div>
+  <h1>Bevels and Custom Normals</h1>
+  <p class="lede">Why sharp edges look wrong, three ways to round an edge, what chamfers really cost in vertices, face-weighted normals and the mid-poly workflow, baking bevels into normal maps, transferring normals from proxies, and what destroys custom normals, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Texturing a Game Asset and Mesh Optimization. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/bevels-normals.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>Two crates: hard edges on the left, one chamfer with weighted normals on the right.</figcaption></figure>
+</div>
+<div class="needs" data-needs="texturing#splits texturing#baking"></div>
+
+<section class="chapter" id="edges" data-title="Why perfectly sharp edges look wrong" data-builds="reading-a-frame#lods" data-summary="Real edges are rounded and catch highlights; on screen a 90° bevel is ≈ r · √2 · pixels per metre wide; under 1 px it aliases.">
+  <div class="head"><div class="num"></div><h2>Why perfectly sharp edges look wrong</h2></div>
+
+  <div class="prose">
+    <p>No manufactured edge is perfectly sharp. Even a machined metal edge has a radius of a fraction of a millimetre, and wood, stone and painted surfaces have much rounder ones. That rounded zone faces many directions at once, so it catches a highlight from almost any light: the thin bright line that makes an edge read as real. A mesh with a 90° hard edge has no such zone; its two faces meet with nothing in between, and the edge looks cut out of paper. Whether a bevel is worth anything depends on how wide it is on screen:</p>
+  </div>
+  <div class="fx" data-fx="highlight"></div>
+  <div class="prose"><p>Under a pixel, a bevel cannot hold a highlight; it only aliases. At one to a few pixels it reads as the thin line players expect. Wider than that, its shape (round, flat chamfer, worn) becomes visible and should be modelled or baked with care. The size that matters is the one at the distance where the asset is usually seen, and for each LOD at its switch distance.</p></div>
+
+</section>
+<section class="chapter" id="options" data-title="Three ways to round an edge" data-builds="bevels-normals#edges texturing#reuse texturing#baking" data-summary="Geometry (rounded silhouette, triangles), baked normal map (unique texels), trim strip (shared), shader (pixel cost, rare).">
+  <div class="head"><div class="num"></div><h2>Three ways to round an edge</h2></div>
+
+  <div class="prose"><p>A bevel can live in the geometry, in a texture or in the shader. The choice decides where the cost goes and what the rest of the pipeline must support:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Method</th><th>Silhouette</th><th>Costs</th><th>Needs</th><th>Typical use</th></tr></thead>
+    <tbody>
+      <tr><td>Modelled chamfer or bevel with weighted normals</td><td>Rounded</td><td>Triangles (often no extra vertices for one segment)</td><td>Normal editing that survives export and import</td><td>Mid-poly hard surface, modular kits with tiling materials, close-up props</td></tr>
+      <tr><td>Bevel baked into a normal map</td><td>Sharp</td><td>A unique normal map, or a trim strip</td><td>Unique UVs (or trims), enough texels per bevel</td><td>Hero props with unique textures; small bevels on large assets</td></tr>
+      <tr><td>Bevel strip on a trim sheet</td><td>Sharp</td><td>A share of a shared trim texture</td><td>Edges modelled to land on the trim's bevel strip</td><td>Architecture and kits (<a class="x" href="../texturing/index.html#reuse">trim sheets</a>)</td></tr>
+      <tr><td>Rounded edges computed in the shader</td><td>Sharp</td><td>Pixel work per frame</td><td>Edge distance data (vertex colour, SDF) or screen-space edge detection</td><td>Rare in games; offline renderers (Blender's Bevel node at render time)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Many assets mix them: modelled chamfers on the large edges that shape the silhouette, baked or trimmed bevels on small details, and none at all on edges that are always far away.</p></div>
+
+</section>
+<section class="chapter" id="chamfer" data-title="Modelled chamfers: what they cost" data-builds="bevels-normals#options texturing#splits" data-summary="Rounded box: V = 4(s+1)(s+2), T = 12 + 24s + 8s²; a one-segment chamfer has the same 24 GPU vertices as a hard box, only more triangles.">
+  <div class="head"><div class="num"></div><h2>Modelled chamfers: what they cost</h2></div>
+
+  <div class="prose">
+    <p>Adding a chamfer looks expensive, but the count that matters is GPU vertices, and a hard edge is not free either: a hard-edged box has 8 positions but 24 vertices, because each corner needs a separate normal for each of its three faces. A box with one chamfer segment on every edge and smooth normals has exactly the same 24 vertices; it only adds triangles:</p>
+  </div>
+  <div class="fx" data-fx="chamfer"></div>
+  <div class="prose">
+    <p>More segments round the edge further but add vertices and triangles quickly; one or two are typical for game assets, three or more only for large, close-up curves. The chamfer only looks right if the large faces stay flat, which depends on how the vertex normals are computed. That is the next chapter.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Hard edges and UV seams duplicate vertices; a hard edge that is not on a UV seam doubles the vertices along it for nothing.</p></div><a class="x refto" href="../texturing/index.html#splits">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="fwn" data-title="Face-weighted normals" data-builds="bevels-normals#chamfer" data-summary="n = normalize(Σ w_f · n_f); with area weights the large face stays flat and the chamfer carries the bend; Blender Weighted Normal, Max, Maya, Houdini, engine import modes.">
+  <div class="head"><div class="num"></div><h2>Face-weighted normals</h2></div>
+
+  <div class="prose">
+    <p>A smooth vertex normal is the normalised sum of the normals of the faces around it. Plain averaging gives every face the same vote, so the tiny chamfer pulls the normal of the large face's corner a quarter of the way around the edge, and the interpolated normals bend across the whole large face: it shades like a curved surface. <em>Face-weighted normals</em> (FWN) weight each face by its area (or by the angle at the vertex, or both), so the large face dominates its own corners and stays flat, and the narrow chamfer carries the entire bend:</p>
+  </div>
+  <div class="fx" data-fx="fwn"></div>
+  <div class="prose">
+    <p>Every major package can compute them:</p>
+    <ul>
+      <li><b>Blender</b>: the <em>Weighted Normal</em> modifier, with the modes <em>Face Area</em>, <em>Corner Angle</em> and <em>Face Area and Angle</em>, a <em>Weight</em> that sets how strongly larger faces win, <em>Keep Sharp</em> to respect sharp edges, and <em>Face Influence</em> to use face strength set on faces.</li>
+      <li><b>3ds Max</b>: the <em>Weighted Normals</em> modifier; <b>Maya</b>: angle- and area-weighted normals in the mesh settings and the <em>Set to Face</em> tools; <b>Houdini</b>: the Normal SOP's weighting method (by face area or vertex angle).</li>
+      <li><b>Engines</b>, when they calculate normals on import: Unity's <em>Normals Mode</em> (Area Weighted, Angle Weighted, Area And Angle Weighted) and Unreal Modeling Mode's <em>Normals</em> tool (area and angle weighting).</li>
+    </ul>
+    <p>Weighted normals make the normal map's job smaller too: a baked normal map then only adds detail instead of correcting the gradients of the low-poly shading, which also makes it compress better.</p>
+  </div>
+
+</section>
+<section class="chapter" id="midpoly" data-title="The mid-poly workflow" data-builds="bevels-normals#fwn texturing#reuse" data-summary="Chamfers + weighted normals + tiling materials/trims/decals instead of unique bakes; saves normal-map memory, costs triangles and careful LODs.">
+  <div class="head"><div class="num"></div><h2>The mid-poly workflow</h2></div>
+
+  <div class="prose">
+    <p>Chamfers plus weighted normals produce clean highlights without any baked normal map. That is the core of the <em>mid-poly</em> workflow for hard-surface assets: a moderately dense mesh, chamfered on every edge that matters, with weighted normals; surface detail from tiling materials, trim sheets and decals instead of unique bakes. id Software's Doom Eternal environment art, for example, was modelled with face-weighted normals and then surfaced with tiling materials, material blending and decals (<a href="../layered-tiling/index.html#stack">the layer stack</a>). The memory trade:</p>
+  </div>
+  <div class="fx" data-fx="midpoly"></div>
+  <div class="prose">
+    <ul>
+      <li><b>Gains</b>: no unique normal maps, UVs that can overlap and mirror freely, texel density set by the tiling material instead of the unwrap, and edits without re-baking.</li>
+      <li><b>Costs</b>: more triangles, LOD chains that must remove chamfers carefully (a collapsed chamfer leaves a smooth-shaded corner; switch the LOD's edges to hard or keep the chamfer), and wear or damage on edges must come from masks and decals, not from a bake.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="bake" data-title="Baking bevels into normal maps" data-builds="texturing#baking bevels-normals#edges" data-summary="High-poly bake or Blender Bevel node baked to a normal map; bevel texels = r · π/2 · D, divided by 2^mip at distance; under ~2 texels it vanishes.">
+  <div class="head"><div class="num"></div><h2>Baking bevels into normal maps</h2></div>
+
+  <div class="prose">
+    <p>Where the silhouette can stay sharp, a bevel can be baked. The classic route bakes it from a high-poly model with real rounded edges:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Baking casts a ray along the low-poly normal for every texel, finds the high-poly surface and stores its normal; baker and engine must share the tangent basis (MikkTSpace) and the triangulation.</p></div><a class="x refto" href="../texturing/index.html#baking">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>Without a high poly, Blender's <em>Bevel</em> shader node (Cycles only) computes rounded-edge normals by sampling the nearby surface within a radius. At render time it is expensive, so for games it is baked once: plug it into the material's normal input and bake a tangent-space normal map onto the low poly (the build chapter has a script).</p>
+    <p>A baked bevel only exists where the texture has enough texels for it, at the mip the GPU actually reads:</p>
+  </div>
+  <div class="fx" data-fx="bakedpx"></div>
+  <div class="prose"><p>Small bevels on large assets therefore vanish at a distance and are better modelled; large, soft bevels survive many mips and are good candidates for baking. For tiling surfaces with no unique UVs, a <em>bevel strip</em> on a trim sheet gives the same effect: model the edge so its faces land on the strip.</p></div>
+
+</section>
+<section class="chapter" id="transfer" data-title="Transferring and editing normals" data-builds="bevels-normals#fwn foliage-shading#canopy" data-summary="Copy normals from a clean proxy to fix shading around cuts and booleans; Blender Data Transfer, Houdini Attribute Transfer, Max Edit Normals; bake after transferring.">
+  <div class="head"><div class="num"></div><h2>Transferring and editing normals</h2></div>
+
+  <div class="prose">
+    <p>Normals do not have to come from the mesh they shade. Copying them from a simpler, smoother shape is the usual fix for shading artefacts around cuts and booleans: a cylinder with holes punched into it gets messy gradients around each hole, and transferring the normals of a clean cylinder onto it makes it shade like the clean one. Foliage uses the same idea with a sphere or proxy around the crown:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Canopies: normals from a sphere or a proxy shape around the crown, blended with the card normals, so the whole crown shades as one volume.</p></div><a class="x refto" href="../foliage-shading/index.html#canopy">Open the full explanation</a></aside>
+  <div class="prose">
+    <ul>
+      <li><b>Blender</b>: the <em>Data Transfer</em> modifier (Face Corner Data &gt; Custom Normals) from a proxy object, or the <em>Normal Edit</em> modifier toward a target.</li>
+      <li><b>Houdini</b>: Attribute Transfer of <code>N</code> from a proxy, or the Normal SOP; <b>Max</b>: Edit Normals; <b>Maya</b>: Transfer Attributes with normals.</li>
+    </ul>
+    <p>Transferred normals still need the triangulation and tangents to match the bake, if a normal map is baked on top: bake after the transfer, on the final normals.</p>
+  </div>
+
+</section>
+<section class="chapter" id="pitfalls" data-title="What destroys custom normals" data-builds="bevels-normals#fwn texturing#baking" data-summary="Export explicit triangulated normals; import, do not recompute; check generated LODs; high-precision tangents for large smooth faces; mirroring; bake last.">
+  <div class="head"><div class="num"></div><h2>What destroys custom normals</h2></div>
+
+  <div class="prose">
+    <p>Custom normals are fragile because every tool in the chain may recompute them:</p>
+    <ul>
+      <li><b>Export</b>: export normals explicitly (FBX: normals or smoothing groups plus tangents), triangulated, so the engine does not reinterpret the topology.</li>
+      <li><b>Import</b>: set the engine to import the normals, not calculate them (Unity: <em>Normals: Import</em>; Unreal: <em>Normal Import Method</em> Import Normals, and <em>Recompute Normals</em> off in the build settings), and to compute tangents with MikkTSpace from those normals.</li>
+      <li><b>LOD generation</b>: automatic reduction rebuilds normals from the simplified mesh; check every generated LOD, or author LODs with their own weighted normals.</li>
+      <li><b>Precision</b>: normals and tangents stored with 8 bits per component show banding on large, smooth chamfered faces; Unreal's <em>Use High Precision Tangent Basis</em> stores them with 16 bits.</li>
+      <li><b>Mirroring and negative scale</b>: flip the winding and the tangent sign; apply transforms before baking and exporting.</li>
+      <li><b>Mesh edits after the bake</b>: any change to normals after a normal map was baked breaks the match between them.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A chamfered crate shades with dark gradients across its large faces in the engine but looks right in Blender. Most likely cause?", ["The texture is too small", "The engine recalculated the normals on import instead of importing the weighted ones", "The chamfer has too few segments", "Mipmaps are disabled"], 1, "Recalculated, unweighted normals bend across the large faces."], ["A 2 mm baked bevel on a 1024 px/m asset seen from 15 m. Is it visible?", ["Yes, clearly", "Barely: it is a few texels wide at mip 0 and under one at the mip used there", "Only with anisotropic filtering", "Only in the shadow pass"], 1, "About 3 texels at mip 0; several mips down at that distance it is averaged away."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="Import normals with MikkTSpace tangents (HardSurfaceImport.cs), Area And Angle Weighted when calculating, WeightedNormals.cs for existing meshes, normal debug view, bake_bevel.py.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Unity's part is import settings that keep authored normals intact, a tool that computes area-weighted normals for meshes from sources that cannot export them, and a Blender script that bakes bevels without a high poly. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>HardSurfaceImport.cs: import normals, MikkTSpace tangents, no compression.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>WeightedNormals.cs: area-weighted normals that keep hard edges.</span></div><div class="rt" data-k="py"><b>Python script</b><span>bake_bevel.py: Bevel node baked to a tangent-space normal map in Blender.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Rendering Debugger: Material &gt; Normal (World) to inspect the result.</span></div></div>
+<ol class="impl-steps"><li><div>Export from the DCC triangulated, with normals (and smoothing groups for Max/Maya), and with the weighted normals already applied (Blender: <em>Weighted Normal</em> modifier, applied on export). Put the FBX in a folder named <code>HardSurface</code> with <code>HardSurfaceImport.cs</code> in <code>Assets/Editor</code>: the importer then keeps the normals and computes MikkTSpace tangents from them.</div></li><li><div>Where Unity should calculate normals instead (for example meshes exported without them), set <em>Normals</em> = <code>Calculate</code>, <em>Normals Mode</em> = <code>Area And Angle Weighted</em> and a <em>Smoothing Angle</em> of 45–60°. That is the importer's own face-weighted normal option.</div></li><li><div>For meshes already in the project (procedural meshes, assets from tools without weighted normals), select them and run <em>Tools &gt; Optimization &gt; Weighted Normals (Area)</em>. It writes a new mesh asset with area-weighted normals, keeps edges sharper than 60° hard, and recalculates tangents.</div></li><li><div>Inspect: <em>Window &gt; Analysis &gt; Rendering Debugger &gt; Material &gt; Material</em> = <code>Normal</code> (world space) shows whether large faces are flat (one even colour) and the chamfers carry the change. A directional light at a grazing angle shows the same in the lit view.</div></li><li><div>Baked bevels without a high poly: open the low poly in Blender, give it unique UVs, run <code>bake_bevel.py</code> with the radius you want, then use the image as the normal map (Unity uses the same OpenGL convention as Blender). Set the texture's type to <em>Normal map</em> on import.</div></li><li><div>LODs: if you generate LODs in Unity (or with a tool), run the audit on every LOD; simplified meshes often lose the weighted normals. Author the LOD normals in the DCC where it matters.</div></li></ol>
+<div class="files"><div class="file" data-name="HardSurfaceImport.cs" data-lang="cs"><pre>// Assets/Editor/HardSurfaceImport.cs
+// Import rules for meshes with authored (weighted) normals: models in any folder named &quot;HardSurface&quot;.
+using UnityEditor;
+
+public class HardSurfaceImport : AssetPostprocessor
+{
+    void OnPreprocessModel()
+    {
+        if (!assetPath.Replace(&#x27;\\&#x27;, &#x27;/&#x27;).Contains(&quot;/HardSurface/&quot;)) return;
+        var mi = (ModelImporter)assetImporter;
+        mi.importNormals = ModelImporterNormals.Import;            // keep the weighted normals from the DCC
+        mi.importTangents = ModelImporterTangents.CalculateMikk;   // same tangent basis as the bakers
+        mi.meshCompression = ModelImporterMeshCompression.Off;
+        mi.weldVertices = true;                                    // welds only vertices whose attributes all match
+        mi.optimizeMeshPolygons = true;
+        mi.optimizeMeshVertices = true;
+    }
+}</pre></div><div class="file" data-name="WeightedNormals.cs" data-lang="cs"><pre>// Assets/Editor/WeightedNormals.cs
+// Tools &gt; Optimization &gt; Weighted Normals (Area): recomputes the normals of the selected meshes,
+// weighting each face by its area. Existing hard edges are kept: across a shared position, a face
+// contributes only if its normal is within the smoothing angle of the vertex&#x27;s own faces.
+// Writes &quot;&lt;mesh&gt;_FWN.asset&quot; next to the source and assigns it with Undo.
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+public static class WeightedNormals
+{
+    const float SmoothingAngle = 60f;
+
+    [MenuItem(&quot;Tools/Optimization/Weighted Normals (Area)&quot;)]
+    static void Run()
+    {
+        foreach (var mf in Selection.GetFiltered&lt;MeshFilter&gt;(SelectionMode.Deep))
+        {
+            var src = mf.sharedMesh; if (src == null) continue;
+            var m = Object.Instantiate(src); m.name = src.name + &quot;_FWN&quot;;
+            var v = m.vertices; var tri = m.triangles; int nt = tri.Length / 3;
+
+            var fn = new Vector3[nt]; var area = new float[nt];
+            for (int t = 0; t &lt; nt; t++)
+            {
+                var c = Vector3.Cross(v[tri[3 * t + 1]] - v[tri[3 * t]], v[tri[3 * t + 2]] - v[tri[3 * t]]);
+                area[t] = c.magnitude * 0.5f;
+                fn[t] = area[t] &gt; 0f ? c / (2f * area[t]) : Vector3.zero;
+            }
+            var byPos = new Dictionary&lt;Vector3Int, List&lt;int&gt;&gt;();   // faces around each position
+            var own = new List&lt;int&gt;[v.Length];                     // faces that use each vertex
+            for (int t = 0; t &lt; nt; t++)
+                for (int k = 0; k &lt; 3; k++)
+                {
+                    int i = tri[3 * t + k];
+                    var key = Vector3Int.RoundToInt(v[i] * 10000f);
+                    if (!byPos.TryGetValue(key, out var list)) byPos[key] = list = new List&lt;int&gt;();
+                    list.Add(t);
+                    (own[i] ??= new List&lt;int&gt;()).Add(t);
+                }
+
+            float cosLimit = Mathf.Cos(SmoothingAngle * Mathf.Deg2Rad);
+            var n = new Vector3[v.Length];
+            for (int i = 0; i &lt; v.Length; i++)
+            {
+                if (own[i] == null) { n[i] = Vector3.up; continue; }
+                Vector3 refN = Vector3.zero; foreach (int t in own[i]) refN += fn[t] * area[t];
+                refN.Normalize();
+                Vector3 sum = Vector3.zero;
+                foreach (int t in byPos[Vector3Int.RoundToInt(v[i] * 10000f)])
+                    if (Vector3.Dot(fn[t], refN) &gt;= cosLimit) sum += fn[t] * area[t];
+                n[i] = sum.sqrMagnitude &gt; 0f ? sum.normalized : refN;
+            }
+            m.normals = n;
+            m.RecalculateTangents();
+
+            string p = AssetDatabase.GetAssetPath(src);
+            string dir = string.IsNullOrEmpty(p) ? &quot;Assets&quot; : Path.GetDirectoryName(p).Replace(&#x27;\\&#x27;, &#x27;/&#x27;);
+            string path = AssetDatabase.GenerateUniqueAssetPath($&quot;{dir}/{m.name}.asset&quot;);
+            AssetDatabase.CreateAsset(m, path);
+            Undo.RecordObject(mf, &quot;Weighted normals&quot;); mf.sharedMesh = m;
+            Debug.Log($&quot;Weighted normals: {path}&quot;);
+        }
+    }
+}</pre></div><div class="file" data-name="bake_bevel.py" data-lang="py"><pre># bake_bevel.py (Blender): bake rounded-edge normals from the Bevel shader node into a
+# tangent-space normal map. Select the low-poly object (unique, non-overlapping UVs), set the
+# values below and run it. It adds nodes to the object&#x27;s materials: undo (Ctrl+Z) after the bake,
+# or work on a copy.
+import bpy
+
+RADIUS = 0.004      # metres: the rounding to fake
+SAMPLES = 16        # Bevel node samples
+SIZE = 2048
+
+obj = bpy.context.active_object
+scene = bpy.context.scene
+scene.render.engine = &#x27;CYCLES&#x27;          # the Bevel node only works in Cycles
+scene.cycles.samples = 16
+
+img = bpy.data.images.new(obj.name + &quot;_bevelN&quot;, SIZE, SIZE, alpha=False)
+img.colorspace_settings.name = &#x27;Non-Color&#x27;
+
+for slot in obj.material_slots:
+    mat = slot.material
+    if mat is None or not mat.use_nodes:
+        continue
+    nt = mat.node_tree
+    bsdf = next((n for n in nt.nodes if n.type == &#x27;BSDF_PRINCIPLED&#x27;), None)
+    if bsdf is None:
+        continue
+    bevel = nt.nodes.new(&#x27;ShaderNodeBevel&#x27;)
+    bevel.samples = SAMPLES
+    bevel.inputs[&#x27;Radius&#x27;].default_value = RADIUS
+    old = [l for l in nt.links if l.to_socket == bsdf.inputs[&#x27;Normal&#x27;]]
+    if old:                                  # keep an existing normal map underneath the bevel
+        nt.links.new(old[0].from_socket, bevel.inputs[&#x27;Normal&#x27;])
+    nt.links.new(bevel.outputs[&#x27;Normal&#x27;], bsdf.inputs[&#x27;Normal&#x27;])
+    target = nt.nodes.new(&#x27;ShaderNodeTexImage&#x27;)
+    target.image = img
+    nt.nodes.active = target                 # the active image node is the bake target
+
+bpy.ops.object.bake(type=&#x27;NORMAL&#x27;, normal_space=&#x27;TANGENT&#x27;, margin=16)
+img.filepath_raw = bpy.path.abspath(&quot;//&quot; + img.name + &quot;.png&quot;)
+img.file_format = &#x27;PNG&#x27;
+img.save()
+print(&quot;Saved&quot;, img.filepath_raw, &quot;- OpenGL convention (Y+): fine for Unity; flip green for Unreal&quot;)</pre></div></div>
+<p class="note">Bake a normal map only after the normals are final: any later change to the normals breaks the match between the mesh and its bake.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical import settings and scripts; the Rendering Debugger has the same normal view.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Import Normals, Recompute Normals off, MikkTSpace, High Precision Tangent Basis, Modeling Mode Normals tool, World Normal view, Flip Green for Blender bakes.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>In Unreal the import options and the static mesh build settings decide whether authored normals survive; Modeling Mode can also recompute them with area and angle weighting inside the editor. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>FBX import: Normal Import Method; build settings: Recompute Normals off.</span></div><div class="rt" data-k="py"><b>Python script</b><span>keep_authored_normals.py: build settings for a whole selection.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Modeling Mode: Attribs &gt; Normals with area and angle weighting.</span></div></div>
+<ol class="impl-steps"><li><div>Import the FBX with <em>Normal Import Method</em> = <code>Import Normals</code> (tangents computed from them) or <code>Import Normals and Tangents</code> if the bake used exported tangents. Leave <em>Compute Weighted Normals</em> off when the file already has them.</div></li><li><div>In the Static Mesh Editor, <em>LOD0 &gt; Build Settings</em>: <em>Recompute Normals</em> off, <em>Recompute Tangents</em> on, <em>Use MikkTSpace</em> on, and <em>Use High Precision Tangent Basis</em> on for large chamfered faces, where 8-bit tangents show banding. <code>keep_authored_normals.py</code> applies this to every LOD of the selected meshes.</div></li><li><div>Without a DCC: <em>Modeling Mode &gt; Attribs &gt; Normals</em> recomputes normals in the editor; enable area and angle weighting and split by angle to keep sharp edges.</div></li><li><div>Inspect with the <em>Buffer Visualization &gt; World Normal</em> view, and a light at a grazing angle in the lit view.</div></li><li><div>Baked bevels from Blender (<a href="#implement">bake_bevel.py</a>) are OpenGL convention: tick <em>Flip Green Channel</em> on the texture in Unreal.</div></li><li><div>Generated LODs: the reduction settings recompute normals; check them, or import authored LODs.</div></li></ol>
+<div class="files"><div class="file" data-name="keep_authored_normals.py" data-lang="py"><pre># keep_authored_normals.py: select static meshes in the Content Browser, then run it.
+# Turns off normal recomputation on every LOD and stores tangents at 16 bits.
+import unreal
+
+sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+for mesh in unreal.EditorUtilityLibrary.get_selected_assets():
+    if not isinstance(mesh, unreal.StaticMesh):
+        continue
+    for lod in range(sub.get_lod_count(mesh)):
+        s = sub.get_lod_build_settings(mesh, lod)
+        s.set_editor_property(&quot;recompute_normals&quot;, False)          # keep the imported weighted normals
+        s.set_editor_property(&quot;recompute_tangents&quot;, True)          # tangents from those normals
+        s.set_editor_property(&quot;use_mikk_t_space&quot;, True)
+        s.set_editor_property(&quot;use_high_precision_tangent_basis&quot;, True)
+        sub.set_lod_build_settings(mesh, lod, s)
+    unreal.log(f&quot;{mesh.get_name()}: authored normals kept on {sub.get_lod_count(mesh)} LODs&quot;)</pre></div></div>
+<p class="note">Nanite builds its own representation from the imported normals and keeps them; the Nanite fallback mesh follows the same build settings as LOD0.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.blender.org/manual/en/latest/modeling/modifiers/normals/weighted_normal.html" rel="noopener">Weighted Normal Modifier</a></span><span class="by">Blender</span><span class="why">Face Area, Corner Angle and combined weighting, Weight, Keep Sharp, Face Influence.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.blender.org/manual/en/latest/render/shader_nodes/input/bevel.html" rel="noopener">Bevel Node</a></span><span class="by">Blender</span><span class="why">Rounded-edge normals at render time in Cycles; baked to a normal map for games.</span></li><li><span><span class="kind">Portfolio</span><a href="https://felixleyendecker.artstation.com/projects/Ye8o4d" rel="noopener">Doom Eternal: surfacing</a></span><span class="by">Felix Leyendecker</span><span class="why">Base geometry with face-weighted normals, then geo decals, material blending and projected decals.</span></li><li><span><span class="kind">Forum</span><a href="https://polycount.com/discussion/comment/1688746" rel="noopener">Discuss face weighted normals</a></span><span class="by">Polycount</span><span class="why">Practitioners on FWN: vertex counts, chamfers, export pitfalls and when a bake is still needed.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/ModelImporter-normalCalculationMode.html" rel="noopener">ModelImporter.normalCalculationMode</a></span><span class="by">Unity</span><span class="why">Area- and angle-weighted normals when Unity calculates them on import.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/unreal-engine/modeling-tools-in-unreal-engine" rel="noopener">Modeling tools in Unreal Engine</a></span><span class="by">Epic Games</span><span class="why">The Normals tool and the other attribute tools of Modeling Mode.</span></li><li><span><span class="kind">Spec</span><a href="http://www.mikktspace.com/" rel="noopener">MikkTSpace</a></span><span class="by">Morten S. Mikkelsen</span><span class="why">The tangent basis shared by bakers and engines.</span></li></ul>
+</section>
+
+<div class="next" data-next="uv-cost layered-tiling"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"chamfer": [
+"Chamfer",
+"A flat cut across an edge; with more segments it becomes a rounded bevel.",
+"#chamfer"
+],
+"fwn": [
+"Face-weighted normals (FWN)",
+"Vertex normals averaged with weights by face area and/or corner angle, so large faces stay flat.",
+"#fwn"
+],
+"midpoly": [
+"Mid-poly",
+"Hard-surface assets with chamfers and weighted normals, textured with tiling materials instead of unique bakes.",
+"#midpoly"
+],
+"bevelnode": [
+"Bevel node",
+"Blender (Cycles) shader node that computes rounded-edge normals within a radius at render time.",
+"#bake"
+],
+"transfer": [
+"Normal transfer",
+"Copying normals from a proxy shape onto a mesh to control its shading.",
+"#transfer"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="normals.js?v=2374acef"></script>
+</body>
+</html>

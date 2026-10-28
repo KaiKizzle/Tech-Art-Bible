@@ -110,12 +110,13 @@
   <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Shadow cost: draws ≈ casters × (cascades + spot lights + 6 · point lights).</p></div><a class="x refto" href="../shadow-maps/index.html#cost">Open the full explanation</a></aside>
 
 </section>
-<section class="chapter" id="atlas" data-title="One atlas per species or shared atlases" data-builds="texturing#reuse texture-memory#cost" data-summary="Per-species atlases: simple, more materials; shared atlases: fewer batches, lower density; texture arrays: one material at full resolution.">
+<section class="chapter" id="atlas" data-title="One atlas per species or shared atlases" data-builds="texturing#reuse texture-memory#cost atlas-array#batching" data-summary="Per-species atlases: simple, more materials; shared atlases: fewer batches, lower density; texture arrays: one material at full resolution.">
   <div class="head"><div class="num"></div><h2>One atlas per species or shared atlases</h2></div>
 
   <div class="prose">
     <p>Each distinct material is at least one more batch per LOD (<a class="x" href="../foliage-lods/index.html#count">batches</a>), so foliage texture layout is a draw-call decision as much as a memory one:</p>
   </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Unique textures, atlases and texture arrays in general: what one shared material saves depends on the batching (SRP Batcher, static batching, instancing); arrays need matching size and format and stay resident as a whole.</p></div><a class="x refto" href="../atlas-array/index.html#batching">Open the full explanation</a></aside>
   <div class="fx" data-fx="atlas"></div>
   
   <div class="tbl-wrap"><table class="tbl">
@@ -225,8 +226,8 @@ public static class TextureArrayBuilder
 </main>
 </div>
 </div>
-<script src="../../assets/catalog.js?v=09bdab48"></script>
-<script src="../../assets/index.js?v=1a90c552"></script>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
 <script src="../../assets/atlas.js?v=110a7572"></script>
 <script src="../../assets/site.js?v=43b0b305"></script>
 <script src="cards.js?v=c7366ace"></script>

@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mesh Optimization: Hidden Faces and Vertex Counts · Tech Art Atlas</title>
+<meta name="description" content="What a mesh costs on the GPU, deleting faces nobody sees by hand and by visibility tests, putting vertices on the silhouette, modelling rules that save vertices, triangulation and thin triangles, and vertex cache order, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="mesh-optimization" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Mesh Optimization: Hidden Faces and Vertex Counts</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 8 chapters</div>
+  <h1>Mesh Optimization: Hidden Faces and Vertex Counts</h1>
+  <p class="lede">What a mesh costs on the GPU, deleting faces nobody sees by hand and by visibility tests, putting vertices on the silhouette, modelling rules that save vertices, triangulation and thin triangles, and vertex cache order, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Buffers and Render Targets, Texturing a Game Asset and Frame Profiling. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/mesh-optimization.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A modular wall kit: the faces that stay, and the hidden ones removed in red.</figcaption></figure>
+</div>
+<div class="needs" data-needs="buffers#vertex-index texturing#splits reading-a-frame#quads"></div>
+
+<section class="chapter" id="cost" data-title="What a mesh costs on the GPU" data-builds="buffers#vertex-index texturing#splits reading-a-frame#quads" data-summary="GPU vertices ≈ T/2 · (1 + split share); memory = vertices · stride; vertex shader runs ≈ T · ACMR per pass.">
+  <div class="head"><div class="num"></div><h2>What a mesh costs on the GPU</h2></div>
+
+  <div class="prose">
+    <p>A mesh costs in four places. <em>Memory</em>: every GPU vertex stores its position, normal, tangent, UVs and colour. <em>Vertex work</em>: the vertex shader runs once per vertex that is not still in the vertex cache, in every pass that draws the mesh (main view, depth prepass, each shadow cascade). <em>Triangle setup</em>: every triangle is assembled, clipped and culled, even if it ends up facing away. <em>Pixels</em>: the triangles that survive are rasterised in 2 × 2 quads.</p>
+    <p>The vertex count the GPU sees is not the one the modelling tool shows. A closed mesh has roughly half as many positions as triangles, and every UV seam, hard edge and material border duplicates the vertices along it:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>A GPU vertex has exactly one position, one normal and one UV per channel; seams and hard edges duplicate it. 30–50 % more vertices than positions is normal for an unwrapped game mesh.</p></div><a class="x refto" href="../texturing/index.html#splits">Open the full explanation</a></aside>
+  <div class="fx" data-fx="meshcost"></div>
+  <div class="prose">
+    <p>Which of the four limits a scene depends on the platform and the view. Dense meshes far away waste pixel work in partly covered quads (<a class="x" href="../reading-a-frame/index.html#quads">quads and tiny triangles</a>); many mid-density meshes in shadow cascades make the vertex stage the bottleneck; a large open world runs out of memory first. The rest of this unit removes work in that order: faces that are never seen, vertices that do not change the outline, triangles that shade badly, and an index order that reshades the same vertices.</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>A mesh is a vertex buffer (each corner once, with all its data) and an index buffer (three indices per triangle). The vertex shader runs per vertex it reads, with a cache for repeated indices.</p></div><a class="x refto" href="../buffers/index.html#vertex-index">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="hidden" data-title="Faces nobody sees" data-builds="mesh-optimization#cost" data-summary="Bottoms, backs, insides and faces outside a fixed camera range: saved = copies · triangles · hidden share · passes. Check placement, shadows and light leaks first.">
+  <div class="head"><div class="num"></div><h2>Faces nobody sees</h2></div>
+
+  <div class="prose">
+    <p>The cheapest triangle is the one that is not in the mesh. Every kit has faces that no camera in the game can reach:</p>
+    <ul>
+      <li>the bottom of props that always stand on the ground, and the back of wall pieces that always sit against another wall;</li>
+      <li>faces inside other pieces: the end of a pipe inside a wall, the part of a beam inside a column, the hidden half of kitbashed parts;</li>
+      <li>the inner faces of modules that are always closed off by neighbours, and the caps between modules that always touch;</li>
+      <li>in games with a fixed or limited camera (top-down, side view, racing tracks): every face that points away from the camera's range of directions.</li>
+    </ul>
+    <p>The GPU's back-face culling discards faces turned away from the camera, but only after their vertices have been shaded and the triangle has been set up, in every pass. Faces hidden behind other geometry pass that test and are rejected even later, by the depth test. Deleting them saves all of it, plus their memory:</p>
+  </div>
+  <div class="fx" data-fx="hidden"></div>
+  <div class="prose">
+    <p>Three things to check before deleting:</p>
+    <ul>
+      <li><b>Placement.</b> A modular piece that level designers can rotate or put in the open needs its back in some placements. Delete only what is hidden in every placement the kit allows, or make a closed and an open variant.</li>
+      <li><b>Shadows.</b> Shadow maps are rendered from the light, not from the camera. A wall without a back can let light through when the sun is behind it. Cast shadows two-sided from such meshes (Unity: <em>Cast Shadows: Two Sided</em>; Unreal: <em>Shadow Two Sided</em> on the mesh component) or keep a closed shadow proxy.</li>
+      <li><b>Light bakes and ray-traced lighting.</b> Lightmappers and ray-traced GI trace rays that can enter an open shell from behind and light the inside. Keep walls that separate a bright exterior from a dark interior closed, or give them thickness.</li>
+    </ul>
+  </div>
+
+</section>
+<section class="chapter" id="visibility" data-title="Removing faces by testing visibility" data-builds="mesh-optimization#hidden" data-summary="Viewpoints where the camera can be; keep a triangle if any viewpoint sees it. P(miss) = (1 − q)^k. Simplygon visibility culling, Unreal Jacket, ray-cast scripts.">
+  <div class="head"><div class="num"></div><h2>Removing faces by testing visibility</h2></div>
+
+  <div class="prose">
+    <p>For large kits, background geometry and merged distant meshes, hidden faces are found automatically: place viewpoints where the camera can be, test every triangle from every viewpoint (by ray casts or by rendering triangle IDs), and keep each triangle that at least one viewpoint sees facing it. The method is conservative only if the viewpoints cover the space: a triangle visible from a small part of it can be missed by all samples:</p>
+  </div>
+  <div class="fx" data-fx="vissample"></div>
+  <div class="prose">
+    <ul>
+      <li><b>Simplygon</b> does this in its reduction and aggregation pipelines: a <em>camera selection set</em> defines the viewpoints, and the <em>Visibility</em> settings enable back-face culling and occluded-geometry culling. When it also bakes materials, it gives the freed texture space to the triangles that remain.</li>
+      <li><b>Unreal Engine</b> has the <em>Jacket</em> tool in Modeling Mode (Mesh category), and the older jacketing in the level editor, which removes triangles that cannot be seen from any viewpoint outside the selected meshes, with a voxel precision and a maximum gap size.</li>
+      <li><b>Your own tool</b> is a short script in any package with ray casts: Unity (the build chapter has one), Blender's <code>BVHTree</code>, Houdini's Ray SOP or the VEX <code>intersect()</code> function.</li>
+    </ul>
+    <p>Visibility culling pays most where the camera is constrained: HLODs and distant LODs, which are only ever seen from far away, top-down and side-view games, racing tracks. For a free first-person camera, the hand-deleted bottoms and backs are usually most of the gain.</p>
+  </div>
+
+</section>
+<section class="chapter" id="silhouette" data-title="Vertices belong on the silhouette" data-builds="reading-a-frame#lods mesh-optimization#cost" data-summary="Sides for a round outline: n = ⌈π / acos(1 − e/R)⌉ with R the radius in pixels; detail inside the outline goes into normals and textures.">
+  <div class="head"><div class="num"></div><h2>Vertices belong on the silhouette</h2></div>
+
+  <div class="prose">
+    <p>Interpolated normals make a flat-faced cylinder look round in its interior; only its outline shows the corners. So the number of sides a round part needs is set by its size on screen: enough that the outline stays within a pixel or so of a true circle, at the closest distance the LOD is used:</p>
+  </div>
+  <div class="fx" data-fx="segments"></div>
+  <div class="prose">
+    <p>The same reasoning applies to every curve: the side of a barrel can have 12 sides at the distance where a pipe of the same radius in the background needs 6. Detail inside the outline (panel lines, rivets, small bevels) goes into normal maps, trims or decals. Detail that changes the outline (a broken edge, a dent in the silhouette) is worth modelling. Size on screen comes from the same projection as LOD switching:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Size on screen: screenHeight / (2 · d · tan(fov/2)) pixels per metre. LODs switch by screen size; aim for triangles of about 10 px or more.</p></div><a class="x refto" href="../reading-a-frame/index.html#lods">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="rules" data-title="Modelling rules that save vertices" data-builds="texturing#splits reading-a-frame#drawcalls" data-summary="Silhouette and deformation earn vertices; flat interiors, support loops, slivers and hidden faces do not. Hard edges only on seams, floaters, one material, shared meshes.">
+  <div class="head"><div class="num"></div><h2>Modelling rules that save vertices</h2></div>
+
+  <div class="prose">
+    <p>Most savings come from a few habits applied to every asset:</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Vertices pay off</th><th>Vertices are wasted</th></tr></thead>
+    <tbody>
+      <tr><td>On the silhouette, where the outline changes direction</td><td>In flat interiors that a normal map or a tiling material can shade</td></tr>
+      <tr><td>Chamfers that catch a highlight with <a href="../bevels-normals/index.html#fwn">weighted normals</a></td><td>Support loops and subdivision-ready topology left in the game mesh</td></tr>
+      <tr><td>Where the mesh deforms: joints of skinned meshes, cloth, vertex animation</td><td>Edge loops that change neither silhouette, shading, UVs nor deformation</td></tr>
+      <tr><td>Evenly spaced vertices that carry vertex paint or vertex data (<a href="../layered-tiling/index.html#masks">vertex colour masks</a>)</td><td>Detail cut into a base surface where a separate, intersecting piece (a floater) would do</td></tr>
+      <tr><td>Faces the player sees</td><td>Faces under floors, against walls or inside other pieces</td></tr>
+      <tr><td>Triangles of roughly even size on screen</td><td>Long slivers that connect distant vertices across a flat face</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <ul>
+      <li><b>Hard edges only on UV seams.</b> Both split vertices, so a hard edge on a seam is free, and a hard edge elsewhere doubles the vertices along it. Where an edge must look sharp without a seam, a chamfer with weighted normals is often cheaper than the split (<a href="../bevels-normals/index.html#chamfer">vertex cost of a chamfer</a>).</li>
+      <li><b>Floaters.</b> Bolts, vents and panels modelled as separate pieces that sit on or intersect the base surface do not force edge loops through it. They need care in normal-map bakes (bake them separately or with matching names) and slightly more draw-order care for decals.</li>
+      <li><b>One material per mesh where possible.</b> Each material is a submesh, split vertices at its border, and one more draw per pass (<a class="x" href="../reading-a-frame/index.html#drawcalls">draw calls and state</a>).</li>
+      <li><b>Share meshes.</b> Repeated modules placed as instances share one copy of their vertex data. Merging them into one unique mesh saves draws but stores every copy.</li>
+      <li><b>Vertex-painted and animated meshes are the exception.</b> Vertex colour masks and vertex animation need evenly spaced vertices, so an otherwise flat wall may need more of them. Decide that before optimising it.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A crate has hard edges on all 12 edges and UV seams on 7 of them. Which change saves vertices without changing the look much?", ["Add a support loop on every edge", "Move the hard edges onto UV seams, or replace them with small chamfers and weighted normals", "Triangulate the crate", "Add a second UV channel"], 1, "Hard edges that are not on seams split vertices for nothing; chamfers with weighted normals keep the shape without splits."], ["Two thousand copies of a wall module stand against each other in a level. Each has a back face that is never visible. What is saved by deleting it?", ["Nothing, back-face culling removes it for free", "Vertex shading, triangle setup and memory in every pass, for every copy", "Only pixel shading", "Only disk space"], 1, "Culling happens after the vertex shader and triangle setup; deletion removes the work and the data."]]</script></details>
+
+</section>
+<section class="chapter" id="triangulation" data-title="Long thin triangles and triangulation" data-builds="reading-a-frame#quads texturing#baking" data-summary="Fans and strips create slivers that cross many quads; max-area triangulation keeps shading cost flat as vertex count rises. Triangulate before export.">
+  <div class="head"><div class="num"></div><h2>Long thin triangles and triangulation</h2></div>
+
+  <div class="prose">
+    <p>The same polygon can be split into triangles in many ways, and the choice changes the shading cost. Pixels are shaded in 2 × 2 quads per triangle, so every edge that crosses a quad makes it run once for each triangle touching it. Long slivers cross many quads while covering few pixels. Emil Persson measured this on a disc split as a fan, as a strip and by <em>max area</em> (the largest triangle first, then the largest in each remaining piece): the max-area version was almost unaffected by the vertex count, the other two slowed down as it rose. The widget rasterises the three versions pixel by pixel:</p>
+  </div>
+  <div class="fx" data-fx="triang"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>GPUs shade 2 × 2 quads: partly covered quads run helper lanes whose results are thrown away, so triangles smaller than about 10 px waste most of their pixel work.</p></div><a class="x refto" href="../reading-a-frame/index.html#quads">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>In practice: triangulate in the modelling tool before export, so the engine, the baker and you see the same triangles (a different split between bake and game breaks normal maps, <a class="x" href="../texturing/index.html#baking">high-poly baking</a>); prefer triangulations that avoid slivers on large faces (Blender's <em>Beauty</em> method, Maya's and Max's edge turning); and look at the quad overdraw view on flat, dense walls and round caps, where fans are most common.</p>
+  </div>
+
+</section>
+<section class="chapter" id="order" data-title="Vertex order: cache and fetch" data-builds="buffers#vertex-index mesh-optimization#cost" data-summary="ACMR from 3 (no reuse) to ~0.5 (grid); engines reorder on import (Unity Optimize Mesh, Unreal build); meshoptimizer for custom tools; Nanite clusters.">
+  <div class="head"><div class="num"></div><h2>Vertex order: cache and fetch</h2></div>
+
+  <div class="prose">
+    <p>The GPU keeps recently shaded vertices in a small cache. If the triangles that share a vertex are drawn close together in the index buffer, the vertex is shaded once; if they are far apart, it is shaded again. The measure is the <em>ACMR</em>, the average number of cache misses per triangle: 3 means no reuse at all, 0.5 is the best possible on a regular grid:</p>
+  </div>
+  <div class="fx" data-fx="acmr"></div>
+  <div class="prose">
+    <p>Reordering is a solved problem and engines do it on import: Unity's model importer has <em>Optimize Mesh</em> (polygon and vertex order), and Unreal's static mesh build reorders triangles. The open-source <a class="x" href="https://github.com/zeux/meshoptimizer" rel="noopener">meshoptimizer</a> library runs the full pipeline for custom tools: indexing, vertex cache optimisation, optional overdraw optimisation, vertex fetch optimisation (vertices stored in the order they are used), then quantisation of the attributes. Procedural meshes built at runtime or by your own tools are the ones that miss it.</p>
+    <p>Nanite in Unreal and other cluster renderers store meshes in small clusters of triangles that are culled and rasterised as units, so cache order and small-triangle waste matter less there; memory, disk size and hidden faces still count.</p>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["A procedurally generated rock mesh has ACMR 2.4. Your import pipeline does not touch it. What does an index reorder change?", ["The triangle count", "How many times its vertices are shaded per draw, often by a factor of 2–3", "The vertex count", "The pixel cost"], 1, "Reordering keeps the same triangles and vertices; the vertex shader runs fewer times."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="MeshAudit.cs (vertices, splits, stride, ACMR, slivers), Optimize Mesh import settings, two-sided shadows, HiddenFaceCull.cs with viewpoints, cull_hidden.py for Blender.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>Three tools for the routine: an audit that reports what each mesh really costs, a visibility tool that deletes faces no viewpoint can see, and the same test as a Blender script for the modelling side. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>MeshAudit.cs: GPU vertices, split cost, stride, ACMR, slivers per mesh.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>HiddenFaceCull.cs: removes triangles that no viewpoint sees.</span></div><div class="rt" data-k="py"><b>Python script</b><span>cull_hidden.py: selects never-seen faces in Blender before export.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Model import: Optimize Mesh; Mesh Renderer: Cast Shadows Two Sided.</span></div></div>
+<ol class="impl-steps"><li><div>Put <code>MeshAudit.cs</code> and <code>HiddenFaceCull.cs</code> in <code>Assets/Editor</code>. Select a prefab or a set of mesh assets and run <em>Tools &gt; Optimization &gt; Mesh Audit</em>. Read the split cost first (more than about 50 % extra vertices means hard edges or seams to move), then slivers and ACMR (above about 1.2 on an imported mesh means the importer did not reorder it).</div></li><li><div>Import settings for every model: <em>Optimize Mesh</em> = <code>Everything</code> (polygon and vertex order), <em>Weld Vertices</em> on, <em>Mesh Compression</em> off (it only shrinks files on disk). Unused import options cost nothing, but <em>Generate Lightmap UVs</em> adds a channel and seams: enable it only where lightmaps are used (<a class="x" href="../uv-cost/index.html#seams">lightmap seams</a>).</div></li><li><div>Hidden faces by hand: in the modelling tool, delete bottoms, backs and insides that the kit's placement rules guarantee are hidden. For wall pieces that lose their back, set <em>Mesh Renderer &gt; Lighting &gt; Cast Shadows</em> to <code>Two Sided</code> so sunlight does not leak through.</div></li><li><div>Hidden faces by visibility: create an empty <em>Viewpoints</em> object with children where the camera can be (along paths, at gameplay spots), or add a <em>BoxCollider</em> (not as trigger needed) around the reachable space for random points. Give the surrounding geometry MeshColliders. Open <em>Window &gt; Optimization &gt; Hidden Face Cull</em>, pick the mesh and run it. The tool writes a new mesh asset and assigns it with Undo; compare both versions from the viewpoints before keeping it.</div></li><li><div>Prefer cleaning the source: <code>cull_hidden.py</code> does the same test in Blender with a collection named <em>Viewpoints</em> and only selects the faces, so you can review and delete them before export.</div></li><li><div>Check the result in a GPU capture (RenderDoc or PIX) of the busiest view: triangles and vertex shader invocations per pass, before and after. HDRP's <em>Rendering Debugger</em> shows per-pass timings once the profiling markers are enabled.</div></li></ol>
+<div class="files"><div class="file" data-name="MeshAudit.cs" data-lang="cs"><pre>// Assets/Editor/MeshAudit.cs
+// Select objects or mesh assets, then Tools &gt; Optimization &gt; Mesh Audit.
+// Reports GPU vertices against positions (the split cost), bytes per vertex, ACMR of the index
+// order (32-entry FIFO model), slivers and degenerate triangles. Editor scripts can read imported
+// meshes even when Read/Write is off.
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+public static class MeshAudit
+{
+    [MenuItem(&quot;Tools/Optimization/Mesh Audit&quot;)]
+    static void Run()
+    {
+        var meshes = new HashSet&lt;Mesh&gt;();
+        foreach (var o in Selection.objects)
+        {
+            if (o is Mesh m) meshes.Add(m);
+            if (o is GameObject go)
+            {
+                foreach (var mf in go.GetComponentsInChildren&lt;MeshFilter&gt;(true)) if (mf.sharedMesh) meshes.Add(mf.sharedMesh);
+                foreach (var sm in go.GetComponentsInChildren&lt;SkinnedMeshRenderer&gt;(true)) if (sm.sharedMesh) meshes.Add(sm.sharedMesh);
+            }
+        }
+        if (meshes.Count == 0) { Debug.LogWarning(&quot;Mesh Audit: select objects or meshes first.&quot;); return; }
+        var sb = new StringBuilder(&quot;Mesh Audit\n&quot;);
+        foreach (var m in meshes) Report(m, sb);
+        Debug.Log(sb.ToString());
+    }
+
+    static void Report(Mesh m, StringBuilder sb)
+    {
+        var v = m.vertices;
+        var idx = m.triangles;
+        int tris = idx.Length / 3;
+        var positions = new HashSet&lt;Vector3Int&gt;(v.Select(p =&gt; Vector3Int.RoundToInt(p * 10000f)));   // 0.1 mm grid
+        int stride = 0;
+        for (int s = 0; s &lt; m.vertexBufferCount; s++) stride += m.GetVertexBufferStride(s);
+        string attrs = string.Join(&quot;, &quot;, m.GetVertexAttributes().Select(a =&gt; $&quot;{a.attribute} {a.format}x{a.dimension}&quot;));
+
+        // ACMR: vertex shader runs per triangle with a 32-entry FIFO cache
+        var fifo = new Queue&lt;int&gt;(); var cached = new HashSet&lt;int&gt;(); int misses = 0;
+        foreach (int i in idx)
+        {
+            if (cached.Contains(i)) continue;
+            misses++; fifo.Enqueue(i); cached.Add(i);
+            if (fifo.Count &gt; 32) cached.Remove(fifo.Dequeue());
+        }
+
+        // slivers: longest edge more than 12 times the triangle&#x27;s height
+        int slivers = 0, degenerate = 0;
+        for (int t = 0; t &lt; idx.Length; t += 3)
+        {
+            Vector3 a = v[idx[t]], b = v[idx[t + 1]], c = v[idx[t + 2]];
+            float area2 = Vector3.Cross(b - a, c - a).magnitude;
+            float longest = Mathf.Max((b - a).magnitude, (c - b).magnitude, (a - c).magnitude);
+            if (area2 &lt; 1e-12f) { degenerate++; continue; }
+            if (longest * longest / area2 &gt; 12f) slivers++;
+        }
+
+        float split = positions.Count &gt; 0 ? (float)v.Length / positions.Count - 1f : 0f;
+        sb.Append($&quot;  {m.name}: {v.Length} GPU vertices for {positions.Count} positions (+{split:P0} from seams and hard edges), {tris} triangles, {m.subMeshCount} submeshes\n&quot;);
+        sb.Append($&quot;    {stride} bytes per vertex, {v.Length * stride / 1024f:F1} KB of vertex data. {attrs}\n&quot;);
+        sb.Append($&quot;    ACMR {(tris &gt; 0 ? (float)misses / tris : 0):F2}, slivers {slivers}, degenerate triangles {degenerate}\n&quot;);
+    }
+}</pre></div><div class="file" data-name="HiddenFaceCull.cs" data-lang="cs"><pre>// Assets/Editor/HiddenFaceCull.cs
+// Window &gt; Optimization &gt; Hidden Face Cull.
+// Removes the triangles of one mesh that no viewpoint can see.
+//   Viewpoints: the children of &quot;Viewpoint root&quot; (put them where the camera can be), plus
+//               optional random points inside a BoxCollider volume.
+//   Occluders:  every collider in the open scenes (give walls and floors MeshColliders while it runs).
+// Writes &quot;&lt;mesh&gt;_Culled.asset&quot; next to the source and assigns it with Undo; the source is untouched.
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+public class HiddenFaceCull : EditorWindow
+{
+    MeshFilter target; Transform viewpointRoot; BoxCollider volume;
+    int randomPoints = 256, seed = 1; bool keepBackFaces;
+
+    [MenuItem(&quot;Window/Optimization/Hidden Face Cull&quot;)]
+    static void Open() =&gt; GetWindow&lt;HiddenFaceCull&gt;(&quot;Hidden Face Cull&quot;);
+
+    void OnGUI()
+    {
+        target = (MeshFilter)EditorGUILayout.ObjectField(&quot;Mesh to clean&quot;, target, typeof(MeshFilter), true);
+        viewpointRoot = (Transform)EditorGUILayout.ObjectField(&quot;Viewpoint root&quot;, viewpointRoot, typeof(Transform), true);
+        volume = (BoxCollider)EditorGUILayout.ObjectField(&quot;Random volume (optional)&quot;, volume, typeof(BoxCollider), true);
+        randomPoints = EditorGUILayout.IntField(&quot;Random viewpoints&quot;, randomPoints);
+        seed = EditorGUILayout.IntField(&quot;Seed&quot;, seed);
+        keepBackFaces = EditorGUILayout.Toggle(&quot;Two-sided material&quot;, keepBackFaces);
+        using (new EditorGUI.DisabledScope(target == null || target.sharedMesh == null))
+            if (GUILayout.Button(&quot;Find and remove hidden faces&quot;)) Run();
+    }
+
+    List&lt;Vector3&gt; Viewpoints()
+    {
+        var pts = new List&lt;Vector3&gt;();
+        if (viewpointRoot) foreach (Transform c in viewpointRoot) pts.Add(c.position);
+        if (volume)
+        {
+            var rnd = new System.Random(seed); var b = volume.bounds;
+            for (int i = 0; i &lt; randomPoints; i++)
+                pts.Add(new Vector3(Mathf.Lerp(b.min.x, b.max.x, (float)rnd.NextDouble()),
+                                    Mathf.Lerp(b.min.y, b.max.y, (float)rnd.NextDouble()),
+                                    Mathf.Lerp(b.min.z, b.max.z, (float)rnd.NextDouble())));
+        }
+        return pts;
+    }
+
+    void Run()
+    {
+        var mesh = target.sharedMesh; var tr = target.transform; var pts = Viewpoints();
+        if (pts.Count == 0) { Debug.LogError(&quot;Hidden Face Cull: add viewpoints (children of the root) or a volume.&quot;); return; }
+
+        // A temporary collider with exactly the render triangles, so hit.triangleIndex maps 1:1.
+        var temp = new GameObject(&quot;~HiddenFaceCull&quot;) { hideFlags = HideFlags.HideAndDontSave };
+        temp.transform.SetPositionAndRotation(tr.position, tr.rotation); temp.transform.localScale = tr.lossyScale;
+        var mc = temp.AddComponent&lt;MeshCollider&gt;();
+        mc.cookingOptions = MeshColliderCookingOptions.None; mc.sharedMesh = mesh;
+        var own = target.GetComponent&lt;Collider&gt;(); bool ownOn = own &amp;&amp; own.enabled; if (own) own.enabled = false;
+        bool hitBack = Physics.queriesHitBackfaces; Physics.queriesHitBackfaces = keepBackFaces;
+        Physics.SyncTransforms();
+
+        var v = mesh.vertices; var tri = mesh.triangles; int nt = tri.Length / 3;
+        var visible = new bool[nt]; bool cancelled = false;
+        try
+        {
+            for (int t = 0; t &lt; nt &amp;&amp; !cancelled; t++)
+            {
+                if (t % 256 == 0) cancelled = EditorUtility.DisplayCancelableProgressBar(&quot;Hidden Face Cull&quot;, $&quot;Triangle {t} of {nt}&quot;, (float)t / nt);
+                Vector3 a = tr.TransformPoint(v[tri[3 * t]]), b = tr.TransformPoint(v[tri[3 * t + 1]]), c = tr.TransformPoint(v[tri[3 * t + 2]]);
+                Vector3 n = Vector3.Cross(b - a, c - a).normalized, ctr = (a + b + c) / 3f;
+                Vector3[] probes = { ctr, Vector3.Lerp(ctr, a, 0.8f), Vector3.Lerp(ctr, b, 0.8f), Vector3.Lerp(ctr, c, 0.8f) };
+                foreach (var p in pts)
+                {
+                    if (!keepBackFaces &amp;&amp; Vector3.Dot(n, p - ctr) &lt;= 0f) continue;     // viewpoint behind the face
+                    foreach (var q in probes)
+                    {
+                        Vector3 d = q - p; float len = d.magnitude; if (len &lt; 1e-4f) continue;
+                        if (Physics.Raycast(p, d / len, out var hit, len + 0.01f) &amp;&amp; hit.collider == mc &amp;&amp; hit.triangleIndex == t)
+                        { visible[t] = true; break; }
+                    }
+                    if (visible[t]) break;
+                }
+            }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar(); Physics.queriesHitBackfaces = hitBack;
+            if (own) own.enabled = ownOn;
+            DestroyImmediate(temp);
+        }
+        if (!cancelled) Write(mesh, visible);
+    }
+
+    void Write(Mesh src, bool[] visible)
+    {
+        var remap = new Dictionary&lt;int, int&gt;(); var used = new List&lt;int&gt;();
+        int Map(int i) { if (!remap.TryGetValue(i, out int j)) { j = used.Count; remap[i] = j; used.Add(i); } return j; }
+        var subs = new List&lt;int&gt;[src.subMeshCount]; int t = 0, kept = 0;
+        for (int s = 0; s &lt; src.subMeshCount; s++)          // mesh.triangles lists the submeshes in this order
+        {
+            subs[s] = new List&lt;int&gt;(); var ind = src.GetTriangles(s);
+            for (int k = 0; k &lt; ind.Length; k += 3, t++)
+                if (visible[t]) { subs[s].Add(Map(ind[k])); subs[s].Add(Map(ind[k + 1])); subs[s].Add(Map(ind[k + 2])); kept++; }
+        }
+        T[] Pick&lt;T&gt;(T[] a) { if (a == null || a.Length == 0) return a; var r = new T[used.Count]; for (int i = 0; i &lt; r.Length; i++) r[i] = a[used[i]]; return r; }
+
+        var dst = new Mesh { name = src.name + &quot;_Culled&quot;, indexFormat = used.Count &gt; 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
+        dst.vertices = Pick(src.vertices);
+        var nrm = Pick(src.normals); if (nrm != null &amp;&amp; nrm.Length &gt; 0) dst.normals = nrm;
+        var tan = Pick(src.tangents); if (tan != null &amp;&amp; tan.Length &gt; 0) dst.tangents = tan;
+        var colr = Pick(src.colors32); if (colr != null &amp;&amp; colr.Length &gt; 0) dst.colors32 = colr;
+        for (int ch = 0; ch &lt; 8; ch++)                       // keep each UV channel&#x27;s dimension (and stride)
+        {
+            int dim = src.GetVertexAttributeDimension(VertexAttribute.TexCoord0 + ch); if (dim == 0) continue;
+            var uv = new List&lt;Vector4&gt;(); src.GetUVs(ch, uv);
+            if (dim == 2) { var r = new List&lt;Vector2&gt;(used.Count); foreach (int i in used) r.Add(uv[i]); dst.SetUVs(ch, r); }
+            else if (dim == 3) { var r = new List&lt;Vector3&gt;(used.Count); foreach (int i in used) r.Add(uv[i]); dst.SetUVs(ch, r); }
+            else { var r = new List&lt;Vector4&gt;(used.Count); foreach (int i in used) r.Add(uv[i]); dst.SetUVs(ch, r); }
+        }
+        dst.subMeshCount = src.subMeshCount;
+        for (int s = 0; s &lt; subs.Length; s++) dst.SetTriangles(subs[s], s, false);
+        dst.RecalculateBounds();
+
+        string srcPath = AssetDatabase.GetAssetPath(src);
+        string dir = string.IsNullOrEmpty(srcPath) ? &quot;Assets&quot; : Path.GetDirectoryName(srcPath).Replace(&#x27;\\&#x27;, &#x27;/&#x27;);
+        string path = AssetDatabase.GenerateUniqueAssetPath($&quot;{dir}/{dst.name}.asset&quot;);
+        AssetDatabase.CreateAsset(dst, path);
+        Undo.RecordObject(target, &quot;Assign culled mesh&quot;); target.sharedMesh = dst;
+        Debug.Log($&quot;Hidden Face Cull: kept {kept} of {visible.Length} triangles, {used.Count} of {src.vertexCount} vertices -&gt; {path}&quot;);
+    }
+}</pre></div><div class="file" data-name="cull_hidden.py" data-lang="py"><pre># cull_hidden.py (Blender): select the faces of the active mesh that no viewpoint can see.
+# Viewpoints: every object in a collection named &quot;Viewpoints&quot; (empties, or the vertices of meshes).
+# Occluders:  every visible mesh object, including the active one (apply its modifiers first).
+# Run in Object Mode from the Scripting workspace; then Tab, check the selection, X &gt; Faces.
+import bpy, bmesh
+from mathutils.bvhtree import BVHTree
+
+obj = bpy.context.active_object
+dg = bpy.context.evaluated_depsgraph_get()
+
+pts = []
+for o in bpy.data.collections[&quot;Viewpoints&quot;].all_objects:
+    if o.type == &#x27;MESH&#x27;:
+        pts += [o.matrix_world @ v.co for v in o.data.vertices]
+    else:
+        pts.append(o.matrix_world.translation.copy())
+
+# one BVH over all occluders in world space; remember where the active object&#x27;s faces start
+verts, polys, start = [], [], 0
+for o in bpy.context.visible_objects:
+    if o.type != &#x27;MESH&#x27;:
+        continue
+    me = o.data if o == obj else o.evaluated_get(dg).to_mesh()
+    off = len(verts)
+    if o == obj:
+        start = len(polys)
+    verts += [o.matrix_world @ v.co for v in me.vertices]
+    polys += [[off + i for i in p.vertices] for p in me.polygons]
+    if o != obj:
+        o.evaluated_get(dg).to_mesh_clear()
+tree = BVHTree.FromPolygons(verts, polys, epsilon=0.0)
+
+mw = obj.matrix_world
+nm = mw.to_3x3().inverted().transposed()
+bm = bmesh.new(); bm.from_mesh(obj.data); bm.faces.ensure_lookup_table()
+hidden = 0
+for f in bm.faces:
+    c = mw @ f.calc_center_median()
+    n = (nm @ f.normal).normalized()
+    probes = [c] + [c.lerp(mw @ v.co, 0.8) for v in f.verts[:3]]
+    seen = False
+    for p in pts:
+        if n.dot(p - c) &lt;= 0.0:          # viewpoint behind the face
+            continue
+        for q in probes:
+            d = q - p
+            if d.length &lt; 1e-6:
+                continue
+            hit = tree.ray_cast(p, d.normalized(), d.length + 1e-3)
+            if hit[2] is not None and hit[2] == start + f.index:
+                seen = True
+                break
+        if seen:
+            break
+    f.select = not seen
+    hidden += 0 if seen else 1
+bm.select_flush_mode()
+bm.to_mesh(obj.data); bm.free(); obj.data.update()
+print(f&quot;{hidden} of {len(obj.data.polygons)} faces are never seen from {len(pts)} viewpoints: selected.&quot;)</pre></div></div>
+<p class="note">The visibility test is only as good as its viewpoints: a face visible through a small gap from one corner of the level needs a viewpoint in that corner. Use it on HLODs, distant LODs and kits for constrained cameras, and keep a closed source model so you can re-run it when the level changes.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical. The scripts are pipeline-independent; Cast Shadows Two Sided works the same.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Jacket in Modeling Mode, legacy jacketing for actors, Shadow Two Sided, Quad Overdraw view, Nanite notes, mesh_audit.py.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal has the visibility tools built in: the Jacket tool in Modeling Mode removes hidden triangles, and the Static Mesh Editor and view modes show what each mesh costs. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Modeling Mode: Jacket, Simplify and Weld (Mesh category).</span></div><div class="rt" data-k="py"><b>Python script</b><span>mesh_audit.py: vertices, UV channels, materials and Nanite per LOD.</span></div><div class="rt" data-k="actor"><b>Level actor</b><span>Shadow Two Sided on components that lost their back faces.</span></div></div>
+<ol class="impl-steps"><li><div>Audit: the Static Mesh Editor shows vertices and triangles per LOD in the viewport; <code>mesh_audit.py</code> lists them for a whole selection, with UV channels, material count and whether Nanite is on.</div></li><li><div>Hidden faces: open <em>Modeling Mode</em> (Selection Mode dropdown), select the meshes and the geometry around them, and use <em>Mesh &gt; Jacket</em> to remove triangles that cannot be seen from outside. For levels, the older jacketing (right-click selected actors &gt; <em>Jacketing</em>, with the Polygon Editing plugin) can tag or remove fully occluded actors instead. Both work from outside viewpoints, not from gameplay cameras.</div></li><li><div>Kits with deleted backs: on the Static Mesh Component, enable <em>Lighting &gt; Shadow Two Sided</em> so the shadow pass treats the open mesh as closed.</div></li><li><div>Triangulation and slivers: check the <em>Optimization Viewmodes &gt; Quad Overdraw</em> view on flat walls, floors and round caps; fix fans in the DCC (triangulate before export) or with Modeling Mode's <em>Simplify</em> and <em>Weld</em>.</div></li><li><div>Nanite meshes cull and rasterise clusters themselves, so slivers and cache order matter less; their memory and disk size still follow the triangle count, and the <em>Fallback</em> mesh (used for collision, ray tracing and platforms without Nanite) should be checked like any other mesh.</div></li><li><div>Measure with <em>stat RHI</em> (triangles drawn), <em>ProfileGPU</em> and Unreal Insights before and after.</div></li></ol>
+<div class="files"><div class="file" data-name="mesh_audit.py" data-lang="py"><pre># mesh_audit.py: select static meshes in the Content Browser, then Tools &gt; Execute Python Script.
+import unreal
+
+sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+for mesh in unreal.EditorUtilityLibrary.get_selected_assets():
+    if not isinstance(mesh, unreal.StaticMesh):
+        continue
+    lods = sub.get_lod_count(mesh)
+    nanite = mesh.get_editor_property(&quot;nanite_settings&quot;).get_editor_property(&quot;enabled&quot;)
+    lines = [f&quot;{mesh.get_name()}: {lods} LODs, {sub.get_number_materials(mesh)} materials, Nanite {&#x27;on&#x27; if nanite else &#x27;off&#x27;}&quot;]
+    for lod in range(lods):
+        lines.append(f&quot;  LOD{lod}: {sub.get_number_verts(mesh, lod)} vertices, {sub.get_num_uv_channels(mesh, lod)} UV channels&quot;)
+    unreal.log(&quot;\n&quot;.join(lines))</pre></div></div>
+<p class="note">Static mesh build reorders triangles for the vertex cache on import; procedural meshes created at runtime (Dynamic Mesh, Procedural Mesh Component) do not get that, so optimise them in the generator.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://documentation.simplygon.com/SimplygonSDK_10.4.272.0/unity/tutorials/visibility.html" rel="noopener">Visibility / culling through cameras</a></span><span class="by">Simplygon</span><span class="why">Camera selection sets, back-face and occluded-geometry culling in a reduction pipeline.</span></li><li><span><span class="kind">Docs</span><a href="https://dev.epicgames.com/documentation/unreal-engine/modeling-tools-in-unreal-engine" rel="noopener">Modeling tools in Unreal Engine</a></span><span class="by">Epic Games</span><span class="why">The Jacket, Simplify, Weld and Normals tools of Modeling Mode.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/4.26/Basics/Levels/HowTo/Jacketing" rel="noopener">Jacketing</a></span><span class="by">Epic Games</span><span class="why">Removing occluded triangles or actors: voxel precision, gap size, limits.</span></li><li><span><span class="kind">Article</span><a href="https://humus.name/index.php?ID=228" rel="noopener">Triangulation</a></span><span class="by">Emil Persson (Humus) · 2009</span><span class="why">Fan, strip and max-area triangulations of a disc and their shading cost.</span></li><li><span><span class="kind">Library</span><a href="https://github.com/zeux/meshoptimizer" rel="noopener">meshoptimizer</a></span><span class="by">Arseny Kapoulkine</span><span class="why">Vertex cache, overdraw and fetch optimisation, quantisation; ACMR and ATVR.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/ModelImporter-optimizeMeshPolygons.html" rel="noopener">ModelImporter.optimizeMeshPolygons</a></span><span class="by">Unity</span><span class="why">Triangle reordering for the vertex cache on import.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.blender.org/api/current/mathutils.bvhtree.html" rel="noopener">mathutils.bvhtree</a></span><span class="by">Blender</span><span class="why">Ray casts against meshes for a visibility script.</span></li></ul>
+</section>
+
+<div class="next" data-next="bevels-normals uv-cost"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"acmr": [
+"ACMR",
+"Average cache miss ratio: vertex shader runs per triangle. 3 is no reuse, about 0.5 the best case.",
+"#order"
+],
+"atvr": [
+"ATVR",
+"Average transformed vertex ratio: vertex shader runs per vertex; 1.0 is ideal.",
+"#order"
+],
+"backface": [
+"Back-face culling",
+"Discarding triangles that face away from the camera, after their vertices are shaded.",
+"#hidden"
+],
+"floater": [
+"Floating geometry (floater)",
+"A detail modelled as a separate piece on or through a surface instead of cut into it.",
+"#rules"
+],
+"jacket": [
+"Jacketing",
+"Removing triangles or meshes that cannot be seen from outside an assembly (Unreal Jacket tool).",
+"#visibility"
+],
+"silhouette": [
+"Silhouette",
+"The outline of a mesh on screen, the only place where its polygon edges are visible.",
+"#silhouette"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="mesh.js?v=ef999740"></script>
+</body>
+</html>

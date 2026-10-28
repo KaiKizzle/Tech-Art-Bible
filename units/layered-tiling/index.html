@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Layered Tiling Materials and Decals · Tech Art Atlas</title>
+<meta name="description" content="Why unique textures do not scale, the layer stack of base materials, material blending and decals, where blend masks come from, height-modulated blending, several tiling scales that never repeat together, mesh and projected decals, a case study of Indiana Jones and the Great Circle, and what layers cost, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="layered-tiling" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">Layered Tiling Materials and Decals</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 9 chapters</div>
+  <h1>Layered Tiling Materials and Decals</h1>
+  <p class="lede">Why unique textures do not scale, the layer stack of base materials, material blending and decals, where blend masks come from, height-modulated blending, several tiling scales that never repeat together, mesh and projected decals, a case study of Indiana Jones and the Great Circle, and what layers cost, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Texturing a Game Asset, Blend Modes and Texture Mapping Techniques. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/layered-tiling.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A temple wall from layers: tiling stone, height-blended moss and dirt, and decals along the edges.</figcaption></figure>
+</div>
+<div class="needs" data-needs="texturing#reuse sd-blend#heightblend mapping#decals"></div>
+
+<section class="chapter" id="why" data-title="Unique textures do not scale" data-builds="texturing#reuse texture-memory#cost" data-summary="Unique memory ∝ area · D²; tiling ∝ library size + low-res masks; tiling detail at thousands of px/m holds up close where a unique bake runs out.">
+  <div class="head"><div class="num"></div><h2>Unique textures do not scale</h2></div>
+
+  <div class="prose">
+    <p>Unique textures give every square metre its own texels, so their memory grows with the area of the level. A tiling library grows only with the number of materials in it; masks that say where each material appears can be very low resolution, or free in vertex colours:</p>
+  </div>
+  <div class="fx" data-fx="scale"></div>
+  <div class="prose">
+    <p>Tiling also wins on detail up close. A unique texture at a few hundred texels per metre runs out of resolution once the camera is a metre or two away; a tiling layer at several thousand texels per metre stays sharp at arm's length:</p>
+  </div>
+  <div class="fx" data-fx="closeup"></div>
+  <div class="prose"><p>The two are often combined: a module keeps a modest unique bake for its large forms (ambient occlusion, broad normals), and tiling layers on top carry all the fine detail. The question then becomes how to hide the tiling and decide where each material goes, which is what the rest of this unit is about.</p></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Unique textures for heroes and characters, tiling materials with masks or vertex colours for large surfaces, trim sheets for architectural detail.</p></div><a class="x refto" href="../texturing/index.html#reuse">Open the full explanation</a></aside>
+
+</section>
+<section class="chapter" id="stack" data-title="The layer stack" data-builds="layered-tiling#why" data-summary="Base material → material blending → mesh decals → projected decals (Doom Eternal); Gears 4 stacks dozens of layers and cooks them; HDRP Layered Lit, Unreal Material Layers.">
+  <div class="head"><div class="num"></div><h2>The layer stack</h2></div>
+
+  <div class="prose">
+    <p>Studios that build large worlds from tiling materials converge on the same order of layers, each adding a different kind of detail:</p>
+  </div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Layer</th><th>What it adds</th><th>Driven by</th></tr></thead>
+    <tbody>
+      <tr><td>Base material</td><td>The surface: plaster, stone, metal; tiling, often with a unique bake for the large forms of a module</td><td>Tiling UVs or projection; unique UVs for the bake</td></tr>
+      <tr><td>Material blending</td><td>A second (third, fourth) full material: dirt, moss, damage, wet areas, exposed brick under plaster</td><td>Vertex colour, low-resolution masks, tiling or world-space masks, sharpened by height maps</td></tr>
+      <tr><td>Mesh decals (geo decals)</td><td>Edges, cracks, seams, panel lines, trims: detail that follows the geometry</td><td>Extra geometry with its own UVs into a decal sheet</td></tr>
+      <tr><td>Projected decals</td><td>Stains, leaks, signs, impact marks: detail placed in the level</td><td>Decal volumes (boxes) placed by artists or gameplay</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>id Software's environment artists describe Doom Eternal's surfaces exactly this way: a base material, then geo decals, material blending and projected decals, in an order that varies per shot. id's own rendering talk calls material blending "the first step" of adding detail to the world. The Coalition's layered material system for Gears of War 4 let artists stack dozens of library materials with masks and blend modes, then flattened ("cooked") each stack into a cheaper shader for the 60 fps target. Engines ship versions of the idea: HDRP's <em>Layered Lit</em> shader (up to four layers) and Unreal's <em>Material Layers</em>.</p>
+  </div>
+
+</section>
+<section class="chapter" id="masks" data-title="Where blend masks come from" data-builds="layered-tiling#stack mesh-optimization#rules" data-summary="Vertex colour (free, per instance, as fine as the vertices), low-res unique masks, tiling masks in their own scale, world-space terms; id generates lower LODs per paint job.">
+  <div class="head"><div class="num"></div><h2>Where blend masks come from</h2></div>
+
+  <div class="prose">
+    <p>A blend mask decides where the second material appears. Each source has its own resolution and cost:</p>
+    <ul>
+      <li><b>Vertex colour</b>: free in texture memory, painted per placed instance in the level, but only as fine as the vertex spacing. id's tool paints full material stacks into vertex colours, mostly on environment geometry.</li>
+      <li><b>Low-resolution unique masks</b>: a small texture over unique UVs, for organic assets and characters, where vertex density is uneven (id uses "texture blend weight maps" there).</li>
+      <li><b>Tiling masks</b>: grunge and breakup patterns in their own UV scale, in object or world space, so they never line up with the material tiles.</li>
+      <li><b>Procedural and world-space terms</b>: the surface normal (moss and snow on top), world height (water lines), distance to the ground (dirt at the base), curvature and AO from a bake.</li>
+    </ul>
+    <p>Vertex colour is the cheapest and the most common, but it needs vertices where the blends should change:</p>
+  </div>
+  <div class="fx" data-fx="vcres"></div>
+  <div class="prose"><p>id's vertex painting shares LOD0 geometry between all painted instances of a mesh, and generates the lower LODs uniquely per paint job, so the paint survives the LOD transitions without visible pops. In engines without that, check that the painted LODs keep enough vertices, or fade the paint to a texture mask at a distance.</p></div>
+
+</section>
+<section class="chapter" id="height" data-title="Height-modulated blending" data-builds="sd-blend#heightblend layered-tiling#masks" data-summary="Height maps turn a soft painted weight into a detailed edge: the higher material wins near the threshold; HDRP Layered Lit height blend, Unreal HeightLerp.">
+  <div class="head"><div class="num"></div><h2>Height-modulated blending</h2></div>
+
+  <div class="prose">
+    <p>A painted or low-resolution mask is soft and blobby. Blending by height turns it into a detailed edge: where the mask says "half and half", the material whose height map is higher at that texel wins, so moss fills the cracks first and dirt collects between the cobbles. id's material blending modulates its vertex-painted weights with the materials' height maps for exactly this reason, "to add high-frequency detail" that the painting itself cannot have:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Height blending compares two height maps per pixel; an offset floods one material from the low parts outward and a contrast value sets how sharp the transition is.</p></div><a class="x refto" href="../sd-blend/index.html#heightblend">Open the full explanation</a></aside>
+  <pre class="code" data-lang="hlsl">// Height-modulated blend of two layers: the painted weight w (0..1, e.g. from vertex colour)
+// moves the threshold, the height maps decide which material is on top at each texel.
+float HeightBlend(float w, float hBase, float hLayer, float contrast)
+{
+    // contrast ~0.05 (sharp) .. 0.5 (soft)
+    float a = hBase  + (1.0 - w);
+    float b = hLayer + w;
+    return saturate((b - a) / contrast * 0.5 + 0.5);     // 0 = base, 1 = layer
+}</pre>
+  <div class="prose"><p>The same function works with any weight: vertex colour, a tiling mask, a world-space term or their product. HDRP's Layered Lit has it built in (<em>Use Height Based Blend</em>, with a <em>Height Transition</em> width); in Unreal it is the <em>HeightLerp</em> material function.</p></div>
+
+</section>
+<section class="chapter" id="scales" data-title="Detail that does not repeat: several tiling scales" data-builds="layered-tiling#height texture-bombing#repeat" data-summary="Combined repeat = smallest L that is (nearly) a multiple of every tile size; non-simple ratios, world-space and rotated masks, height-driven edges push it beyond the level.">
+  <div class="head"><div class="num"></div><h2>Detail that does not repeat: several tiling scales</h2></div>
+
+  <div class="prose">
+    <p>Each tiling layer repeats, but a stack of them only repeats when all their tiles line up again. Give the base material, the blend mask and a macro variation layer tile sizes whose ratios are not simple fractions, and the combination repeats over distances far larger than any single tile; in between, every spot shows a different combination:</p>
+  </div>
+  <div class="fx" data-fx="period"></div>
+  <div class="prose">
+    <ul>
+      <li>Avoid simple ratios: a mask at exactly twice or three times the base tile repeats with it.</li>
+      <li>Project masks in world space (or object space with a per-instance offset), so two copies of the same module do not share the same mask placement.</li>
+      <li>Rotate a mask layer by an angle that is not a multiple of 90° against the material tiles.</li>
+      <li>Let the height blend use the base material's own height, so the edges of the mask come from the texture's detail and never look like the mask's tiles.</li>
+    </ul>
+    <p>This is how a small library of tiling materials and masks covers a whole level without visible repetition. Where it is still not enough on the largest surfaces, sample the base material with anti-tiling (<a href="../texture-bombing/index.html#hex">hex tiling</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="decals" data-title="Mesh decals and projected decals" data-builds="mapping#decals layered-tiling#stack" data-summary="Mesh decals follow geometry with their own UVs; projected decals are boxes; cost ∝ pixels · overlap; Doom Eternal: 32-byte geometry decals, ~50 µs pass, thousands of binned decals under 0.5 ms.">
+  <div class="head"><div class="num"></div><h2>Mesh decals and projected decals</h2></div>
+
+  <div class="prose">
+    <p>Decals add the detail that tiling cannot place: a crack exactly along an edge, a stain under a pipe, a sign. <em>Mesh decals</em> (geo decals) are extra pieces of geometry that sit just above the surface, with their own UVs into a decal sheet; they follow the shape of the asset, are authored with it and cost a few triangles. <em>Projected decals</em> are boxes that project a texture onto whatever lies inside them:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Projected decals reconstruct each pixel's position inside a box from the depth buffer, use its local XY as UV and fade by angle.</p></div><a class="x refto" href="../mapping/index.html#decals">Open the full explanation</a></aside>
+  <div class="fx" data-fx="decalcost"></div>
+  <div class="prose">
+    <p>id's renderer gives a sense of scale and budget. Geometry decals in Doom Eternal are projections stored as a 2 × 4 matrix (32 bytes) per decal, authored on the mesh; an extra pass after the depth prepass writes the decal index per pixel in about 50 µs, with up to 254 projections per submesh and a million per level. Projected decals and lights go through a binned (clustered) system that handles thousands of them per scene within a budget of under 0.5 ms. In HDRP and Unreal, both kinds blend into the G-buffer or a decal buffer (DBuffer) before lighting, so they receive light like the surface below.</p>
+  </div>
+
+</section>
+<section class="chapter" id="case" data-title="Case study: Indiana Jones and the Great Circle" data-builds="layered-tiling#stack layered-tiling#scales" data-summary="Motor (id Tech 7 fork); on record: base materials, layered blends, geo decals, baked modules with tiling detail materials, blend shaders, trims; id Tech blending documented for Doom Eternal.">
+  <div class="head"><div class="num"></div><h2>Case study: Indiana Jones and the Great Circle</h2></div>
+
+  <div class="prose">
+    <p>MachineGames built <em>Indiana Jones and the Great Circle</em> (2024) on Motor, its fork of id Tech 7. The team has described its surfacing only at a high level so far; this is what the public sources say, and what they leave open.</p>
+    <p><b>On record.</b></p>
+    <ul>
+      <li>The studio's GDC 2026 talk on aging the game's environments (Vytautas Katarzis, Antonio Vaz Figueiredo, Michael Tran) names the building blocks as base materials, layered blends and geo decals, with Substance 3D Painter workflows and architectural module design.</li>
+      <li>Senior environment artist George McLay describes the Pyramid Tower walls as "classic baked modules with tiling detail materials", with a "multilayered shader for tiling materials" that keeps detail high under close inspection, and modules that interlock with the pieces above and below.</li>
+      <li>A Gnomon livestream with the studio's artists names texture blend shaders, trim sheets and decals as the techniques for its vehicles at current-generation texel density.</li>
+    </ul>
+    <p><b>The engine family's documented system.</b> id Software's description of Doom Eternal's renderer, the same engine lineage, fills in the mechanics: full material stacks blended mostly by vertex painting (four materials per asset, two per triangle), weights modulated by height maps, lower LODs generated per paint job, geometry decals authored on meshes and binned projected decals. Whether Motor kept these exact limits is not public.</p>
+    <p><b>The workflow those pieces add up to</b>, as you would rebuild it: modules with a unique bake for their large forms; two to four tiling materials per module at high texel density, blended per instance by vertex paint and tiling masks, with height-modulated transitions; mesh decals along edges and seams; projected decals for story details; and mask and material scales chosen so they never line up. The result is detail that holds up at arm's length everywhere, from a library of materials that fits in memory.</p>
+  </div>
+  <p class="note">The talk recording is in the GDC Vault. Its details (mask sources, layer limits, shader costs) may differ from the reconstruction above; check the talk before treating any limit here as MachineGames' own.</p>
+
+</section>
+<section class="chapter" id="cost" data-title="What layers cost" data-builds="layered-tiling#height atlas-array#array" data-summary="Samples = layers · maps + masks; bound layers per triangle, branch on zero weights, arrays for layers, cook static stacks, RVT for large surfaces, fade by distance.">
+  <div class="head"><div class="num"></div><h2>What layers cost</h2></div>
+
+  <div class="prose"><p>Every layer adds samples for each of its maps, and a mask or two. Sampling every layer everywhere quickly gets expensive; limiting how many layers can meet in one place keeps the cost bounded:</p></div>
+  <div class="fx" data-fx="layercost"></div>
+  <div class="prose">
+    <ul>
+      <li><b>Limit layers per triangle</b> and pick the two (or three) active layers per triangle or per pixel, so the shader samples only those.</li>
+      <li><b>Skip layers with zero weight</b> with a branch. Blend masks are smooth, so neighbouring pixels usually take the same branch and the skip is real.</li>
+      <li><b>Store layers in a texture array</b> so one shader indexes any layer (<a href="../atlas-array/index.html#array">texture arrays</a>).</li>
+      <li><b>Flatten what does not change</b>: Gears of War 4's cooker merged stack layers marked as not live into fewer textures and instructions; Unreal's runtime virtual textures cache the blended result of large surfaces such as terrain.</li>
+      <li><b>Fade layers by distance</b>: detail layers and decals are invisible far away; blend to the base or to a cached version.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Vertex-painted moss on a stone wall looks blobby and follows the triangles. Cheapest fix?", ["Subdivide the wall heavily", "Height-modulate the blend with the stone's height map", "Use a 4K mask texture", "Add more decals"], 1, "The height map draws the detailed edge; the paint only moves the threshold."], ["The base tile is 2 m and the dirt mask tiles every 4 m. The combination repeats every?", ["Never", "4 m: the ratio is a simple fraction, so the mask repeats with every second tile", "8 m", "2 m"], 1, "Choose a ratio like 2 : 3.23 instead."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="HDRP Layered Lit with mask and vertex colour, planar/triplanar mask mapping, height-based blend; Polybrush per-instance paint; LayerBlend.hlsl for world-space masks; projected and mesh decals.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>HDRP ships most of the stack: the Layered Lit shader blends up to four materials by mask and vertex colour with height-based transitions, Polybrush paints vertex colours per instance, and decals cover the top of the stack. A custom graph route adds world-space masks at their own scale. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>HDRP/LayeredLit material: 2–4 layers, mask, vertex colour, height blend.</span></div><div class="rt" data-k="plugin"><b>Engine plugin</b><span>Polybrush package: vertex colour painting per instance.</span></div><div class="rt" data-k="hlsl"><b>HLSL file</b><span>LayerBlend.hlsl: paint × world-space mask, height-modulated.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Decal Projectors and mesh decals with HDRP/Decal materials.</span></div></div>
+<ol class="impl-steps"><li><div>Layered Lit: create a material with the <em>HDRP/LayeredLit</em> shader and set <em>Layer Count</em> (2–4). Each layer tab (Main, Layer 1–3) has its own surface inputs: base colour, mask map, normal map, height map and tiling. Give the layers tile sizes whose ratios are not simple fractions (<a href="#scales">several tiling scales</a>).</div></li><li><div>Masks: a <em>Layer Mask</em> texture (R, G, B for layers 1–3) and/or vertex colours with <em>Vertex Color Mode</em> = <code>Multiply</code> or <code>Add Subtract</code>. Set the Layer Mask's <em>BlendMask UV Mapping</em> to <code>Planar</code> or <code>Triplanar</code> with its own <em>World Scale</em> so it does not repeat with the meshes.</div></li><li><div>Height blending: tick <em>Use Height Based Blend</em> and set <em>Height Transition</em>; each layer needs a height map (with its amplitude set) for this to work. <em>Main Layer Influence</em> lets the base layer's colour and normals show through the layers above.</div></li><li><div>Vertex paint: install <em>Polybrush</em> from the Package Manager, select a placed module and paint vertex colours. Polybrush can store the paint per instance in additional vertex streams, so copies of a module can be painted differently without duplicating the mesh.</div></li><li><div>More than four layers or world-space masks per layer: build the blend yourself in a Lit graph with <code>LayerBlend.hlsl</code>. In the graph, add a <em>Custom Function</em> node. Set <em>Type</em> to <code>File</code>, <em>Source</em> to <code>LayerBlend.hlsl</code> and <em>Name</em> to <code>LayerBlendWeight</code> (without the <code>_float</code> suffix). Add the inputs <b>Paint (Float), Mask (Texture2D), MaskUV (Vector 2), MaskScale (Float), MaskAngle (Float), MaskStrength (Float), HeightBase (Float), HeightLayer (Float), Contrast (Float)</b> and the outputs <b>Weight (Float)</b>, in that order and with those types: they must match the function's parameters. Lerp every map of the two materials with Weight.</div></li><li><div>Decals: projected decals with a <em>Decal Projector</em> and an <em>HDRP/Decal</em> material (or Decal Shader Graph); mesh decals by assigning a decal material to the MeshRenderer of the decal geometry. Enable <em>Decal Layers</em> in the HDRP asset to keep decals off characters, and check the decal count per pixel in the busiest view.</div></li></ol>
+<div class="files"><div class="file" data-name="LayerBlend.hlsl" data-lang="hlsl"><pre>// LayerBlend.hlsl: the weight of a second material over a base, for Shader Graph (Custom Function, Type: File).
+//   Paint      painted weight 0..1 (vertex colour channel)
+//   Mask       a tiling breakup mask, read at its own scale and rotation so it never lines up with the
+//              material tiles; MaskUV is world or object position projected to 2D (e.g. Position.xz)
+//   Heights    both materials&#x27; height maps at their own UVs: they draw the final edge
+// Result: 0 = base material, 1 = layer.
+#ifndef ATLAS_LAYERBLEND_INCLUDED
+#define ATLAS_LAYERBLEND_INCLUDED
+
+void LayerBlendWeight_float(float Paint, UnityTexture2D Mask, float2 MaskUV, float MaskScale, float MaskAngle,
+                            float MaskStrength, float HeightBase, float HeightLayer, float Contrast, out float Weight)
+{
+    float c = cos(MaskAngle), s = sin(MaskAngle);
+    float2 uv = mul(float2x2(c, -s, s, c), MaskUV) / MaskScale;            // rotated, own scale
+    float m = SAMPLE_TEXTURE2D(Mask.tex, Mask.samplerstate, uv).r;
+    float w = saturate(Paint + (m - 0.5) * MaskStrength);                   // the mask moves the painted threshold
+    float a = HeightBase + (1.0 - w);
+    float b = HeightLayer + w;
+    Weight = saturate((b - a) / max(Contrast, 1e-3) * 0.5 + 0.5);           // height-modulated edge
+}
+#endif</pre></div></div>
+<p class="note">Layered Lit samples all active layers everywhere; with four full layers that is a lot of samples per pixel. Use two or three layers on most surfaces and bake static combinations into textures where a surface never changes.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP has no Layered Lit; build the blend in Shader Graph with LayerBlend.hlsl and URP Decal Projectors (Decal Renderer Feature).</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="Material Layers and Layer Blends, HeightLerp or LayerBlendWeight.ush, world-space rotated masks, per-instance vertex paint, DBuffer and mesh decals, RVT for large surfaces.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal's Material Layers hold the stack as reusable assets, HeightLerp does the height-modulated blend, Mesh Paint Mode paints vertex colours per instance, and DBuffer and mesh decals finish it. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="mat"><b>Material</b><span>Material Layers and Layer Blends (Material Attribute Layers node).</span></div><div class="rt" data-k="mf"><b>Material Function</b><span>HeightLerp (engine function) or LayerBlendWeight.ush.</span></div><div class="rt" data-k="ue"><b>Project Settings</b><span>Mesh Paint Mode for vertex colour per instance; DBuffer decals.</span></div></div>
+<ol class="impl-steps"><li><div>Layers: create <em>Material Layer</em> assets (one tiling material each, output as Material Attributes) and <em>Material Layer Blend</em> assets (the blend logic). In the parent material enable <em>Use Material Attributes</em>, add a <em>Material Attribute Layers</em> node into the output, and stack layers in the material instance's <em>Layer Parameters</em> panel.</div></li><li><div>Blend: inside the Layer Blend, use the <em>HeightLerp</em> function (inputs A, B, Transition Phase, Height Texture, Contrast) with the painted weight as the transition phase, or a <em>Custom</em> node with <code>LayerBlendWeight.ush</code> when the mask should be rotated and scaled in world space.</div></li><li><div>World-space masks: <em>Absolute World Position</em> / tile size in cm as MaskUV, with a rotation that is not a multiple of 90°; for walls, use the <em>WorldAlignedTexture</em> function for the mask.</div></li><li><div>Vertex paint: <em>Mesh Paint Mode &gt; Colors</em>, paint on placed meshes; the colours are stored per instance on the component, so copies of a module differ. Use the <em>Vertex Color</em> node channels as Paint.</div></li><li><div>Decals: enable <em>Project Settings &gt; Rendering &gt; DBuffer Decals</em>; projected decals are Decal Actors with a material of domain <em>Deferred Decal</em>; mesh decals are static meshes with such a material assigned. Watch <em>Shader Complexity</em> where decals stack.</div></li><li><div>Large surfaces: a Runtime Virtual Texture can cache the blended result (landscapes, big floors) so the layers are evaluated once per page instead of every frame.</div></li></ol>
+<div class="files"><div class="file" data-name="LayerBlendWeight.ush" data-lang="hlsl"><pre>// Custom node &quot;LayerBlendWeight&quot;. Inputs: Paint (float), Mask (Texture Object), MaskUV (float2),
+// MaskScale (float), MaskAngle (float), MaskStrength (float), HeightBase (float), HeightLayer (float),
+// Contrast (float). Output Type: CMOT Float 1 (0 = base, 1 = layer).
+float c = cos(MaskAngle), s = sin(MaskAngle);
+float2 uv = mul(float2x2(c, -s, s, c), MaskUV) / MaskScale;
+float m = Texture2DSample(Mask, MaskSampler, uv).r;
+float w = saturate(Paint + (m - 0.5) * MaskStrength);
+float a = HeightBase + (1.0 - w);
+float b = HeightLayer + w;
+return saturate((b - a) / max(Contrast, 1e-3) * 0.5 + 0.5);</pre></div></div>
+<p class="note">Material Layers compile to one shader per stack; keep the number of layers per instance small and reuse layer assets, so the library stays a library and not a set of unique stacks.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Talk</span><a href="https://gdcvault.com/play/1036059/Aged-by-Adventure-CraftingtheTime-Worn" rel="noopener">Aged by Adventure: Crafting the Time-Worn World of Indiana Jones and the Great Circle</a></span><span class="by">MachineGames · GDC 2026</span><span class="why">Base materials, layered blends and geo decals; aging, weathering and modules.</span></li><li><span><span class="kind">Portfolio</span><a href="https://georgemclay.artstation.com/projects/EzK25K" rel="noopener">Indiana Jones and the Great Circle: Pyramid Tower</a></span><span class="by">George McLay · MachineGames</span><span class="why">Baked modules with tiling detail materials and a multilayered shader for tiling materials.</span></li><li><span><span class="kind">Event</span><a href="https://www.youtube.com/watch?v=VsGmz0XfXvA" rel="noopener">Exploring the Art of Indiana Jones and the Great Circle with MachineGames</a></span><span class="by">Gnomon · 2025</span><span class="why">Texture blend shaders, trim sheets and decals at current-generation texel density.</span></li><li><span><span class="kind">Talk</span><a href="https://advances.realtimerendering.com/s2020/RenderingDoomEternal.pdf" rel="noopener">Rendering the Hellscape of Doom Eternal</a></span><span class="by">id Software · SIGGRAPH 2020</span><span class="why">Material blending by vertex paint (4 per asset, 2 per triangle), height modulation, geometry and binned decals.</span></li><li><span><span class="kind">Portfolio</span><a href="https://felixleyendecker.artstation.com/projects/Ye8o4d" rel="noopener">Doom Eternal: surfacing</a></span><span class="by">Felix Leyendecker</span><span class="why">The layer order: base material, geo decals, material blending, projected decals.</span></li><li><span><span class="kind">Talk</span><a href="https://history.siggraph.org/wp-content/uploads/2022/09/2017-Talks-Penty_Gears-of-War-4-Creating-a-Layered-Material-System-for-60fps.pdf" rel="noopener">Gears of War 4: Creating a Layered Material System for 60fps</a></span><span class="by">The Coalition · SIGGRAPH 2017</span><span class="why">Stacks of library materials, live and cooked layers, flattening for performance.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.0/manual/Layered-Lit-Shader.html" rel="noopener">Layered Lit Shader</a></span><span class="by">Unity</span><span class="why">Four layers, layer mask and vertex colour modes, height-based blend, main layer influence.</span></li><li><span><span class="kind">Reference</span><a href="https://en.wikipedia.org/wiki/Indiana_Jones_and_the_Great_Circle" rel="noopener">Indiana Jones and the Great Circle</a></span><span class="by">Wikipedia</span><span class="why">Engine (Motor, a fork of id Tech 7) and rendering features.</span></li></ul>
+</section>
+
+<div class="next" data-next="texture-bombing atlas-array"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"matblend": [
+"Material blending",
+"Blending full material stacks (colour, normal, roughness) by masks or vertex colour.",
+"#stack"
+],
+"geodecal": [
+"Mesh decal (geo decal)",
+"Geometry just above a surface with its own UVs into a decal sheet.",
+"#decals"
+],
+"projdecal": [
+"Projected decal",
+"A box that projects a texture onto the surfaces inside it.",
+"#decals"
+],
+"heightblend": [
+"Height-modulated blend",
+"A blend whose threshold is moved by a mask and whose edge is drawn by height maps.",
+"#height"
+],
+"macro": [
+"Macro variation",
+"A large-scale layer that varies colour and blends over distances much larger than a tile.",
+"#scales"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="layers.js?v=3f98bb6a"></script>
+</body>
+</html>

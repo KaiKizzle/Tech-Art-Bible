@@ -19,7 +19,7 @@
     { id: 'surf', name: 'Surfaces', tone: '#4aa3f0', blurb: 'How real surfaces reflect and transmit light, renderer-agnostic first (with OpenPBR as the reference), then built in HDRP and Unreal, with cheap fallbacks for each.' },
     { id: 'tex', name: 'Materials & texture pipeline', tone: '#2fb3b3', blurb: 'How textures are authored, packed, compressed and budgeted for the GPU.' },
     { id: 'char', name: 'Characters', tone: '#e06cae', blurb: 'Skin, hair and cloth: the shading models characters need, and how fabric folds in real time.' },
-    { id: 'perf', name: 'Performance & tools', tone: '#e05a4f', blurb: 'Finding what is slow in a frame and the tools that show it.' },
+    { id: 'perf', name: 'Performance & optimization', tone: '#e05a4f', blurb: 'Finding what is slow in a frame, and making meshes, UVs and textures cheaper: hidden faces, vertex counts, bevels and normals, UV cost, anti-tiling, atlases and arrays, layered tiling materials and decals.' },
     { id: 'sd', name: 'Substance Designer', tone: '#d9822b', blurb: 'Procedural materials in Substance 3D Designer: what the numbers in a graph mean, how the core nodes combine them, how to keep graphs fast, and how to ship the result.' },
     { id: 'foli', name: 'Foliage', tone: '#9cc04a', blurb: 'Trees, grass and bushes for games: procedural generation in SpeedTree and Houdini, vertex data and wind, shading, overdraw, LODs and impostors, and rendering thousands of instances.' },
     { id: 'proj', name: 'Unity projects & assets', tone: '#5b6ee8', blurb: 'How a Unity project keeps track of its files: GUIDs and .meta files, prefabs and variants, scenes and Addressables, and why references break.' }
@@ -37,12 +37,13 @@
     { id: 'unity-hygiene', name: 'Unity project hygiene', units: ['unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables', 'texture-settings'] },
     { id: 'surfaces', name: 'Surfaces: metal, glass and water', units: ['pbr-terms', 'pbr-basics', 'metals', 'reflections', 'glass', 'screen-transparency', 'depth-effects', 'water'] },
     { id: 'eyes-raymarch', name: 'Ray marching to a realistic eye', units: ['rays-math', 'ray-marching', 'parallax', 'fpom', 'glass', 'color-tint', 'eyes'] },
-    { id: 'foliage', name: 'Foliage from tree to forest', units: ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing'] }
+    { id: 'foliage', name: 'Foliage from tree to forest', units: ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing'] },
+    { id: 'optimization', name: 'Optimizing meshes and textures', units: ['reading-a-frame', 'mesh-optimization', 'bevels-normals', 'uv-cost', 'atlas-array', 'texture-bombing', 'layered-tiling'] }
   ];
 
   /* The banner at the top of the hub. kind 'path' (id from ATLAS_PATHS) or 'unit' (a slug).
      Its picture is assets/img/paths/<id>.webp (or the unit's hero image); a placeholder is drawn until one exists. */
-  window.ATLAS_FEATURED = { kind: 'path', id: 'foliage', date: '2026-10-26', title: 'Foliage from tree to forest', subtitle: 'Procedural trees, vertex data and wind, foliage shading, overdraw and atlases, LODs and impostors, and instancing thousands of plants.', button: 'Go to path' };
+  window.ATLAS_FEATURED = { kind: 'path', id: 'optimization', date: '2026-10-27', title: 'Optimizing meshes and textures', subtitle: 'Hidden faces and vertex counts, bevels and weighted normals, what UVs cost, atlases against arrays, texture and cell bombing, and layered tiling materials with decals.', button: 'Go to path' };
 
   const ALL = ['Unity HDRP', 'Unity URP', 'Unreal'];
   window.ATLAS_UNITS = [
@@ -209,6 +210,26 @@
       summary: 'Frame budgets, CPU- versus GPU-bound, draw calls and batching, overdraw, quad efficiency, shader divergence and LOD screen sizes.',
       tags: ['profiling', 'performance', 'draw calls', 'batching', 'srp batcher', 'instancing', 'overdraw', 'quad overdraw', 'divergence', 'lod', 'frame budget'] },
 
+    /* Performance & optimization: meshes and textures */
+    { slug: 'mesh-optimization', cat: 'perf', title: 'Mesh Optimization: Hidden Faces and Vertex Counts', topic: 'Hidden faces, silhouettes, triangulation', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal', 'blender'],
+      summary: 'What a mesh costs on the GPU, deleting faces nobody sees by hand and by visibility tests, vertices on the silhouette, modelling rules that save vertices, thin triangles and triangulation, and vertex cache order.',
+      tags: ['mesh optimization', 'hidden faces', 'backface', 'visibility culling', 'simplygon', 'jacket', 'jacketing', 'silhouette', 'triangulation', 'sliver', 'acmr', 'vertex cache', 'meshoptimizer', 'vertex count', 'floaters'] },
+    { slug: 'bevels-normals', cat: 'perf', title: 'Bevels and Custom Normals', topic: 'Chamfers, weighted normals, baked bevels', minutes: 50, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal', 'blender'],
+      summary: 'Why sharp edges look wrong, three ways to round an edge, what chamfers really cost, face-weighted normals and the mid-poly workflow, baking bevels into normal maps, transferring normals, and what destroys them.',
+      tags: ['bevel', 'chamfer', 'weighted normals', 'face weighted normals', 'fwn', 'mid-poly', 'custom normals', 'normal transfer', 'bevel shader', 'bake', 'hard edges', 'smoothing groups', 'mikktspace'] },
+    { slug: 'uv-cost', cat: 'perf', title: 'UV Layout and Cost', topic: 'UV bytes, precision, seams, packing', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'What a UV channel costs in bytes and bandwidth, 16-bit UVs and large tiling coordinates, seams in every channel and lightmap UVs, packing efficiency, overlapping and mirrored UVs, extra channels and interpolators.',
+      tags: ['uv', 'uv channel', 'uv cost', 'half precision', 'fp16', 'full precision uvs', 'vertex compression', 'lightmap uv', 'seams', 'packing', 'texel density', 'mirrored uvs', 'interpolators', 'varyings'] },
+    { slug: 'atlas-array', cat: 'perf', title: 'Atlases, Texture Arrays and Unique Textures', topic: 'When each container wins', minutes: 45, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Unique textures, atlases, texture arrays and bindless or virtual texturing: what a shared texture saves with each kind of batching, padding and mips, array limits and streaming, and a decision table.',
+      tags: ['atlas', 'texture atlas', 'texture array', 'texture2darray', 'unique textures', 'batching', 'srp batcher', 'static batching', 'merge actors', 'bindless', 'virtual texturing', 'mip bleeding', 'streaming'] },
+    { slug: 'texture-bombing', cat: 'perf', title: 'Texture and Cell Bombing', topic: 'Breaking up tiling in the shader', minutes: 45, level: 'Advanced', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Why tiling shows, random offsets per cell, texture bombing and Voronoi cell bombing, hex tiling and histogram-preserving blending, gradients at cell borders, rotated normal maps, and cost against cheaper alternatives.',
+      tags: ['texture bombing', 'cell bombing', 'anti-tiling', 'stochastic texturing', 'hex tiling', 'histogram preserving', 'voronoi', 'texture repetition', 'samplegrad', 'quilez', 'mikkelsen', 'heitz neyret'] },
+    { slug: 'layered-tiling', cat: 'perf', title: 'Layered Tiling Materials and Decals', topic: 'Tiling layers, masks, decals', minutes: 55, level: 'Intermediate', engines: ALL, software: ['any', 'unity', 'unreal'],
+      summary: 'Why unique textures do not scale, the stack of base materials, material blending and decals, blend masks and vertex paint, height-modulated blending, tiling scales that never repeat together, and a case study of Indiana Jones and the Great Circle.',
+      tags: ['layered materials', 'material blending', 'tiling', 'masks', 'vertex paint', 'height blend', 'heightlerp', 'layered lit', 'material layers', 'mesh decals', 'geo decals', 'projected decals', 'indiana jones', 'great circle', 'machinegames', 'id tech', 'doom eternal'] },
+
     /* Substance Designer */
     { slug: 'sd-graphs', cat: 'sd', title: 'Graphs, Bit Depth and Colour Space', topic: 'Resolution, 8/16 bit, float, sRGB and linear', minutes: 45, level: 'Beginner', engines: ALL,
       summary: 'Output size and inheritance, what 8 and 16 bits mean, why heights band, float formats, and sRGB versus linear inside a graph and on export.',
@@ -251,7 +272,8 @@
     '2026-10-21': ['sd-graphs', 'sd-blend', 'sd-warps', 'sd-pixel-fx', 'sd-performance', 'sd-publish', 'unity-guids', 'unity-prefabs', 'unity-scenes', 'unity-addressables'],
     '2026-10-22': ['pbr-terms', 'metals', 'reflections', 'glass', 'screen-transparency', 'water'],
     '2026-10-25': ['ray-marching', 'fpom', 'color-tint', 'eyes'],
-    '2026-10-26': ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing']
+    '2026-10-26': ['foliage-trees', 'foliage-vertex-data', 'foliage-wind', 'foliage-animation', 'foliage-shading', 'foliage-cards', 'foliage-lods', 'foliage-instancing'],
+    '2026-10-27': ['mesh-optimization', 'bevels-normals', 'uv-cost', 'atlas-array', 'texture-bombing', 'layered-tiling']
   };
   /* Defaults for the tile badges.
      type: 'unit' (a lesson) or 'workflow' (a step-by-step production recipe).

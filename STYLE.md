@@ -54,7 +54,7 @@ class `a`. No fills except one accent dot (`af`), no text, no perspective tricks
 | Surfaces | `#4aa3f0` |
 | Materials & texture pipeline | `#2fb3b3` |
 | Characters | `#e06cae` |
-| Performance | `#e05a4f` |
+| Performance & optimization | `#e05a4f` |
 | Substance Designer | `#d9822b` |
 | Foliage | `#9cc04a` |
 | Unity projects & assets | `#5b6ee8` |

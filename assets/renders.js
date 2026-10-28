@@ -1526,6 +1526,139 @@ vec3 render(vec2 frag){
     col = vec3(.03, .04, .02)*(vec3(2.4)*max(KS.y, 0.0)*sh + vec3(.2)); }
   return mix(col, studio(rd), smoothstep(30.0, 60.0, length(pg.xz))); }`
   });
+  /* Performance & optimization units */
+  Object.assign(SCENES, {
+    /* Three wall modules seen from behind: faces that touch a wall or a neighbour, never visible in game, are red. */
+    'mesh-optimization': '#define KEYDIR vec3(-.45, .8, -.55)\n' + SDF + `
+vec3 HB = vec3(.5, .62, .14);
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  for (int i = 0; i < 3; i++){ float fi = float(i); r = U(r, sdBox(p - vec3(-1.3 + fi*1.3, .62, 0.0), HB), 1.0 + fi); }
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){
+  if (id < .5){ float line = smoothstep(.025, 0.0, abs(p.z - .2))*step(abs(p.x), 2.0); return FLOOR + vec3(.18)*line; }
+  float fi = id - 1.0; vec3 q = p - vec3(-1.3 + fi*1.3, .62, 0.0);
+  vec3 a = abs(q) - HB + .014; float edges = step(0.0, a.x) + step(0.0, a.y) + step(0.0, a.z);
+  bool hidden = n.z > .5 || (n.x > .5 && fi < 1.5) || (n.x < -.5 && fi > .5) || n.y < -.5;
+  vec3 base = hidden ? RED*.42 : vec3(.16, .165, .175);
+  return mix(base, vec3(.5), step(1.5, edges)*.6); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(-2.2, 2.3, -3.4), vec3(.1, .5, 0.0), 2.5, frag); }`,
+
+    /* Two crates under a grazing light: hard edges on the left, one rounded chamfer on the right. */
+    'bevels-normals': '#define KEYDIR vec3(-.75, .42, .5)\n' + SDF + `
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox((p - vec3(-1.05, .5, 0.0))*rY(.62), vec3(.5)), 1.0);
+  r = U(r, sdBox((p - vec3(1.05, .5, 0.0))*rY(-.62), vec3(.41)) - .09, 2.0);
+  return r; }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; return vec3(.1, .105, .115); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(0.0, 1.55, 4.3), vec3(0.0, .45, 0.0), 2.45, frag); }`,
+
+    /* Two UV squares as panels: a tight pack and a wasteful one. */
+    'uv-cost': '#define KEYDIR vec3(-.4, .85, .5)\n' + SDF + `
+vec3 PA = vec3(-1.05, .03, 0.0), PB = vec3(1.05, .03, 0.0);
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox(p - PA, vec3(.9, .03, .9)), 1.0);
+  r = U(r, sdBox(p - PB, vec3(.9, .03, .9)), 2.0);
+  return r; }
+float isl(vec2 q, vec4 b){ return step(b.x, q.x)*step(q.x, b.z)*step(b.y, q.y)*step(q.y, b.w); }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR; if (n.y < .5) return vec3(.04);
+  vec2 q = (p - (id < 1.5 ? PA : PB)).xz/1.8 + .5; float m = 0.0;
+  if (id < 1.5){ m += isl(q, vec4(.03, .03, .62, .55)); m += isl(q, vec4(.65, .03, .97, .55)); m += isl(q, vec4(.03, .58, .45, .97)); m += isl(q, vec4(.48, .58, .97, .77)); m += isl(q, vec4(.48, .8, .97, .97)); }
+  else { m += isl(q, vec4(.08, .1, .34, .36)); m += isl(q, vec4(.5, .18, .68, .4)); m += isl(q, vec4(.2, .55, .42, .7)); m += isl(q, vec4(.62, .6, .86, .9)); }
+  vec2 c = floor(q*16.0); float ch = mod(c.x + c.y, 2.0);
+  return m > .5 ? mix(vec3(.03, .1, .025), vec3(.2, .21, .2), ch) : vec3(.012); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(0.0, 3.0, 2.5), vec3(0.0, .0, -.1), 2.35, frag); }`,
+
+    /* One pebble texture on a floor: plain tiling on the left, hex tiling on the right. */
+    'texture-bombing': `
+vec3 KEY = normalize(vec3(-.4, .7, .3));
+vec2 h22(vec2 p){ return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))))*43758.5453); }
+vec3 pebbles(vec2 uv){
+  vec2 g = uv*5.0, i = floor(g), f = fract(g); float best = 9.0, second = 9.0; vec2 bid = vec2(0.0);
+  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++){
+    vec2 o = vec2(float(x), float(y)), c = mod(i + o, 5.0);
+    vec2 pt = o + .2 + .6*h22(c) - f; float d = length(pt*vec2(1.0, 1.0 + .4*h22(c + 3.0).x));
+    if (d < best){ second = best; best = d; bid = c; } else if (d < second) second = d; }
+  float r = .4 + .12*h22(bid + 7.0).x;
+  vec3 col = mix(vec3(.1, .085, .065), vec3(.26, .23, .19), h22(bid + 1.0).x);
+  if (bid.x == 2.0 && bid.y == 3.0) col = vec3(.32, .05, .025);
+  float peb = smoothstep(.02, .1, second - best)*smoothstep(r + .05, r - .05, best);
+  return mix(vec3(.09, .075, .055), col*(.8 + .4*(1.0 - best/r)), peb); }
+vec2 hexUV(vec2 uv, vec2 v){
+  vec2 c = vec2(v.x + .5*v.y, .8660254*v.y)/3.4641016;
+  float a = mod(abs(v.x*v.y) + abs(v.x + v.y) + PI, 2.0*PI); if (a > PI) a -= 2.0*PI; a *= .35;
+  float cs = cos(a), sn = sin(a); vec2 d = uv - c;
+  return vec2(d.x*cs + d.y*sn, -d.x*sn + d.y*cs) + c + h22(v); }
+vec3 hexTile(vec2 uv){
+  vec2 st = uv*3.4641016, sk = vec2(st.x - .57735027*st.y, 1.15470054*st.y), b = floor(sk);
+  vec3 t = vec3(fract(sk), 0.0); t.z = 1.0 - t.x - t.y; float s = step(0.0, -t.z), s2 = 2.0*s - 1.0;
+  vec3 w = vec3(-t.z*s2, s - t.y*s2, s - t.x*s2);
+  vec3 c1 = pebbles(hexUV(uv, b + vec2(s))), c2 = pebbles(hexUV(uv, b + vec2(s, 1.0 - s))), c3 = pebbles(hexUV(uv, b + vec2(1.0 - s, s)));
+  vec3 L = vec3(dot(c1, vec3(.299, .587, .114)), dot(c2, vec3(.299, .587, .114)), dot(c3, vec3(.299, .587, .114)));
+  vec3 W = mix(vec3(1.0), L, .6)*pow(w, vec3(7.0)); W /= W.x + W.y + W.z;
+  return W.x*c1 + W.y*c2 + W.z*c3; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(0.0, 2.3, 1.0); mat3 cam = lookAt(ro, vec3(0.0, 0.0, -3.0)); vec3 rd = cam*normalize(vec3(uv, 1.7));
+  if (rd.y > -.01) return studio(rd);
+  float t = -ro.y/rd.y; vec3 p = ro + rd*t; vec2 tuv = p.xz/1.1;
+  bool right = frag.x > uRes.x*.5;
+  vec3 alb = right ? hexTile(tuv) : pebbles(tuv);
+  vec3 c = alb*(vec3(1.7, 1.58, 1.42)*max(KEY.y, 0.0) + vec3(.08, .09, .11));
+  c = mix(c, studio(rd), smoothstep(5.0, 14.0, t));
+  if (abs(frag.x - uRes.x*.5) < 1.5) c = vec3(.45);
+  return c; }`,
+
+    /* Props textured three ways: their own textures, one atlas sheet, and the slices of a texture array. */
+    'atlas-array': '#define KEYDIR vec3(-.5, .8, .5)\n' + SDF + `
+vec2 map(vec3 p){ vec2 r = vec2(p.y, 0.0);
+  r = U(r, sdBox(p - vec3(-2.35, .26, .15), vec3(.25)) - .01, 1.0);
+  r = U(r, sdBox((p - vec3(-1.72, .2, -.25))*rY(.5), vec3(.2)) - .01, 2.0);
+  r = U(r, sdSphere(p - vec3(-1.95, .22, .62), .22), 3.0);
+  r = U(r, sdBox(p - vec3(0.0, .78, -.35), vec3(.72, .72, .02)), 4.0);
+  for (int i = 0; i < 4; i++){ float fi = float(i); r = U(r, sdBox(p - vec3(1.75 + fi*.1, .55, -.55 + fi*.22), vec3(.42, .42, .015)), 5.0 + fi); }
+  return r; }
+vec3 pat(float k, vec2 q){
+  if (k < .5) return mix(BLUE*.15, BLUE*.5, step(.5, fract(q.x*4.0)));
+  if (k < 1.5){ vec2 c = floor(q*4.0); return mix(ORANGE*.15, ORANGE*.5, mod(c.x + c.y, 2.0)); }
+  if (k < 2.5) return mix(GREEN*.12, GREEN*.5, step(length(fract(q*4.0) - .5), .3));
+  return mix(RED*.15, RED*.5, step(.5, fract(q.y*4.0 + .25*sin(q.x*12.0)))); }
+vec3 albedo(float id, vec3 p, vec3 n){ if (id < .5) return FLOOR;
+  if (id < 3.5) return pat(id - 1.0, p.xy*1.5 + p.z);
+  if (id < 4.5){ vec2 q = (p.xy - vec2(0.0, .78))/1.44 + .5; vec2 k = floor(q*2.0); vec2 f = fract(q*2.0);
+    if (n.z < .5) return vec3(.05); float line = step(.47, abs(f.x - .5)) + step(.47, abs(f.y - .5));
+    return mix(pat(k.x + 2.0*k.y, f), vec3(.02), min(line, 1.0)); }
+  if (n.z < .5) return pat(id - 5.0, vec2(.3)) ;
+  vec2 q = (p.xy - vec2(1.75 + (id - 5.0)*.1, .55))/.84 + .5; return pat(id - 5.0, q); }
+vec3 emit(float id, vec3 p, vec3 n){ return vec3(0.0); }
+vec3 render(vec2 frag){ return scene(vec3(.0, 1.45, 4.3), vec3(.0, .5, 0.0), 2.4, frag); }`,
+
+    /* A temple wall from layers: tiling stone, height-blended moss and dirt, and a decal band along the top. */
+    'layered-tiling': `
+vec3 KEY = normalize(vec3(-.75, .38, .55));
+float bricks(vec2 p, out vec2 id){ vec2 s = vec2(.6, .3); float row = floor(p.y/s.y); vec2 q = p; q.x += mod(row, 2.0)*.3;
+  id = floor(q/s); vec2 f = fract(q/s)*s; vec2 d = min(f, s - f); return min(d.x, d.y); }
+float hgt(vec2 p){ vec2 id; float e = bricks(p, id); return smoothstep(0.0, .035, e)*(.75 + .25*hash12(id)) + (noise3(vec3(p*9.0, 1.0)) - .5)*.16; }
+vec3 render(vec2 frag){
+  vec2 uv = screenUV(frag); vec3 ro = vec3(.9, 1.3, 3.1); mat3 cam = lookAt(ro, vec3(-.5, 1.2, 0.0)); vec3 rd = cam*normalize(vec3(uv, 2.0));
+  float tw = rd.z < 0.0 ? -ro.z/rd.z : 1e9, tf = rd.y < 0.0 ? -ro.y/rd.y : 1e9;
+  vec3 col = studio(rd);
+  if (tw < tf){ vec3 p = ro + rd*tw; vec2 w = p.xy; if (w.y > 2.6) return col;
+    float h = hgt(w); vec2 e = vec2(.004, 0.0);
+    vec3 n = normalize(vec3(-(hgt(w + e.xy) - hgt(w - e.xy))*5.0, -(hgt(w + e.yx) - hgt(w - e.yx))*5.0, 1.0));
+    vec2 id; bricks(w, id);
+    vec3 stone = mix(vec3(.13, .115, .095), vec3(.22, .195, .16), hash12(id))*(.8 + .4*noise3(vec3(w*4.0, 3.0)));
+    float mask = fbm(vec3(w*vec2(.8, 1.1) + vec2(4.1, 1.7), 2.0)) + smoothstep(1.3, 2.5, w.y)*.3;
+    float wM = smoothstep(-.08, .08, (mask - .6)*3.4 - h*.8);
+    float dirt = clamp(((1.0 - h)*.6 + (1.0 - smoothstep(0.0, .75, w.y)) + fbm(vec3(w*2.0, 5.0))*.4 - 1.05)/.15, 0.0, 1.0);
+    vec3 alb = mix(stone, vec3(.035, .075, .015), wM); alb = mix(alb, vec3(.05, .038, .026), dirt*.85);
+    alb *= 1.0 - .65*smoothstep(.07, 0.0, abs(w.y - 2.45))*(.6 + .4*noise3(vec3(w*12.0, 7.0)));
+    col = alb*(vec3(1.6, 1.46, 1.3)*max(dot(n, KEY), 0.0) + vec3(.07, .08, .1)*(.6 + .4*h));
+    col = mix(col, studio(rd), smoothstep(5.5, 10.0, tw)); }
+  else if (tf < 1e8){ vec3 p = ro + rd*tf; col = vec3(.03, .027, .022)*(2.0*KEY.y + .3)*(.55 + .45*smoothstep(0.0, .6, p.z)); col = mix(col, studio(rd), smoothstep(3.0, 8.0, length(p.xz))); }
+  return col; }`
+  });
   const NAMES = Object.keys(SCENES);
 
   let gl = null, glc = null, buf = null; const progs = {};

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>UV Layout and Cost · Tech Art Atlas</title>
+<meta name="description" content="What a UV channel costs in bytes and bandwidth, 16-bit UVs and large tiling coordinates, seams in every channel and lightmap UVs, packing efficiency, overlapping and mirrored UVs, when an extra channel pays, and interpolators on mobile GPUs, built in Unity HDRP and Unreal.">
+<script>try{if(JSON.parse(localStorage.getItem('atlas:theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="preload" href="../../assets/fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../assets/fonts.css?v=91fa5f40">
+<link rel="stylesheet" href="../../assets/atlas.css?v=507c0f72">
+</head>
+<body data-unit="uv-cost" class="app unitpage">
+<nav class="iconrail" aria-label="Site">
+  <a class="ir-logo" href="../../index.html" title="Tech Art Atlas"><span aria-hidden="true">TA</span><b class="sr">Tech Art Atlas</b></a>
+  <a class="ir" href="../../index.html" data-nav="home" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="ir" href="../../index.html?view=paths" data-nav="paths" title="Learning paths"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg><span>Paths</span></a>
+  <a class="ir" href="../../index.html?type=unit" data-nav="units" title="All learning units" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg><span>Units</span></a>
+  <a class="ir" href="../../index.html?type=workflow" data-nav="workflows" title="Workflows (coming soon)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg><span>Workflows</span></a>
+  <a class="ir" href="../../index.html#about" data-nav="about" title="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>About</span></a>
+  <button type="button" class="ir ir-theme" data-theme-toggle title="Switch theme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span>Theme</span></button>
+</nav>
+<div class="appmain">
+<header class="topbar">
+  <form class="searchpill" action="../../index.html" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input type="search" name="q" placeholder="Search units" aria-label="Search units" autocomplete="off"></form>
+  <a class="pill" href="../../index.html?view=paths">Learning paths</a>
+</header>
+<div class="page">
+<nav class="rail" aria-label="Chapters">
+<div class="rail-card">
+  <nav class="crumbs" aria-label="Breadcrumb"></nav>
+  <a class="brand" href="#top">UV Layout and Cost</a>
+  <div class="rail-k">Chapters</div>
+  <ol id="rail-list"></ol>
+</div>
+</nav>
+
+<main id="top">
+<div class="topnav"><a href="../../index.html">Atlas</a><select id="topnav-select" aria-label="Jump to chapter"></select></div>
+<div class="unit-top">
+<header class="unit-head">
+  <div class="eyebrow">Performance & optimization · 8 chapters</div>
+  <h1>UV Layout and Cost</h1>
+  <p class="lede">What a UV channel costs in bytes and bandwidth, 16-bit UVs and large tiling coordinates, seams in every channel and lightmap UVs, packing efficiency, overlapping and mirrored UVs, when an extra channel pays, and interpolators on mobile GPUs, built in Unity HDRP and Unreal.</p>
+  <p class="meta">Builds on Texturing a Game Asset and Mesh Optimization. Build chapters for Unity HDRP and Unreal Engine.</p>
+</header>
+<figure class="keyart"><img src="../../assets/keyart/uv-cost.webp" width="1600" height="610" alt="" decoding="async" fetchpriority="high"><figcaption>A UV layout as a checker on a model: tightly packed islands against a wasteful layout.</figcaption></figure>
+</div>
+<div class="needs" data-needs="texturing#uvs texturing#splits"></div>
+
+<section class="chapter" id="bytes" data-title="What a UV channel costs" data-builds="buffers#vertex-index mesh-optimization#cost" data-summary="A UV channel = 8 B (float) or 4 B (half) per vertex: memory, fetch bandwidth per pass, and seam splits. Unreal: 16-bit by default; Unity: 32-bit unless Vertex Compression applies.">
+  <div class="head"><div class="num"></div><h2>What a UV channel costs</h2></div>
+
+  <div class="prose">
+    <p>A UV channel is two numbers per GPU vertex: 8 bytes at 32-bit precision, 4 bytes at 16-bit. Next to a position, normal and tangent that is a large share of the vertex, and it is paid three times: in memory, in bandwidth every time a pass fetches the vertex, and in the vertices that its seams split:</p>
+  </div>
+  <div class="fx" data-fx="stride"></div>
+  <div class="prose">
+    <p>Engines choose different defaults. Unreal stores UVs as 16-bit floats unless the static mesh's <em>Use Full Precision UVs</em> build setting is on. Unity stores them as 32-bit floats unless the project's <em>Vertex Compression</em> (Player Settings) applies: by default it covers normals, tangents and UV channels 0, 2 and 3, and keeps positions and UV1 (the lightmap channel) at full precision, and only for meshes without Read/Write, without mesh compression and not dynamically batched. Unity's <em>Mesh Compression</em> import setting is a different thing: it shrinks files on disk, not memory.</p>
+  </div>
+
+</section>
+<section class="chapter" id="precision" data-title="16-bit UVs and large tiling coordinates" data-builds="uv-cost#bytes" data-summary="Half floats: step near u is 2^(⌊log₂u⌋−10); large tiling UVs lose texels. Recentre islands by whole tiles, scale in the shader, or keep 32 bits.">
+  <div class="head"><div class="num"></div><h2>16-bit UVs and large tiling coordinates</h2></div>
+
+  <div class="prose">
+    <p>A 16-bit float keeps 11 significant bits. Between 0 and 1 that is plenty: steps of about 1/2048 or finer. But the steps double with every power of two: tiling UVs that run to 64 or 128 across a long wall or a terrain mesh are rounded to steps that span many texels:</p>
+  </div>
+  <div class="fx" data-fx="half"></div>
+  <div class="prose">
+    <p>Three fixes, cheapest first. Move each UV island close to the origin by whole tiles: with a repeating texture, an island at u = 37.2 looks identical at u = 0.2, and the rounding error shrinks by a factor of 64 (the build chapter has a tool). Scale a small UV range up in the shader instead of storing large values (<code>uv * tiling</code> in the pixel shader, at full precision). Or store that one channel at 32 bits. Unique UVs in the 0–1 range never have the problem at texture sizes up to 4K.</p>
+  </div>
+
+</section>
+<section class="chapter" id="seams" data-title="Every UV channel splits vertices" data-builds="texturing#splits uv-cost#bytes" data-summary="GPU vertices follow the union of all seams: hard edges, UV0, lightmap UVs, materials. Put lightmap seams on UV0 seams or reuse UV0.">
+  <div class="head"><div class="num"></div><h2>Every UV channel splits vertices</h2></div>
+
+  <div class="prose">
+    <p>A vertex is split wherever <em>any</em> of its attributes differs between the faces around it. So the GPU vertex count is set by the union of all seams: hard edges, UV0 seams, the seams of the lightmap UVs and of every other channel, and material borders:</p>
+  </div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>A GPU vertex has one position, one normal and one UV per channel; where any of them differs between faces, the vertex is duplicated.</p></div><a class="x refto" href="../texturing/index.html#splits">Open the full explanation</a></aside>
+  <div class="fx" data-fx="union"></div>
+  <div class="prose">
+    <p>Lightmap UVs are the usual surprise. They must not overlap and need padding in lightmap texels, so automatic unwrappers (Unity's <em>Generate Lightmap UVs</em>, Unreal's lightmap UV generation) cut their own seams, which rarely follow the UV0 seams. Hand-made lightmap UVs that reuse the UV0 seams avoid the extra splits; where UV0 is already unique and padded, it can serve as the lightmap channel itself.</p>
+  </div>
+
+</section>
+<section class="chapter" id="packing" data-title="Packing efficiency and wasted texels" data-builds="texturing#padding texturing#density" data-summary="Wasted = (1 − p) · S² texels; effective density ∝ √p. Fewer seams vs tighter packing vs padding; scale islands by visibility.">
+  <div class="head"><div class="num"></div><h2>Packing efficiency and wasted texels</h2></div>
+
+  <div class="prose">
+    <p>A texture costs the same whether its islands fill 90 % of it or 50 %. The empty share is memory that holds nothing, and texel density that the islands do not get:</p>
+  </div>
+  <div class="fx" data-fx="pack"></div>
+  <aside class="refcard"><div class="rc-t"><span class="rk">Explained once, used here</span><p>Padding: at mip k a texel covers 2ᵏ texels, so padding of p texels keeps island edges clean down to mip log₂ p; gaps between islands need about twice the padding.</p></div><a class="x refto" href="../texturing/index.html#padding">Open the full explanation</a></aside>
+  <div class="prose">
+    <p>Packing is a trade against other costs. Many small islands pack tightly but need more seams (vertices) and more padding (texels around every island). Straightening islands into rectangles packs better and makes them usable as trims, at the cost of some stretching. Scaling islands by importance (more density on the visible side, less on the bottom) is legitimate as long as the visible density stays on target (<a class="x" href="../texturing/index.html#density">texel density targets</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="overlap" data-title="Overlapping, mirrored and offset UVs" data-builds="uv-cost#packing texturing#baking" data-summary="Stack identical parts and offset copies by whole tiles for baking; mirror with the tangent sign; never overlap lightmap or unique-bake UVs.">
+  <div class="head"><div class="num"></div><h2>Overlapping, mirrored and offset UVs</h2></div>
+
+  <div class="prose">
+    <p>The cheapest texels are the ones used twice:</p>
+    <ul>
+      <li><b>Stacked islands</b>: identical parts (the four legs of a table, repeated bolts) share one island. Bakers need only one of them in the 0–1 square, so offset the copies by whole tiles (u + 1) during the bake; with a repeating sampler they map to the same texels in the game.</li>
+      <li><b>Mirrored islands</b>: symmetric halves share texels at the cost of a seam on the mirror line. Normal maps work mirrored because the tangent's fourth component stores the bitangent sign; bake with the mirrored halves offset out of the square, and check that the engine computes tangents with MikkTSpace so the sign is right.</li>
+      <li><b>Not allowed</b>: lightmap UVs and any UVs used for unique bakes (AO, curvature) must not overlap, or the stacked parts receive each other's light and occlusion.</li>
+    </ul>
+    <p>Mid-poly assets with tiling materials need no unique bakes at all, so their UVs can overlap freely (<a href="../bevels-normals/index.html#midpoly">the mid-poly workflow</a>).</p>
+  </div>
+
+</section>
+<section class="chapter" id="channels" data-title="When an extra UV channel pays" data-builds="uv-cost#bytes mapping#triplanar foliage-vertex-data#channels" data-summary="Extra channels for lightmaps, tiling-over-mask, trims, vertex data; alternatives: reuse UV0, tiling factor, projection (pixel cost instead of vertex cost).">
+  <div class="head"><div class="num"></div><h2>When an extra UV channel pays</h2></div>
+
+  <div class="prose"><p>Each extra channel costs bytes per vertex and seams, so it should replace something more expensive. The common cases and their alternatives:</p></div>
+  
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Second (or third) UV set for</th><th>Pays when</th><th>Alternative without a channel</th></tr></thead>
+    <tbody>
+      <tr><td>Lightmaps</td><td>Baked lighting is used; UV0 overlaps or mirrors</td><td>UV0 as lightmap UV if it is unique and padded enough; probes or dynamic GI instead of lightmaps</td></tr>
+      <tr><td>A tiling material over a unique mask set</td><td>Masks need unique UVs and the tiling material needs a different layout or scale</td><td>One UV set times a tiling factor; world-space or triplanar projection (<a class="x" href="../mapping/index.html#triplanar">triplanar</a>)</td></tr>
+      <tr><td>Trims and decals on the same mesh</td><td>Trim strips need a layout unlike the base</td><td>A separate decal mesh with its own UVs</td></tr>
+      <tr><td>Vertex data (pivots, phases, masks)</td><td>Wind, VAT or other per-vertex animation</td><td>Vertex colour or data textures (<a class="x" href="../foliage-vertex-data/index.html#channels">where vertex data can live</a>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose"><p>Projection in the shader (world-space planar or triplanar mapping) moves the cost from vertices to pixels: no channel, no seams, but two or three texture samples instead of one for every map. For dense meshes that cover few pixels, the channel is cheaper; for large simple surfaces, the projection.</p></div>
+
+</section>
+<section class="chapter" id="interp" data-title="Interpolators: UVs between the vertex and pixel stage" data-builds="uv-cost#bytes gpu-basics#pipeline" data-summary="Interpolator bandwidth on tilers = vertices · float4 count · 16 B · fps; pack UVs, derive scaled copies in the pixel shader, use half where safe.">
+  <div class="head"><div class="num"></div><h2>Interpolators: UVs between the vertex and pixel stage</h2></div>
+
+  <div class="prose">
+    <p>Every value the vertex shader passes to the pixel shader is an interpolator: UVs, normal, tangent, colour, world position. On desktop GPUs they stay on chip. Tile-based mobile GPUs run all vertex shading first and write its outputs to memory, then read them back per tile, so every interpolator costs bandwidth:</p>
+  </div>
+  <div class="fx" data-fx="varyings"></div>
+  <div class="prose">
+    <ul>
+      <li>Pack two float2 UVs into one float4 interpolator.</li>
+      <li>Pass one UV and derive the others in the pixel shader (<code>uv * tiling + offset</code>) instead of passing several scaled copies.</li>
+      <li>Use 16-bit (half) interpolators for colours and directions where the platform supports it; keep UVs of large textures at full precision.</li>
+    </ul>
+  </div>
+  <details class="check"><summary></summary><script type="application/json">[["Tiling UVs on a 200 m road run up to u = 180. The mesh uses 16-bit UVs and a 2048 px texture. What happens?", ["Nothing, UVs are always exact", "Rounding of up to several texels: the texture wobbles and steps; recentre the islands or use 32-bit UVs", "The texture tiles less often", "The mesh gets more vertices"], 1, "Near 128 the step between half floats is 1/8, that is up to 128 texels of a 2048 texture."], ["A prop has unique UV0 with good padding and an auto-generated lightmap UV1. What saves vertices without changing the look?", ["Delete UV0", "Use UV0 for the lightmap and remove UV1", "Add a third channel", "Use 32-bit UVs"], 1, "The lightmap seams disappear and so do their split vertices."]]</script></details>
+
+</section>
+<section class="chapter impl" id="implement" data-title="Build it in Unity HDRP" data-summary="UVAudit.cs (formats, 16-bit error, seam vertices per channel), remove unused channels, lightmap UV choices, RecenterUVIslands.cs, Vertex Compression, interpolator packing.">
+  <div class="head"><div class="num"></div><h2>Build it in Unity HDRP</h2></div>
+  <div class="prose"><p>The Unity route measures the UV cost of each mesh, moves tiling islands back near the origin so 16-bit UVs are safe, and sets the project-wide vertex compression. Written for Unity 6 with HDRP 17; Unity 2022 LTS works the same apart from a few renamed menu entries.</p></div>
+  <div class="route"><div class="rt" data-k="editor"><b>Editor script</b><span>UVAudit.cs: formats, largest values, 16-bit error, vertices added per channel.</span></div><div class="rt" data-k="editor"><b>Editor script</b><span>RecenterUVIslands.cs: shifts UV0 pieces by whole tiles.</span></div><div class="rt" data-k="settings"><b>Engine settings</b><span>Player Settings: Vertex Compression per channel; model import: lightmap UVs.</span></div></div>
+<ol class="impl-steps"><li><div>Put both scripts in <code>Assets/Editor</code>. Select meshes and run <em>Tools &gt; Optimization &gt; UV Audit</em>. It prints each UV channel's format and dimension, its largest value, the error that value would have at 16 bits, and how many vertices the channel's seams add.</div></li><li><div>Unused channels: an imported channel that no material reads still costs bytes and seams. Remove it in the DCC before export (Blender: <em>Object Data &gt; UV Maps</em>); a second channel usually exists only for lightmaps.</div></li><li><div>Lightmap UVs: tick <em>Generate Lightmap UVs</em> only for meshes that are actually lightmapped. Where UV0 is unique and well padded, copy it into UV1 in the DCC: identical UVs add no seams, so no extra vertices. Otherwise author UV1 in the DCC with its seams on the UV0 seams.</div></li><li><div>Large tiling UVs: run <em>Tools &gt; Optimization &gt; Recenter UV0 Islands</em> on long walls, roads and floors before enabling 16-bit UVs. The audit then shows the largest value near 1.</div></li><li><div>16-bit storage: <em>Project Settings &gt; Player &gt; Other Settings &gt; Optimization &gt; Vertex Compression</em>. The default compresses normals, tangents and UV channels 0, 2 and 3; keep UV1 (lightmaps) and positions at full precision. It applies only to meshes with Read/Write off, Mesh Compression off, not skinned and not dynamically batched.</div></li><li><div>Interpolators: in Shader Graph, pass one UV and compute scaled versions in the fragment stage; custom interpolators (<em>Graph Settings &gt; Custom Interpolators</em>) let you pack two UVs into one Vector 4 when a vertex-stage value is needed.</div></li></ol>
+<div class="files"><div class="file" data-name="UVAudit.cs" data-lang="cs"><pre>// Assets/Editor/UVAudit.cs
+// Tools &gt; Optimization &gt; UV Audit: per selected mesh, the vertex layout, each UV channel&#x27;s format,
+// its largest value and the error that value would have at 16 bits on a 2048 px texture, and how
+// many vertices each channel&#x27;s seams add (vertices that would merge if that channel were removed).
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+public static class UVAudit
+{
+    [MenuItem(&quot;Tools/Optimization/UV Audit&quot;)]
+    static void Run()
+    {
+        var sb = new StringBuilder(&quot;UV Audit\n&quot;);
+        foreach (var mf in Selection.GetFiltered&lt;MeshFilter&gt;(SelectionMode.Deep))
+            if (mf.sharedMesh) Report(mf.sharedMesh, sb);
+        Debug.Log(sb.ToString());
+    }
+
+    static void Report(Mesh m, StringBuilder sb)
+    {
+        int stride = 0; for (int s = 0; s &lt; m.vertexBufferCount; s++) stride += m.GetVertexBufferStride(s);
+        sb.Append($&quot;  {m.name}: {m.vertexCount} vertices, {stride} B per vertex\n&quot;);
+        var channels = new List&lt;int&gt;(); var uvs = new List&lt;Vector4&gt;[8];
+        for (int ch = 0; ch &lt; 8; ch++)
+        {
+            var attr = VertexAttribute.TexCoord0 + ch;
+            if (!m.HasVertexAttribute(attr)) continue;
+            channels.Add(ch); uvs[ch] = new List&lt;Vector4&gt;(); m.GetUVs(ch, uvs[ch]);
+            float max = uvs[ch].Max(u =&gt; Mathf.Max(Mathf.Abs(u.x), Mathf.Abs(u.y)));
+            float step = Mathf.Pow(2f, Mathf.Floor(Mathf.Log(Mathf.Max(max, 1e-6f), 2f)) - 10f);
+            sb.Append($&quot;    UV{ch}: {m.GetVertexAttributeFormat(attr)} x{m.GetVertexAttributeDimension(attr)}, largest |value| {max:F2}, &quot; +
+                      $&quot;16-bit error up to {step * 0.5f * 2048f:F2} texels at 2048 px\n&quot;);
+        }
+        var pos = m.vertices; var nrm = m.normals;
+        int Unique(int skip)
+        {
+            var set = new HashSet&lt;string&gt;();
+            for (int i = 0; i &lt; pos.Length; i++)
+            {
+                var k = new StringBuilder();
+                k.Append(Vector3Int.RoundToInt(pos[i] * 10000f)).Append(nrm.Length &gt; 0 ? Vector3Int.RoundToInt(nrm[i] * 1000f).ToString() : &quot;&quot;);
+                foreach (int ch in channels) if (ch != skip) k.Append(Vector2Int.RoundToInt((Vector2)uvs[ch][i] * 100000f));
+                set.Add(k.ToString());
+            }
+            return set.Count;
+        }
+        int all = Unique(-1);
+        foreach (int ch in channels) sb.Append($&quot;    seams of UV{ch} add {all - Unique(ch)} vertices\n&quot;);
+    }
+}</pre></div><div class="file" data-name="RecenterUVIslands.cs" data-lang="cs"><pre>// Assets/Editor/RecenterUVIslands.cs
+// Tools &gt; Optimization &gt; Recenter UV0 Islands: moves every connected piece of UV0 by whole tiles
+// so it sits near the 0..1 square. With a repeating texture the result looks identical, and 16-bit
+// UVs keep their precision. Pieces are found through shared vertices, so pieces split by other
+// channels or hard edges move separately, which is fine: each triangle keeps its own UVs.
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+public static class RecenterUVIslands
+{
+    [MenuItem(&quot;Tools/Optimization/Recenter UV0 Islands&quot;)]
+    static void Run()
+    {
+        foreach (var mf in Selection.GetFiltered&lt;MeshFilter&gt;(SelectionMode.Deep))
+        {
+            var src = mf.sharedMesh; if (src == null) continue;
+            var m = Object.Instantiate(src); m.name = src.name + &quot;_UVRecentered&quot;;
+            var uv = new List&lt;Vector2&gt;(); m.GetUVs(0, uv); if (uv.Count == 0) continue;
+            var tri = m.triangles;
+
+            // union-find over vertices connected by triangles
+            var parent = new int[uv.Count]; for (int i = 0; i &lt; parent.Length; i++) parent[i] = i;
+            int Find(int x) { while (parent[x] != x) x = parent[x] = parent[parent[x]]; return x; }
+            for (int t = 0; t &lt; tri.Length; t += 3) { int a = Find(tri[t]); parent[Find(tri[t + 1])] = a; parent[Find(tri[t + 2])] = a; }
+
+            var sum = new Dictionary&lt;int, Vector2&gt;(); var cnt = new Dictionary&lt;int, int&gt;();
+            for (int i = 0; i &lt; uv.Count; i++) { int r = Find(i); sum.TryGetValue(r, out var s); sum[r] = s + uv[i]; cnt.TryGetValue(r, out var c); cnt[r] = c + 1; }
+            float before = 0f, after = 0f;
+            for (int i = 0; i &lt; uv.Count; i++)
+            {
+                int r = Find(i); Vector2 centre = sum[r] / cnt[r];
+                Vector2 shift = new Vector2(Mathf.Floor(centre.x), Mathf.Floor(centre.y));
+                before = Mathf.Max(before, Mathf.Abs(uv[i].x), Mathf.Abs(uv[i].y));
+                uv[i] -= shift;
+                after = Mathf.Max(after, Mathf.Abs(uv[i].x), Mathf.Abs(uv[i].y));
+            }
+            m.SetUVs(0, uv);
+
+            string p = AssetDatabase.GetAssetPath(src);
+            string dir = string.IsNullOrEmpty(p) ? &quot;Assets&quot; : Path.GetDirectoryName(p).Replace(&#x27;\\&#x27;, &#x27;/&#x27;);
+            string path = AssetDatabase.GenerateUniqueAssetPath($&quot;{dir}/{m.name}.asset&quot;);
+            AssetDatabase.CreateAsset(m, path);
+            Undo.RecordObject(mf, &quot;Recenter UV islands&quot;); mf.sharedMesh = m;
+            Debug.Log($&quot;{src.name}: largest |UV0| {before:F1} -&gt; {after:F2} ({cnt.Count} pieces) -&gt; {path}&quot;);
+        }
+    }
+}</pre></div></div>
+<p class="note">Mesh Compression (model import settings) only shrinks files on disk and is decompressed on load; it does not reduce memory, and a mesh using it is excluded from Vertex Compression.</p>
+<div class="engines" data-label="Other pipelines"><div class="eng" data-engine="urp">URP: identical; Vertex Compression is a Player setting and works for every pipeline.</div></div>
+</section>
+<section class="chapter impl ue" id="unreal" data-title="Build it in Unreal Engine" data-summary="UV channel view and removal, Use Full Precision UVs per LOD, Generate Lightmap UVs or Light Map Coordinate Index 0, world-aligned projection, Customized UVs.">
+  <div class="head"><div class="num"></div><h2>Build it in Unreal Engine</h2></div>
+  <div class="prose"><p>Unreal stores UVs at 16 bits by default and can generate lightmap UVs into an extra channel; both are build settings per LOD. Written for Unreal Engine 5.6 and later. Substrate is production-ready from 5.7; check <em>Project Settings &gt; Rendering &gt; Substrate</em> to see which material model a project uses.</p></div>
+  <div class="route"><div class="rt" data-k="ue"><b>Project Settings</b><span>Static Mesh Editor: UV channels, Build Settings per LOD.</span></div><div class="rt" data-k="py"><b>Python script</b><span>uv_audit.py: channels, precision and lightmap generation per LOD.</span></div></div>
+<ol class="impl-steps"><li><div>Open the mesh in the Static Mesh Editor and use the <em>UV</em> toolbar button to view each channel. Remove channels that no material reads, in the DCC before export or with the editor scripting call <code>remove_uv_channel</code> of the Static Mesh Editor Subsystem.</div></li><li><div><em>Build Settings &gt; Use Full Precision UVs</em>: leave it off for UVs in a small range; turn it on, or better recentre the islands in the DCC, for long tiling meshes whose UVs run far beyond 1. <code>uv_audit.py</code> reports the setting for a selection and can set it.</div></li><li><div>Lightmaps: <em>Generate Lightmap UVs</em> writes a new channel (<em>Destination Lightmap Index</em>) from a source channel. With Lumen and no baked lighting, turn it off and delete the channel. Where baked lighting is used and UV0 is unique, set the mesh's <em>Light Map Coordinate Index</em> to 0 instead of generating one.</div></li><li><div>Projection instead of a channel: <em>WorldAlignedTexture</em> and <em>WorldAlignedNormal</em> (triplanar) material functions, at the cost of extra samples.</div></li><li><div>Interpolators: material <em>Customized UVs</em> move UV math to the vertex shader and add interpolators; use them where they save pixel work, and keep their number small on mobile.</div></li></ol>
+<div class="files"><div class="file" data-name="uv_audit.py" data-lang="py"><pre># uv_audit.py: select static meshes in the Content Browser, then run it.
+# Lists UV channels, UV precision and lightmap generation per LOD; set FULL_PRECISION to change it.
+import unreal
+
+FULL_PRECISION = None      # None = only report; True or False = set it on every LOD
+
+sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+for mesh in unreal.EditorUtilityLibrary.get_selected_assets():
+    if not isinstance(mesh, unreal.StaticMesh):
+        continue
+    for lod in range(sub.get_lod_count(mesh)):
+        s = sub.get_lod_build_settings(mesh, lod)
+        if FULL_PRECISION is not None:
+            s.set_editor_property(&quot;use_full_precision_u_vs&quot;, FULL_PRECISION)
+            sub.set_lod_build_settings(mesh, lod, s)
+        bits = 32 if s.get_editor_property(&quot;use_full_precision_u_vs&quot;) else 16
+        if s.get_editor_property(&quot;generate_lightmap_u_vs&quot;):
+            lm = f&quot;lightmap UVs generated from channel {s.get_editor_property(&#x27;src_lightmap_index&#x27;)} into {s.get_editor_property(&#x27;dst_lightmap_index&#x27;)}&quot;
+        else:
+            lm = &quot;no generated lightmap UVs&quot;
+        unreal.log(f&quot;{mesh.get_name()} LOD{lod}: {sub.get_num_uv_channels(mesh, lod)} UV channels, {bits}-bit UVs, {lm}&quot;)</pre></div></div>
+<p class="note">Nanite stores UVs quantised per cluster with its own precision; the Full Precision setting applies to the non-Nanite mesh and the fallback.</p>
+</section>
+<section class="chapter" id="sources" data-title="Sources and further reading" data-ref>
+  <div class="head"><div class="num"></div><h2>Sources and further reading</h2></div>
+  <div class="prose" style="margin-bottom:12px"><p>The formulas and engine details in this unit come from these references. Engine documentation changes between versions.</p></div>
+  <ul class="refs"><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/mesh-compression.html" rel="noopener">Configure mesh compression</a></span><span class="by">Unity</span><span class="why">Vertex Compression (FP16 channels, default channels, conditions) against Mesh Compression (disk only).</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unrealengine.com/5.1/en-US/PythonAPI/class/MeshBuildSettings.html" rel="noopener">MeshBuildSettings</a></span><span class="by">Epic Games</span><span class="why">Use Full Precision UVs and High Precision Tangent Basis per LOD.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/ScriptReference/Rendering.VertexAttributeFormat.html" rel="noopener">VertexAttributeFormat</a></span><span class="by">Unity</span><span class="why">Formats available for each vertex attribute.</span></li><li><span><span class="kind">Reference</span><a href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format" rel="noopener">Half-precision floating-point format</a></span><span class="by">Wikipedia</span><span class="why">Bit layout and precision of FP16.</span></li><li><span><span class="kind">Library</span><a href="https://github.com/zeux/meshoptimizer" rel="noopener">meshoptimizer</a></span><span class="by">Arseny Kapoulkine</span><span class="why">Quantising UVs to half floats or 16-bit normalised integers.</span></li><li><span><span class="kind">Docs</span><a href="https://docs.unity3d.com/Manual/LightingGiUvs-GeneratingLightmappingUVs.html" rel="noopener">Generating lightmap UVs</a></span><span class="by">Unity</span><span class="why">Automatic lightmap unwraps, padding and their settings.</span></li><li><span><span class="kind">Docs</span><a href="https://developer.arm.com/documentation/101897/latest" rel="noopener">Mali GPU best practices</a></span><span class="by">Arm</span><span class="why">Vertex outputs, interpolators and bandwidth on tile-based GPUs.</span></li></ul>
+</section>
+
+<div class="next" data-next="atlas-array texture-bombing"></div>
+<section class="chapter" id="glossary" data-title="Glossary" data-ref>
+  <div class="head"><div class="num"></div><h2>Glossary</h2></div>
+  <div class="gloss-tools"><input type="search" id="glossary-search" placeholder="Filter terms" aria-label="Filter glossary"><span class="cap" id="glossary-count"></span></div>
+  <dl class="gloss" id="glossary-list"></dl>
+</section>
+<script type="application/json" id="glossary-data">{
+"stride": [
+"Vertex stride",
+"Bytes per vertex: the sum of all attributes in their formats.",
+"#bytes"
+],
+"half": [
+"Half float (FP16)",
+"16-bit float with 11 significant bits; exact enough for UVs near 0, not for large tiling values.",
+"#precision"
+],
+"packing": [
+"Packing efficiency",
+"Share of the UV square covered by islands.",
+"#packing"
+],
+"stacked": [
+"Stacked UVs",
+"Identical parts sharing one island; copies offset by whole tiles for baking.",
+"#overlap"
+],
+"interpolator": [
+"Interpolator (varying)",
+"A value passed from the vertex to the pixel shader and interpolated across the triangle.",
+"#interp"
+]
+}</script>
+<footer class="foot" id="site-foot"></footer>
+</main>
+</div>
+</div>
+<script src="../../assets/catalog.js?v=d85984dd"></script>
+<script src="../../assets/index.js?v=9f6612cd"></script>
+<script src="../../assets/atlas.js?v=110a7572"></script>
+<script src="../../assets/site.js?v=43b0b305"></script>
+<script src="uv.js?v=95c7c856"></script>
+</body>
+</html>

@@ -15,7 +15,8 @@ Every unit ends with an implementation chapter (**Build it in Unity HDRP**, or *
 The Surfaces units explain the theory renderer-neutrally first (with OpenPBR as the reference), then have a full
 **Build it in Unity HDRP** chapter and a full **Build it in Unreal Engine** chapter.
 Ray Marching, Fast POM, Colour Tinting and Clamping, and Eye Shading follow the same pattern and form the learning path
-**Ray marching to a realistic eye**. The eight Foliage units form the path **Foliage from tree to forest** (featured on the hub).
+**Ray marching to a realistic eye**. The eight Foliage units form the path **Foliage from tree to forest**. Frame Profiling and the six mesh and texture optimisation
+units form **Optimizing meshes and textures** (featured on the hub).
 
 | Category | Unit | Folder |
 |---|---|---|
@@ -53,7 +54,13 @@ Ray Marching, Fast POM, Colour Tinting and Clamping, and Eye Shading follow the 
 | Characters | Cloth Shading (sheen, cloth visibility, silk anisotropy, fuzz, weave) | `units/cloth/` |
 | Characters | Fabric Folds and Wrinkles (normal blending, wrinkle maps, Verlet cloth lab) | `units/fabric-folds/` |
 | Characters | Eye Shading (cornea, parallax, two meshes, refraction, iris profile, march, tint, cost) | `units/eyes/` |
-| Performance & tools | Frame Profiling (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
+| Performance & optimization | Frame Profiling (budgets, batching, overdraw, LODs) | `units/reading-a-frame/` |
+| Performance & optimization | Mesh Optimization: Hidden Faces and Vertex Counts (hidden faces, visibility culling, silhouettes, triangulation, vertex cache) | `units/mesh-optimization/` |
+| Performance & optimization | Bevels and Custom Normals (chamfer cost, weighted normals, mid-poly, baked bevels, normal transfer) | `units/bevels-normals/` |
+| Performance & optimization | UV Layout and Cost (bytes per channel, 16-bit precision, seams, packing, interpolators) | `units/uv-cost/` |
+| Performance & optimization | Atlases, Texture Arrays and Unique Textures (batching, padding and mips, arrays, streaming, bindless) | `units/atlas-array/` |
+| Performance & optimization | Texture and Cell Bombing (offsets, Voronoi bombing, hex tiling, histogram-preserving blending, gradients) | `units/texture-bombing/` |
+| Performance & optimization | Layered Tiling Materials and Decals (layer stack, masks, height blending, tiling scales, decals, Indiana Jones case study) | `units/layered-tiling/` |
 | Substance Designer | Graphs, Bit Depth and Colour Space (inheritance, 8/16 bit, float, sRGB vs linear) | `units/sd-graphs/` |
 | Substance Designer | Blend Modes (every mode as a formula, masks, height blend) | `units/sd-blend/` |
 | Substance Designer | Warps and Distortion (directional, gradient, vector warp, slope blur) | `units/sd-warps/` |
